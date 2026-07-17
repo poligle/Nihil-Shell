@@ -45,12 +45,12 @@
   # services.printing.enable = true;
 
   # Enable sound.
-  services.pulseaudio.enable = true;
+  # services.pulseaudio.enable = true;
   # OR
-  # services.pipewire = {
-  #   enable = true;
-  #   pulse.enable = true;
-  # };
+    services.pipewire = {
+      enable = true;
+      pulse.enable = true;
+    };
 
   # Enable touchpad support (enabled default in most desktopManager).
   services.libinput.enable = true;
@@ -116,7 +116,14 @@
   # and migrated your data accordingly.
   #
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
-  system.stateVersion = "26.05"; # Did you read the comment?
 
+  # --- Hyprland (The fun part) ---
+  programs.hyprland.enable = true;
+    # --- Display Manager : SDDM ---
+    services.displayManager.sddm.enable = true;
+    services.displayManager.sddm.wayland.enable = true;
+
+
+  system.stateVersion = "26.05"; # Did you read the comment?
 }
 

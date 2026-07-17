@@ -15,4 +15,9 @@
 			background_opacity = "0.9";
 		};
 	};
+	
+	home.packages = with pkgs; [
+		wofi
+		waybar
+	];
 }
