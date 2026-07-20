@@ -1,3 +1,4 @@
+# configuration.nix by poligle
 { config, lib, pkgs, ... }:
 {
 	imports =
@@ -13,6 +14,10 @@
   	networking.hostName = "thinkpad";
   	networking.networkmanager.enable = true;
 
+	# Bluetooth
+  	hardware.bluetooth.enable = true;
+	services.blueman.enable = true;
+
   	# Timezone & locale
   	time.timeZone = "Europe/Madrid";
   	i18n.defaultLocale = "es_ES.UTF-8";
@@ -21,7 +26,7 @@
     		useXkbConfig = true;
   	};
 
-  	# Teclado (gráfico + consola vía useXkbConfig)
+	# Keyboard Layout
   	services.xserver.xkb.layout = "es";
 
   	# Audio (PipeWire)
@@ -40,7 +45,7 @@
   	# Swap compressed RAM
   	zramSwap.enable = true;
 
-  	# Graphics AMD
+  	# Graphics
   	hardware.graphics.enable = true;
 
   	# User
@@ -60,9 +65,14 @@
     		neovim
     		wget
  		git
+		lxqt.lxqt-policykit
+		fastfetch
+		awww
+		dunst
+		libnotify
   	];
 
-  	# Allow Unfree
+  	# Allow Unfree Programs (bad corporations)
   	nixpkgs.config.allowUnfree = true;
 
   	# Flakes
@@ -71,9 +81,26 @@
   	# SSH
   	services.openssh.enable = true;
 
+	# Fonts
+  	fonts.packages = with pkgs; [
+    		nerd-fonts.jetbrains-mono
+    		nerd-fonts.hack
+  	];
+
   	# Hyprland
   	programs.hyprland.enable = true;
   	programs.hyprland.withUWSM = false;
+
+	# Thunar
+  	programs.thunar = {
+    		enable = true;
+    		plugins = with pkgs; [
+      			thunar-archive-plugin
+			thunar-volman
+    		];
+  	};
+  	services.gvfs.enable = true; 
+	services.tumbler.enable = true;
 
   	# Display Manager: greetd + tuigreet
   	services.greetd = {
