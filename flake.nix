@@ -1,4 +1,5 @@
 # flake.nix by poligle
+
 {
 	description = "NixOS Config for poligle@thinkpad";
 	inputs = {

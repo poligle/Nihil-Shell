@@ -1,4 +1,5 @@
 # kitty.nix by poligle
+
 { config, pkgs, lib, ... }:
 {
 	programs.kitty = {
