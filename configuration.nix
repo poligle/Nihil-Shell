@@ -61,7 +61,7 @@
   	users.users.poligle = {
     		isNormalUser = true;
     		description = "Pol";
-    		extraGroups = [ "wheel" "networkmanager" "video" ];
+    		extraGroups = [ "wheel" "networkmanager" "video" "input"];
     		packages = with pkgs; [
       			tree
     		];
@@ -120,6 +120,11 @@
       			};
     		};
   	};
+
+    # Allow LED change
+    services.udev.extraRules = ''
+        ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::micmute", RUN+="${pkgs.coreutils}/bin/chgrp input /sys/class/leds/%k/brightness", RUN+="${pkgs.coreutils}/bin/chmod g+w /sys/class/leds/%k/brightness"
+    '';
 
 	nix = {
  		 # Automatic gen cleaning

@@ -9,7 +9,7 @@
     viAlias = true;
     vimAlias = true;
 
-    extraLuaConfig = ''
+    initLua = ''
       -- Numbers and navigation
       vim.opt.number = true
       vim.opt.scrolloff = 8

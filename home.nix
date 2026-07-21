@@ -9,6 +9,7 @@
     	./home/hyprland.nix
     	./home/kitty.nix
 		./home/waybar.nix
+        ./home/scripts.nix
         ./home/wofi.nix
     	./home/awww.nix
     	./home/hypridle.nix

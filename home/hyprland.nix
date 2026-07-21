@@ -27,6 +27,8 @@
           			(bind "SUPER + S" (exec "spotify"))
           			(bind "SUPER + H" (exec "hyprpicker -a"))
           			(bind "SUPER + K" (exec "hyprlock"))
+                    (bind "SUPER + W" (exec "wall-next"))
+
 
           			# Window management
           			(bind "SUPER + Q" ''hl.dsp.window.close()'')
@@ -69,15 +71,15 @@
           			(bind "SUPER + SHIFT + 9" (mvws "9"))
           			(bind "SUPER + SHIFT + 0" (mvws "10"))
 
-          			# Volume (wpctl, capped at 100%)
-          			(bindo "XF86AudioRaiseVolume" (exec "wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+") ''{ locked = true, repeating = true }'')
-          			(bindo "XF86AudioLowerVolume" (exec "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-") ''{ locked = true, repeating = true }'')
-          			(bindo "XF86AudioMute" (exec "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") ''{ locked = true }'')
-          			(bindo "XF86AudioMicMute" (exec "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle") ''{ locked = true }'')
+          			# Volume
+					(bindo "XF86AudioRaiseVolume" (exec "osd-volume up") ''{ locked = true, repeating = true }'')
+					(bindo "XF86AudioLowerVolume" (exec "osd-volume down") ''{ locked = true, repeating = true }'')
+					(bindo "XF86AudioMute" (exec "osd-volume mute") ''{ locked = true }'')
+					(bindo "XF86AudioMicMute" (exec "sh -c 'wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle; mic-led-sync'") ''{ locked = true }'')
 		
-          			# Brightness (brightnessctl)
-          			(bindo "XF86MonBrightnessUp" (exec "brightnessctl set 5%+") ''{ locked = true, repeating = true }'')
-          			(bindo "XF86MonBrightnessDown" (exec "brightnessctl set 5%-") ''{ locked = true, repeating = true }'')
+          			# Brightness
+					(bindo "XF86MonBrightnessUp" (exec "osd-brightness up") ''{ locked = true, repeating = true }'')
+					(bindo "XF86MonBrightnessDown" (exec "osd-brightness down") ''{ locked = true, repeating = true }'')
 
           			# Multimedia keys
           			(bindo "PRINT" (exec "hyprshot -m output --clipboard-only") ''{ locked = true }'')
@@ -159,6 +161,8 @@
         			hl.exec_cmd("lxqt-policykit-agent")
         			hl.exec_cmd("nm-applet --indicator")
         			hl.exec_cmd("hypridle")
+                    hl.exec_cmd("waybar-autohide")
+                    hl.exec_cmd("mic-led-sync")
       			end)
     		'';
   	};
