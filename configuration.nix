@@ -10,6 +10,10 @@
   	boot.loader.systemd-boot.enable = true;
   	boot.loader.efi.canTouchEfiVariables = true;
 
+    # ZSH shell 
+    users.users.poligle.shell = pkgs.zsh;
+    programs.zsh.enable = true;
+
   	# Network
   	networking.hostName = "thinkpad";
   	networking.networkmanager.enable = true;
@@ -67,7 +71,7 @@
 
   	# System Pkgs
   	environment.systemPackages = with pkgs; [
-    		neovim
+		wev
     		wget
     		git
     		lxqt.lxqt-policykit
@@ -88,12 +92,12 @@
   	# Fonts
   	fonts.packages = with pkgs; [
     		nerd-fonts.jetbrains-mono
-   		nerd-fonts.hack-font
+   		nerd-fonts.hack
   	];
 
   	# Hyprland
   	programs.hyprland.enable = true;
-  	programs.hyprland.withUWSM = false;
+  	programs.hyprland.withUWSM = true;
 
   	# Thunar
   	programs.thunar = {
@@ -111,16 +115,25 @@
     		enable = true;
     		settings = {
       			default_session = {
-        			command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd Hyprland";
+        			command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd 'uwsm start hyprland-uwsm.desktop'";
         			user = "greeter";
       			};
     		};
   	};
 
-  	# EnvVar
-  	environment.sessionVariables = {
-   		XDG_CURRENT_DESKTOP = "Hyprland";
-  	};
+	nix = {
+ 		 # Automatic gen cleaning
+		 gc = {
+    			automatic = true;
+    			dates = "weekly";
+    			options = "--delete-older-than 7d";
+  		};
+
+  		# Automatic store optimizer 
+		settings.auto-optimise-store = true;
+	};
+	
+
 
   	system.stateVersion = "26.05";
 }

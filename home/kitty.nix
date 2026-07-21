@@ -11,6 +11,9 @@
 		};
 
 		settings = {
+			# FORCE KITTY TO USE ZSH IN NIXOS
+			shell = "${pkgs.zsh}/bin/zsh";
+
 			# Opacity and window behavior
 			background_opacity = "0.9";
 			confirm_os_window_close = 0;
@@ -83,3 +86,4 @@
 		};
 	};
 }
+
