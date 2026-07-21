@@ -12,7 +12,7 @@
     		Service = {
     			ExecStart = "${pkgs.awww}/bin/awww-daemon";
     
-    			ExecStartPost = "${pkgs.awww}/bin/awww img ${../wallpapers/wallpaper.jpg}";
+    			ExecStartPost = "${pkgs.awww}/bin/awww img ${../wallpapers/space1.jpg}";
       
       			Restart = "on-failure";
     		};

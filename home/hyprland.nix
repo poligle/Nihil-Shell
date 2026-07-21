@@ -1,4 +1,5 @@
 # hyprland.nix by poligle
+
 { config, pkgs, lib, ... }:
 {
 	wayland.windowManager.hyprland = {
