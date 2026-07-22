@@ -1,6 +1,6 @@
 # nixos-config
 
-![screenshot](.screenshots/screenshot.png)
+![screenshot](.screenshots/screenshot.jpg)
 
 Declarative NixOS configuration for `poligle@thinkpad`, based on Flakes and Home Manager.
 Desktop environment: **Hyprland** (configured natively in Nix using the Lua backend due to the recent update).
