@@ -42,10 +42,25 @@
     '';
 
     shellAliases = {
-        ll = "ls -l";
-        update = "sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad";
-        clean = "sudo nix-collect-garbage --delete-old && sudo nixos-rebuild boot";
-    };
+        trash = "trash-put";
+        ".." = "cd ..";
+        "..." = "cd ../..";
+        ll = "ls -lah";
+        la = "ls -A";
+
+        # NixOS
+        nrebuild = "sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad";
+        nupdate = "cd ~/nixos-config && nix flake update && sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad";
+        ncheck = "cd ~/nixos-config && nix flake check";
+        ngc = "sudo nix-collect-garbage --delete-older-than 7d";
+        
+        gs = "git status";
+        ga = "git add .";
+        gc = "git commit -m";
+        gp = "git push";
+        gl = "git log --oneline -10";
+        gd = "git diff";
+        };
     };
 }
 

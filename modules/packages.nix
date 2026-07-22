@@ -12,6 +12,7 @@
         fastfetch
         brightnessctl
         playerctl
+        trash-cli
     ];
 
     nixpkgs.config.allowUnfree = true;
