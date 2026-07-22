@@ -1,1 +1,24 @@
+# .gitignore by poligle
+
+# Build results
 result
+result-*
+
+# Backups
+*.swp
+*.swo
+*~
+*.bak
+
+# Home Manager backups
+*.backup
+
+# Direnv
+.direnv/
+.envrc
+
+# Sys Trash
+.DS_Store
+
+# Logs
+*.log
