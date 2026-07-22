@@ -16,6 +16,7 @@
     ../../modules/desktop.nix
     ../../modules/services.nix
     ../../modules/nix.nix
+    ../../modules/plymouth.nix
   ];
 
   # Host-specific

@@ -11,11 +11,14 @@
 		./home/waybar.nix
         ./home/scripts.nix
         ./home/wofi.nix
+        ./home/desktop-entries.nix
     	./home/awww.nix
     	./home/hypridle.nix
 		./home/hyprlock.nix
 		./home/cursortheme.nix
 		./home/dunst.nix
+        ./home/python.nix
+        ./home/vscode.nix
   	];
 
   	home.username = "poligle";
@@ -29,11 +32,13 @@
     	networkmanagerapplet
     	libnotify
 		awww
+        hyprshot
+		hyprpicker
+
 		obsidian
 		spotify
-		vscode
-		hyprshot
-		hyprpicker
+		libreoffice
+        (octaveFull.withPackages (ps: with ps; [ signal ]))
 	];
 }
 
