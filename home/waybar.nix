@@ -2,6 +2,7 @@
 
 { config, pkgs, lib, ... }:
 {
+    stylix.targets.waybar.enable = false;
 	programs.waybar = {
     		enable = true;
     		settings = {
@@ -145,24 +146,24 @@
       		};
     	};
     	style = ''
-      	@define-color text      #ffffff;
-      	@define-color surface0  #2c2c2c;
-      	@define-color surface1  #837d9b;
-      	@define-color color1    #e8e8ff;
-      	@define-color color2    #bebeef;
-      	@define-color color3    #cf4e4e;
-      	@define-color color4    #87d33a;
-      	@define-color color5    #fffc82;
-      	@define-color color6    #6bafc4;
-
+      	@define-color text      ${config.lib.stylix.colors.withHashtag.base05};
+      	@define-color surface0  ${config.lib.stylix.colors.withHashtag.base00};
+      	@define-color surface1  ${config.lib.stylix.colors.withHashtag.base03};
+      	@define-color color1    ${config.lib.stylix.colors.withHashtag.base05};
+      	@define-color color2    ${config.lib.stylix.colors.withHashtag.base0C};
+      	@define-color color3    ${config.lib.stylix.colors.withHashtag.base08};
+      	@define-color color4    ${config.lib.stylix.colors.withHashtag.base0B};
+      	@define-color color5    ${config.lib.stylix.colors.withHashtag.base0A};
+      	@define-color color6    ${config.lib.stylix.colors.withHashtag.base0D};
       	* {
         	border: none;
         	border-radius: 0;
-        	font-family: JetBrainsMono Nerd Font;
+        	font-family: ${config.stylix.fonts.sansSerif.name};
         	font-weight: bold;
         	font-size: 14px;
         	min-height: 0;
       	}
+
       	window#waybar {
         	background: alpha(@surface0, 0.6);
         	color: @text;

@@ -28,8 +28,6 @@
           			(bind "SUPER + S" (exec "spotify"))
           			(bind "SUPER + H" (exec "hyprpicker -a"))
           			(bind "SUPER + K" (exec "hyprlock"))
-                    (bind "SUPER + W" (exec "wall-next"))
-
 
           			# Window management
           			(bind "SUPER + Q" ''hl.dsp.window.close()'')
@@ -164,6 +162,7 @@
         			hl.exec_cmd("hypridle")
                     hl.exec_cmd("waybar-autohide")
                     hl.exec_cmd("mic-led-sync")
+                    hl.exec_cmd("awww img ${config.stylix.image}")
       			end)
     		'';
   	};

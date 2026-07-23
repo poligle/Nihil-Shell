@@ -1,25 +1,22 @@
 # awww.nix by poligle
 
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
 	systemd.user.services.awww-daemon = {
-    		Unit = {
+    	    Unit = {
       			Description = "Daemon de fondos de pantalla awww para Wayland";
       			After = [ "graphical-session.target" ];
       			PartOf = [ "graphical-session.target" ];
     		};
-
     		Service = {
     			ExecStart = "${pkgs.awww}/bin/awww-daemon";
-    
-    			ExecStartPost = "${pkgs.awww}/bin/awww img ${../wallpapers/space1.jpg}";
-      
+
+    			ExecStartPost = "${pkgs.awww}/bin/awww img ${config.stylix.image}";
+
       			Restart = "on-failure";
     		};
-
     		Install = {
       			WantedBy = [ "graphical-session.target" ];
     		};
   	};
 }
-

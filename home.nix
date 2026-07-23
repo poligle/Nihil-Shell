@@ -6,6 +6,7 @@
 		./home/gtk.nix
 		./home/nvim.nix
         ./home/zsh.nix
+        ./home/thunar.nix
     	./home/hyprland.nix
     	./home/kitty.nix
 		./home/waybar.nix
@@ -15,9 +16,9 @@
     	./home/awww.nix
     	./home/hypridle.nix
 		./home/hyprlock.nix
-		./home/cursortheme.nix
 		./home/dunst.nix
         ./home/python.nix
+        ./home/firefox.nix
         ./home/vscode.nix
   	];
 

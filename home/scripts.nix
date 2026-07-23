@@ -2,28 +2,7 @@
 
 { config, pkgs, lib, ... }:
 let
-	wall-next = pkgs.writeShellScriptBin "wall-next" ''
-		DIR="$HOME/.wallpapers"
-		STATE_FILE="''${XDG_CACHE_HOME:-$HOME/.cache}/wallpaper_index"
-		CURRENT_LINK="''${XDG_CACHE_HOME:-$HOME/.cache}/current_wallpaper"
-		mkdir -p "$(dirname "$STATE_FILE")"
-		mapfile -t WALLS < <(
-		    ${pkgs.findutils}/bin/find -L "$DIR" -type f \( \
-		        -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
-		        -o -iname "*.webp" -o -iname "*.gif" \
-		    \) | ${pkgs.coreutils}/bin/sort
-		)
-		TOTAL=''${#WALLS[@]}
-		[[ $TOTAL -eq 0 ]] && exit 1
-		INDEX=0
-		[[ -f "$STATE_FILE" ]] && read -r INDEX < "$STATE_FILE"
-		INDEX=$(( (INDEX + 1) % TOTAL ))
-		printf "%s\n" "$INDEX" > "$STATE_FILE"
-		NEXT_WALL="''${WALLS[$INDEX]}"
-		${pkgs.awww}/bin/awww img "$NEXT_WALL" --transition-type random
-		ln -sf "$NEXT_WALL" "$CURRENT_LINK"
-	'';
-
+	
 	waybar-autohide = pkgs.writeShellScriptBin "waybar-autohide" ''
 		export PATH="${lib.makeBinPath [ pkgs.procps pkgs.hyprland pkgs.jq ]}:$PATH"
 		export WAYBAR_AUTOHIDE_PROCNAME=".waybar-wrapped"
@@ -100,7 +79,6 @@ let
 in
 {
 	home.packages = [
-		wall-next
 		waybar-autohide
 		mic-led-sync
 		osd-brightness

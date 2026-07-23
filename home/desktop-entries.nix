@@ -14,6 +14,7 @@ in
 {
   # Hide unwanted launcher entries by overriding them in the user's
   # applications dir (~/.local/share/applications), which takes precedence.
+
   xdg.dataFile = {
     "applications/code-url-handler.desktop" = hidden "Visual Studio Code - URL Handler";
     "applications/kitty-open.desktop" = hidden "kitty URL Launcher";
