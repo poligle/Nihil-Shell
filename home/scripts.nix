@@ -2,11 +2,21 @@
 
 { config, pkgs, lib, ... }:
 let
-	
+	volumeSound = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/audio-volume-change.oga";
+
 	waybar-autohide = pkgs.writeShellScriptBin "waybar-autohide" ''
 		export PATH="${lib.makeBinPath [ pkgs.procps pkgs.hyprland pkgs.jq ]}:$PATH"
 		export WAYBAR_AUTOHIDE_PROCNAME=".waybar-wrapped"
 		exec ${pkgs.python3}/bin/python3 ${./waybar-autohide.py} "$@"
+	'';
+
+    wofi-open = pkgs.writeShellScriptBin "wofi-open" ''
+		exec 9>"''${XDG_RUNTIME_DIR:-/tmp}/wofi.lock"
+		if ! ${pkgs.util-linux}/bin/flock -n 9; then
+		    exit 0
+		fi
+		${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/menu.ogg} &
+		exec ${pkgs.wofi}/bin/wofi --show drun
 	'';
 
 	mic-led-sync = pkgs.writeShellScriptBin "mic-led-sync" ''
@@ -15,11 +25,11 @@ let
 		out="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>&1 || true)"
 		echo 0 > "$LED"
 		if [[ "$out" == *"Could not connect to PipeWire"* ]]; then
-		    echo "mic-led-sync: PipeWire no accesible en esta sesión." >&2
+		    echo "mic-led-sync: PipeWire not reachable in this session." >&2
 		    exit 1
 		fi
 		if [[ "$out" == *"No such"* ]] || [[ "$out" == *"Unknown"* ]]; then
-		    echo "mic-led-sync: no hay DEFAULT_AUDIO_SOURCE válido. Salida: $out" >&2
+		    echo "mic-led-sync: no valid DEFAULT_AUDIO_SOURCE. Output: $out" >&2
 		    exit 1
 		fi
 		if echo "$out" | ${pkgs.gnugrep}/bin/grep -q "MUTED"; then
@@ -53,10 +63,12 @@ let
 		    up)
 		        ${pkgs.wireplumber}/bin/wpctl set-mute "$sink" 0
 		        ${pkgs.wireplumber}/bin/wpctl set-volume -l 1 "$sink" "$step+"
+		        ${pkgs.pipewire}/bin/pw-play --volume 0.4 ${volumeSound} &
 		        ;;
 		    down)
 		        ${pkgs.wireplumber}/bin/wpctl set-mute "$sink" 0
 		        ${pkgs.wireplumber}/bin/wpctl set-volume "$sink" "$step-"
+		        ${pkgs.pipewire}/bin/pw-play --volume 0.4 ${volumeSound} &
 		        ;;
 		    mute)
 		        ${pkgs.wireplumber}/bin/wpctl set-mute "$sink" toggle
@@ -68,22 +80,35 @@ let
 		    ${pkgs.dunst}/bin/dunstify -a osd -u low -t 900 \
 		        -h string:x-dunst-stack-tag:volume \
 		        -h int:value:0 \
-		        "󰖁 Volumen" "Mute"
+		        "  Volumen" "Mute"
 		else
 		    ${pkgs.dunst}/bin/dunstify -a osd -u low -t 900 \
 		        -h string:x-dunst-stack-tag:volume \
 		        -h int:value:"$vol" \
-		        "󰕾 Volumen" "''${vol}%"
+		        "  Volumen" "''${vol}%"
 		fi
+	'';
+
+	lock-screen = pkgs.writeShellScriptBin "lock-screen" ''
+		${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/lock.ogg} &
+		exec ${pkgs.hyprlock}/bin/hyprlock
+	'';
+
+	power-off = pkgs.writeShellScriptBin "power-off" ''
+		${pkgs.pipewire}/bin/pw-play --volume 0.5 ${../sounds/power.ogg}
+		exec ${pkgs.systemd}/bin/systemctl poweroff
 	'';
 in
 {
 	home.packages = [
 		waybar-autohide
+        wofi-open
 		mic-led-sync
 		osd-brightness
 		osd-volume
+		lock-screen
+		power-off
 	];
 
-    home.file.".wallpapers".source = ../wallpapers;
+	home.file."Wallpapers".source = ../wallpapers;
 }

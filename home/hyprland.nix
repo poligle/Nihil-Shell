@@ -20,20 +20,20 @@
         		bind = [
 				# Apps
           			(bind "SUPER + Super_L" (exec "kitty"))
-          			(bind "SUPER + Space" (exec "wofi --show drun"))
+          			(bind "SUPER + Space" (exec "wofi-open"))
           			(bind "SUPER + E" (exec "thunar"))
           			(bind "SUPER + X" (exec "firefox"))
           			(bind "SUPER + N" (exec "obsidian"))
           			(bind "SUPER + C" (exec "code"))
           			(bind "SUPER + S" (exec "spotify"))
           			(bind "SUPER + H" (exec "hyprpicker -a"))
-          			(bind "SUPER + K" (exec "hyprlock"))
+          			(bind "SUPER + K" (exec "lock-screen"))
 
           			# Window management
           			(bind "SUPER + Q" ''hl.dsp.window.close()'')
           			(bind "SUPER + V" ''hl.dsp.window.float({ action = "toggle" })'')
-          			(bind "SUPER + F" ''hl.dsp.window.fullscreen({ mode = "maximized" })'')
-          			(bind "SUPER + SHIFT + F" ''hl.dsp.window.fullscreen({ mode = "fullscreen" })'')
+          		    (bind "SUPER + F" ''function() hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/fullscreen.ogg}") hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized" })) end'')
+					(bind "SUPER + SHIFT + F" ''function() hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/fullscreen.ogg}") hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen" })) end'')	
   
           			# Move focus
           			(bind "SUPER + left" ''hl.dsp.focus({ direction = "left" })'')
@@ -42,8 +42,8 @@
           			(bind "SUPER + down" ''hl.dsp.focus({ direction = "down" })'')
 
           			# Special workspace
-          			(bind "SUPER + Escape" ''hl.dsp.workspace.toggle_special()'')
-          			(bind "SUPER + Control_L" ''hl.dsp.window.move({ workspace = "special" })'')
+          			(bind "SUPER + Escape" ''function() hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/special.ogg}") hl.dispatch(hl.dsp.workspace.toggle_special()) end'')
+                    (bind "SUPER + Control_L" ''hl.dsp.window.move({ workspace = "special" })'')
 
           			# Workspaces
           			(bind "SUPER + 1" (ws "1"))
@@ -144,7 +144,10 @@
       			hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
       			hl.gesture({ fingers = 3, direction = "down", action = "close" })
       			hl.gesture({ fingers = 3, direction = "up", action = function() hl.exec_cmd("wofi --show drun") end })
-      			hl.gesture({ fingers = 4, direction = "vertical", action = function() hl.dispatch(hl.dsp.workspace.toggle_special()) end })
+                hl.gesture({ fingers = 4, direction = "vertical", action = function()
+			        hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/special.ogg}")
+			        hl.dispatch(hl.dsp.workspace.toggle_special())
+			    end })
 
       			-- Window rules
       			hl.window_rule({ name = "suppress-maximize", match = { class = ".*" }, suppress_event = "maximize" })
@@ -164,6 +167,16 @@
                     hl.exec_cmd("mic-led-sync")
                     hl.exec_cmd("awww img ${config.stylix.image}")
       			end)
+
+                local function sound(file)
+			        return function()
+			            hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 " .. file)
+			        end
+			    end
+
+			    hl.on("workspace.active", sound("${../sounds/switch.ogg}"))
+			    hl.on("window.open", sound("${../sounds/open.ogg}"))
+			    hl.on("window.close", sound("${../sounds/close.ogg}"))
     		'';
   	};
 }

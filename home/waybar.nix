@@ -135,13 +135,13 @@
         		"custom/lock" = {
           			format = "";
           			tooltip = false;
-          			on-click = "hyprlock";
+          			on-click = "lock-screen";
         		};
 
         		"custom/power" = {
           			format = "";
           			tooltip = false;
-          			on-click = "systemctl poweroff";
+          			on-click = "power-off";
         		};
       		};
     	};

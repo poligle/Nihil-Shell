@@ -23,7 +23,7 @@
             dynamic_lines = false;
             # Image and icon options
             allow_images = true;
-            image_size = 56;
+            image_size = 64;
             # UI adjustments and behaviors
             hide_scroll = true;
             no_actions = true;
@@ -62,15 +62,16 @@
                 margin: 0;
             }
             #entry {
-                padding: 5px;
-                border-radius: 10px;
-                min-width: 72px;
-                min-height: 72px;
+                padding: 1px;
+                opacity: 1;
+                outline: none;
             }
             #entry:selected {
-                background-color: ${config.lib.stylix.colors.withHashtag.base02};
-                border-radius: 10px;
+                background-color: transparent;
+                opacity: 1;
+                outline: none;
+                box-shadow: none;
             }
-        '';
+            '';
     };
 }

@@ -6,11 +6,14 @@
         wev
         wget
         git
+        unzip
         lxqt.lxqt-policykit
         fastfetch
+        btop
         brightnessctl
         playerctl
         trash-cli
+        sound-theme-freedesktop
     ];
 
     nixpkgs.config.allowUnfree = true;
