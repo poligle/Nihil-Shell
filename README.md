@@ -62,6 +62,10 @@ nixos-config/
 │   ├── thunar.nix            # XFCE helper so Thunar opens kitty
 │   ├── firefox.nix           # Firefox profile (required for Stylix theming)
 │   ├── desktop-entries.nix   # Hides unwanted launcher entries
+│   ├── zsh.nix               # Shell
+│   ├── nvim.nix              # Editor
+│   ├── vscode.nix            # Editor
+│   ├── python.nix            # Python environment
 │   ├── scripts.nix           # Own scripts, packaged
 │   └── waybar-autohide.py    # Python auto-hide script for the bar
 │
