@@ -40,5 +40,10 @@ in
     "applications/math.desktop" = hidden "LibreOffice Math";
     "applications/base.desktop" = hidden "LibreOffice Base";
     "applications/xsltfilter.desktop" = hidden "LibreOffice XSLT based filters";
+
+    # Qt theming tools (pulled in by Stylix)
+    "applications/kvantummanager.desktop" = hidden "Kvantum Manager";
+    "applications/qt5ct.desktop" = hidden "Qt5 Settings";
+    "applications/qt6ct.desktop" = hidden "Qt6 Settings";
   };
 }

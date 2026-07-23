@@ -4,7 +4,7 @@
 {
     stylix = {
         enable = true;
-        image = ../wallpapers/tokyo.png;
+        image = ../wallpapers/train.jpg;
         polarity = "either";
 
         cursor = {
