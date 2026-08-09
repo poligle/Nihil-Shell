@@ -1,5 +1,4 @@
 # nix.nix by poligle
-
 { config, lib, pkgs, ... }:
 {
     nix = {
@@ -12,9 +11,5 @@
         };
     };
 
-    systemd.services.nix-gc = {
-        postStart = ''
-            ${config.system.build.nixos-rebuild}/bin/nixos-rebuild boot --flake /home/poligle/nixos-config/#thinkpad
-        '';
-    };
+    systemd.timers.nix-gc.timerConfig.Persistent = true;
 }
