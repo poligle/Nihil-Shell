@@ -6,7 +6,7 @@
         isNormalUser = true;
         description = "Pol";
         shell = pkgs.zsh;
-        extraGroups = [ "wheel" "networkmanager" "video" "input" ];
+        extraGroups = [ "wheel" "networkmanager" "video" "input" "docker" ];
         packages = with pkgs; [
         tree
         ];

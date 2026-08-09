@@ -18,6 +18,7 @@
         ../../modules/nix.nix
         ../../modules/plymouth.nix
         ../../modules/stylix.nix
+        ../../modules/virtualisation.nix
     ];
 
     # Host-specific
