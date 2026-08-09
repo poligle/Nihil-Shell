@@ -11,4 +11,10 @@
             options = "--delete-older-than 7d";
         };
     };
+
+    systemd.services.nix-gc = {
+        postStart = ''
+            ${config.system.build.nixos-rebuild}/bin/nixos-rebuild boot --flake /home/poligle/nixos-config/#thinkpad
+        '';
+    };
 }
