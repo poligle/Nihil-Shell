@@ -1,6 +1,6 @@
 # nixos-config
 
-![screenshot](.screenshots/screenshot.jpg)
+![screenshot](.screenshots/screenshot.png)
 ![screenshot](.screenshots/screenshot2.png)
 ![screenshot](.screenshots/screenshot3.png)
 
