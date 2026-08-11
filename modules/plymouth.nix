@@ -17,6 +17,6 @@
       "rd.udev.log_level=3"
     ];
 
-    loader.timeout = 3;
+    loader.timeout = 5;
   };
 }

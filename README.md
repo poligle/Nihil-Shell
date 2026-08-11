@@ -47,7 +47,8 @@ nixos-config/
 │   ├── desktop.nix           # Thunar, gvfs, tumbler
 │   ├── services.nix          # SSH and other services
 │   ├── stylix.nix            # Wallpaper, palette, fonts, cursor, opacity
-│   └── nix.nix               # Flakes, garbage collection, store optimization
+│   └── nix.nix               # Flakes, garbage collection,
+    └── virtualisation.nix    # Docker, arm64
 │
 ├── home/                     # User configuration (Home Manager)
 │   ├── hyprland.nix          # Hyprland (Lua): binds, gestures, animations, rules

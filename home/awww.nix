@@ -3,20 +3,20 @@
 { config, pkgs, ... }:
 {
 	systemd.user.services.awww-daemon = {
-    	    Unit = {
-      			Description = "Daemon de fondos de pantalla awww para Wayland";
-      			After = [ "graphical-session.target" ];
-      			PartOf = [ "graphical-session.target" ];
-    		};
-    		Service = {
-    			ExecStart = "${pkgs.awww}/bin/awww-daemon";
+		Unit = {
+			Description = "Wayland Wallpaper Daemon";
+			After = [ "graphical-session.target" ];
+			PartOf = [ "graphical-session.target" ];
+		};
+		Service = {
+			ExecStart = "${pkgs.awww}/bin/awww-daemon";
 
-    			ExecStartPost = "${pkgs.awww}/bin/awww img ${config.stylix.image}";
+			ExecStartPost = "${pkgs.awww}/bin/awww img ${config.stylix.image}";
 
-      			Restart = "on-failure";
-    		};
-    		Install = {
-      			WantedBy = [ "graphical-session.target" ];
-    		};
-  	};
+			Restart = "on-failure";
+		};
+		Install = {
+			WantedBy = [ "graphical-session.target" ];
+		};
+	};
 }
