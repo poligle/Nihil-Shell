@@ -39,6 +39,7 @@
 		obsidian
 		spotify
 		libreoffice
+        aseprite
         (octaveFull.withPackages (ps: with ps; [ signal ]))
 	];
 }
