@@ -1,18 +1,24 @@
 # hyprlock.nix by poligle
 
-{ config, pkgs, ... }: {
-	programs.hyprlock = {
+{ config, pkgs, ... }: 
+{
+	programs.hyprlock = 
+	{
 			enable = true;
-			settings = {
-				general = {
+			settings = 
+			{
+				general = 
+				{
 					hide_cursor = true;
 				};
-				background = {
+				background = 
+				{
 					monitor = "";
 					blur_passes = 2;
 					blur_size = 5;
 				};
-				label = {
+				label = 
+				{
 					monitor = "";
 					text = "$TIME";
 					font_size = 90;
@@ -20,7 +26,8 @@
 					halign = "center";
 					valign = "center";
 				};
-				"input-field" = {
+				"input-field" = 
+				{
 					monitor = "";
 					size = "200, 50";
 					outline_thickness = 3;
@@ -33,7 +40,8 @@
 					halign = "center";
 					valign = "center";
 				};
-				auth = {
+				auth = 
+				{
 					"fingerprint:enabled" = true;
 					"fingerprint:ready_message" = "Escanea tu huella para desbloquear";
 					"fingerprint:present_message" = "Escaneando...";

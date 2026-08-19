@@ -2,7 +2,8 @@
 
 { config, lib, pkgs, ... }:
 {
-    environment.systemPackages = with pkgs; [
+    environment.systemPackages = with pkgs; 
+    [
         wev
         wget
         git
@@ -18,7 +19,8 @@
 
     nixpkgs.config.allowUnfree = true;
 
-    fonts.packages = with pkgs; [
+    fonts.packages = with pkgs; 
+    [
         nerd-fonts.jetbrains-mono
         nerd-fonts.hack
     ];

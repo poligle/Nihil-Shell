@@ -2,13 +2,16 @@
 
 { config, lib, pkgs, ... }:
 {
-    programs.thunar = {
+    programs.thunar = 
+    {
         enable = true;
-        plugins = with pkgs; [
+        plugins = with pkgs; 
+        [
             thunar-archive-plugin
             thunar-volman
         ];
     };
+    
     services.gvfs.enable = true;
     services.tumbler.enable = true;
 }

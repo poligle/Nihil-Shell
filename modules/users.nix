@@ -2,14 +2,15 @@
 
 { config, lib, pkgs, ... }:
 {
-    users.users.poligle = {
+    users.users.poligle = 
+    {
         isNormalUser = true;
         description = "Pol";
         shell = pkgs.zsh;
         extraGroups = [ "wheel" "networkmanager" "video" "input" "docker" ];
-        packages = with pkgs; [
-        tree
+        packages = with pkgs; 
+        [
+            tree
         ];
     };
-    programs.zsh.enable = true;
 }

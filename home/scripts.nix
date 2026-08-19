@@ -100,7 +100,8 @@ let
 	'';
 in
 {
-	home.packages = [
+	home.packages = 
+	[
 		waybar-autohide
         wofi-open
 		mic-led-sync

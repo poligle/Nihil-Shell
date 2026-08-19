@@ -1,4 +1,5 @@
 # boot.nix by poligle
+
 { config, lib, pkgs, ... }:
 {
     boot.loader.systemd-boot.enable = true;

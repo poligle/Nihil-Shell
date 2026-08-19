@@ -2,7 +2,8 @@
 
 { config, pkgs, lib, ... }:
 {
-	imports = [
+	imports = 
+	[
 		./home/gtk.nix
 		./home/nvim.nix
         ./home/zsh.nix
@@ -27,7 +28,8 @@
 	home.stateVersion = "26.05";
 	programs.home-manager.enable = true;
 
-	home.packages = with pkgs; [
+	home.packages = with pkgs; 
+	[
         colloid-icon-theme
 		pavucontrol
 		networkmanagerapplet
@@ -43,4 +45,3 @@
         (octaveFull.withPackages (ps: with ps; [ signal ]))
 	];
 }
-

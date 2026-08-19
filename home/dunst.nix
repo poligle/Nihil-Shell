@@ -2,12 +2,15 @@
 
 { config, pkgs, lib, ... }: 
 {
-    services.dunst = {
+    services.dunst =
+    {
         enable = true;
         package = pkgs.dunst;
 
-        settings = {
-            global = {
+        settings =
+        {
+            global =
+            {
                 # Progress bar
                 progress_bar = true;
                 progress_bar_height = 12;
@@ -50,14 +53,16 @@
                     in lib.mkForce "${iconDir}/status/16:${iconDir}/status/24:${iconDir}/apps/scalable:${iconDir}/apps/22:${iconDir}/devices/16:${iconDir}/devices/24:${iconDir}/actions/16:${iconDir}/actions/24";
             };
 
-            # Sound on notifications (colours still come from Stylix)
-            urgency_normal = {
+            # Sound on notifications (colours from Stylix)
+            urgency_normal = 
+            {
                 script = "${pkgs.writeShellScript "dunst-sound" ''
                     ${pkgs.pipewire}/bin/pw-play --volume 0.4 ${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message.oga
                 ''}";
             };
 
-            urgency_critical = {
+            urgency_critical = 
+            {
                 script = "${pkgs.writeShellScript "dunst-sound-critical" ''
                     ${pkgs.pipewire}/bin/pw-play --volume 0.5 ${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/dialog-error.oga
                 ''}";

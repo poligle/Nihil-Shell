@@ -2,10 +2,12 @@
 
 { config, pkgs, lib, ... }:
 {
-	programs.kitty = {
+	programs.kitty = 
+	{
 		enable = true;
 
-		settings = {
+		settings = 
+		{
 			# Window behavior
 			confirm_os_window_close = 0;
 			# Tab bar

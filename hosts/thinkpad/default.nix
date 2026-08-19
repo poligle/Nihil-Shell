@@ -2,7 +2,8 @@
 
 { config, lib, pkgs, ... }:
 {
-    imports = [
+    imports = 
+    [
         ./hardware-configuration.nix
         ../../modules/boot.nix
         ../../modules/network.nix
@@ -20,7 +21,8 @@
         ../../modules/stylix.nix
         ../../modules/virtualisation.nix
     ];
-
+    programs.zsh.enable = true;
+    
     # Host-specific
     networking.hostName = "thinkpad";
     system.stateVersion = "26.05";

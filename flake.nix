@@ -2,23 +2,27 @@
 
 {
 	description = "NixOS Config for poligle@thinkpad";
-	inputs = {
+
+	inputs = 
+	{
 		nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-		home-manager = {
+		home-manager = 
+		{
 			url = "github:nix-community/home-manager/release-26.05";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
 
-        stylix = {
+        stylix = 
+		{
 			url = "github:nix-community/stylix/release-26.05";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
 	};
-
 	outputs = { self, nixpkgs, home-manager, stylix, ... }:
 	{
-		nixosConfigurations.thinkpad = nixpkgs.lib.nixosSystem {
+		nixosConfigurations.thinkpad = nixpkgs.lib.nixosSystem 
+		{
 			system = "x86_64-linux";
 			modules = [
 				./hosts/thinkpad/default.nix

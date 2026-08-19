@@ -2,10 +2,13 @@
 
 { config, lib, pkgs, ... }:
 {
-    services.greetd = {
+    services.greetd = 
+    {
         enable = true;
-        settings = {
-            default_session = {
+        settings = 
+        {
+            default_session = 
+            {
                 command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd 'uwsm start hyprland-uwsm.desktop'";
                 user = "greeter";
             };

@@ -1,9 +1,9 @@
 # nvim.nix by poligle
 
 { config, pkgs, ... }:
-
 {
-    programs.neovim = {
+    programs.neovim = 
+    {
         enable = true;
     
         viAlias = true;

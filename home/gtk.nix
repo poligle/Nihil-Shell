@@ -2,17 +2,20 @@
 
 { config, pkgs, ... }:
 {
-    gtk = {
+    gtk =
+    {
         enable = true; 
 
-        # Icons Configuration
-        iconTheme = {
+        # Icon Configuration
+        iconTheme =
+        {
             name = "Colloid-Dark";
             package = pkgs.colloid-icon-theme;
         };
 
-        # Extra Configuration for GTK 3
-        gtk3.extraConfig = {
+        # Extra config for GTK 3
+        gtk3.extraConfig = 
+        {
             gtk-toolbar-style = "GTK_TOOLBAR_ICONS";
             gtk-toolbar-icon-size = "GTK_ICON_SIZE_LARGE_TOOLBAR";
             gtk-button-images = 0;
@@ -25,8 +28,9 @@
             gtk-xft-rgba = "rgb";
         };
 
-        # Extra Configuration for GTK 4
-        gtk4.extraConfig = {
+        # Extra config for GTK 4
+        gtk4.extraConfig = 
+        {
             gtk-toolbar-style = "GTK_TOOLBAR_ICONS";
             gtk-toolbar-icon-size = "GTK_ICON_SIZE_LARGE_TOOLBAR";
             gtk-button-images = 0;
@@ -39,8 +43,10 @@
             gtk-xft-rgba = "rgb";
         };
     };
-    # Extra font package for CJK glyph coverage
-    home.packages = [
+
+    # Extra font package for CJK
+    home.packages = 
+    [
         pkgs.noto-fonts-cjk-sans
     ];
 }

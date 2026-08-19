@@ -1,15 +1,17 @@
 # nix.nix by poligle
 { config, lib, pkgs, ... }:
 {
-    nix = {
+    nix = 
+    {
         settings.experimental-features = [ "nix-command" "flakes" ];
         settings.auto-optimise-store = true;
-        gc = {
+        gc = 
+        {
             automatic = true;
             dates = "weekly";
             options = "--delete-older-than 7d";
         };
     };
-
+    
     systemd.timers.nix-gc.timerConfig.Persistent = true;
 }

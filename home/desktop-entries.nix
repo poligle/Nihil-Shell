@@ -54,5 +54,5 @@ in
         "applications/org.kicad.gerbview.desktop"               = hidden "KiCad Gerbview";
         "applications/org.kicad.pcbcalculator.desktop"          = hidden "KiCad PCB Calculator";
         "applications/org.kicad.pcbnew.desktop"                 = hidden "KiCad PCBNew";
-  };
+    };
 }

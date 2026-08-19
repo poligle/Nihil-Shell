@@ -2,7 +2,8 @@
 
 { config, pkgs, ... }:
 {
-    programs.firefox = {
+    programs.firefox = 
+    {
         enable = true;
         profiles.poligle = { };
     };
