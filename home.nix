@@ -39,7 +39,7 @@
 		obsidian
 		spotify
 		libreoffice
-        aseprite
+        kicad
         (octaveFull.withPackages (ps: with ps; [ signal ]))
 	];
 }
