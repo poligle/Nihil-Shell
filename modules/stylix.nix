@@ -5,8 +5,8 @@
     stylix = 
     {
         enable = true;
-        image = ../wallpapers/cpu.png;
-        polarity = "either";
+        image = ../wallpapers/space.jpg;
+        polarity = "dark";
 
         cursor = 
         {

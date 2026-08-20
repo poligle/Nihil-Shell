@@ -61,7 +61,6 @@ nixos-config/
 │   ├── awww.nix              # Wallpaper daemon
 │   ├── gtk.nix               # GTK settings and icon theme
 │   ├── thunar.nix            # XFCE helper so Thunar opens kitty
-│   ├── firefox.nix           # Firefox profile (required for Stylix theming)
 │   ├── desktop-entries.nix   # Hides unwanted launcher entries
 │   ├── zsh.nix               # Shell
 │   ├── nvim.nix              # Editor
