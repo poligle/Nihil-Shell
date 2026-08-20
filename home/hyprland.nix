@@ -24,7 +24,7 @@
 					(bind "SUPER + Super_L" (exec "kitty"))
 					(bind "SUPER + Space" (exec "wofi-open"))
 					(bind "SUPER + E" (exec "thunar"))
-					(bind "SUPER + X" (exec "zen"))
+					(bind "SUPER + X" (exec "zen-beta"))
 					(bind "SUPER + N" (exec "obsidian"))
 					(bind "SUPER + C" (exec "code"))
 					(bind "SUPER + S" (exec "spotify"))
