@@ -63,6 +63,7 @@ nixos-config/
 │   ├── thunar.nix            # XFCE helper so Thunar opens kitty
 │   ├── desktop-entries.nix   # Hides unwanted launcher entries
 │   ├── zsh.nix               # Shell
+│   ├── zen.nix               # Zen Browser
 │   ├── nvim.nix              # Editor
 │   ├── vscode.nix            # Editor
 │   ├── python.nix            # Python environment
