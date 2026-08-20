@@ -19,6 +19,7 @@
 		./home/hyprlock.nix
 		./home/dunst.nix
         ./home/python.nix
+        ./home/zen.nix
         ./home/vscode.nix
 	];
 
@@ -42,7 +43,5 @@
 		pkgs.libreoffice
         pkgs.kicad
         (pkgs.octaveFull.withPackages (ps: with ps; [ signal ]))
-
-        inputs.zen-browser.packages."${pkgs.system}".default
     ];
 }
