@@ -104,7 +104,7 @@
 				backlight = 
 				{
 					tooltip = false;
-					device = "amdgpu_bl1";
+					#device = "amdgpu_bl1";
 					format = "󰃠 {percent}%";
 					scroll-step = 5;
 				};
