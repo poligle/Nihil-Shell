@@ -48,7 +48,7 @@ nixos-config/
 │   ├── services.nix          # SSH and other services
 │   ├── stylix.nix            # Wallpaper, palette, fonts, cursor, opacity
 │   ├── nix.nix               # Flakes, garbage collection,
-│   └── virtualisation.nix    # Docker, arm64
+│   └── virtualisation.nix    # Docker, arm64 (deactivated rn)
 │
 ├── home/                     # User configuration (Home Manager)
 │   ├── hyprland.nix          # Hyprland (Lua): binds, gestures, animations, rules
