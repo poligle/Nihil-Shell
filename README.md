@@ -64,6 +64,7 @@ nixos-config/
 │   ├── desktop-entries.nix   # Hides unwanted launcher entries
 │   ├── zsh.nix               # Shell
 │   ├── zen.nix               # Zen Browser
+│   ├── eww.nix               # Widgets
 │   ├── nvim.nix              # Editor
 │   ├── vscode.nix            # Editor
 │   ├── python.nix            # Python environment
