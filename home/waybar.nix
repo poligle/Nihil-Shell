@@ -49,8 +49,8 @@
 					format = "{}";
 					rewrite = 
 					{
-							"(.*) — Mozilla Firefox" = "$1";
-							"(.*) - Mozilla Firefox" = "$1";
+							"(.*) — Zen" = "$1";
+							"(.*) - Zen" = "$1";
 					};
 					max-length = 40;
 					separate-outputs = true;
@@ -76,7 +76,7 @@
 					tooltip = false;
 					interval = 60;
 					format = "{:%H:%M}";
-					format-alt = "{:%H:%M} - {:%A %d %B}";
+					format-alt = "{:%H:%M - %A %d %B}";
 				};
 
 				wireplumber = 

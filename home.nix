@@ -21,6 +21,7 @@
         ./home/python.nix
         ./home/zen.nix
         ./home/vscode.nix
+		./home/eww.nix
 	];
 
 	home.username = "poligle";
@@ -31,6 +32,7 @@
 	home.packages = 
 	[
         pkgs.colloid-icon-theme
+		pkgs.poppins
 		pkgs.pavucontrol
 		pkgs.networkmanagerapplet
 		pkgs.libnotify

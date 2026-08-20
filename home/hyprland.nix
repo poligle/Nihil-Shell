@@ -104,82 +104,85 @@
 
 			extraConfig = ''
 				hl.env("QT_QPA_PLATFORM", "wayland")
-					hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
-					hl.env("QT_STYLE_OVERRIDE", "Fusion")
+				hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
+				hl.env("QT_STYLE_OVERRIDE", "Fusion")
 
-					hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+				hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 
-					hl.config({
-						general = {
-							gaps_in = 5, gaps_out = 5, border_size = 0,
-							["col.active_border"] = "rgba(78a9ffaa)", ["col.inactive_border"] = "rgba(2c2c2caa)",
-							resize_on_border = true, allow_tearing = true, layout = "master"
-						},
-
-					decoration = {
-						rounding = 10, active_opacity = 1.0, inactive_opacity = 0.7, fullscreen_opacity = 1.0,
-						shadow = { enabled = true, range = 20, color = "rgba(1a1a1aee)" },
-						blur = { enabled = true, size = 3, passes = 2, brightness = 0.6, contrast = 1.0, noise = 0, xray = false, popups = false }
+				hl.config({
+					general = 
+					{
+						gaps_in = 5, gaps_out = 5, border_size = 0,
+						["col.active_border"] = "rgba(78a9ffaa)", ["col.inactive_border"] = "rgba(2c2c2caa)",
+						resize_on_border = true, allow_tearing = true, layout = "master"
 					},
 
-					dwindle = { preserve_split = true },
-					master = { new_status = "master" },
+				decoration = 
+				{
+					rounding = 10, active_opacity = 1.0, inactive_opacity = 0.7, fullscreen_opacity = 1.0,
+					shadow = { enabled = true, range = 20, color = "rgba(1a1a1aee)" },
+					blur = { enabled = true, size = 3, passes = 2, brightness = 0.6, contrast = 1.0, noise = 0, xray = false, popups = false }
+				},
+
+				dwindle = { preserve_split = true },
+				master = { new_status = "master" },
+			
+				misc = { force_default_wallpaper = 0, disable_hyprland_logo = true },
+				input = { kb_layout = "es", kb_variant = "", kb_model = "thinkpad", follow_mouse = 1, sensitivity = 0, touchpad = { natural_scroll = false } }
+				})
+
+				hl.device({ name = "tpps/2-synaptics-trackpoint", sensitivity = -0.4, scroll_method = "no_scroll" })
+				hl.device({ name = "logitech-pro-x-1", sensitivity = -0.2 })
+
+				hl.curve("linear", { type = "bezier", points = { {0, 0}, {1, 1} } })
+				hl.curve("snappyReturn", { type = "bezier", points = { {0.4, 0.9}, {0.6, 1.0} } })
+				hl.curve("bounce", { type = "bezier", points = { {0.4, 0.9}, {0.6, 1.0} } })
+				hl.curve("md3_decel", { type = "bezier", points = { {0.05, 0.7}, {0.1, 1} } })
+				hl.curve("softAcDecel", { type = "bezier", points = { {0.26, 0.26}, {0.15, 1} } })
+
+				hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "snappyReturn", style = "slidevert" })
+				hl.animation({ leaf = "windowsMove", enabled = true, speed = 4, bezier = "bounce", style = "slide" })
+				hl.animation({ leaf = "border", enabled = true, speed = 10, bezier = "linear" })
+				hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "md3_decel" })
+				hl.animation({ leaf = "workspaces", enabled = true, speed = 2.5, bezier = "softAcDecel", style = "slide" })
 				
-					misc = { force_default_wallpaper = 0, disable_hyprland_logo = true },
-					input = { kb_layout = "es", kb_variant = "", kb_model = "thinkpad", follow_mouse = 1, sensitivity = 0, touchpad = { natural_scroll = false } }
-					})
+				hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+				hl.gesture({ fingers = 3, direction = "down", action = "close" })
+				hl.gesture({ fingers = 3, direction = "up", action = function() hl.exec_cmd("wofi --show drun") end })
+				hl.gesture({ fingers = 4, direction = "vertical", action = function()
+					hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/special.ogg}")
+					hl.dispatch(hl.dsp.workspace.toggle_special())
+				end })
 
-					hl.device({ name = "tpps/2-synaptics-trackpoint", sensitivity = -0.4, scroll_method = "no_scroll" })
-					hl.device({ name = "logitech-pro-x-1", sensitivity = -0.2 })
+				-- Window rules
+				hl.window_rule({ name = "suppress-maximize", match = { class = ".*" }, suppress_event = "maximize" })
+				hl.window_rule({ name = "kitty-float", match = { class = "kitty" }, float = true, size = "800 500", center = true })
+				hl.window_rule({ name = "thunar-float", match = { class = "thunar" }, float = true, size = "1000 700", center = true })
+				hl.window_rule({ name = "wifi-float", match = { class = "nm-connection-editor" }, float = true, size = "640 400", move = "1270 50" })
+				hl.window_rule({ name = "bluetooth-float", match = { class = "blueman-manager" }, float = true, size = "640 400", move = "1270 50" })
+				hl.window_rule({ name = "vol-float", match = { class = "org.pulseaudio.pavucontrol" }, float = true, size = "640 400", move = "1270 50" })
 
-					hl.curve("linear", { type = "bezier", points = { {0, 0}, {1, 1} } })
-					hl.curve("snappyReturn", { type = "bezier", points = { {0.4, 0.9}, {0.6, 1.0} } })
-					hl.curve("bounce", { type = "bezier", points = { {0.4, 0.9}, {0.6, 1.0} } })
-					hl.curve("md3_decel", { type = "bezier", points = { {0.05, 0.7}, {0.1, 1} } })
-					hl.curve("softAcDecel", { type = "bezier", points = { {0.26, 0.26}, {0.15, 1} } })
+				-- Autostart
+				hl.on("hyprland.start", function()
+					hl.exec_cmd("waybar")
+					hl.exec_cmd("lxqt-policykit-agent")
+					hl.exec_cmd("nm-applet --indicator")
+					hl.exec_cmd("hypridle")
+					hl.exec_cmd("waybar-autohide")
+					hl.exec_cmd("mic-led-sync")
+					hl.exec_cmd("awww img ${config.stylix.image}")
+					hl.exec_cmd("eww open-many window-clock window-network")
+				end)
 
-					hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "snappyReturn", style = "slidevert" })
-					hl.animation({ leaf = "windowsMove", enabled = true, speed = 4, bezier = "bounce", style = "slide" })
-					hl.animation({ leaf = "border", enabled = true, speed = 10, bezier = "linear" })
-					hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "md3_decel" })
-					hl.animation({ leaf = "workspaces", enabled = true, speed = 2.5, bezier = "softAcDecel", style = "slide" })
-					
-					hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
-					hl.gesture({ fingers = 3, direction = "down", action = "close" })
-					hl.gesture({ fingers = 3, direction = "up", action = function() hl.exec_cmd("wofi --show drun") end })
-					hl.gesture({ fingers = 4, direction = "vertical", action = function()
-						hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/special.ogg}")
-						hl.dispatch(hl.dsp.workspace.toggle_special())
-					end })
-
-					-- Window rules
-					hl.window_rule({ name = "suppress-maximize", match = { class = ".*" }, suppress_event = "maximize" })
-					hl.window_rule({ name = "kitty-float", match = { class = "kitty" }, float = true, size = "800 500", center = true })
-					hl.window_rule({ name = "thunar-float", match = { class = "thunar" }, float = true, size = "1000 700", center = true })
-					hl.window_rule({ name = "wifi-float", match = { class = "nm-connection-editor" }, float = true, size = "640 400", move = "1270 50" })
-					hl.window_rule({ name = "bluetooth-float", match = { class = "blueman-manager" }, float = true, size = "640 400", move = "1270 50" })
-					hl.window_rule({ name = "vol-float", match = { class = "org.pulseaudio.pavucontrol" }, float = true, size = "640 400", move = "1270 50" })
-
-					-- Autostart original exacto adicionando hypridle
-					hl.on("hyprland.start", function()
-						hl.exec_cmd("waybar")
-						hl.exec_cmd("lxqt-policykit-agent")
-						hl.exec_cmd("nm-applet --indicator")
-						hl.exec_cmd("hypridle")
-						hl.exec_cmd("waybar-autohide")
-						hl.exec_cmd("mic-led-sync")
-						hl.exec_cmd("awww img ${config.stylix.image}")
-					end)
-
-					local function sound(file)
-						return function()
-							hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 " .. file)
-						end
+				local function sound(file)
+					return function()
+						hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 " .. file)
 					end
+				end
 
-					hl.on("workspace.active", sound("${../sounds/switch.ogg}"))
-					hl.on("window.open", sound("${../sounds/open.ogg}"))
-					hl.on("window.close", sound("${../sounds/close.ogg}"))
+				hl.on("workspace.active", sound("${../sounds/switch.ogg}"))
+				hl.on("window.open", sound("${../sounds/open.ogg}"))
+				hl.on("window.close", sound("${../sounds/close.ogg}"))
 			'';
 	};
 }
