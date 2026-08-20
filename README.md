@@ -87,7 +87,7 @@ same shared modules plus its own `hardware-configuration.nix`.
 ## Theming
 
 Colours are generated from the wallpaper by Stylix and applied system-wide: GTK, Qt,
-kitty, dunst, hyprlock, Hyprland borders, VSCode, Plymouth and Firefox.
+kitty, dunst, hyprlock, Hyprland borders, VSCode, Plymouth and Zen.
 
 **`modules/stylix.nix` is the single source of truth.** The wallpaper is declared once
 there and everything else references it — `awww.nix` reads `config.stylix.image` to set
@@ -124,13 +124,13 @@ to a wallpaper. More colourful images tend to produce better palettes.
 Rebuild the system after editing the configuration:
 
 ```bash
-sudo nixos-rebuild switch --flake ~/nixos-config#<name>
+sudo nixos-rebuild switch --flake ~/nixos-config#<name> # or with the alias nrebuild
 ```
 
 Validate the configuration without building:
 
 ```bash
-nix flake check
+nix flake check # or with the alias ncheck
 ```
 
 Build without activating (to test changes safely):
@@ -142,14 +142,14 @@ sudo nixos-rebuild build --flake ~/nixos-config#<name>
 Update packages (equivalent to `pacman -Syu` from Arch):
 
 ```bash
-nix flake update                                          # updates flake.lock
-sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad # applies
+nix flake update # or with the alias nupdate
+sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad
 ```
 
 Manually clean up old generations:
 
 ```bash
-sudo nix-collect-garbage --delete-older-than 7d
+sudo nix-collect-garbage --delete-older-than 7d # or with the alias ngc
 ```
 
 > Garbage collection also runs automatically on a weekly basis (see `modules/nix.nix`).
@@ -193,20 +193,23 @@ sudo nix-collect-garbage --delete-older-than 7d
 4. Add the new configuration to `flake.nix`:
 
    ```nix
-   nixosConfigurations.<name> = nixpkgs.lib.nixosSystem {
-     system = "x86_64-linux";
-     modules = [
-       ./hosts/<name>/default.nix
-       stylix.nixosModules.stylix
-       home-manager.nixosModules.home-manager
-       {
-         home-manager.useGlobalPkgs = true;
-         home-manager.useUserPackages = true;
-         home-manager.backupFileExtension = "hm-bak";
-         home-manager.users.poligle = import ./home.nix;
-       }
-     ];
-   };
+    nixosConfigurations.thinkpad = nixpkgs.lib.nixosSystem 
+		{
+			system = "x86_64-linux";
+			modules = [
+				./hosts/thinkpad/default.nix
+                stylix.nixosModules.stylix
+
+				home-manager.nixosModules.home-manager
+				{
+					home-manager.useGlobalPkgs = true;
+					home-manager.useUserPackages = true;
+
+          home-manager.extraSpecialArgs = { inherit inputs; };
+					home-manager.users.poligle = ./home.nix;
+				}
+			];
+		};
    ```
 
 5. Build:
