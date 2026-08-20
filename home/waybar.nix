@@ -186,7 +186,7 @@
 			}
 			window#waybar 
 			{
-				background: alpha(@surface0, 0.6);
+				background: alpha(@surface0, 0.75);
 				color: @text;
 				border-radius: 10px;
 			}
@@ -205,7 +205,7 @@
 			#custom-power,
 			#window 
 			{
-				background-color: alpha(@surface0, 0.6);
+				background-color: alpha(@surface0, 0.75);
 				padding: 0.22rem 0.4rem;
 				margin-top: 5px;
 				margin-bottom: 5px;

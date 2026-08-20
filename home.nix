@@ -1,6 +1,6 @@
 # home.nix by poligle
 
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 {
 	imports = 
 	[
@@ -19,7 +19,6 @@
 		./home/hyprlock.nix
 		./home/dunst.nix
         ./home/python.nix
-        ./home/firefox.nix
         ./home/vscode.nix
 	];
 
@@ -28,20 +27,22 @@
 	home.stateVersion = "26.05";
 	programs.home-manager.enable = true;
 
-	home.packages = with pkgs; 
+	home.packages = 
 	[
-        colloid-icon-theme
-		pavucontrol
-		networkmanagerapplet
-		libnotify
-		awww
-        hyprshot
-		hyprpicker
+        pkgs.colloid-icon-theme
+		pkgs.pavucontrol
+		pkgs.networkmanagerapplet
+		pkgs.libnotify
+		pkgs.awww
+        pkgs.hyprshot
+		pkgs.hyprpicker
 
-		obsidian
-		spotify
-		libreoffice
-        kicad
-        (octaveFull.withPackages (ps: with ps; [ signal ]))
-	];
+		pkgs.obsidian
+		pkgs.spotify
+		pkgs.libreoffice
+        pkgs.kicad
+        (pkgs.octaveFull.withPackages (ps: with ps; [ signal ]))
+
+        inputs.zen-browser.packages."${pkgs.system}".default
+    ];
 }

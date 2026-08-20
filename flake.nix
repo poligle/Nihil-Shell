@@ -18,8 +18,13 @@
 			url = "github:nix-community/stylix/release-26.05";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
+
+        zen-browser =
+        {
+            url = "github:youwen5/zen-browser-flake";
+        };
 	};
-	outputs = { self, nixpkgs, home-manager, stylix, ... }:
+	outputs = inputs@{ self, nixpkgs, home-manager, stylix, zen-browser , ... }:
 	{
 		nixosConfigurations.thinkpad = nixpkgs.lib.nixosSystem 
 		{
@@ -32,7 +37,9 @@
 				{
 					home-manager.useGlobalPkgs = true;
 					home-manager.useUserPackages = true;
-					home-manager.users.poligle = import ./home.nix;
+
+                    home-manager.extraSpecialArgs = { inherit inputs; };
+					home-manager.users.poligle = ./home.nix;
 				}
 			];
 		};
