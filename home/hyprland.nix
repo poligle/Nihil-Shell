@@ -2,6 +2,8 @@
 
 { config, pkgs, lib, ... }:
 {
+    stylix.targets.hyprpaper.enable = lib.mkForce false;
+
 	wayland.windowManager.hyprland = 
 	{
 			enable = true;
@@ -171,7 +173,7 @@
 					hl.exec_cmd("waybar-autohide")
 					hl.exec_cmd("mic-led-sync")
 					hl.exec_cmd("awww img ${config.stylix.image}")
-					hl.exec_cmd("eww open-many window-clock window-network")
+					hl.exec_cmd("eww open-many window-clock window-network window-media")
 				end)
 
 				local function sound(file)

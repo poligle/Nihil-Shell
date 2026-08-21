@@ -62,13 +62,112 @@ let
     done
   '';
 
+  ewwMediaMonitor = pkgs.writeShellScriptBin "eww-media-monitor"
+  ''
+    export PATH="${lib.makeBinPath [ pkgs.playerctl pkgs.curl pkgs.gawk pkgs.gnused pkgs.coreutils ]}:$PATH"
+
+    readonly ARTWORK_CACHE_DIRECTORY="/tmp/eww-media-artwork"
+    readonly FIELD_DELIMITER="|||"
+
+    mkdir -p "$ARTWORK_CACHE_DIRECTORY"
+
+    escape_json_string() {
+      printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+    }
+
+    extract_field() {
+      printf '%s' "$2" | awk -F'\\|\\|\\|' -v index_number="$1" '{print $index_number}'
+    }
+
+    resolve_artwork_path() {
+      artwork_url="$1"
+
+      case "$artwork_url" in
+        file://*)
+          printf '%s' "$artwork_url" | sed 's|^file://||'
+          ;;
+        http://*|https://*)
+          cache_key=$(printf '%s' "$artwork_url" | md5sum | awk '{print $1}')
+          cache_file="$ARTWORK_CACHE_DIRECTORY/$cache_key"
+          if [ ! -s "$cache_file" ]; then
+            curl --silent --fail --location --max-time 5 --output "$cache_file" "$artwork_url" || rm -f "$cache_file"
+          fi
+          [ -s "$cache_file" ] && printf '%s' "$cache_file"
+          ;;
+        *)
+          printf "%s" ""
+          ;;
+      esac
+    }
+
+    emit_idle_state() {
+      printf '{"active":false,"player":"","status":"Stopped","artist":"","title":"Nada reproduciéndose","artwork":""}\n'
+    }
+
+    emit_idle_state
+
+    playerctl --follow --format "{{playerName}}$FIELD_DELIMITER{{status}}$FIELD_DELIMITER{{artist}}$FIELD_DELIMITER{{title}}$FIELD_DELIMITER{{mpris:artUrl}}" metadata 2>/dev/null |
+    while IFS= read -r raw_line; do
+      if [ -z "$raw_line" ]; then
+        emit_idle_state
+        continue
+      fi
+
+      player_name=$(extract_field 1 "$raw_line")
+      playback_status=$(extract_field 2 "$raw_line")
+      track_artist=$(extract_field 3 "$raw_line")
+      track_title=$(extract_field 4 "$raw_line")
+      artwork_url=$(extract_field 5 "$raw_line")
+
+      artwork_path=$(resolve_artwork_path "$artwork_url")
+
+      printf '{"active":true,"player":"%s","status":"%s","artist":"%s","title":"%s","artwork":"%s"}\n' \
+        "$(escape_json_string "$player_name")" \
+        "$(escape_json_string "$playback_status")" \
+        "$(escape_json_string "$track_artist")" \
+        "$(escape_json_string "$track_title")" \
+        "$(escape_json_string "$artwork_path")"
+    done
+  '';
+
+  ewwMediaPosition = pkgs.writeShellScriptBin "eww-media-position"
+  ''
+    export PATH="${lib.makeBinPath [ pkgs.playerctl pkgs.gawk pkgs.coreutils ]}:$PATH"
+
+    position_seconds=$(playerctl position 2>/dev/null)
+    length_microseconds=$(playerctl metadata mpris:length 2>/dev/null)
+
+    if [ -z "$position_seconds" ] || [ -z "$length_microseconds" ]; then
+      printf '{"elapsed":"0:00","total":"0:00","fraction":0}\n'
+      exit 0
+    fi
+
+    awk -v position="$position_seconds" -v length_us="$length_microseconds" 'BEGIN {
+      total_seconds = length_us / 1000000;
+
+      elapsed_minutes = int(position / 60);
+      elapsed_seconds = int(position % 60);
+      total_minutes   = int(total_seconds / 60);
+      total_remainder = int(total_seconds % 60);
+
+      fraction = (total_seconds > 0) ? (position / total_seconds) * 100 : 0;
+      if (fraction > 100) fraction = 100;
+
+      printf "{\"elapsed\":\"%d:%02d\",\"total\":\"%d:%02d\",\"fraction\":%.1f}\n",
+        elapsed_minutes, elapsed_seconds, total_minutes, total_remainder, fraction;
+    }'
+  '';
+
 in
 {
   home.packages = 
   [
     pkgs.eww
     pkgs.poppins
+    pkgs.playerctl
     ewwNetworkMonitor
+    ewwMediaMonitor
+    ewwMediaPosition
   ];
 
   xdg.configFile."eww/eww.yuck".text = 
@@ -81,6 +180,14 @@ in
     (deflisten networkTelemetry
     :initial '{"interface":"...","rx_rate_bps":0,"tx_rate_bps":0,"rx_rate_kbps":0,"tx_rate_kbps":0,"rx_formatted":"—","tx_formatted":"—"}'
     "eww-network-monitor")
+
+    (deflisten mediaTelemetry
+    :initial '{"active":false,"player":"","status":"Stopped","artist":"","title":"Nada reproduciéndose","artwork":""}'
+    "eww-media-monitor")
+
+    (defpoll mediaPosition :interval "1s"
+    :initial '{"elapsed":"0:00","total":"0:00","fraction":0}'
+    `eww-media-position`)
 
     (defwidget clock-widget []
     (box :class "widget-container clock-container" 
@@ -151,6 +258,75 @@ in
     :exclusive false
     :focusable "none"
     (network-widget))
+
+    (defwidget media-widget []
+    (box :class "widget-container media-container"
+    :orientation "h"
+    :space-evenly false
+    :vexpand true
+    :hexpand true
+    :valign "fill"
+    :halign "fill"
+    :spacing 12
+    (box :class "media-artwork-frame"
+    :valign "center"
+    :halign "start"
+    (image :class "media-artwork-image"
+    :path {mediaTelemetry.artwork}
+    :image-width 60
+    :image-height 60
+    :visible {mediaTelemetry.artwork != ""})
+    (label :class "media-artwork-placeholder"
+    :text "♪"
+    :visible {mediaTelemetry.artwork == ""}))
+    (box :class "media-details"
+    :orientation "v"
+    :space-evenly false
+    :vexpand true
+    :hexpand true
+    :valign "center"
+    :spacing 3
+    (label :class "media-player-name"
+    :text {mediaTelemetry.player}
+    :halign "start"
+    :visible {mediaTelemetry.active})
+    (label :class "media-track-title"
+    :text {mediaTelemetry.title}
+    :halign "start"
+    :limit-width 18
+    :truncate true)
+    (scale :class "media-progress-bar"
+    :value {mediaPosition.fraction}
+    :min 0
+    :max 100
+    :active false
+    :hexpand true)
+    (box :class "media-controls-row"
+    :orientation "h"
+    :space-evenly false
+    :hexpand true
+    (label :class "media-time-elapsed"
+    :text "''${mediaPosition.elapsed} / ''${mediaPosition.total}")
+    (box :hexpand true)
+    (button :class "media-control-button"
+    :onclick "playerctl previous"
+    "󰒮")
+    (button :class "media-control-button"
+    :onclick "playerctl play-pause"
+    {mediaTelemetry.status == "Playing" ? "󰏤" : "󰐊"})
+    (button :class "media-control-button"
+    :onclick "playerctl next"
+    "󰒭")))))
+
+    (defwindow window-media
+    :monitor 0
+    :geometry (geometry :x "40px" :y "422px"
+    :width "300px" :height "108px"
+    :anchor "top left")
+    :stacking "bg"
+    :exclusive false
+    :focusable "none"
+    (media-widget))
   '';
 
   xdg.configFile."eww/eww.scss".text = 
@@ -176,6 +352,11 @@ in
     .network-container 
     {
       padding: 14px 24px 16px 24px;
+    }
+
+    .media-container 
+    {
+      padding: 14px 24px;
     }
 
     .clock-time-row 
@@ -252,6 +433,89 @@ in
       color: ${palette.base0D};
       background-color: transparent;
       margin-top: 2px;
+    }
+
+    .media-artwork-frame 
+    {
+      min-width: 60px;
+      min-height: 60px;
+      border-radius: 12px;
+      background-color: rgba(${paletteRgb.base02-dec-r}, ${paletteRgb.base02-dec-g}, ${paletteRgb.base02-dec-b}, 0.5);
+    }
+
+    .media-artwork-image 
+    {
+      border-radius: 12px;
+    }
+
+    .media-artwork-placeholder 
+    {
+      font-family: "${fontMonospace}";
+      font-size: 26px;
+      color: ${palette.base03};
+    }
+
+    .media-player-name 
+    {
+      font-family: "${fontMonospace}";
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: ${palette.base03};
+    }
+
+    .media-track-title 
+    {
+      font-family: "${fontClockDisplay}";
+      font-size: 14px;
+      font-weight: bold;
+      color: ${palette.base05};
+    }
+
+    .media-progress-bar trough 
+    {
+      min-height: 3px;
+      border-radius: 2px;
+      background-color: rgba(${paletteRgb.base02-dec-r}, ${paletteRgb.base02-dec-g}, ${paletteRgb.base02-dec-b}, 0.8);
+    }
+
+    .media-progress-bar highlight 
+    {
+      min-height: 3px;
+      border-radius: 2px;
+      background-color: ${palette.base0D};
+    }
+
+    .media-progress-bar slider 
+    {
+      all: unset;
+      min-width: 0px;
+      min-height: 0px;
+      background-color: transparent;
+    }
+
+    .media-controls-row 
+    {
+      margin-top: 4px;
+    }
+
+    .media-time-elapsed 
+    {
+      font-family: "${fontMonospace}";
+      font-size: 10px;
+      color: ${palette.base03};
+    }
+
+    .media-control-button 
+    {
+      font-family: "${fontMonospace}";
+      font-size: 14px;
+      color: ${palette.base0D};
+      padding: 0 3px;
+    }
+
+    .media-control-button:hover 
+    {
+      color: ${palette.base05};
     }
   '';
 }

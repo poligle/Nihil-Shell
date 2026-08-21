@@ -6,7 +6,7 @@
     {
         enable = true;
         image = ../wallpapers/antenna.jpg;
-        polarity = "dark";
+        polarity = "dark"; 
 
         cursor = 
         {
