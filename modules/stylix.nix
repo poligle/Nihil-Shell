@@ -5,7 +5,7 @@
     stylix = 
     {
         enable = true;
-        image = ../wallpapers/satellite.png;
+        image = ../wallpapers/antenna.jpg;
         polarity = "dark";
 
         cursor = 
