@@ -112,17 +112,17 @@
 				hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 
 				hl.config({
-					general = 
+					general =
 					{
 						gaps_in = 5, gaps_out = 5, border_size = 0,
 						["col.active_border"] = "rgba(78a9ffaa)", ["col.inactive_border"] = "rgba(2c2c2caa)",
-						resize_on_border = true, allow_tearing = true, layout = "master"
+						resize_on_border = true, allow_tearing = false, layout = "master"
 					},
 
-				decoration = 
+				decoration =
 				{
 					rounding = 10, active_opacity = 1.0, inactive_opacity = 0.7, fullscreen_opacity = 1.0,
-					shadow = { enabled = true, range = 20, color = "rgba(1a1a1aee)" },
+					shadow = { enabled = true, range = 15, color = "rgba(19191966)" },
 					blur = { enabled = true, size = 3, passes = 2, brightness = 0.6, contrast = 1.0, noise = 0, xray = false, popups = false }
 				},
 
@@ -181,7 +181,8 @@
 						hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 " .. file)
 					end
 				end
-
+                
+                -- System Sounds
 				hl.on("workspace.active", sound("${../sounds/switch.ogg}"))
 				hl.on("window.open", sound("${../sounds/open.ogg}"))
 				hl.on("window.close", sound("${../sounds/close.ogg}"))
