@@ -18,7 +18,7 @@
         {
             Type = "oneshot";
             ExecStartPre = "${pkgs.coreutils}/bin/sleep 3";
-            ExecStart = "${pkgs.bluez}/bin/bluetoothctl power off";
+            ExecStart = "-${pkgs.bluez}/bin/bluetoothctl power off";
         };
     };
 }

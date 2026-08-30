@@ -218,7 +218,7 @@ in
     :geometry (geometry :x "40px" :y "40px"
     :width "300px" :height "250px"
     :anchor "top left")
-    :stacking "bg"
+    :stacking "bottom"
     :exclusive false
     :focusable "none"
     (clock-widget))
@@ -254,7 +254,7 @@ in
     :geometry (geometry :x "40px" :y "308px"
     :width "300px" :height "96px"
     :anchor "top left")
-    :stacking "bg"
+    :stacking "bottom"
     :exclusive false
     :focusable "none"
     (network-widget))
@@ -323,7 +323,7 @@ in
     :geometry (geometry :x "40px" :y "422px"
     :width "300px" :height "108px"
     :anchor "top left")
-    :stacking "bg"
+    :stacking "bottom"
     :exclusive false
     :focusable "none"
     (media-widget))
