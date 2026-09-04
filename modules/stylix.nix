@@ -5,7 +5,7 @@
     stylix = 
     {
         enable = true;
-        image = ../wallpapers/blackhole.png;
+        image = ../wallpapers/night.jpg;
         polarity = "dark"; 
 
         cursor = 
