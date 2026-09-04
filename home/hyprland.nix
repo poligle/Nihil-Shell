@@ -110,6 +110,7 @@
 				hl.env("QT_STYLE_OVERRIDE", "Fusion")
 
 				hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+                hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@240", position = "auto", scale = 1 })
 
 				hl.config({
 					general =
