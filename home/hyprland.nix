@@ -4,7 +4,7 @@
 {
     stylix.targets.hyprpaper.enable = true;
 
-	wayland.windowManager.hyprland = 
+	wayland.windowManager.hyprland =
 	{
 			enable = true;
 			package = null;
@@ -109,10 +109,17 @@
 				hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 				hl.env("QT_STYLE_OVERRIDE", "Fusion")
 
-				hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
-                hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@240", position = "auto", scale = 1 })
+                hl.monitor({ output = "HDMI-A-1", mode = "2560x1440@120", position = "0x0", scale = 1, transform = 0 })
+                hl.monitor({ output = "DP-1", mode = "1920x1080@165", position = "2560x-240", scale = 1, transform = 3 })
+                hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1, transform = 0, disabled = false })
+                hl.bind("switch:on:Lid Switch", function()
+	            	hl.monitor({ output = "eDP-1", disabled = true })
+                end, { locked = true })
+                hl.bind("switch:off:Lid Switch", function()
+	                hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1, disabled = false })
+                end, { locked = true })
 
-				hl.config({
+                hl.config({
 					general =
 					{
 						gaps_in = 5, gaps_out = 5, border_size = 0,
