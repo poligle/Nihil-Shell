@@ -20,6 +20,7 @@
         ../../modules/plymouth.nix
         ../../modules/stylix.nix
         ../../modules/virtualisation.nix
+        ../../modules/wireshark.nix
     ];
     programs.zsh.enable = true;
     
