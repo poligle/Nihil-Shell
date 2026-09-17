@@ -21,6 +21,7 @@
         ../../modules/stylix.nix
         ../../modules/virtualisation.nix
         ../../modules/wireshark.nix
+        ../../modules/direnv.nix
     ];
     programs.zsh.enable = true;
     
