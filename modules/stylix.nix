@@ -5,8 +5,8 @@
     stylix = 
     {
         enable = true;
-        image = ../wallpapers/night.jpg;
-        polarity = "dark"; 
+        image = ../wallpapers/galaxy.png;
+        polarity = "dark";
 
         cursor = 
         {
