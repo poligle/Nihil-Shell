@@ -74,6 +74,7 @@ nixos-config/
 │   ├── bluetooth.nix         # Blueman without auto power-on
 │   ├── engineering.nix       # FHS environment + launchers for MATLAB, FEKO and ADS
 │   ├── cli.nix               # CLI tooling (gh, lazygit, fzf, bat, tealdeer)
+│   ├── refresh.nix           # Reloads Hyprland, waybar and eww after each switch
 │   └── waybar-autohide.py    # Python auto-hide script for the bar
 │
 └── wallpapers/               # Wallpapers (versioned for cloning)
@@ -247,6 +248,9 @@ engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
   goes through `lib.generators.mkLuaInline`. Stylix also writes into `settings.config`,
   so keys it already sets (border and shadow colours) need `lib.mkForce`. Under Lua,
   `hyprctl dispatch` takes Lua too: `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'`.
+- **Live refresh:** after every switch, `home/refresh.nix` reloads Hyprland and restarts
+  waybar (with its auto-hide) and the eww widgets inside the running session, because
+  none of them notice that their config symlink now points to a new store path.
 - **Own scripts:** packaged with `writeShellScriptBin` and their dependencies declared
   explicitly, for full reproducibility: `waybar-autohide`, `mic-led-sync`, `osd-volume`,
   `osd-brightness`, `wifi-menu`, `wifi-status`, `bluetooth-status`.

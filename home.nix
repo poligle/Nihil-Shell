@@ -25,6 +25,7 @@
 		./home/bluetooth.nix
 		./home/engineering.nix
 		./home/cli.nix
+		./home/refresh.nix
 	];
 
 	home.username = "poligle";
