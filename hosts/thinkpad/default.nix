@@ -13,7 +13,7 @@
         ../../modules/users.nix
         ../../modules/packages.nix
         ../../modules/hyprland.nix
-        ../../modules/greetd.nix
+        ../../modules/regreet.nix
         ../../modules/desktop.nix
         ../../modules/storage.nix
         ../../modules/services.nix
