@@ -14,4 +14,10 @@
     };
     
     systemd.timers.nix-gc.timerConfig.Persistent = true;
+
+    programs.nh =
+    {
+        enable = true;
+        flake = "/home/poligle/nixos-config";
+    };
 }
