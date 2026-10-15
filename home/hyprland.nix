@@ -67,8 +67,23 @@ let
 		end
 	'';
 
+	keepLidState = ''
+		function()
+			if not lidIsClosed() then
+				return
+			end
+			for _, monitor in ipairs(hl.get_monitors()) do
+				if monitor.name ~= "${internalPanel}" then
+					hl.monitor({ output = "${internalPanel}", disabled = true })
+					return
+				end
+			end
+		end
+	'';
+
 	autostart = ''
 		function()
+			(${keepLidState})()
 			hl.exec_cmd("waybar")
 			hl.exec_cmd("lxqt-policykit-agent")
 			hl.exec_cmd("nm-applet --indicator")
@@ -91,6 +106,21 @@ in
 
 		settings =
 		{
+			lidIsClosed =
+			{
+				_var = lua ''
+					function()
+						local handle = io.popen("${pkgs.coreutils}/bin/cat /proc/acpi/button/lid/*/state 2>/dev/null")
+						if not handle then
+							return false
+						end
+						local state = handle:read("*a") or ""
+						handle:close()
+						return state:find("closed") ~= nil
+					end
+				'';
+			};
+
 			env =
 			[
 				(envVar "QT_QPA_PLATFORM" "wayland")
@@ -266,6 +296,8 @@ in
 			on =
 			[
 				(onEvent "hyprland.start" autostart)
+				(onEvent "config.reloaded" keepLidState)
+				(onEvent "monitor.added" keepLidState)
 				(soundOn "workspace.active" ../sounds/switch.ogg)
 				(soundOn "window.open" ../sounds/open.ogg)
 				(soundOn "window.close" ../sounds/close.ogg)
