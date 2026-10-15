@@ -51,7 +51,6 @@ let
 			hl.exec_cmd("waybar")
 			hl.exec_cmd("lxqt-policykit-agent")
 			hl.exec_cmd("nm-applet --indicator")
-			hl.exec_cmd("hypridle")
 			hl.exec_cmd("waybar-autohide")
 			hl.exec_cmd("mic-led-sync")
 			hl.exec_cmd("awww img ${config.stylix.image}")
