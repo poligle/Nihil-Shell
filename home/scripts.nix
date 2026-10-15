@@ -129,11 +129,11 @@ let
 	'';
 
 	wofiMenuConf = pkgs.writeText "wofi-menu.conf" ''
-		location=top_right
-		xoffset=-10
-		yoffset=55
-		width=380
-		height=360
+		location=top_left
+		xoffset=1270
+		yoffset=50
+		width=340
+		height=300
 		layer=overlay
 		normal_window=false
 		columns=1
@@ -152,16 +152,16 @@ let
 			background-color: ${palette.base00};
 			border-radius: 12px;
 			font-family: "${config.stylix.fonts.monospace.name}";
-			font-size: 14px;
+			font-size: 13px;
 		}
 		#outer-box
 		{
-			padding: 8px;
+			padding: 6px;
 		}
 		#input
 		{
-			margin-bottom: 8px;
-			padding: 6px 10px;
+			margin-bottom: 6px;
+			padding: 5px 8px;
 			border: none;
 			border-radius: 8px;
 			background-color: ${palette.base01};
@@ -169,7 +169,7 @@ let
 		}
 		#entry
 		{
-			padding: 6px 10px;
+			padding: 5px 8px;
 			border-radius: 8px;
 		}
 		#entry:selected
