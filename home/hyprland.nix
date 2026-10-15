@@ -1,199 +1,249 @@
 # hyprland.nix by poligle
 
 { config, pkgs, lib, ... }:
+let
+	lua = lib.generators.mkLuaInline;
+
+	internalPanel = "eDP-1";
+	verticalPanel = "DP-1";
+	playSound = file: "${pkgs.pipewire}/bin/pw-play --volume 0.4 ${file}";
+
+	bind = key: action: { _args = [ key (lua action) ]; };
+	bindWith = key: action: options: { _args = [ key (lua action) options ]; };
+	exec = command: ''hl.dsp.exec_cmd("${command}")'';
+	withSound = file: action: ''function() hl.exec_cmd("${playSound file}") hl.dispatch(${action}) end'';
+	focusWorkspace = workspace: ''hl.dsp.focus({ workspace = "${workspace}" })'';
+	moveToWorkspace = workspace: ''hl.dsp.window.move({ workspace = "${workspace}" })'';
+
+	workspaceBinds = lib.concatMap
+	(
+		number:
+		let
+			key = toString (lib.mod number 10);
+			workspace = toString number;
+		in
+		[
+			(bind "SUPER + ${key}" (focusWorkspace workspace))
+			(bind "SUPER + SHIFT + ${key}" (moveToWorkspace workspace))
+		]
+	)
+	(lib.range 1 10);
+
+	envVar = name: value: { _args = [ name value ]; };
+	bezier = name: points: { _args = [ name { type = "bezier"; inherit points; } ]; };
+	onEvent = event: handler: { _args = [ event (lua handler) ]; };
+	soundOn = event: file: onEvent event ''function() hl.exec_cmd("${playSound file}") end'';
+
+	floatingPanel = name: class:
+	{
+		inherit name;
+		match.class = class;
+		float = true;
+		size = "640 400";
+		move = "1270 50";
+	};
+
+	lidClose = ''function() hl.monitor({ output = "${internalPanel}", disabled = true }) end'';
+	lidOpen = ''function() hl.monitor({ output = "${internalPanel}", mode = "preferred", position = "auto", scale = 1, disabled = false }) end'';
+
+	autostart = ''
+		function()
+			hl.exec_cmd("waybar")
+			hl.exec_cmd("lxqt-policykit-agent")
+			hl.exec_cmd("nm-applet --indicator")
+			hl.exec_cmd("hypridle")
+			hl.exec_cmd("waybar-autohide")
+			hl.exec_cmd("mic-led-sync")
+			hl.exec_cmd("awww img ${config.stylix.image}")
+			hl.exec_cmd("eww open-many window-clock window-network window-media")
+		end
+	'';
+in
 {
-    stylix.targets.hyprpaper.enable = true;
+	stylix.targets.hyprpaper.enable = true;
 
 	wayland.windowManager.hyprland =
 	{
-			enable = true;
-			package = null;
-			portalPackage = null;
-			configType = "lua";
-			settings =
-			let
-				lua = lib.generators.mkLuaInline;
-				bind = key: action: { _args = [ key (lua action) ]; };
-				bindo = key: action: opts: { _args = [ key (lua action) (lua opts) ]; };
-				exec = cmd: ''hl.dsp.exec_cmd("${cmd}")'';
-				ws = n: ''hl.dsp.focus({ workspace = "${n}" })'';
-				mvws = n: ''hl.dsp.window.move({ workspace = "${n}" })'';
-			in
+		enable = true;
+		package = null;
+		portalPackage = null;
+		configType = "lua";
+
+		settings =
+		{
+			env =
+			[
+				(envVar "QT_QPA_PLATFORM" "wayland")
+				(envVar "QT_QPA_PLATFORMTHEME" "qt6ct")
+				(envVar "QT_STYLE_OVERRIDE" "Fusion")
+			];
+
+			monitor =
+			[
+				{ output = "HDMI-A-1"; mode = "preferred"; position = "0x0"; scale = 1; transform = 0; }
+				{ output = verticalPanel; mode = "1920x1080@165"; position = "2560x-240"; scale = 1; transform = 3; }
+				{ output = internalPanel; mode = "preferred"; position = "auto"; scale = 1; transform = 0; disabled = false; }
+			];
+
+			config =
 			{
-				bind = 
-				[
-					# Apps
-					(bind "SUPER + Super_L" (exec "kitty"))
-					(bind "SUPER + Space" (exec "wofi-open"))
-					(bind "SUPER + E" (exec "thunar"))
-					(bind "SUPER + X" (exec "zen-beta"))
-					(bind "SUPER + N" (exec "obsidian"))
-					(bind "SUPER + C" (exec "code"))
-					(bind "SUPER + S" (exec "spotify"))
-					(bind "SUPER + A" (exec "aseprite"))
-					(bind "SUPER + H" (exec "hyprpicker -a"))
-					(bind "SUPER + K" (exec "lock-screen"))
-
-					# Window management
-					(bind "SUPER + Q" ''hl.dsp.window.close()'')
-					(bind "SUPER + V" ''hl.dsp.window.float({ action = "toggle" })'')
-					(bind "SUPER + F" ''function() hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/fullscreen.ogg}") hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized" })) end'')
-					(bind "SUPER + SHIFT + F" ''function() hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/fullscreen.ogg}") hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen" })) end'')	
-
-					# Move focus
-					(bind "SUPER + left" ''hl.dsp.focus({ direction = "left" })'')
-					(bind "SUPER + right" ''hl.dsp.focus({ direction = "right" })'')
-					(bind "SUPER + up" ''hl.dsp.focus({ direction = "up" })'')
-					(bind "SUPER + down" ''hl.dsp.focus({ direction = "down" })'')
-
-					# Special workspace
-					(bind "SUPER + Escape" ''function() hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/special.ogg}") hl.dispatch(hl.dsp.workspace.toggle_special()) end'')
-					(bind "SUPER + Control_L" ''hl.dsp.window.move({ workspace = "special" })'')
-
-					# Workspaces
-					(bind "SUPER + 1" (ws "1"))
-					(bind "SUPER + 2" (ws "2"))
-					(bind "SUPER + 3" (ws "3"))
-					(bind "SUPER + 4" (ws "4"))
-					(bind "SUPER + 5" (ws "5"))
-					(bind "SUPER + 6" (ws "6"))
-					(bind "SUPER + 7" (ws "7"))
-					(bind "SUPER + 8" (ws "8"))
-					(bind "SUPER + 9" (ws "9"))
-					(bind "SUPER + 0" (ws "10"))
-					(bind "SUPER + Tab" ''hl.dsp.focus({ workspace = "e+1" })'')
-
-					# Move window to workspace
-					(bind "SUPER + SHIFT + 1" (mvws "1"))
-					(bind "SUPER + SHIFT + 2" (mvws "2"))
-					(bind "SUPER + SHIFT + 3" (mvws "3"))
-					(bind "SUPER + SHIFT + 4" (mvws "4"))
-					(bind "SUPER + SHIFT + 5" (mvws "5"))
-					(bind "SUPER + SHIFT + 6" (mvws "6"))
-					(bind "SUPER + SHIFT + 7" (mvws "7"))
-					(bind "SUPER + SHIFT + 8" (mvws "8"))
-					(bind "SUPER + SHIFT + 9" (mvws "9"))
-					(bind "SUPER + SHIFT + 0" (mvws "10"))
-
-					# Volume
-					(bindo "XF86AudioRaiseVolume" (exec "osd-volume up") ''{ locked = true, repeating = true }'')
-					(bindo "XF86AudioLowerVolume" (exec "osd-volume down") ''{ locked = true, repeating = true }'')
-					(bindo "XF86AudioMute" (exec "osd-volume mute") ''{ locked = true }'')
-					(bindo "XF86AudioMicMute" (exec "sh -c 'wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle; mic-led-sync'") ''{ locked = true }'')
-		
-					# Brightness
-					(bindo "XF86MonBrightnessUp" (exec "osd-brightness up") ''{ locked = true, repeating = true }'')
-					(bindo "XF86MonBrightnessDown" (exec "osd-brightness down") ''{ locked = true, repeating = true }'')
-
-					# Multimedia keys
-					(bindo "PRINT" (exec "hyprshot -m output --clipboard-only") ''{ locked = true }'')
-					(bindo "XF86SelectiveScreenshot" (exec "hyprshot -m region --clipboard-only") ''{ locked = true }'')
-
-					(bindo "XF86AudioNext" (exec "playerctl next") ''{ locked = true }'')
-					(bindo "XF86AudioPause" (exec "playerctl play-pause") ''{ locked = true }'')
-					(bindo "XF86AudioPlay" (exec "playerctl play-pause") ''{ locked = true }'')
-					(bindo "XF86AudioPrev" (exec "playerctl previous") ''{ locked = true }'')
-
-					# Switch workspaces with mouse side buttons
-					(bind "mouse:275" ''hl.dsp.focus({ workspace = "e-1" })'')
-					(bind "mouse:276" ''hl.dsp.focus({ workspace = "e+1" })'')
-
-					# Move windows with mouse drag
-					(bindo "SUPER + mouse:272" ''hl.dsp.window.drag()'' ''{ drag = true }'')
-					(bindo "mouse:274" ''hl.dsp.window.drag()'' ''{ drag = true }'')
-				];
-			};
-
-			extraConfig = ''
-				hl.env("QT_QPA_PLATFORM", "wayland")
-				hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
-				hl.env("QT_STYLE_OVERRIDE", "Fusion")
-
-                hl.monitor({ output = "HDMI-A-1", mode = "preferred", position = "0x0", scale = 1, transform = 0 })
-                hl.monitor({ output = "DP-1", mode = "1920x1080@165", position = "2560x-240", scale = 1, transform = 3 })
-                hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1, transform = 0, disabled = false })
-                hl.bind("switch:on:Lid Switch", function()
-	            	hl.monitor({ output = "eDP-1", disabled = true })
-                end, { locked = true })
-                hl.bind("switch:off:Lid Switch", function()
-	                hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1, disabled = false })
-                end, { locked = true })
-
-                hl.config({
-					general =
-					{
-						gaps_in = 5, gaps_out = 5, border_size = 0,
-						["col.active_border"] = "rgba(78a9ffaa)", ["col.inactive_border"] = "rgba(2c2c2caa)",
-						resize_on_border = true, allow_tearing = false, layout = "master"
-					},
+				general =
+				{
+					gaps_in = 5;
+					gaps_out = 5;
+					border_size = 0;
+					resize_on_border = true;
+					allow_tearing = false;
+					layout = "master";
+				};
 
 				decoration =
 				{
-					rounding = 10, active_opacity = 1.0, inactive_opacity = 0.7, fullscreen_opacity = 1.0,
-					shadow = { enabled = true, range = 15, color = "rgba(19191966)" },
-					blur = { enabled = true, size = 3, passes = 2, brightness = 0.6, contrast = 1.0, noise = 0, xray = false, popups = false }
-				},
+					rounding = 10;
+					active_opacity = 1.0;
+					inactive_opacity = 0.7;
+					fullscreen_opacity = 1.0;
 
-				dwindle = { preserve_split = true },
-				master = { new_status = "master" },
-			
-				misc = { force_default_wallpaper = 0, disable_hyprland_logo = true },
-				input = { kb_layout = "es", kb_variant = "", kb_model = "thinkpad", follow_mouse = 1, sensitivity = 0, touchpad = { natural_scroll = false } }
-				})
+					shadow =
+					{
+						enabled = true;
+						range = 15;
+						color = lib.mkForce "rgba(19191966)";
+					};
 
-				hl.device({ name = "tpps/2-synaptics-trackpoint", sensitivity = -0.4, scroll_method = "no_scroll" })
-				hl.device({ name = "logitech-pro-x-1", sensitivity = -0.2 })
+					blur =
+					{
+						enabled = true;
+						size = 3;
+						passes = 2;
+						brightness = 0.6;
+						contrast = 1.0;
+						noise = 0;
+						xray = false;
+						popups = false;
+					};
+				};
 
-				hl.curve("linear", { type = "bezier", points = { {0, 0}, {1, 1} } })
-				hl.curve("snappyReturn", { type = "bezier", points = { {0.4, 0.9}, {0.6, 1.0} } })
-				hl.curve("bounce", { type = "bezier", points = { {0.4, 0.9}, {0.6, 1.0} } })
-				hl.curve("md3_decel", { type = "bezier", points = { {0.05, 0.7}, {0.1, 1} } })
-				hl.curve("softAcDecel", { type = "bezier", points = { {0.26, 0.26}, {0.15, 1} } })
+				dwindle.preserve_split = true;
+				master.new_status = "master";
 
-				hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "snappyReturn", style = "slidevert" })
-				hl.animation({ leaf = "windowsMove", enabled = true, speed = 4, bezier = "bounce", style = "slide" })
-				hl.animation({ leaf = "border", enabled = true, speed = 10, bezier = "linear" })
-				hl.animation({ leaf = "fade", enabled = true, speed = 3, bezier = "md3_decel" })
-				hl.animation({ leaf = "workspaces", enabled = true, speed = 2.5, bezier = "softAcDecel", style = "slide" })
-				
-				hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
-				hl.gesture({ fingers = 3, direction = "down", action = "close" })
-				hl.gesture({ fingers = 3, direction = "up", action = function() hl.exec_cmd("wofi --show drun") end })
-				hl.gesture({ fingers = 4, direction = "vertical", action = function()
-					hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/special.ogg}")
-					hl.dispatch(hl.dsp.workspace.toggle_special())
-				end })
+				misc =
+				{
+					force_default_wallpaper = 0;
+					disable_hyprland_logo = true;
+				};
 
-				-- Window rules
-				hl.window_rule({ name = "suppress-maximize", match = { class = ".*" }, suppress_event = "maximize" })
-				hl.window_rule({ name = "kitty-float", match = { class = "kitty" }, float = true, size = "800 500", center = true })
-				hl.window_rule({ name = "thunar-float", match = { class = "thunar" }, float = true, size = "1000 700", center = true })
-				hl.window_rule({ name = "wifi-float", match = { class = "nm-connection-editor" }, float = true, size = "640 400", move = "1270 50" })
-				hl.window_rule({ name = "bluetooth-float", match = { class = "blueman-manager" }, float = true, size = "640 400", move = "1270 50" })
-				hl.window_rule({ name = "vol-float", match = { class = "org.pulseaudio.pavucontrol" }, float = true, size = "640 400", move = "1270 50" })
+				input =
+				{
+					kb_layout = "es";
+					kb_variant = "";
+					kb_model = "thinkpad";
+					follow_mouse = 1;
+					sensitivity = 0;
+					touchpad.natural_scroll = false;
+				};
+			};
 
-				-- Autostart
-				hl.on("hyprland.start", function()
-					hl.exec_cmd("waybar")
-					hl.exec_cmd("lxqt-policykit-agent")
-					hl.exec_cmd("nm-applet --indicator")
-					hl.exec_cmd("hypridle")
-					hl.exec_cmd("waybar-autohide")
-					hl.exec_cmd("mic-led-sync")
-					hl.exec_cmd("awww img ${config.stylix.image}")
-					hl.exec_cmd("eww open-many window-clock window-network window-media")
-				end)
+			device =
+			[
+				{ name = "tpps/2-synaptics-trackpoint"; sensitivity = -0.4; scroll_method = "no_scroll"; }
+				{ name = "logitech-pro-x-1"; sensitivity = -0.2; }
+			];
 
-				local function sound(file)
-					return function()
-						hl.exec_cmd("${pkgs.pipewire}/bin/pw-play --volume 0.4 " .. file)
-					end
-				end
-                
-                -- System Sounds
-				hl.on("workspace.active", sound("${../sounds/switch.ogg}"))
-				hl.on("window.open", sound("${../sounds/open.ogg}"))
-				hl.on("window.close", sound("${../sounds/close.ogg}"))
-			'';
+			curve =
+			[
+				(bezier "linear" [ [ 0 0 ] [ 1 1 ] ])
+				(bezier "snappyReturn" [ [ 0.4 0.9 ] [ 0.6 1.0 ] ])
+				(bezier "bounce" [ [ 0.4 0.9 ] [ 0.6 1.0 ] ])
+				(bezier "md3_decel" [ [ 0.05 0.7 ] [ 0.1 1 ] ])
+				(bezier "softAcDecel" [ [ 0.26 0.26 ] [ 0.15 1 ] ])
+			];
+
+			animation =
+			[
+				{ leaf = "windows"; enabled = true; speed = 5; bezier = "snappyReturn"; style = "slidevert"; }
+				{ leaf = "windowsMove"; enabled = true; speed = 4; bezier = "bounce"; style = "slide"; }
+				{ leaf = "border"; enabled = true; speed = 10; bezier = "linear"; }
+				{ leaf = "fade"; enabled = true; speed = 3; bezier = "md3_decel"; }
+				{ leaf = "workspaces"; enabled = true; speed = 2.5; bezier = "softAcDecel"; style = "slide"; }
+			];
+
+			gesture =
+			[
+				{ fingers = 3; direction = "horizontal"; action = "workspace"; }
+				{ fingers = 3; direction = "down"; action = "close"; }
+				{ fingers = 3; direction = "up"; action = lua ''function() hl.exec_cmd("wofi-open") end''; }
+				{ fingers = 4; direction = "vertical"; action = lua (withSound ../sounds/special.ogg "hl.dsp.workspace.toggle_special()"); }
+			];
+
+			window_rule =
+			[
+				{ name = "suppress-maximize"; match.class = ".*"; suppress_event = "maximize"; }
+				{ name = "kitty-float"; match.class = "kitty"; float = true; size = "800 500"; center = true; }
+				{ name = "thunar-float"; match.class = "thunar"; float = true; size = "1000 700"; center = true; }
+				(floatingPanel "wifi-float" "nm-connection-editor")
+				(floatingPanel "bluetooth-float" "blueman-manager")
+				(floatingPanel "vol-float" "org.pulseaudio.pavucontrol")
+			];
+
+			bind =
+			[
+				(bind "SUPER + Super_L" (exec "kitty"))
+				(bind "SUPER + Space" (exec "wofi-open"))
+				(bind "SUPER + E" (exec "thunar"))
+				(bind "SUPER + X" (exec "zen-beta"))
+				(bind "SUPER + N" (exec "obsidian"))
+				(bind "SUPER + C" (exec "code"))
+				(bind "SUPER + S" (exec "spotify"))
+				(bind "SUPER + A" (exec "aseprite"))
+				(bind "SUPER + H" (exec "hyprpicker -a"))
+				(bind "SUPER + K" (exec "lock-screen"))
+
+				(bind "SUPER + Q" "hl.dsp.window.close()")
+				(bind "SUPER + V" ''hl.dsp.window.float({ action = "toggle" })'')
+				(bind "SUPER + F" (withSound ../sounds/fullscreen.ogg ''hl.dsp.window.fullscreen({ mode = "maximized" })''))
+				(bind "SUPER + SHIFT + F" (withSound ../sounds/fullscreen.ogg ''hl.dsp.window.fullscreen({ mode = "fullscreen" })''))
+
+				(bind "SUPER + left" ''hl.dsp.focus({ direction = "left" })'')
+				(bind "SUPER + right" ''hl.dsp.focus({ direction = "right" })'')
+				(bind "SUPER + up" ''hl.dsp.focus({ direction = "up" })'')
+				(bind "SUPER + down" ''hl.dsp.focus({ direction = "down" })'')
+
+				(bind "SUPER + Escape" (withSound ../sounds/special.ogg "hl.dsp.workspace.toggle_special()"))
+				(bind "SUPER + Control_L" ''hl.dsp.window.move({ workspace = "special" })'')
+				(bind "SUPER + Tab" ''hl.dsp.focus({ workspace = "e+1" })'')
+
+				(bindWith "XF86AudioRaiseVolume" (exec "osd-volume up") { locked = true; repeating = true; })
+				(bindWith "XF86AudioLowerVolume" (exec "osd-volume down") { locked = true; repeating = true; })
+				(bindWith "XF86AudioMute" (exec "osd-volume mute") { locked = true; })
+				(bindWith "XF86AudioMicMute" (exec "sh -c 'wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle; mic-led-sync'") { locked = true; })
+				(bindWith "XF86MonBrightnessUp" (exec "osd-brightness up") { locked = true; repeating = true; })
+				(bindWith "XF86MonBrightnessDown" (exec "osd-brightness down") { locked = true; repeating = true; })
+
+				(bindWith "PRINT" (exec "hyprshot -m output --clipboard-only") { locked = true; })
+				(bindWith "XF86SelectiveScreenshot" (exec "hyprshot -m region --clipboard-only") { locked = true; })
+				(bindWith "XF86AudioNext" (exec "playerctl next") { locked = true; })
+				(bindWith "XF86AudioPause" (exec "playerctl play-pause") { locked = true; })
+				(bindWith "XF86AudioPlay" (exec "playerctl play-pause") { locked = true; })
+				(bindWith "XF86AudioPrev" (exec "playerctl previous") { locked = true; })
+
+				(bind "mouse:275" ''hl.dsp.focus({ workspace = "e-1" })'')
+				(bind "mouse:276" ''hl.dsp.focus({ workspace = "e+1" })'')
+				(bindWith "SUPER + mouse:272" "hl.dsp.window.drag()" { drag = true; })
+				(bindWith "mouse:274" "hl.dsp.window.drag()" { drag = true; })
+
+				(bindWith "switch:on:Lid Switch" lidClose { locked = true; })
+				(bindWith "switch:off:Lid Switch" lidOpen { locked = true; })
+			]
+			++ workspaceBinds;
+
+			on =
+			[
+				(onEvent "hyprland.start" autostart)
+				(soundOn "workspace.active" ../sounds/switch.ogg)
+				(soundOn "window.open" ../sounds/open.ogg)
+				(soundOn "window.close" ../sounds/close.ogg)
+			];
+		};
 	};
 }
