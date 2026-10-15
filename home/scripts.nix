@@ -6,8 +6,9 @@ let
 	volumeSound = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/audio-volume-change.oga";
 
 	waybar-autohide = pkgs.writeShellScriptBin "waybar-autohide" ''
-		export PATH="${lib.makeBinPath [ pkgs.procps pkgs.hyprland pkgs.jq ]}:$PATH"
+		export PATH="${lib.makeBinPath [ pkgs.procps pkgs.hyprland ]}:$PATH"
 		export WAYBAR_AUTOHIDE_PROCNAME=".waybar-wrapped"
+		export WAYBAR_AUTOHIDE_OUTPUTS="${lib.concatStringsSep "," config.programs.waybar.settings.mainBar.output}"
 		exec ${pkgs.python3}/bin/python3 ${./waybar-autohide.py} "$@"
 	'';
 

@@ -1,205 +1,120 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import json
 import os
 import subprocess
 import time
-from dataclasses import dataclass, fields
-from enum import StrEnum
-from typing import Callable, Iterator, List, Tuple
 
 
 BAR_HEIGHT = int(os.getenv("WAYBAR_AUTOHIDE_BAR_HEIGHT", "50"))
 HEIGHT_THRESHOLD = int(os.getenv("WAYBAR_AUTOHIDE_HEIGHT_THRESHOLD", "20"))
 WAYBAR_PROC = os.getenv("WAYBAR_AUTOHIDE_PROCNAME", "waybar")
+REFRESH_RATE = float(os.getenv("WAYBAR_AUTOHIDE_REFRESH_RATE", "0.5"))
+STARTUP_TIMEOUT = float(os.getenv("WAYBAR_AUTOHIDE_STARTUP_TIMEOUT", "15"))
+BAR_OUTPUTS = {
+    name.strip()
+    for name in os.getenv("WAYBAR_AUTOHIDE_OUTPUTS", "").split(",")
+    if name.strip()
+}
+
+VISIBLE = True
+HIDDEN = False
 
 
-class WaybarState(StrEnum):
-    VISIBLE = "1"
-    HIDDEN = "0"
-
-
-class BaseModel:
-    @classmethod
-    def model_validate(cls, data: dict):
-        field_names = {(f.name, f.type) for f in fields(cls)}
-        filtered_data = {}
-
-        for field_name, field_type in field_names:
-            if field_name not in data:
-                continue
-
-            if isinstance(field_type, type) and issubclass(field_type, BaseModel):
-                filtered_data[field_name] = field_type.model_validate(data[field_name])
-            elif isinstance(field_type, type):
-                filtered_data[field_name] = field_type(data[field_name])
-            else:
-                filtered_data[field_name] = data[field_name]
-
-        return cls(**filtered_data)
-
-
-@dataclass
-class Workspace(BaseModel):
-    id: int
-    name: str
-
-
-@dataclass
-class HyprlandClient(BaseModel):
-    address: str
-    mapped: bool
-    hidden: bool
-
-    at: Tuple[int, int]
-    size: Tuple[int, int]
-
-    workspace: Workspace
-    monitor: int
-    fullscreen: int
+def run_quietly(command: list[str]) -> bool:
+    result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return result.returncode == 0
 
 
 def is_waybar_running() -> bool:
-    result = subprocess.run(
-        ["pgrep", "-x", WAYBAR_PROC],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    return result.returncode == 0
+    return run_quietly(["pgrep", "-x", WAYBAR_PROC])
 
 
 def is_hyprland_running() -> bool:
-    result = subprocess.run(
-        ["hyprctl", "version"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    return result.returncode == 0
+    return run_quietly(["hyprctl", "version"])
 
 
-def toggle_waybar_visibility():
-    subprocess.run(["pkill", "-USR1", WAYBAR_PROC], check=False)
+def wait_until(predicate, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.25)
+    return predicate()
 
 
-def get_current_workspace() -> list[int]:
-    workspaces = subprocess.check_output(
-        "hyprctl monitors -j | jq '.[] | .activeWorkspace.id'",
-        shell=True,
-        text=True,
-    )
-    return [int(workspace.strip()) for workspace in workspaces.strip().split("\n")]
+def hyprctl_json(query: str):
+    return json.loads(subprocess.check_output(["hyprctl", "-j", query]))
 
 
-def get_monitor_from_position(pos_x: int, pos_y: int) -> int | None:
-    monitors = json.loads(subprocess.check_output(["hyprctl", "-j", "monitors"]))
+def bar_monitors(monitors: list[dict]) -> list[dict]:
+    return [
+        monitor
+        for monitor in monitors
+        if not monitor.get("disabled", False)
+        and (not BAR_OUTPUTS or monitor["name"] in BAR_OUTPUTS)
+    ]
+
+
+def logical_box(monitor: dict) -> tuple[float, float, float, float]:
+    width, height = monitor["width"], monitor["height"]
+    if monitor.get("transform", 0) % 2 == 1:
+        width, height = height, width
+    scale = monitor.get("scale", 1) or 1
+    return monitor["x"], monitor["y"], width / scale, height / scale
+
+
+def cursor_position() -> tuple[float, float]:
+    output = subprocess.check_output(["hyprctl", "cursorpos"], text=True)
+    x, y = output.strip().split(",")
+    return float(x), float(y)
+
+
+def cursor_near_bar(monitors: list[dict], state: bool) -> bool:
+    x, y = cursor_position()
+    reach = BAR_HEIGHT if state == VISIBLE else 0
 
     for monitor in monitors:
-        start_x, end_x = monitor["x"], monitor["x"] + monitor["width"]
-        start_y, end_y = monitor["y"], monitor["y"] + monitor["height"]
+        left, top, width, height = logical_box(monitor)
+        if left <= x < left + width and top <= y < top + height:
+            return y - top <= reach
 
-        if pos_x < start_x or pos_x > end_x:
+    return False
+
+
+def window_under_bar(monitors: list[dict], clients: list[dict]) -> bool:
+    monitors_by_id = {monitor["id"]: monitor for monitor in monitors}
+    active_workspaces = {monitor["activeWorkspace"]["id"] for monitor in monitors}
+
+    for client in clients:
+        if not client.get("mapped") or client.get("hidden") or client.get("fullscreen"):
             continue
 
-        if pos_y < start_y or pos_y > end_y:
+        monitor = monitors_by_id.get(client.get("monitor"))
+        if monitor is None or client["workspace"]["id"] not in active_workspaces:
             continue
 
-        return int(monitor["id"])
+        top = client["at"][1] - monitor["y"]
+        if top < BAR_HEIGHT + HEIGHT_THRESHOLD and top + client["size"][1] > 0:
+            return True
 
-    return None
-
-
-def get_clients(
-    filter_func: Callable[[HyprlandClient], bool] | None = None,
-) -> Iterator[HyprlandClient]:
-    clients = [
-        HyprlandClient.model_validate(c)
-        for c in json.loads(subprocess.check_output(["hyprctl", "-j", "clients"]))
-    ]
-    for c in clients:
-        if filter_func is None or filter_func(c):
-            yield c
+    return False
 
 
-def get_overlapping_clients(
-    active_workspaces: list[int],
-    monitors: list[int] | None = None,
-) -> Iterator[HyprlandClient]:
-    def overlaps_bar(c: HyprlandClient) -> bool:
-        if not c.mapped:
-            return False
-        if c.hidden:
-            return False
-        if c.fullscreen:
-            return False
-        if c.monitor not in (monitors or [c.monitor]):
-            return False
-        if c.workspace.id not in active_workspaces:
-            return False
+def next_state(state: bool) -> bool:
+    monitors = bar_monitors(hyprctl_json("monitors"))
 
-        x, y = c.at
-        w, h = c.size
+    if cursor_near_bar(monitors, state):
+        return VISIBLE
 
-        return y < (BAR_HEIGHT + HEIGHT_THRESHOLD) and (y + h) > 0
+    if window_under_bar(monitors, hyprctl_json("clients")):
+        return HIDDEN
 
-    return get_clients(overlaps_bar)
-
-
-def window_overlaps_bar(
-    active_workspaces: list[int], monitors: List[int] | None = None
-) -> bool:
-    return any(get_overlapping_clients(active_workspaces, monitors))
-
-
-def get_cursor_position() -> Tuple[int, int]:
-    output = subprocess.check_output(["hyprctl", "cursorpos"]).decode()
-    pos_x, pos_y = output.strip().split(",")
-    return int(pos_x.strip()), int(pos_y.strip())
-
-
-def cursor_aproaches_bar(
-    monitors: list[int] | None, current_state: WaybarState
-) -> bool:
-    x, y = get_cursor_position()
-
-    cursor_monitor = get_monitor_from_position(x, y)
-    if cursor_monitor is None or cursor_monitor not in (monitors or [cursor_monitor]):
-        return False
-
-    offset = BAR_HEIGHT if current_state == WaybarState.VISIBLE else 0
-
-    return y <= offset
-
-
-def get_next_state(
-    waybar_monitors: list[int], current_state: WaybarState
-) -> WaybarState:
-    cursor_aproaches = cursor_aproaches_bar(waybar_monitors, current_state)
-
-    if cursor_aproaches:
-        return WaybarState.VISIBLE
-
-    active_workspaces = get_current_workspace()
-    overlaps = window_overlaps_bar(active_workspaces, waybar_monitors)
-
-    if overlaps:
-        return WaybarState.HIDDEN
-
-    return WaybarState.VISIBLE
+    return VISIBLE
 
 
 def main():
-    waybar_monitors = os.environ.get("WAYBAR_AUTOHIDE_MONITORS", None)
-    if waybar_monitors is not None:
-        waybar_monitors = waybar_monitors.split(",")
-        waybar_monitors = [int(m.strip()) for m in waybar_monitors if m.strip()]
-    else:
-        waybar_monitors = []
-
-    state: WaybarState = WaybarState(os.environ.get("WAYBAR_AUTOHIDE_STATE", "1"))
-
-    refresh_rate = float(os.environ.get("WAYBAR_AUTOHIDE_REFRESH_RATE", "0.5"))
-
-    if not is_waybar_running():
+    if not wait_until(is_waybar_running, STARTUP_TIMEOUT):
         print("Waybar is not running. Exiting.")
         return
 
@@ -207,13 +122,19 @@ def main():
         print("Hyprland is not running. Exiting.")
         return
 
-    while True:
-        next_state = get_next_state(waybar_monitors, state)
-        if next_state != state:
-            toggle_waybar_visibility()
-            state = next_state
+    state = VISIBLE if os.getenv("WAYBAR_AUTOHIDE_STATE", "1") == "1" else HIDDEN
 
-        time.sleep(refresh_rate)
+    while True:
+        try:
+            target = next_state(state)
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError, ValueError):
+            target = state
+
+        if target != state:
+            subprocess.run(["pkill", "-USR1", "-x", WAYBAR_PROC], check=False)
+            state = target
+
+        time.sleep(REFRESH_RATE)
 
 
 if __name__ == "__main__":
