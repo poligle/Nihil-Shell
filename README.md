@@ -248,6 +248,8 @@ engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
   goes through `lib.generators.mkLuaInline`. Stylix also writes into `settings.config`,
   so keys it already sets (border and shadow colours) need `lib.mkForce`. Under Lua,
   `hyprctl dispatch` takes Lua too: `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'`.
+- **Pre-existing files:** if a file Home Manager wants to manage already exists, it is
+  renamed to `*.hm-backup` instead of aborting the whole activation.
 - **Live refresh:** after every switch, `home/refresh.nix` reloads Hyprland and restarts
   waybar (with its auto-hide) and the eww widgets inside the running session, because
   none of them notice that their config symlink now points to a new store path.
