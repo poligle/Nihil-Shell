@@ -129,13 +129,9 @@ let
 	'';
 
 	wofiMenuConf = pkgs.writeText "wofi-menu.conf" ''
-		location=top_left
-		xoffset=1270
-		yoffset=50
+		normal_window=true
 		width=340
 		height=300
-		layer=overlay
-		normal_window=false
 		columns=1
 		allow_images=false
 		allow_markup=false
@@ -251,4 +247,19 @@ in
 	];
 
 	home.file."Wallpapers".source = ../wallpapers;
+
+	wayland.windowManager.hyprland.settings.window_rule =
+	[
+		{
+			name = "wifi-menu-float";
+			match =
+			{
+				class = "(?i)wofi";
+				title = "Wi-Fi|Contraseña de .*";
+			};
+			float = true;
+			size = "340 300";
+			move = "1270 50";
+		}
+	];
 }
