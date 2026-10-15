@@ -80,7 +80,7 @@ let
 	'';
 in
 {
-	stylix.targets.hyprpaper.enable = true;
+	stylix.targets.hyprland.hyprpaper.enable = false;
 
 	wayland.windowManager.hyprland =
 	{
