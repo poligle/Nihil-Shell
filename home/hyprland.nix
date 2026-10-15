@@ -43,8 +43,29 @@ let
 		move = "1270 50";
 	};
 
-	lidClose = ''function() hl.monitor({ output = "${internalPanel}", disabled = true }) end'';
-	lidOpen = ''function() hl.monitor({ output = "${internalPanel}", mode = "preferred", position = "auto", scale = 1, disabled = false }) end'';
+	lidClose = ''
+		function()
+			local docked = false
+			for _, monitor in ipairs(hl.get_monitors()) do
+				if monitor.name ~= "${internalPanel}" then
+					docked = true
+				end
+			end
+			if docked then
+				hl.monitor({ output = "${internalPanel}", disabled = true })
+			else
+				hl.exec_cmd("loginctl lock-session")
+				hl.dispatch(hl.dsp.dpms({ action = "off", monitor = "${internalPanel}" }))
+			end
+		end
+	'';
+
+	lidOpen = ''
+		function()
+			hl.monitor({ output = "${internalPanel}", disabled = false })
+			hl.dispatch(hl.dsp.dpms({ action = "on" }))
+		end
+	'';
 
 	autostart = ''
 		function()
