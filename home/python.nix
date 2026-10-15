@@ -7,6 +7,7 @@ let
         numpy
         scipy
         matplotlib
+        scikit-rf
     ]);
 in
 {

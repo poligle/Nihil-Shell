@@ -96,6 +96,7 @@ in
 				(envVar "QT_QPA_PLATFORM" "wayland")
 				(envVar "QT_QPA_PLATFORMTHEME" "qt6ct")
 				(envVar "QT_STYLE_OVERRIDE" "Fusion")
+				(envVar "_JAVA_AWT_WM_NONREPARENTING" "1")
 			];
 
 			monitor =

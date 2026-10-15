@@ -23,6 +23,7 @@
         ./home/vscode.nix
 		./home/eww.nix
 		./home/bluetooth.nix
+		./home/engineering.nix
 	];
 
 	home.username = "poligle";
