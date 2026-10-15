@@ -36,15 +36,16 @@ nixos-config/
 ├── modules/                  # Shared system modules (common across hosts)
 │   ├── boot.nix              # systemd-boot (UEFI)
 │   ├── plymouth.nix          # Boot splash, silent boot
-│   ├── network.nix           # NetworkManager, Bluetooth
+│   ├── network.nix           # NetworkManager, Bluetooth, rtw89 workaround
 │   ├── locale.nix            # Timezone, language, keyboard
 │   ├── audio.nix             # PipeWire
-│   ├── hardware.nix          # Touchpad, fprintd, zram, graphics, micmute LED
+│   ├── hardware.nix          # Touchpad, fprintd (off with the lid closed), zram, LED
 │   ├── users.nix             # User and shell (zsh)
 │   ├── packages.nix          # System packages, fonts, unfree
 │   ├── hyprland.nix          # Hyprland compositor
-│   ├── greetd.nix            # Display manager (greetd + tuigreet)
-│   ├── desktop.nix           # Thunar, gvfs, tumbler
+│   ├── regreet.nix           # Display manager (greetd + ReGreet)
+│   ├── desktop.nix           # Thunar, gvfs, tumbler, dconf
+│   ├── storage.nix           # udisks2 + polkit rule (internal drives without password)
 │   ├── services.nix          # SSH and other services
 │   ├── stylix.nix            # Wallpaper, palette, fonts, cursor, opacity
 │   ├── nix.nix               # Flakes, garbage collection,
@@ -69,6 +70,10 @@ nixos-config/
 │   ├── vscode.nix            # Editor
 │   ├── python.nix            # Python environment
 │   ├── scripts.nix           # Own scripts, packaged
+│   ├── wifi-menu.sh          # Wofi Wi-Fi menu (right click on the waybar icon)
+│   ├── bluetooth.nix         # Blueman without auto power-on
+│   ├── engineering.nix       # FHS environment + launchers for MATLAB, FEKO and ADS
+│   ├── cli.nix               # CLI tooling (gh, lazygit, fzf, bat, tealdeer)
 │   └── waybar-autohide.py    # Python auto-hide script for the bar
 │
 └── wallpapers/               # Wallpapers (versioned for cloning)
@@ -88,7 +93,7 @@ same shared modules plus its own `hardware-configuration.nix`.
 ## Theming
 
 Colours are generated from the wallpaper by Stylix and applied system-wide: GTK, Qt,
-kitty, dunst, hyprlock, Hyprland borders, VSCode, Plymouth and Zen.
+kitty, dunst, hyprlock, Hyprland borders, VSCode, Plymouth, ReGreet and Zen.
 
 **`modules/stylix.nix` is the single source of truth.** The wallpaper is declared once
 there and everything else references it — `awww.nix` reads `config.stylix.image` to set
@@ -127,6 +132,8 @@ Rebuild the system after editing the configuration:
 ```bash
 sudo nixos-rebuild switch --flake ~/nixos-config#<name> # or with the alias nrebuild
 ```
+
+`nh os switch` does the same and also prints the package diff between generations.
 
 Validate the configuration without building:
 
@@ -221,7 +228,8 @@ sudo nix-collect-garbage --delete-older-than 7d # or with the alias ngc
    ```
 
 Local state is not part of the repository and has to be set up again on each machine:
-user password (`passwd`), SSH keys, and fingerprint enrollment (`fprintd-enroll`).
+user password (`passwd`), SSH keys, fingerprint enrollment (`fprintd-enroll`) and the
+engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
 
 ---
 
@@ -230,17 +238,24 @@ user password (`passwd`), SSH keys, and fingerprint enrollment (`fprintd-enroll`
 - **Filesystem:** btrfs with subvolumes (`@`, `@home`, `@nix`, `@log`), zstd compression
   and `noatime`. Swap via zram.
 - **Boot:** UEFI + systemd-boot, Plymouth splash with silent boot kernel parameters.
+- **Login:** greetd + ReGreet running in cage on the last connected monitor, themed by
+  Stylix. The Spanish layout reaches cage through `XKB_DEFAULT_LAYOUT`.
 - **Hyprland in Lua:** since version 0.55, Hyprland recommends Lua configuration. The
-  config is declared in Nix (`wayland.windowManager.hyprland.settings`) and Home Manager
-  generates `hyprland.lua`. Configuration blocks that the Lua backend does not translate
-  correctly (`hl.config`, `hl.monitor`, animations, gestures, rules) are defined via
-  `extraConfig` using direct Lua syntax.
+  whole config is declared in Nix (`wayland.windowManager.hyprland.settings`) and Home
+  Manager generates `hyprland.lua`: every attribute becomes an `hl.<name>(...)` call,
+  lists become one call per element, `_args` gives multi-argument calls and inline Lua
+  goes through `lib.generators.mkLuaInline`. Stylix also writes into `settings.config`,
+  so keys it already sets (border and shadow colours) need `lib.mkForce`. Under Lua,
+  `hyprctl dispatch` takes Lua too: `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'`.
 - **Own scripts:** packaged with `writeShellScriptBin` and their dependencies declared
   explicitly, for full reproducibility: `waybar-autohide`, `mic-led-sync`, `osd-volume`,
-  `osd-brightness`.
-- **Numerical computing:** GNU Octave. MATLAB is deliberately left out of the declarative
-  config due to licensing and FHS requirements; if ever needed, it would be installed
-  separately (e.g. via `buildFHSEnv` or `nix-ld`).
+  `osd-brightness`, `wifi-menu`, `wifi-status`, `bluetooth-status`.
+- **Engineering software:** GNU Octave and Python (numpy, scipy, matplotlib, scikit-rf)
+  are declarative. MATLAB, Altair FEKO and Keysight ADS can't be packaged (licensing,
+  opaque dependencies), so `home/engineering.nix` provides `eda-fhs`, an FHS sandbox with
+  the libraries they expect, plus `matlab`, `feko` and `ads` launchers and menu entries.
+  Each one is installed from inside `eda-fhs` into `~/eda/{matlab,altair,keysight/ads}`;
+  licence servers go in `~/.config/eda/licenses.env`, which stays out of the repo.
 
  ---
 
