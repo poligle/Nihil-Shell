@@ -2,6 +2,7 @@
 
 { config, pkgs, lib, ... }:
 let
+	palette = config.lib.stylix.colors.withHashtag;
 	volumeSound = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/audio-volume-change.oga";
 
 	waybar-autohide = pkgs.writeShellScriptBin "waybar-autohide" ''
@@ -125,6 +126,111 @@ let
 		done
 		exit 1
 	'';
+
+	wofiMenuConf = pkgs.writeText "wofi-menu.conf" ''
+		location=top_right
+		xoffset=-10
+		yoffset=55
+		width=380
+		height=360
+		layer=overlay
+		normal_window=false
+		columns=1
+		allow_images=false
+		allow_markup=false
+		insensitive=true
+		hide_scroll=true
+		no_actions=true
+		dynamic_lines=false
+		key_exit=Escape
+	'';
+
+	wofiMenuStyle = pkgs.writeText "wofi-menu.css" ''
+		window
+		{
+			background-color: ${palette.base00};
+			border-radius: 12px;
+			font-family: "${config.stylix.fonts.monospace.name}";
+			font-size: 14px;
+		}
+		#outer-box
+		{
+			padding: 8px;
+		}
+		#input
+		{
+			margin-bottom: 8px;
+			padding: 6px 10px;
+			border: none;
+			border-radius: 8px;
+			background-color: ${palette.base01};
+			color: ${palette.base05};
+		}
+		#entry
+		{
+			padding: 6px 10px;
+			border-radius: 8px;
+		}
+		#entry:selected
+		{
+			background-color: ${palette.base02};
+		}
+		#text
+		{
+			color: ${palette.base05};
+		}
+		#text:selected
+		{
+			color: ${palette.base0D};
+		}
+	'';
+
+	wifi-status = pkgs.writeShellScriptBin "wifi-status" ''
+		export PATH="${lib.makeBinPath [ pkgs.networkmanager pkgs.gnugrep pkgs.coreutils ]}:$PATH"
+		if [ "$(nmcli -t -f WIFI general)" != "enabled" ]; then
+			echo "󰖪 off"
+			exit 0
+		fi
+		devices="$(nmcli -t -f TYPE,STATE,CONNECTION device status)"
+		connection="$(printf '%s\n' "$devices" | grep "^wifi:connected:" | cut -d: -f3- | head -n1)"
+		if [ -z "$connection" ]; then
+			wired="$(printf '%s\n' "$devices" | grep "^ethernet:connected:" | cut -d: -f3- | head -n1)"
+			if [ -n "$wired" ]; then
+				echo "󰈀 $wired"
+			else
+				echo "󰤯 on"
+			fi
+			exit 0
+		fi
+		signal="$(nmcli -t -f IN-USE,SIGNAL device wifi list --rescan no | grep "^\*" | cut -d: -f2 | head -n1)"
+		signal="''${signal:-0}"
+		if [ "$signal" -ge 80 ]; then
+			icon="󰤨"
+		elif [ "$signal" -ge 60 ]; then
+			icon="󰤥"
+		elif [ "$signal" -ge 40 ]; then
+			icon="󰤢"
+		elif [ "$signal" -ge 20 ]; then
+			icon="󰤟"
+		else
+			icon="󰤯"
+		fi
+		echo "$icon $connection"
+	'';
+
+	wifi-toggle = pkgs.writeShellScriptBin "wifi-toggle" ''
+		if [ "$(${pkgs.networkmanager}/bin/nmcli -t -f WIFI general)" = "enabled" ]; then
+			exec ${pkgs.networkmanager}/bin/nmcli radio wifi off
+		fi
+		exec ${pkgs.networkmanager}/bin/nmcli radio wifi on
+	'';
+
+	wifi-menu = pkgs.writeShellScriptBin "wifi-menu" ''
+		export PATH="${lib.makeBinPath [ pkgs.networkmanager pkgs.wofi pkgs.libnotify pkgs.util-linux pkgs.coreutils pkgs.gnugrep ]}:$PATH"
+		export WIFI_MENU_CONF="${wofiMenuConf}"
+		export WIFI_MENU_STYLE="${wofiMenuStyle}"
+		exec ${pkgs.bash}/bin/bash ${./wifi-menu.sh} "$@"
+	'';
 in
 {
 	home.packages = 
@@ -138,6 +244,9 @@ in
 		power-off
 		bluetooth-status
 		bluetooth-toggle
+		wifi-status
+		wifi-toggle
+		wifi-menu
 	];
 
 	home.file."Wallpapers".source = ../wallpapers;

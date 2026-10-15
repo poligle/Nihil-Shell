@@ -122,15 +122,17 @@
 					format-alt = "  {used} GiB";
 				};
 
-				"custom/network" = 
-				{
-					exec = ''${pkgs.bash}/bin/bash -c 'if [ "$(${pkgs.networkmanager}/bin/nmcli -t -f WIFI g)" = "disabled" ]; then echo "󰖪 off"; else ssid=$(${pkgs.networkmanager}/bin/nmcli -t -f TYPE,STATE,CONNECTION dev status | grep "^wifi:connected:" | cut -d: -f3- | head -n1); if [ -n "$ssid" ] && [ "$ssid" != "--" ]; then echo "󱚽 $ssid"; else echo "󰖩 on"; fi; fi' '';
-					interval = 3;
-					tooltip = false;
-					return-type = "text";
-					on-click = ''${pkgs.bash}/bin/bash -c 'if [ "$(${pkgs.networkmanager}/bin/nmcli -t -f WIFI g)" = "enabled" ]; then ${pkgs.networkmanager}/bin/nmcli radio wifi off; else ${pkgs.networkmanager}/bin/nmcli radio wifi on; fi' '';
-					on-click-right = "nm-connection-editor";
-				};
+					"custom/network" = 
+					{
+						exec = "wifi-status";
+						interval = 3;
+						tooltip = false;
+						return-type = "text";
+						max-length = 30;
+						on-click = "wifi-toggle";
+						on-click-right = "wifi-menu";
+						on-click-middle = "nm-connection-editor";
+					};
 
 					"custom/bluetooth" = 
 					{
