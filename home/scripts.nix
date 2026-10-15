@@ -98,6 +98,33 @@ let
 		${pkgs.pipewire}/bin/pw-play --volume 0.5 ${../sounds/power.ogg}
 		exec ${pkgs.systemd}/bin/systemctl poweroff
 	'';
+
+	bluetooth-status = pkgs.writeShellScriptBin "bluetooth-status" ''
+		export PATH="${lib.makeBinPath [ pkgs.bluez pkgs.gnugrep pkgs.coreutils ]}:$PATH"
+		if ! bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
+			echo "󰂲 off"
+			exit 0
+		fi
+		device="$(bluetoothctl devices Connected | cut -d" " -f3- | head -n1)"
+		if [ -n "$device" ]; then
+			echo "󰂱 $device"
+		else
+			echo " on"
+		fi
+	'';
+
+	bluetooth-toggle = pkgs.writeShellScriptBin "bluetooth-toggle" ''
+		export PATH="${lib.makeBinPath [ pkgs.bluez pkgs.gnugrep pkgs.util-linux pkgs.coreutils ]}:$PATH"
+		if bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
+			exec bluetoothctl power off
+		fi
+		rfkill unblock bluetooth
+		for attempt in 1 2 3 4 5; do
+			bluetoothctl power on >/dev/null 2>&1 && exit 0
+			sleep 0.4
+		done
+		exit 1
+	'';
 in
 {
 	home.packages = 
@@ -109,6 +136,8 @@ in
 		osd-volume
 		lock-screen
 		power-off
+		bluetooth-status
+		bluetooth-toggle
 	];
 
 	home.file."Wallpapers".source = ../wallpapers;

@@ -22,6 +22,7 @@
         ./home/zen.nix
         ./home/vscode.nix
 		./home/eww.nix
+		./home/bluetooth.nix
 	];
 
 	home.username = "poligle";

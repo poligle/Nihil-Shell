@@ -132,15 +132,15 @@
 					on-click-right = "nm-connection-editor";
 				};
 
-				"custom/bluetooth" = 
-				{
-					exec = ''${pkgs.bash}/bin/bash -c 'if ${pkgs.util-linux}/bin/rfkill list bluetooth | grep -q "Soft blocked: yes"; then echo "󰂲 off"; else dev=$(${pkgs.bluez}/bin/bluetoothctl devices Connected | cut -d" " -f3- | head -n1); if [ -n "$dev" ]; then echo "󰂱 $dev"; else echo " on"; fi; fi' '';
-					interval = 3;
-					tooltip = false;
-					return-type = "text";
-					on-click = ''${pkgs.bash}/bin/bash -c 'if ${pkgs.util-linux}/bin/rfkill list bluetooth | grep -q "Soft blocked: yes"; then ${pkgs.util-linux}/bin/rfkill unblock bluetooth; else ${pkgs.util-linux}/bin/rfkill block bluetooth; fi' '';
-					on-click-right = "blueman-manager";
-				};
+					"custom/bluetooth" = 
+					{
+						exec = "bluetooth-status";
+						interval = 3;
+						tooltip = false;
+						return-type = "text";
+						on-click = "bluetooth-toggle";
+						on-click-right = "blueman-manager";
+					};
 
 				battery = 
 				{

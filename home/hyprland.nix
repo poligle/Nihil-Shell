@@ -202,7 +202,7 @@ in
 				{ name = "kitty-float"; match.class = "kitty"; float = true; size = "800 500"; center = true; }
 				{ name = "thunar-float"; match.class = "thunar"; float = true; size = "1000 700"; center = true; }
 				(floatingPanel "wifi-float" "nm-connection-editor")
-				(floatingPanel "bluetooth-float" "blueman-manager")
+				(floatingPanel "bluetooth-float" ".*blueman-manager.*")
 				(floatingPanel "vol-float" "org.pulseaudio.pavucontrol")
 			];
 
