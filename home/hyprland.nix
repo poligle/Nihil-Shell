@@ -105,6 +105,11 @@ in
 				{ output = internalPanel; mode = "preferred"; position = "auto"; scale = 1; transform = 0; disabled = false; }
 			];
 
+			workspace_rule =
+			[
+				{ workspace = "m[${verticalPanel}]"; layout_opts.orientation = "top"; }
+			];
+
 			config =
 			{
 				general =
