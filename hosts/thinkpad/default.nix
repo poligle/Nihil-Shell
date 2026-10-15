@@ -15,6 +15,7 @@
         ../../modules/hyprland.nix
         ../../modules/greetd.nix
         ../../modules/desktop.nix
+        ../../modules/storage.nix
         ../../modules/services.nix
         ../../modules/nix.nix
         ../../modules/plymouth.nix
