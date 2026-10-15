@@ -18,7 +18,7 @@
             nil
             lua-language-server
             pyright
-            nixfmt-rfc-style
+            nixfmt
             stylua
         ];
 

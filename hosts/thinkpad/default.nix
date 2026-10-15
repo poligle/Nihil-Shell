@@ -29,4 +29,15 @@
     # Host-specific
     networking.hostName = "thinkpad";
     system.stateVersion = "26.05";
+
+    fileSystems = lib.genAttrs [ "/" "/home" "/nix" "/var/log" ] (_:
+    {
+        options = [ "compress=zstd" "noatime" ];
+    });
+
+    services.btrfs.autoScrub =
+    {
+        enable = true;
+        fileSystems = [ "/" ];
+    };
 }

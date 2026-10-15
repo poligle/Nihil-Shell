@@ -13,7 +13,7 @@
             show = "drun";
             prompt = "...";
             layer = "top";
-            term = "foot";
+            term = "kitty";
             normal_window = true;
             width = 700;
             height = 250;

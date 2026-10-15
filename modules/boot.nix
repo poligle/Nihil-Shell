@@ -7,5 +7,4 @@
     boot.loader.systemd-boot.configurationLimit = 10;
     boot.supportedFilesystems = [ "exfat" "ext4" "vfat" ];
     boot.initrd.systemd.enable = true;
-    services.gvfs.enable = true; 
 }
