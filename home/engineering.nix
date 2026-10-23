@@ -2,8 +2,8 @@
 
 { config, pkgs, lib, ... }:
 let
-	palette = config.lib.stylix.colors.withHashtag;
 	installRoot = "${config.home.homeDirectory}/eda";
+	systemLibstdcxx = "${pkgs.stdenv.cc.cc.lib}/lib/libstdc++.so.6";
 	licenseEnv = "${config.xdg.configHome}/eda/licenses.env";
 
 	edaFhs = pkgs.buildFHSEnv
@@ -110,6 +110,25 @@ let
 			libxcb-render-util
 			libxcb-wm
 			libxcb-cursor
+			libxshmfence
+			libxxf86vm
+			libxfont_2
+			xkbcomp
+
+			stdenv.cc.cc.lib
+			libgbm
+			libcap
+			fribidi
+			libtool.lib
+			numactl
+			pixman
+			libtirpc
+			systemdLibs
+			cacert
+			iproute2
+			net-tools
+			gnumake
+			wget
 		];
 
 		profile = ''
@@ -137,7 +156,20 @@ let
 			echo "MATLAB no está instalado en $MATLAB_HOME" >&2
 			exit 1
 		fi
+		export LD_PRELOAD="${systemLibstdcxx}"
 		exec "$MATLAB_HOME/bin/matlab" "$@"
+	'';
+
+	matlab-install = launchInFhs "matlab-install" ''
+		installer="''${1:-$PWD}"
+		[ "$#" -gt 0 ] && shift
+		if [ ! -f "$installer/install" ]; then
+			echo "Uso: matlab-install <carpeta del instalador descomprimido>" >&2
+			exit 1
+		fi
+		cd "$installer"
+		export LD_PRELOAD="${systemLibstdcxx}"
+		exec ./install "$@"
 	'';
 
 	feko = launchInFhs "feko" ''
@@ -159,17 +191,9 @@ let
 		exec "$HPEESOF_DIR/bin/ads" "$@"
 	'';
 
-	letterIcon = name: letter: color: "${pkgs.writeText "${name}.svg" ''
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-			<rect width="64" height="64" rx="14" fill="${palette.base01}"/>
-			<text x="32" y="43" text-anchor="middle" font-family="${config.stylix.fonts.monospace.name}" font-size="30" font-weight="bold" fill="${color}">${letter}</text>
-		</svg>
-	''}";
-
-	application = name: exec: letter: color:
+	application = name: exec: icon:
 	{
-		inherit name exec;
-		icon = letterIcon (lib.toLower (lib.replaceStrings [ " " ] [ "-" ] name)) letter color;
+		inherit name exec icon;
 		categories = [ "Science" "Engineering" ];
 		terminal = false;
 	};
@@ -179,15 +203,16 @@ in
 	[
 		edaFhs
 		matlab
+		matlab-install
 		feko
 		ads
 	];
 
 	xdg.desktopEntries =
 	{
-		matlab = application "MATLAB" "matlab -desktop" "M" palette.base09;
-		cadfeko = application "CADFEKO" "feko cadfeko" "F" palette.base0B;
-		postfeko = application "POSTFEKO" "feko postfeko" "P" palette.base0C;
-		ads = application "Keysight ADS" "ads" "A" palette.base0E;
+		matlab = application "MATLAB" "matlab -desktop" "matlab";
+		cadfeko = application "CADFEKO" "feko cadfeko" "/home/poligle/.icons/feko.svg";
+		postfeko = application "POSTFEKO" "feko postfeko" "com.github.alexhuntley.Plots";
+		ads = application "Keysight ADS" "ads" "gtkwave";
 	};
 }

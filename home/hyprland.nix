@@ -276,7 +276,7 @@ in
 				(bindWith "XF86MonBrightnessUp" (exec "osd-brightness up") { locked = true; repeating = true; })
 				(bindWith "XF86MonBrightnessDown" (exec "osd-brightness down") { locked = true; repeating = true; })
 
-				(bindWith "PRINT" (exec "hyprshot -m output --clipboard-only") { locked = true; })
+				(bindWith "PRINT" (exec "hyprshot -m region --clipboard-only") { locked = true; })
 				(bindWith "XF86SelectiveScreenshot" (exec "hyprshot -m region --clipboard-only") { locked = true; })
 				(bindWith "XF86AudioNext" (exec "playerctl next") { locked = true; })
 				(bindWith "XF86AudioPause" (exec "playerctl play-pause") { locked = true; })

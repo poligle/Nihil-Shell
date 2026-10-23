@@ -15,6 +15,7 @@
         playerctl
         trash-cli
         sound-theme-freedesktop
+        claude-code
     ];
 
     nixpkgs.config.allowUnfree = true;
