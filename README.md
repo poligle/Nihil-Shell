@@ -1,22 +1,198 @@
-# nixos-config
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/nihil-logo-dark.svg">
+    <img alt="NIHIL" src="assets/brand/nihil-logo-light.svg" width="420">
+  </picture>
+</p>
 
-![screenshot](.screenshots/screenshot.png)
-![screenshot](.screenshots/screenshot2.png)
-![screenshot](.screenshots/screenshot3.png)
+<p align="center"><b>ex nihilo</b> &nbsp;·&nbsp; a monochrome, dot-matrix desktop for NixOS</p>
 
-Declarative NixOS configuration for `poligle@thinkpad`, based on Flakes, Home Manager and Stylix.
-Desktop environment: **Hyprland** (configured natively in Nix using the Lua backend due to the recent update),
-with the whole colour scheme generated from the current wallpaper.
+<p align="center">
+  <a href="https://poligle.github.io/NixOS-Config/">Website</a> &nbsp;·&nbsp;
+  <a href="#install">Install</a> &nbsp;·&nbsp;
+  <a href="#options">Options</a> &nbsp;·&nbsp;
+  <a href="#keybindings">Keybindings</a>
+</p>
+
+![NIHIL desktop](docs/assets/screens/desktop.png)
+
+NIHIL is my NixOS configuration for `poligle@thinkpad`. It takes the structure of
+[Caelestia](https://github.com/caelestia-dots/shell) — a frame around the screen with
+drawers that grow out of it — and dresses it in the language of Nothing: monochrome,
+dot-matrix type, red only to interrupt, and light that runs along the edge.
+
+Everything is declarative: Flakes, Home Manager, Stylix and a shell written from scratch
+in [Quickshell](https://quickshell.org). One file, [`theme/nihil.nix`](theme/nihil.nix),
+holds the design tokens, and every layer — GTK, terminal, editor, compositor, lock
+screen, greeter, boot splash and the shell — is generated from it.
+
+> *Nihil* is Latin for "nothing", the way *caelestia* is Latin for "the heavenly".
+> *Ex nihilo* — from nothing — is also what NixOS does: the whole system, rebuilt from a
+> declaration.
 
 ---
 
-## Overview
+## Highlights
 
-This repository holds the complete, reproducible configuration of my NixOS system.
-Everything — packages, services, graphical environment, dotfiles, scripts and theming — is
-defined declaratively, so the whole system can be rebuilt identically on any machine.
+- **Frame and bar.** One black shape around every screen. Its left side widens into the
+  bar: NixOS mark, workspaces as LEDs, the active app, tray, status, a 10-LED battery
+  gauge, the clock in dots and a red privacy LED while something records the mic.
+- **Drawers.** The dashboard, the settings panel and the launcher are bumps of the frame
+  itself, with concave joints, so they look like part of the hardware.
+- **Dashboard.** Time, music with the cover rendered as a dot matrix and a spectrum in
+  LED columns, CPU/RAM/temperature dials and a network oscilloscope.
+- **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
+  WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
+- **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
+  actions, `=` for a calculator.
+- **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
+  sends a segment of light around the frame; critical ones run twice, in red. Plugging the
+  charger lights it from the left.
+- **Wallpapers as LED matrices.** Every image in `wallpapers/` is rendered at build time
+  as dots, once per output at its native size, so each dot lands on exact pixels.
+- **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth), a dotted
+  greeter (ReGreet) and a lock screen with the password drawn as dots (hyprlock).
+- **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, and monochrome keys.
+- **Spanish or English.** One option switches every string of the shell, the lock screen,
+  the greeter and the scripts, and the language of their dates.
+- **Its own sound.** A set of short digital blips, synthesised by
+  [`tools/sounds.py`](tools/sounds.py); the previous sounds are one option away.
 
-Migrated from Arch Linux + Hyprland (hyprlang) previous repository to NixOS + Hyprland (Lua).
+| | |
+|:---:|:---:|
+| ![Dashboard](docs/assets/screens/dashboard.png) | ![Settings](docs/assets/screens/settings.png) |
+| Dashboard — hover the top edge or `SUPER + D` | Settings — `SUPER + P`, the status icons or the top-right corner |
+| ![Launcher](docs/assets/screens/launcher.png) | ![Notification](docs/assets/screens/notification.png) |
+| Launcher — `SUPER + Space` or three fingers up | A critical notification and its red light |
+
+<sub>The screenshots are the shell rendered in a test harness with sample data: the
+networks, the track and the notifications are made up. App icons are Colloid's.</sub>
+
+---
+
+## Design language
+
+Three rules come before everything else:
+
+1. **Hierarchy is made with greys.** Red is never decoration: it only interrupts — a
+   failed login, a critical notification, the recording LED, a destructive action.
+2. **Dots are for display.** Doto draws the clock and the big numbers; text stays in
+   Space Grotesk, labels in uppercase Space Mono.
+3. **The frame is hardware.** Opaque, flat, no shadows; windows sit concentric with it.
+
+| Token     | Hex       | Use                                   |
+|-----------|-----------|---------------------------------------|
+| `void`    | `#000000` | Frame, bar, drawers                   |
+| `surface` | `#0E0E0E` | Cards inside drawers                  |
+| `raised`  | `#1A1A1A` | Hover, slider tracks                  |
+| `line`    | `#2A2A2A` | 1 px lines                            |
+| `off`     | `#333333` | LEDs that are off                     |
+| `muted`   | `#7A7A7A` | Metadata, inactive icons (4.89:1)     |
+| `dim`     | `#A3A3A3` | Secondary text (8.33:1)               |
+| `ink`     | `#F2F2F2` | Primary text, lit LEDs (18.76:1)      |
+| `signal`  | `#D71921` | Interrupts only, never small text     |
+
+Contrast ratios are against `#000000`. Fonts: [Doto](https://github.com/oliverlalan/Doto),
+[Space Grotesk](https://github.com/floriankarsten/space-grotesk) and Space Mono (all SIL
+OFL 1.1), plus JetBrains Mono Nerd Font for the terminal and glyphs. Icons: Colloid in
+its grey variant; the shell shows app icons desaturated.
+
+---
+
+## Install
+
+The repository is a NixOS flake with one host, `thinkpad`. To try it on another machine,
+follow [Cloning to a new machine](#cloning-to-a-new-machine): the only host-specific
+NIHIL settings are the outputs in `hosts/<name>/default.nix`.
+
+```nix
+nihil =
+{
+    primaryOutput = "eDP-1";
+    wallpaper = "night";
+    language = "es";          # or "en"
+    outputs =
+    {
+        "eDP-1"    = { width = 1920; height = 1200; };
+        "HDMI-A-1" = { width = 2560; height = 1440; };
+        "DP-1"     = { width = 1080; height = 1920; bar = false; };   # vertical, no bar
+    };
+};
+```
+
+Output sizes are logical (after rotation): the wallpaper renders are made at exactly
+that size. The first build downloads the Google Fonts source and renders every
+wallpaper (a few seconds each).
+
+---
+
+## Options
+
+All of them live under `nihil.*` ([`modules/nihil.nix`](modules/nihil.nix)).
+
+| Option          | Default    | What it does                                                    |
+|-----------------|------------|-----------------------------------------------------------------|
+| `language`      | `"es"`     | `"es"` or `"en"`: shell, lock screen, greeter, script messages and their dates |
+| `outputs`       | —          | Screens of the host: logical size, whether it has the bar, dot pitch |
+| `primaryOutput` | —          | Screen for the desktop widgets, lock and login backgrounds      |
+| `wallpaper`     | `"night"`  | Default wallpaper, a file name in `wallpapers/`                 |
+| `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
+| `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
+
+Read-only: `tokens` (the design tokens), `strings` (the selected language), `sounds`,
+`wallpapers` and `fonts`. To add a language, add a block to
+[`theme/i18n.nix`](theme/i18n.nix) and its code to the `language` enum.
+
+---
+
+## Keybindings
+
+| Keys                              | Action                                        |
+|-----------------------------------|-----------------------------------------------|
+| `SUPER + Space`, 3 fingers up     | Launcher (`>` actions, `=` calculator)        |
+| `SUPER + D`                       | Dashboard (also by hovering the top edge)     |
+| `SUPER + P`                       | Settings panel (or rest the pointer in the top-right corner) |
+| `SUPER + K`                       | Lock                                          |
+| `SUPER` (alone)                   | kitty                                         |
+| `SUPER + E / X / N / C / S`       | Thunar, Zen, Obsidian, VS Code, Spotify       |
+| `SUPER + Q`, 3 fingers down       | Close window                                  |
+| `SUPER + V`                       | Toggle floating                               |
+| `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |
+| `SUPER + arrows`                  | Move focus                                    |
+| `SUPER + 1…0`                     | Workspace (`SHIFT` moves the window there)    |
+| `SUPER + Tab`, 3 fingers sideways | Next workspace / switch workspaces            |
+| `SUPER + Escape`, 4 fingers       | Scratchpad (`SUPER + Ctrl` sends the window)  |
+| `SUPER + H`                       | Colour picker                                 |
+| `Print`                           | Region screenshot to the clipboard            |
+| Volume, brightness, mic keys      | Change the value and show the OSD             |
+
+Scrolling over the bar switches workspaces (on the LEDs) or changes the volume (on the
+status icons).
+
+---
+
+## Shell
+
+The shell lives in [`home/shell/`](home/shell) and runs as the `nihil-shell` user
+service. [`home/shell.nix`](home/shell.nix) generates `Tokens.qml`, `Config.qml` and
+`Lang.qml` from the Nix side and references every external program by its store path.
+
+```bash
+nihil-ipc drawers toggle launcher     # launcher | dashboard | panel
+nihil-ipc osd volume 40 false
+nihil-ipc glyph test true             # light the frame (critical = red)
+nihil-ipc notifs toggleDnd
+nihil-wallpaper next                  # also: prev, set <name>, list
+journalctl --user -u nihil-shell -f   # logs
+```
+
+| Folder        | Contents                                                        |
+|---------------|-----------------------------------------------------------------|
+| `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
+| `drawers/`    | Dashboard, settings panel, launcher, OSD, notifications         |
+| `background/` | Desktop widgets                                                 |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats |
+| `components/` | LEDs, dials, segmented sliders, dot-matrix image, buttons, text |
 
 ---
 
@@ -24,105 +200,22 @@ Migrated from Arch Linux + Hyprland (hyprlang) previous repository to NixOS + Hy
 
 ```
 nixos-config/
-├── flake.nix                 # Inputs (nixpkgs, home-manager, stylix) and outputs (hosts)
-├── flake.lock                # Pinned exact versions (reproducibility)
-├── home.nix                  # Home Manager index (imports home/*)
-│
-├── hosts/                    # Per-machine configuration
-│   └── thinkpad/
-│       ├── default.nix       # Imports modules + hostname + stateVersion
-│       └── hardware-configuration.nix
-│
-├── modules/                  # Shared system modules (common across hosts)
-│   ├── boot.nix              # systemd-boot (UEFI)
-│   ├── plymouth.nix          # Boot splash, silent boot
-│   ├── network.nix           # NetworkManager, Bluetooth, rtw89 workaround
-│   ├── locale.nix            # Timezone, language, keyboard
-│   ├── audio.nix             # PipeWire
-│   ├── hardware.nix          # Touchpad, fprintd (off with the lid closed), zram, LED
-│   ├── users.nix             # User and shell (zsh)
-│   ├── packages.nix          # System packages, fonts, unfree
-│   ├── hyprland.nix          # Hyprland compositor
-│   ├── regreet.nix           # Display manager (greetd + ReGreet)
-│   ├── desktop.nix           # Thunar, gvfs, tumbler, dconf
-│   ├── storage.nix           # udisks2 + polkit rule (internal drives without password)
-│   ├── services.nix          # SSH and other services
-│   ├── stylix.nix            # Wallpaper, palette, fonts, cursor, opacity
-│   ├── nix.nix               # Flakes, garbage collection,
-│   └── virtualisation.nix    # Docker, arm64 (deactivated rn)
-│
-├── home/                     # User configuration (Home Manager)
-│   ├── hyprland.nix          # Hyprland (Lua): binds, gestures, animations, rules
-│   ├── waybar.nix            # Status bar (custom CSS driven by the Stylix palette)
-│   ├── wofi.nix              # Launcher (custom CSS driven by the Stylix palette)
-│   ├── kitty.nix             # Terminal
-│   ├── hyprlock.nix          # Lock screen (password + fingerprint)
-│   ├── hypridle.nix          # Idle daemon
-│   ├── dunst.nix             # Notifications / OSD
-│   ├── awww.nix              # Wallpaper daemon
-│   ├── gtk.nix               # GTK settings and icon theme
-│   ├── thunar.nix            # XFCE helper so Thunar opens kitty
-│   ├── desktop-entries.nix   # Hides unwanted launcher entries
-│   ├── zsh.nix               # Shell
-│   ├── zen.nix               # Zen Browser
-│   ├── eww.nix               # Widgets
-│   ├── nvim.nix              # Editor
-│   ├── vscode.nix            # Editor
-│   ├── python.nix            # Python environment
-│   ├── scripts.nix           # Own scripts, packaged
-│   ├── wifi-menu.sh          # Wofi Wi-Fi menu (right click on the waybar icon)
-│   ├── bluetooth.nix         # Blueman without auto power-on
-│   ├── engineering.nix       # FHS environment + launchers for MATLAB, FEKO and ADS
-│   ├── cli.nix               # CLI tooling (gh, lazygit, fzf, bat, tealdeer)
-│   ├── refresh.nix           # Reloads Hyprland, waybar and eww after each switch
-│   └── waybar-autohide.py    # Python auto-hide script for the bar
-│
-└── wallpapers/               # Wallpapers (versioned for cloning)
+├── flake.nix · flake.lock · home.nix
+├── theme/            Design system: tokens, i18n, fonts, wallpaper and boot renderers
+│   ├── nihil.nix     palette, base16, fonts, frame geometry, motion
+│   ├── i18n.nix      every string, per language
+│   ├── dotmatrix.py  photo → LED matrix (wallpapers.nix runs it per output)
+│   ├── plymouth.*    boot splash frames and theme
+│   └── art/          LED maps of the NixOS snowflake (19 for fastfetch, 29 for boot)
+├── hosts/thinkpad/   hardware, hostname, NIHIL outputs
+├── modules/          system modules (nihil.nix, stylix, plymouth, regreet, …)
+├── home/             Home Manager: shell/, hyprland, hyprlock, kitty, zsh, fastfetch, …
+├── sounds/           interface sounds (nihil/ is the NIHIL pack)
+├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
+├── assets/brand/     logo and mark (SVG), social preview
+├── docs/             the website, served by GitHub Pages from this folder
+└── wallpapers/       source photos, rendered as dots at build time
 ```
-
-### Layered separation
-
-- **`hosts/`** — What is specific to each machine (hardware, hostname).
-- **`modules/`** — What is common to all machines (packages, services, environment).
-- **`home/`** — The user configuration (declarative dotfiles).
-
-Adding a new machine is just a matter of creating a `hosts/<name>/` that imports the
-same shared modules plus its own `hardware-configuration.nix`.
-
----
-
-## Theming
-
-Colours are generated from the wallpaper by Stylix and applied system-wide: GTK, Qt,
-kitty, dunst, hyprlock, Hyprland borders, VSCode, Plymouth, ReGreet and Zen.
-
-**`modules/stylix.nix` is the single source of truth.** The wallpaper is declared once
-there and everything else references it — `awww.nix` reads `config.stylix.image` to set
-the desktop background, and hyprlock gets its background from Stylix directly. Wallpaper,
-lock screen and palette cannot drift apart by construction.
-
-### Changing the theme
-
-```nix
-# modules/stylix.nix
-image = ../wallpapers/some-other.jpg;
-```
-
-Then rebuild. A reboot is the simplest way to see everything applied at once, since
-waybar is launched by Hyprland rather than systemd and won't reload on its own.
-
-The generated palette can be inspected at `/etc/stylix/palette.html` before committing
-to a wallpaper. More colourful images tend to produce better palettes.
-
-### Exceptions
-
-- **waybar** and **wofi** keep their own CSS (`stylix.targets.*.enable = false`), but
-  their colours are pulled from `config.lib.stylix.colors`. This preserves the custom
-  layout — rounded module groups, icon-only launcher grid — while still following the
-  wallpaper.
-- **Icons** stay on Colloid regardless of the palette (`stylix.iconTheme` is opt-in and
-  left off).
-- **Obsidian** is not themed: Stylix has no target for it.
 
 ---
 
@@ -238,32 +331,48 @@ engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
 
 - **Filesystem:** btrfs with subvolumes (`@`, `@home`, `@nix`, `@log`), zstd compression
   and `noatime`. Swap via zram.
-- **Boot:** UEFI + systemd-boot, Plymouth splash with silent boot kernel parameters.
-- **Login:** greetd + ReGreet running in cage on the last connected monitor, themed by
-  Stylix. The Spanish layout reaches cage through `XKB_DEFAULT_LAYOUT`.
-- **Hyprland in Lua:** since version 0.55, Hyprland recommends Lua configuration. The
-  whole config is declared in Nix (`wayland.windowManager.hyprland.settings`) and Home
-  Manager generates `hyprland.lua`: every attribute becomes an `hl.<name>(...)` call,
-  lists become one call per element, `_args` gives multi-argument calls and inline Lua
-  goes through `lib.generators.mkLuaInline`. Stylix also writes into `settings.config`,
-  so keys it already sets (border and shadow colours) need `lib.mkForce`. Under Lua,
-  `hyprctl dispatch` takes Lua too: `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'`.
+- **Boot:** UEFI + systemd-boot with a systemd initrd and the NIHIL Plymouth theme
+  (frames rendered at build time from `theme/art/snowflake-29.txt`).
+- **Login:** greetd + ReGreet in cage on the last connected monitor, themed by Stylix
+  plus NIHIL CSS.
+- **Hyprland in Lua:** the whole configuration is declared in Nix and Home Manager
+  generates `hyprland.lua`. Under Lua, dispatchers are Lua too
+  (`hl.dsp.focus({ workspace = "e+1" })`); Quickshell 0.3 detects it (`Hyprland.usingLua`).
+  Stylix's Hyprland target is off: NIHIL sets the colours itself.
+- **Quickshell and Hyprland focus:** drawers that take the keyboard use
+  `WlrKeyboardFocus.OnDemand` together with a `HyprlandFocusGrab`. `Exclusive` would not
+  work: Hyprland drops every focus grab when a layer becomes exclusive.
+- **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables.
 - **Pre-existing files:** if a file Home Manager wants to manage already exists, it is
-  renamed to `*.hm-backup` instead of aborting the whole activation.
-- **Live refresh:** after every switch, `home/refresh.nix` reloads Hyprland and restarts
-  waybar (with its auto-hide) and the eww widgets inside the running session, because
-  none of them notice that their config symlink now points to a new store path.
-- **Own scripts:** packaged with `writeShellScriptBin` and their dependencies declared
-  explicitly, for full reproducibility: `waybar-autohide`, `mic-led-sync`, `osd-volume`,
-  `osd-brightness`, `wifi-menu`, `wifi-status`, `bluetooth-status`.
+  renamed to `*.hm-backup` instead of aborting the activation.
+- **Own scripts:** packaged with `writeShellScriptBin` and explicit dependencies:
+  `osd-volume`, `osd-brightness`, `osd-mic`, `mic-led-sync`, `lock-screen`, `power-off`,
+  `nihil-wallpaper`, `nihil-ipc`.
 - **Engineering software:** GNU Octave and Python (numpy, scipy, matplotlib, scikit-rf)
-  are declarative. MATLAB, Altair FEKO and Keysight ADS can't be packaged (licensing,
-  opaque dependencies), so `home/engineering.nix` provides `eda-fhs`, an FHS sandbox with
-  the libraries they expect, plus `matlab`, `feko` and `ads` launchers and menu entries.
-  Each one is installed from inside `eda-fhs` into `~/eda/{matlab,altair,keysight/ads}`;
-  licence servers go in `~/.config/eda/licenses.env`, which stays out of the repo.
+  are declarative. MATLAB, Altair FEKO and Keysight ADS can't be packaged, so
+  `home/engineering.nix` provides `eda-fhs`, an FHS sandbox with the libraries they
+  expect, plus `matlab`, `feko` and `ads` launchers. Each one is installed from inside
+  `eda-fhs` into `~/eda/{matlab,altair,keysight/ads}`; licence servers go in
+  `~/.config/eda/licenses.env`, which stays out of the repo.
 
- ---
+---
+
+## Credits
+
+- [Caelestia](https://github.com/caelestia-dots/shell) for the frame-and-drawers idea.
+- [Nothing](https://nothing.tech) for the design language that inspired the look. NIHIL
+  is a personal project and is not affiliated with Nothing Technology.
+- [Quickshell](https://quickshell.org), [Hyprland](https://hyprland.org),
+  [Stylix](https://github.com/nix-community/stylix) and
+  [Home Manager](https://github.com/nix-community/home-manager).
+- The NixOS snowflake (by Tim Cuthbertson, CC BY 4.0) is drawn as LEDs from the
+  Material Design Icons glyph shipped with Nerd Fonts.
+- Fonts: Doto, Space Grotesk and Space Mono (SIL OFL 1.1), JetBrains Mono (SIL OFL 1.1).
+  The website ships subsets of the first three, with their licence in `docs/assets/fonts`.
+- Icons: [Colloid](https://github.com/vinceliuice/Colloid-icon-theme) by Vince Liuice
+  (GPL-3.0), installed from nixpkgs.
+
+Code, sounds and brand assets in this repository are MIT licensed (see `LICENSE`).
 
 ## Notes
 

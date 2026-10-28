@@ -6,11 +6,13 @@
     {
         enable = true; 
 
-        # Icon Configuration
+        # Icon Configuration: Colloid in its grey variant, so folders and
+        # symbolic icons follow the NIHIL monochrome (the shell also shows
+        # app icons desaturated).
         iconTheme =
         {
-            name = "Colloid-Dark";
-            package = pkgs.colloid-icon-theme;
+            name = "Colloid-Grey-Dark";
+            package = pkgs.colloid-icon-theme.override { colorVariants = [ "grey" ]; };
         };
 
         # Extra config for GTK 3

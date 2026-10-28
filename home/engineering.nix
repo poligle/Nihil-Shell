@@ -1,7 +1,10 @@
 # engineering.nix by poligle
 
-{ config, pkgs, lib, ... }:
+{ config, osConfig, pkgs, lib, ... }:
 let
+	# Messages in the language of the build (theme/i18n.nix).
+	say = key: args: lib.replaceStrings [ "%1" "%2" ] (lib.take 2 (args ++ [ "" "" ])) osConfig.nihil.strings.${key};
+
 	installRoot = "${config.home.homeDirectory}/eda";
 	systemLibstdcxx = "${pkgs.stdenv.cc.cc.lib}/lib/libstdc++.so.6";
 	licenseEnv = "${config.xdg.configHome}/eda/licenses.env";
@@ -153,7 +156,7 @@ let
 
 	matlab = launchInFhs "matlab" ''
 		if [ ! -x "$MATLAB_HOME/bin/matlab" ]; then
-			echo "MATLAB no está instalado en $MATLAB_HOME" >&2
+			echo "${say "cliMissing" [ "MATLAB" "$MATLAB_HOME" ]}" >&2
 			exit 1
 		fi
 		export LD_PRELOAD="${systemLibstdcxx}"
@@ -164,7 +167,7 @@ let
 		installer="''${1:-$PWD}"
 		[ "$#" -gt 0 ] && shift
 		if [ ! -f "$installer/install" ]; then
-			echo "Uso: matlab-install <carpeta del instalador descomprimido>" >&2
+			echo "${say "cliUsage" [ "matlab-install" ]}" >&2
 			exit 1
 		fi
 		cd "$installer"
@@ -177,7 +180,7 @@ let
 		[ "$#" -gt 0 ] && shift
 		binary="$(find "$FEKO_HOME" -maxdepth 7 -type f -path "*/feko/bin/$tool" 2>/dev/null | head -n1)"
 		if [ -z "$binary" ]; then
-			echo "No encuentro $tool dentro de $FEKO_HOME" >&2
+			echo "${say "cliNotFound" [ "$tool" "$FEKO_HOME" ]}" >&2
 			exit 1
 		fi
 		exec "$binary" "$@"
@@ -185,7 +188,7 @@ let
 
 	ads = launchInFhs "ads" ''
 		if [ ! -x "$HPEESOF_DIR/bin/ads" ]; then
-			echo "ADS no está instalado en $HPEESOF_DIR" >&2
+			echo "${say "cliMissing" [ "ADS" "$HPEESOF_DIR" ]}" >&2
 			exit 1
 		fi
 		exec "$HPEESOF_DIR/bin/ads" "$@"

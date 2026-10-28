@@ -4,7 +4,14 @@
 {
   boot = 
   {
-    plymouth.enable = true;
+    plymouth =
+    {
+      enable = true;
+
+      # NIHIL splash (theme/plymouth.nix) instead of Stylix's spinning logo.
+      theme = "nihil";
+      themePackages = [ (import ../theme/plymouth.nix { inherit pkgs; }) ];
+    };
 
     # Silent boot
     consoleLogLevel = 3;
@@ -21,4 +28,6 @@
 
     loader.timeout = 5;
   };
+
+  stylix.targets.plymouth.enable = false;
 }

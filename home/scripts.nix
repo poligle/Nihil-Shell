@@ -1,30 +1,22 @@
 # scripts.nix by poligle
+#
+# Scripts bound to keys. The OSD ones change the value and report it to the
+# NIHIL shell, which draws it on the frame (nihil-ipc osd ...).
 
-{ config, pkgs, lib, ... }:
+{ config, osConfig, pkgs, lib, ... }:
 let
-	palette = config.lib.stylix.colors.withHashtag;
-	volumeSound = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/audio-volume-change.oga";
-
-	waybar-autohide = pkgs.writeShellScriptBin "waybar-autohide" ''
-		export PATH="${lib.makeBinPath [ pkgs.procps pkgs.hyprland ]}:$PATH"
-		export WAYBAR_AUTOHIDE_PROCNAME=".waybar-wrapped"
-		export WAYBAR_AUTOHIDE_OUTPUTS="${lib.concatStringsSep "," config.programs.waybar.settings.mainBar.output}"
-		exec ${pkgs.python3}/bin/python3 ${./waybar-autohide.py} "$@"
-	'';
-
-    wofi-open = pkgs.writeShellScriptBin "wofi-open" ''
-		exec 9>"''${XDG_RUNTIME_DIR:-/tmp}/wofi.lock"
-		if ! ${pkgs.util-linux}/bin/flock -n 9; then
-			exit 0
-		fi
-		${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/menu.ogg} &
-		exec ${pkgs.wofi}/bin/wofi --show drun
-	'';
+	ipc = "${config.home.profileDirectory}/bin/nihil-ipc";
+	wpctl = "${pkgs.wireplumber}/bin/wpctl";
+	grep = "${pkgs.gnugrep}/bin/grep";
+	awk = "${pkgs.gawk}/bin/awk";
+	brightnessctl = "${pkgs.brightnessctl}/bin/brightnessctl";
+	sound = osConfig.nihil.sounds;
+	volumeSound = sound.volume;
 
 	mic-led-sync = pkgs.writeShellScriptBin "mic-led-sync" ''
 		set -euo pipefail
 		LED="/sys/class/leds/platform::micmute/brightness"
-		out="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>&1 || true)"
+		out="$(${wpctl} get-volume @DEFAULT_AUDIO_SOURCE@ 2>&1 || true)"
 		echo 0 > "$LED"
 		if [[ "$out" == *"Could not connect to PipeWire"* ]]; then
 			echo "mic-led-sync: PipeWire not reachable in this session." >&2
@@ -34,7 +26,7 @@ let
 			echo "mic-led-sync: no valid DEFAULT_AUDIO_SOURCE. Output: $out" >&2
 			exit 1
 		fi
-		if echo "$out" | ${pkgs.gnugrep}/bin/grep -q "MUTED"; then
+		if echo "$out" | ${grep} -q "MUTED"; then
 			echo 1 > "$LED"
 		else
 			echo 0 > "$LED"
@@ -45,17 +37,14 @@ let
 		step="5%"
 		case "$1" in
 			up)
-				${pkgs.brightnessctl}/bin/brightnessctl set +"$step" >/dev/null
+				${brightnessctl} set +"$step" >/dev/null
 				;;
 			down)
-				${pkgs.brightnessctl}/bin/brightnessctl set "$step"- >/dev/null
+				${brightnessctl} set "$step"- >/dev/null
 				;;
 		esac
-		br="$(${pkgs.brightnessctl}/bin/brightnessctl -m | ${pkgs.gawk}/bin/awk -F, '{gsub("%","",$4); print $4}')"
-		${pkgs.dunst}/bin/dunstify -a osd -u low -t 900 \
-			-h string:x-dunst-stack-tag:brightness \
-			-h int:value:"$br" \
-			"󰃠  Brillo" "''${br}%"
+		br="$(${brightnessctl} -m | ${awk} -F, '{gsub("%","",$4); print $4}')"
+		exec ${ipc} osd brightness "$br" >/dev/null 2>&1
 	'';
 
 	osd-volume = pkgs.writeShellScriptBin "osd-volume" ''
@@ -63,203 +52,58 @@ let
 		step="5%"
 		case "$1" in
 			up)
-				${pkgs.wireplumber}/bin/wpctl set-mute "$sink" 0
-				${pkgs.wireplumber}/bin/wpctl set-volume -l 1 "$sink" "$step+"
+				${wpctl} set-mute "$sink" 0
+				${wpctl} set-volume -l 1 "$sink" "$step+"
 				${pkgs.pipewire}/bin/pw-play --volume 0.4 ${volumeSound} &
 				;;
 			down)
-				${pkgs.wireplumber}/bin/wpctl set-mute "$sink" 0
-				${pkgs.wireplumber}/bin/wpctl set-volume "$sink" "$step-"
+				${wpctl} set-mute "$sink" 0
+				${wpctl} set-volume "$sink" "$step-"
 				${pkgs.pipewire}/bin/pw-play --volume 0.4 ${volumeSound} &
 				;;
 			mute)
-				${pkgs.wireplumber}/bin/wpctl set-mute "$sink" toggle
+				${wpctl} set-mute "$sink" toggle
 				;;
 		esac
-		state="$(${pkgs.wireplumber}/bin/wpctl get-volume "$sink")"
-		vol="$(${pkgs.gawk}/bin/awk '{printf "%d", $2 * 100}' <<< "$state")"
-		if ${pkgs.gnugrep}/bin/grep -q MUTED <<< "$state"; then
-			${pkgs.dunst}/bin/dunstify -a osd -u low -t 900 \
-				-h string:x-dunst-stack-tag:volume \
-				-h int:value:0 \
-				"  Volumen" "Mute"
-		else
-			${pkgs.dunst}/bin/dunstify -a osd -u low -t 900 \
-				-h string:x-dunst-stack-tag:volume \
-				-h int:value:"$vol" \
-				"  Volumen" "''${vol}%"
+		state="$(${wpctl} get-volume "$sink")"
+		vol="$(${awk} '{printf "%d", $2 * 100}' <<< "$state")"
+		muted=false
+		if ${grep} -q MUTED <<< "$state"; then
+			muted=true
 		fi
+		exec ${ipc} osd volume "$vol" "$muted" >/dev/null 2>&1
+	'';
+
+	osd-mic = pkgs.writeShellScriptBin "osd-mic" ''
+		${wpctl} set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+		${mic-led-sync}/bin/mic-led-sync || true
+		muted=false
+		if ${wpctl} get-volume @DEFAULT_AUDIO_SOURCE@ | ${grep} -q MUTED; then
+			muted=true
+		fi
+		exec ${ipc} osd mic "$muted" >/dev/null 2>&1
 	'';
 
 	lock-screen = pkgs.writeShellScriptBin "lock-screen" ''
-		${pkgs.pipewire}/bin/pw-play --volume 0.4 ${../sounds/lock.ogg} &
+		${pkgs.pipewire}/bin/pw-play --volume 0.4 ${sound.lock} &
 		exec ${pkgs.hyprlock}/bin/hyprlock
 	'';
 
 	power-off = pkgs.writeShellScriptBin "power-off" ''
-		${pkgs.pipewire}/bin/pw-play --volume 0.5 ${../sounds/power.ogg}
+		${pkgs.pipewire}/bin/pw-play --volume 0.5 ${sound.power}
 		exec ${pkgs.systemd}/bin/systemctl poweroff
-	'';
-
-	bluetooth-status = pkgs.writeShellScriptBin "bluetooth-status" ''
-		export PATH="${lib.makeBinPath [ pkgs.bluez pkgs.gnugrep pkgs.coreutils ]}:$PATH"
-		if ! bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
-			echo "󰂲 off"
-			exit 0
-		fi
-		device="$(bluetoothctl devices Connected | cut -d" " -f3- | head -n1)"
-		if [ -n "$device" ]; then
-			echo "󰂱 $device"
-		else
-			echo " on"
-		fi
-	'';
-
-	bluetooth-toggle = pkgs.writeShellScriptBin "bluetooth-toggle" ''
-		export PATH="${lib.makeBinPath [ pkgs.bluez pkgs.gnugrep pkgs.util-linux pkgs.coreutils ]}:$PATH"
-		if bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
-			exec bluetoothctl power off
-		fi
-		rfkill unblock bluetooth
-		for attempt in 1 2 3 4 5; do
-			bluetoothctl power on >/dev/null 2>&1 && exit 0
-			sleep 0.4
-		done
-		exit 1
-	'';
-
-	wofiMenuConf = pkgs.writeText "wofi-menu.conf" ''
-		normal_window=true
-		width=340
-		height=300
-		columns=1
-		allow_images=false
-		allow_markup=false
-		insensitive=true
-		hide_scroll=true
-		no_actions=true
-		dynamic_lines=false
-		key_exit=Escape
-	'';
-
-	wofiMenuStyle = pkgs.writeText "wofi-menu.css" ''
-		window
-		{
-			background-color: ${palette.base00};
-			border-radius: 12px;
-			font-family: "${config.stylix.fonts.monospace.name}";
-			font-size: 13px;
-		}
-		#outer-box
-		{
-			padding: 6px;
-		}
-		#input
-		{
-			margin-bottom: 6px;
-			padding: 5px 8px;
-			border: none;
-			border-radius: 8px;
-			background-color: ${palette.base01};
-			color: ${palette.base05};
-		}
-		#entry
-		{
-			padding: 5px 8px;
-			border-radius: 8px;
-		}
-		#entry:selected
-		{
-			background-color: ${palette.base02};
-		}
-		#text
-		{
-			color: ${palette.base05};
-		}
-		#text:selected
-		{
-			color: ${palette.base0D};
-		}
-	'';
-
-	wifi-status = pkgs.writeShellScriptBin "wifi-status" ''
-		export PATH="${lib.makeBinPath [ pkgs.networkmanager pkgs.gnugrep pkgs.coreutils ]}:$PATH"
-		if [ "$(nmcli -t -f WIFI general)" != "enabled" ]; then
-			echo "󰖪 off"
-			exit 0
-		fi
-		devices="$(nmcli -t -f TYPE,STATE,CONNECTION device status)"
-		connection="$(printf '%s\n' "$devices" | grep "^wifi:connected:" | cut -d: -f3- | head -n1)"
-		if [ -z "$connection" ]; then
-			wired="$(printf '%s\n' "$devices" | grep "^ethernet:connected:" | cut -d: -f3- | head -n1)"
-			if [ -n "$wired" ]; then
-				echo "󰈀 $wired"
-			else
-				echo "󰤯 on"
-			fi
-			exit 0
-		fi
-		signal="$(nmcli -t -f IN-USE,SIGNAL device wifi list --rescan no | grep "^\*" | cut -d: -f2 | head -n1)"
-		signal="''${signal:-0}"
-		if [ "$signal" -ge 80 ]; then
-			icon="󰤨"
-		elif [ "$signal" -ge 60 ]; then
-			icon="󰤥"
-		elif [ "$signal" -ge 40 ]; then
-			icon="󰤢"
-		elif [ "$signal" -ge 20 ]; then
-			icon="󰤟"
-		else
-			icon="󰤯"
-		fi
-		echo "$icon $connection"
-	'';
-
-	wifi-toggle = pkgs.writeShellScriptBin "wifi-toggle" ''
-		if [ "$(${pkgs.networkmanager}/bin/nmcli -t -f WIFI general)" = "enabled" ]; then
-			exec ${pkgs.networkmanager}/bin/nmcli radio wifi off
-		fi
-		exec ${pkgs.networkmanager}/bin/nmcli radio wifi on
-	'';
-
-	wifi-menu = pkgs.writeShellScriptBin "wifi-menu" ''
-		export PATH="${lib.makeBinPath [ pkgs.networkmanager pkgs.wofi pkgs.libnotify pkgs.util-linux pkgs.coreutils pkgs.gnugrep ]}:$PATH"
-		export WIFI_MENU_CONF="${wofiMenuConf}"
-		export WIFI_MENU_STYLE="${wofiMenuStyle}"
-		exec ${pkgs.bash}/bin/bash ${./wifi-menu.sh} "$@"
 	'';
 in
 {
-	home.packages = 
+	home.packages =
 	[
-		waybar-autohide
-        wofi-open
 		mic-led-sync
 		osd-brightness
 		osd-volume
+		osd-mic
 		lock-screen
 		power-off
-		bluetooth-status
-		bluetooth-toggle
-		wifi-status
-		wifi-toggle
-		wifi-menu
 	];
 
 	home.file."Wallpapers".source = ../wallpapers;
-
-	wayland.windowManager.hyprland.settings.window_rule =
-	[
-		{
-			name = "wifi-menu-float";
-			match =
-			{
-				class = "(?i)wofi";
-				title = "Wi-Fi|Contraseña de .*";
-			};
-			float = true;
-			size = "340 300";
-			move = "1270 50";
-		}
-	];
 }

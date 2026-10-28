@@ -1,11 +1,21 @@
 # stylix.nix by poligle
+#
+# Stylix applies the NIHIL palette system-wide (GTK, Qt, kitty, Neovim,
+# VS Code, Zen, ReGreet, Plymouth). The scheme is fixed and comes from
+# theme/nihil.nix; the image is the dot-matrix render of the default
+# wallpaper on the primary output.
 
 { config, lib, pkgs, ... }:
+let
+    nihil = config.nihil;
+    tokens = nihil.tokens;
+in
 {
     stylix = 
     {
         enable = true;
-        image = ../wallpapers/galaxy.png;
+        image = "${nihil.wallpapers}/${nihil.wallpaper}/${nihil.primaryOutput}.png";
+        base16Scheme = tokens.base16;
         polarity = "dark";
 
         cursor = 
@@ -20,12 +30,12 @@
             monospace = 
             {
                 package = pkgs.nerd-fonts.jetbrains-mono;
-                name = "JetBrainsMono Nerd Font";
+                name = tokens.fonts.code;
             };
             sansSerif = 
             {
-                package = pkgs.nerd-fonts.jetbrains-mono;
-                name = "JetBrainsMono Nerd Font";
+                package = nihil.fonts;
+                name = tokens.fonts.sans;
             };
             emoji = 
             {

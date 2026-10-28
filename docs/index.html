@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIHIL — a dot-matrix desktop for NixOS</title>
+<meta name="description" content="A monochrome, dot-matrix desktop for NixOS: Caelestia's frame and drawers in the language of Nothing, declared in Nix from the boot splash to the lock screen.">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NIHIL — ex nihilo">
+<meta property="og:description" content="A monochrome, dot-matrix desktop for NixOS.">
+<meta property="og:url" content="https://poligle.github.io/NixOS-Config/">
+<meta property="og:image" content="https://poligle.github.io/NixOS-Config/assets/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="assets/fonts/space-grotesk.woff" as="font" type="font/woff" crossorigin>
+<style>
+@font-face { font-family: "Space Grotesk"; src: url("assets/fonts/space-grotesk.woff") format("woff"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("assets/fonts/space-mono-400.woff") format("woff"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Doto"; src: url("assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+
+/* NIHIL tokens (theme/nihil.nix) */
+:root {
+  --void: #000000;
+  --surface: #0E0E0E;
+  --raised: #1A1A1A;
+  --line: #2A2A2A;
+  --off: #333333;
+  --muted: #7A7A7A;
+  --dim: #A3A3A3;
+  --ink: #F2F2F2;
+  --signal: #D71921;
+
+  --sans: "Space Grotesk", system-ui, sans-serif;
+  --mono: "Space Mono", ui-monospace, monospace;
+  --dot: "Doto", "Space Mono", monospace;
+
+  /* the frame: thickness, bar, inner radius */
+  --t: 8px;
+  --top: 8px;
+  --left: 44px;
+  --r: 20px;
+  --pitch: 9px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  color: var(--ink);
+  font: 400 18px/1.55 var(--sans);
+  /* the screen is a field of unlit LEDs */
+  background-color: var(--void);
+  background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px);
+  background-size: var(--pitch) var(--pitch);
+  background-attachment: fixed;
+}
+::selection { background: var(--ink); color: var(--void); }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+img { display: block; max-width: 100%; height: auto; }
+code, kbd, pre { font-family: var(--mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
+
+/* ---------- frame, bar and Glyph light ---------- */
+.frame {
+  position: fixed; z-index: 40; pointer-events: none;
+  top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
+  border-radius: var(--r);
+  box-shadow: 0 0 0 200vmax var(--void);
+}
+.glyph { position: fixed; inset: 0; z-index: 45; pointer-events: none; width: 100%; height: 100%; }
+.glyph path { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(242, 242, 242, 0.75)); }
+
+.bar {
+  position: fixed; z-index: 50; left: 0; top: 0; bottom: 0; width: var(--left);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 16px 0 14px;
+}
+.bar .mark { display: block; width: 26px; height: 26px; border-radius: 50%; }
+.bar .mark svg { display: block; width: 26px; height: 26px; }
+.leds { display: flex; flex-direction: column; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.leds a { position: relative; display: grid; place-items: center; width: 20px; height: 22px; }
+.leds a::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transition: height 240ms, background-color 240ms; }
+.leds a[aria-current="true"]::before { height: 20px; background: var(--ink); }
+.leds a:hover::before { background: var(--ink); }
+.leds .tip {
+  position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+  padding: 3px 9px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line);
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--dim); white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 140ms;
+}
+.leds a:hover .tip, .leds a:focus-visible .tip { opacity: 1; }
+.bar-end { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.bar-end .gh { display: grid; place-items: center; width: 26px; height: 26px; color: var(--dim); }
+.bar-end .gh:hover { color: var(--ink); }
+.clock { font: 700 17px/0.95 var(--dot); color: var(--dim); text-align: center; letter-spacing: 0.02em; }
+.clock[hidden] { display: none; }
+.bar .word { display: none; }
+
+/* ---------- layout ---------- */
+main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
+.wrap { max-width: 1180px; margin: 0 auto; }
+section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
+.prose { max-width: 62ch; }
+h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(36px, 5.2vw, 62px); line-height: 1.04; max-width: 15ch; }
+h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; margin-bottom: 18px; }
+h3 { font-size: 21px; line-height: 1.3; margin-bottom: 6px; }
+p { margin: 0 0 16px; }
+.lede { color: var(--dim); font-size: 21px; line-height: 1.5; max-width: 52ch; margin-top: 22px; }
+.quiet { color: var(--dim); }
+.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
+
+/* ---------- hero ---------- */
+.hero { padding-bottom: 120px; }
+.wordmark { width: min(560px, 100%); margin: 0 0 14px -4px; }
+.wordmark svg, .wordmark img { display: block; width: 100%; height: auto; }
+.motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 64px; text-transform: lowercase; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 72px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 24px;
+  border-radius: 999px; border: 1px solid var(--line); text-decoration: none;
+  font: 500 16px/1 var(--sans); color: var(--ink); background: var(--void);
+  transition: border-color 140ms, background-color 140ms;
+}
+.pill:hover { border-color: var(--muted); }
+.pill.primary { background: var(--ink); color: var(--void); border-color: var(--ink); }
+.pill.primary:hover { background: #ffffff; }
+.pill svg { width: 18px; height: 18px; }
+.shot {
+  margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void);
+}
+.hero .shot { box-shadow: 0 0 0 10px var(--void); }
+
+/* ---------- tour ---------- */
+.tour { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 44px 32px; margin-top: 48px; }
+.tour figure { margin: 0; }
+.tour a.shot { display: block; }
+.tour a.shot:hover { border-color: var(--muted); }
+.tour figcaption { padding: 18px 2px 0; }
+.tour figcaption p { color: var(--dim); margin: 0 0 12px; max-width: 46ch; }
+.keys { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 400 12px/1 var(--mono); color: var(--muted); }
+kbd {
+  display: inline-block; padding: 5px 8px 4px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface);
+  font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
+}
+
+/* ---------- rules and palette ---------- */
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 44px 0 72px; }
+.rules p { color: var(--dim); margin: 0; }
+.palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 30px 18px; margin: 0; padding: 0; list-style: none; }
+.palette li { display: grid; gap: 2px; align-content: start; }
+.palette .led { width: 46px; height: 46px; border-radius: 50%; margin-bottom: 10px; border: 1px solid var(--line); }
+.palette b { font-weight: 500; font-size: 16px; }
+.palette code { font-size: 12px; color: var(--dim); }
+.palette span { font-size: 14px; line-height: 1.4; color: var(--muted); }
+
+/* ---------- boot ---------- */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+.boot-screen {
+  aspect-ratio: 16 / 10; border-radius: 20px; background: var(--void); border: 1px solid var(--line);
+  display: grid; place-items: center; overflow: hidden;
+}
+.boot-screen img { width: 46%; image-rendering: auto; }
+
+/* ---------- language ---------- */
+.toggle { display: inline-flex; padding: 4px; gap: 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--void); margin: 8px 0 24px; }
+.toggle button {
+  appearance: none; border: 0; cursor: pointer; min-width: 96px; min-height: 38px; padding: 0 18px; border-radius: 999px;
+  background: transparent; color: var(--dim); font: 500 15px/1 var(--sans);
+}
+.toggle button[aria-pressed="true"] { background: var(--ink); color: var(--void); }
+.lang-shot { position: relative; max-width: 864px; }
+.lang-shot img { transition: opacity 240ms, visibility 240ms; }
+.lang-shot img + img { position: absolute; inset: 0; }
+.lang-shot img[hidden] { display: block; opacity: 0; visibility: hidden; }
+
+/* ---------- code, steps, table ---------- */
+.code {
+  display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
+}
+.code pre { flex: 1 1 auto; min-width: 0; margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.65; color: var(--ink); }
+.code .c { color: var(--muted); }
+.copy {
+  flex: none; margin: 10px 10px 0 0; appearance: none; cursor: pointer;
+  border: 1px solid var(--line); background: var(--void); color: var(--dim); border-radius: 999px;
+  min-height: 30px; padding: 0 12px; font: 400 12px/1 var(--mono);
+}
+.copy:hover { color: var(--ink); border-color: var(--muted); }
+.steps { margin: 40px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; max-width: 860px; }
+.steps > li { counter-increment: step; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 14px; min-width: 0; }
+.steps > li::before {
+  content: counter(step); grid-row: span 3; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--line); display: grid; place-items: center; font: 700 15px/1 var(--dot); color: var(--dim);
+}
+.steps p { color: var(--dim); margin: 0; }
+.table { margin-top: 64px; max-width: 860px; }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+th, td { text-align: left; vertical-align: top; padding: 13px 14px 13px 0; border-bottom: 1px solid var(--line); }
+th { font: 400 12px/1.4 var(--mono); color: var(--muted); font-weight: 400; }
+td code { font-size: 14px; color: var(--ink); white-space: nowrap; }
+td { color: var(--dim); }
+.note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
+
+/* ---------- footer ---------- */
+footer { padding: 0 0 72px; color: var(--muted); font-size: 15px; }
+footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
+footer p { margin: 0 0 10px; max-width: 70ch; }
+footer a { color: var(--dim); }
+footer a:hover { color: var(--ink); }
+
+/* ---------- narrow screens: the bar moves to the top ---------- */
+@media (max-width: 860px) {
+  :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
+  .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
+  .bar .leds, .bar .clock { display: none; }
+  .bar-start { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .bar .word { display: block; font: 400 13px/1 var(--mono); letter-spacing: 0.4em; color: var(--dim); }
+  .bar-end { flex-direction: row; }
+  main { padding: calc(var(--top) + 36px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
+  section { padding-bottom: 96px; }
+  .tour, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
+  .rules { gap: 28px; }
+  .motto { margin-bottom: 44px; letter-spacing: 0.45em; }
+  .actions { margin-bottom: 52px; }
+  .hero .shot { box-shadow: none; }
+  .split { gap: 32px; }
+  .steps > li { grid-template-columns: 40px minmax(0, 1fr); }
+  td code { white-space: normal; }
+  footer { padding-bottom: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .leds a::before, .lang-shot img { transition: none; }
+}
+</style>
+</head>
+<body>
+<a class="sr-only skip" href="#title">Skip to content</a>
+
+<div class="frame" aria-hidden="true"></div>
+<svg class="glyph" aria-hidden="true"><path id="glyph-path" d=""/></svg>
+
+<header class="bar">
+  <a class="bar-start" href="#top" aria-label="NIHIL, back to the top">
+    <span class="mark">
+      <svg viewBox="0 0 90 90" aria-hidden="true"><g fill="#F2F2F2"><circle cx="45.00" cy="12.60" r="4.95"/><circle cx="57.40" cy="15.07" r="4.95"/><circle cx="67.91" cy="22.09" r="4.95"/><circle cx="74.93" cy="32.60" r="4.95"/><circle cx="77.40" cy="45.00" r="4.95"/><circle cx="74.93" cy="57.40" r="4.95"/><circle cx="67.91" cy="67.91" r="4.95"/><circle cx="57.40" cy="74.93" r="4.95"/><circle cx="45.00" cy="77.40" r="4.95"/><circle cx="32.60" cy="74.93" r="4.95"/><circle cx="22.09" cy="67.91" r="4.95"/><circle cx="15.07" cy="57.40" r="4.95"/><circle cx="12.60" cy="45.00" r="4.95"/><circle cx="15.07" cy="32.60" r="4.95"/><circle cx="22.09" cy="22.09" r="4.95"/><circle cx="32.60" cy="15.07" r="4.95"/></g><circle cx="45" cy="45" r="6.75" fill="#D71921"/></svg>
+    </span>
+    <span class="word" aria-hidden="true">NIHIL</span>
+  </a>
+  <nav aria-label="Sections">
+    <ul class="leds">
+      <li><a href="#top" aria-current="true"><span class="tip">Overview</span></a></li>
+      <li><a href="#tour"><span class="tip">Tour</span></a></li>
+      <li><a href="#rules"><span class="tip">Design</span></a></li>
+      <li><a href="#boot"><span class="tip">Boot</span></a></li>
+      <li><a href="#language"><span class="tip">Language</span></a></li>
+      <li><a href="#install"><span class="tip">Install</span></a></li>
+    </ul>
+  </nav>
+  <div class="bar-end">
+    <a class="gh" href="https://github.com/poligle/NixOS-Config" aria-label="Source code on GitHub">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <div class="clock" hidden aria-hidden="true"><span id="hh">00</span><br><span id="mm">00</span></div>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap">
+
+    <section class="hero" aria-labelledby="title">
+      <div class="wordmark" id="wordmark"><img src="assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
+      <p class="motto">ex nihilo</p>
+      <h1 id="title">A monochrome, dot&#8209;matrix desktop for NixOS</h1>
+      <p class="lede">Caelestia's frame and drawers, dressed in the language of Nothing: greys for hierarchy, dots for display, red only to interrupt. All of it declared in Nix, from the boot splash to the lock screen.</p>
+      <div class="actions">
+        <a class="pill primary" href="https://github.com/poligle/NixOS-Config">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View the code
+        </a>
+        <a class="pill" href="#install">Install</a>
+      </div>
+      <figure class="shot">
+        <img src="assets/screens/desktop.png" width="1920" height="1200" alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper of a night sky over mountains, the bar on the left with workspace LEDs, and clock, network and music widgets.">
+      </figure>
+    </section>
+
+    <section id="tour" aria-labelledby="tour-title">
+      <div class="prose">
+        <h2 id="tour-title">One shape around the screen</h2>
+        <p class="quiet">The frame is a single black shape. Its left side widens into the bar, and the drawers grow out of it with concave joints, so they read as part of the hardware rather than windows on top.</p>
+      </div>
+      <div class="tour">
+        <figure>
+          <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/dashboard.png" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: dot-matrix clock, a track with its cover and a spectrum in LED columns, CPU, RAM and temperature dials, and a network scope."></a>
+          <figcaption>
+            <h3>Dashboard</h3>
+            <p>Time, music with its cover and spectrum drawn in dots, system dials and a network oscilloscope.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or hover the top edge</span></div>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/settings.png"><img src="assets/screens/settings.png" width="1920" height="1200" loading="lazy" alt="The settings panel on the right: round toggles for Wi-Fi, Bluetooth, output, mic, silent and night, segmented sliders, the list of Wi-Fi networks and the notification history."></a>
+          <figcaption>
+            <h3>Settings</h3>
+            <p>Wi&#8209;Fi with passwords, Bluetooth, audio output, segmented sliders and the notification history.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>P</kbd><span>or rest the pointer in the top-right corner</span></div>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/launcher.png"><img src="assets/screens/launcher.png" width="1920" height="1200" loading="lazy" alt="The launcher drawer at the bottom: a search field and a grid of grey app icons, the selected one in colour."></a>
+          <figcaption>
+            <h3>Launcher</h3>
+            <p>Apps stay grey until you select them. Type <code>&gt;</code> for actions and <code>=</code> to calculate.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>SPACE</kbd><span>or three fingers up</span></div>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/notification.png"><img src="assets/screens/notification.png" width="1920" height="1200" loading="lazy" alt="A critical battery notification at the top right, and a red segment of light running along the bottom edge of the frame."></a>
+          <figcaption>
+            <h3>Light on the edge</h3>
+            <p>Every notification sends a segment of light around the frame. Critical ones run twice, in red; plugging the charger lights it from the left.</p>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="rules" aria-labelledby="rules-title">
+      <div class="prose">
+        <h2 id="rules-title">Three rules</h2>
+        <p class="quiet">One file, <code>theme/nihil.nix</code>, holds the tokens. GTK, the terminal, the editor, the compositor, the lock screen, the greeter, the boot splash and the shell are all generated from it.</p>
+      </div>
+      <div class="rules">
+        <div>
+          <h3>Hierarchy is made with greys</h3>
+          <p>Red never decorates. It only interrupts: a failed login, a critical notification, the recording LED, a destructive action.</p>
+        </div>
+        <div>
+          <h3>Dots are for display</h3>
+          <p>Doto draws the clock and the big numbers. Text is set in Space Grotesk and metadata in Space Mono.</p>
+        </div>
+        <div>
+          <h3>The frame is hardware</h3>
+          <p>Opaque and flat, with no shadows. Windows sit concentric with it: their rounding is the frame's minus the gap.</p>
+        </div>
+      </div>
+      <ul class="palette" aria-label="Palette">
+        <li><span class="led" style="background:#000000"></span><b>void</b><code>#000000</code><span>frame, bar, drawers</span></li>
+        <li><span class="led" style="background:#0E0E0E"></span><b>surface</b><code>#0E0E0E</code><span>cards</span></li>
+        <li><span class="led" style="background:#1A1A1A"></span><b>raised</b><code>#1A1A1A</code><span>hover, tracks</span></li>
+        <li><span class="led" style="background:#2A2A2A"></span><b>line</b><code>#2A2A2A</code><span>1 px lines</span></li>
+        <li><span class="led" style="background:#333333"></span><b>off</b><code>#333333</code><span>unlit LEDs</span></li>
+        <li><span class="led" style="background:#7A7A7A"></span><b>muted</b><code>#7A7A7A</code><span>metadata</span></li>
+        <li><span class="led" style="background:#A3A3A3"></span><b>dim</b><code>#A3A3A3</code><span>secondary text</span></li>
+        <li><span class="led" style="background:#F2F2F2"></span><b>ink</b><code>#F2F2F2</code><span>text, lit LEDs</span></li>
+        <li><span class="led" style="background:#D71921"></span><b>signal</b><code>#D71921</code><span>interrupts only</span></li>
+      </ul>
+    </section>
+
+    <section id="boot" aria-labelledby="boot-title">
+      <div class="split">
+        <div class="prose">
+          <h2 id="boot-title">From nothing, at boot</h2>
+          <p class="quiet">The NixOS snowflake as an LED matrix: it switches on from the centre, then a band of light sweeps it until the login screen. <code>theme/plymouth.py</code> renders every frame when the system is built.</p>
+          <p class="quiet">The wallpapers work the same way. Every image in <code>wallpapers/</code> is rendered as dots once per screen, at its native size, so each LED lands on exact pixels.</p>
+        </div>
+        <div class="boot-screen">
+          <img src="assets/boot.webp" width="261" height="261" loading="lazy" alt="Boot splash: the NixOS snowflake drawn with LEDs switches on from the centre, then a band of light sweeps across it.">
+        </div>
+      </div>
+    </section>
+
+    <section id="language" aria-labelledby="language-title">
+      <div class="prose">
+        <h2 id="language-title">Spanish or English</h2>
+        <p class="quiet">One option sets every string of the shell, the lock screen and the greeter, and the language of their dates.</p>
+      </div>
+      <div class="toggle" role="group" aria-label="Language of the screenshot">
+        <button type="button" data-lang="en" aria-pressed="true">English</button>
+        <button type="button" data-lang="es" aria-pressed="false">Español</button>
+      </div>
+      <div class="lang-shot">
+        <img class="shot" data-lang="en" src="assets/screens/actions-en.png" width="864" height="480" loading="lazy" alt="Launcher actions in English: Lock, Suspend, Restart, Power off, Log out, Next wallpaper.">
+        <img class="shot" data-lang="es" src="assets/screens/actions-es.png" width="864" height="480" loading="lazy" alt="Launcher actions in Spanish: Bloquear, Suspender, Reiniciar, Apagar, Cerrar sesión, Siguiente fondo." hidden>
+      </div>
+      <div class="code" style="max-width:864px">
+        <pre><code><span class="c"># hosts/&lt;name&gt;/default.nix</span>
+nihil.language = "<span id="lang-value">en</span>";</code></pre>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="install-title">
+      <div class="prose">
+        <h2 id="install-title">Install</h2>
+        <p class="quiet">This is a personal configuration for one ThinkPad, written as a flake. Read <code>hosts/</code> and <code>modules/</code> before you switch a machine you care about; the README covers every step in detail.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3>Clone the repository</h3>
+          <div class="code"><pre><code>git clone https://github.com/poligle/NixOS-Config ~/nixos-config</code></pre></div>
+        </li>
+        <li>
+          <h3>Describe your screens</h3>
+          <p>Copy <code>hosts/thinkpad</code> to a new host with your hardware configuration, then list its outputs. Sizes are logical, after rotation.</p>
+          <div class="code"><pre><code>nihil =
+{
+    primaryOutput = "eDP-1";
+    wallpaper = "night";
+    language = "en";
+    outputs =
+    {
+        "eDP-1" = { width = 1920; height = 1200; };
+        "DP-1"  = { width = 1080; height = 1920; bar = false; };
+    };
+};</code></pre></div>
+        </li>
+        <li>
+          <h3>Build and switch</h3>
+          <p>The first build renders every wallpaper and the boot splash.</p>
+          <div class="code"><pre><code>sudo nixos-rebuild switch --flake ~/nixos-config#&lt;name&gt;</code></pre></div>
+        </li>
+      </ol>
+
+      <div class="table">
+        <h3>Options</h3>
+        <p class="quiet">All of them live under <code>nihil.*</code> in <code>modules/nihil.nix</code>.</p>
+        <table>
+          <thead><tr><th scope="col">Option</th><th scope="col">Default</th><th scope="col">What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>language</code></td><td><code>"es"</code></td><td>Language of the shell, lock screen, greeter and script messages: <code>"es"</code> or <code>"en"</code>.</td></tr>
+            <tr><td><code>outputs</code></td><td>none</td><td>Screens of the host: logical size, whether the frame widens into the bar, dot pitch.</td></tr>
+            <tr><td><code>primaryOutput</code></td><td>none</td><td>Screen for the desktop widgets and the lock and login backgrounds.</td></tr>
+            <tr><td><code>wallpaper</code></td><td><code>"night"</code></td><td>Default wallpaper: a file name in <code>wallpapers/</code>.</td></tr>
+            <tr><td><code>soundPack</code></td><td><code>"nihil"</code></td><td>The synthesised NIHIL sounds, or <code>"classic"</code> for the earlier ones.</td></tr>
+            <tr><td><code>trayHidden</code></td><td><code>[ "nm-applet" "blueman" ]</code></td><td>Tray items to hide, by part of their id or title. The bar already shows Wi&#8209;Fi and Bluetooth.</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Screenshots on this page are the shell rendered in a test harness with sample data: the networks, the track and the notifications are made up.</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p>NIHIL is a personal project and is not affiliated with Nothing Technology. The frame-and-drawers idea comes from <a href="https://github.com/caelestia-dots/shell">Caelestia</a>; it is built with <a href="https://quickshell.org">Quickshell</a>, <a href="https://hyprland.org">Hyprland</a>, <a href="https://github.com/nix-community/stylix">Stylix</a> and <a href="https://github.com/nix-community/home-manager">Home Manager</a>.</p>
+      <p>The NixOS snowflake is by Tim Cuthbertson (CC BY 4.0). Doto, Space Grotesk and Space Mono are under the <a href="assets/fonts/OFL.txt">SIL Open Font License 1.1</a>. Code, sounds and brand assets are MIT licensed.</p>
+    </div>
+    <div>
+      <p><a href="https://github.com/poligle/NixOS-Config">github.com/poligle/NixOS-Config</a></p>
+      <p><a href="https://github.com/poligle/NixOS-Config#readme">README</a></p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- Glyph light: a segment that runs once around the inner edge of the frame
+  const path = document.getElementById("glyph-path");
+  function frameMetrics() {
+    const css = getComputedStyle(document.documentElement);
+    const px = name => parseFloat(css.getPropertyValue(name));
+    return { t: px("--t"), top: px("--top"), left: px("--left"), r: px("--r") };
+  }
+  function layoutGlyph() {
+    const m = frameMetrics(), w = innerWidth, h = innerHeight;
+    const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r;
+    // clockwise from the top right corner, like the shell
+    path.setAttribute("d",
+      `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
+      `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
+  }
+  function glyph() {
+    if (reduce || !path.animate) return;
+    const length = path.getTotalLength();
+    const segment = Math.min(360, length * 0.16);
+    path.style.strokeDasharray = `${segment} ${length}`;
+    path.animate([
+      { strokeDashoffset: 0, opacity: 0 },
+      { opacity: 1, offset: 0.12 },
+      { opacity: 1, offset: 0.82 },
+      { strokeDashoffset: -(length - segment), opacity: 0 }
+    ], { duration: 1500, easing: "cubic-bezier(0.45, 0, 0.25, 1)" });
+  }
+  layoutGlyph();
+  addEventListener("resize", layoutGlyph);
+
+  // ---- The wordmark lights up from nothing: the ring, its red centre, then the letters
+  const mark = document.getElementById("wordmark");
+  fetch("assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
+    const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+    const svg = doc.documentElement;
+    if (svg.nodeName !== "svg") return;
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "NIHIL");
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    mark.replaceChildren(document.importNode(svg, true));
+    if (reduce) { glyph(); return; }
+    const live = mark.querySelector("svg");
+    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle')];
+    const box = live.viewBox.baseVal;
+    const markSize = box.height;   // the mark is a square at the left
+    const ring = ink.filter(c => +c.getAttribute("cx") < markSize);
+    const letters = ink.filter(c => +c.getAttribute("cx") >= markSize);
+    const centre = live.querySelector('g[fill="#D71921"] circle');
+    const cx = markSize / 2;
+    ring.sort((a, b) => angle(a) - angle(b));
+    function angle(c) { return (Math.atan2(+c.getAttribute("cy") - cx, +c.getAttribute("cx") - cx) + Math.PI * 2.5) % (Math.PI * 2); }
+    const on = (el, delay) => el.animate([{ opacity: 0.08 }, { opacity: 1 }], { duration: 180, delay, fill: "backwards", easing: "ease-out" });
+    ring.forEach((c, i) => on(c, 120 + i * 32));
+    const lit = 120 + ring.length * 32;
+    if (centre) on(centre, lit + 60);
+    letters.forEach(c => on(c, lit + 220 + (+c.getAttribute("cx") - markSize) * 2.2));
+    setTimeout(glyph, lit + 520);
+  }).catch(() => setTimeout(glyph, 300));
+
+  // ---- Copy buttons; each copy sends the light around the frame
+  document.querySelectorAll(".code").forEach(block => {
+    if (!navigator.clipboard) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy";
+    button.textContent = "Copy";
+    button.addEventListener("click", () => {
+      navigator.clipboard.writeText(block.querySelector("code").innerText).then(() => {
+        button.textContent = "Copied";
+        glyph();
+        setTimeout(() => { button.textContent = "Copy"; }, 1600);
+      });
+    });
+    block.append(button);
+  });
+
+  // ---- Language toggle for the screenshot and the snippet
+  const buttons = document.querySelectorAll(".toggle button");
+  buttons.forEach(button => button.addEventListener("click", () => {
+    const lang = button.dataset.lang;
+    buttons.forEach(b => b.setAttribute("aria-pressed", String(b === button)));
+    document.querySelectorAll(".lang-shot img").forEach(img => { img.hidden = img.dataset.lang !== lang; });
+    document.getElementById("lang-value").textContent = lang;
+  }));
+
+  // ---- Section LEDs follow the scroll, like the workspaces in the bar
+  const leds = [...document.querySelectorAll(".leds a")];
+  const targets = leds.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
+  const seen = new Map();
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => seen.set(e.target, e.intersectionRatio));
+    let best = 0, bestRatio = -1;
+    targets.forEach((t, i) => { const v = seen.get(t) ?? 0; if (v > bestRatio) { bestRatio = v; best = i; } });
+    leds.forEach((a, i) => a.setAttribute("aria-current", String(i === best)));
+  }, { threshold: [0, 0.15, 0.3, 0.5, 0.75, 1] });
+  targets.forEach(t => t && observer.observe(t));
+
+  // ---- The bar clock, in the visitor's time
+  const clock = document.querySelector(".clock");
+  function tick() {
+    const d = new Date();
+    document.getElementById("hh").textContent = String(d.getHours()).padStart(2, "0");
+    document.getElementById("mm").textContent = String(d.getMinutes()).padStart(2, "0");
+  }
+  tick();
+  clock.hidden = false;
+  setInterval(tick, 15000);
+})();
+</script>
+</body>
+</html>

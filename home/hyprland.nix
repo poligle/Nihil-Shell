@@ -1,8 +1,11 @@
 # hyprland.nix by poligle
 
-{ config, pkgs, lib, ... }:
+{ config, osConfig, pkgs, lib, ... }:
 let
 	lua = lib.generators.mkLuaInline;
+	t = osConfig.nihil.tokens;
+	sound = osConfig.nihil.sounds;
+	rgb = hex: "rgb(${hex})";
 
 	internalPanel = "eDP-1";
 	verticalPanel = "DP-1";
@@ -84,18 +87,16 @@ let
 	autostart = ''
 		function()
 			(${keepLidState})()
-			hl.exec_cmd("waybar")
 			hl.exec_cmd("lxqt-policykit-agent")
 			hl.exec_cmd("nm-applet --indicator")
-			hl.exec_cmd("waybar-autohide")
 			hl.exec_cmd("mic-led-sync")
-			hl.exec_cmd("awww img ${config.stylix.image}")
-			hl.exec_cmd("eww open-many window-clock window-network window-media")
+			hl.exec_cmd("nihil-wallpaper restore")
 		end
 	'';
 in
 {
-	stylix.targets.hyprland.hyprpaper.enable = false;
+	# NIHIL owns every colour here (and awww the wallpaper), so Stylix stays out.
+	stylix.targets.hyprland.enable = false;
 
 	wayland.windowManager.hyprland =
 	{
@@ -121,13 +122,8 @@ in
 				'';
 			};
 
-			env =
-			[
-				(envVar "QT_QPA_PLATFORM" "wayland")
-				(envVar "QT_QPA_PLATFORMTHEME" "qt6ct")
-				(envVar "QT_STYLE_OVERRIDE" "Fusion")
-				(envVar "_JAVA_AWT_WM_NONREPARENTING" "1")
-			];
+			# Shared with the shell, for the apps opened from the launcher.
+			env = lib.mapAttrsToList envVar (import ./session-env.nix);
 
 			monitor =
 			[
@@ -145,34 +141,35 @@ in
 			{
 				general =
 				{
-					gaps_in = 5;
-					gaps_out = 5;
-					border_size = 0;
+					gaps_in = t.windows.gapsIn;
+					gaps_out = t.windows.gapsOut;
+					border_size = t.windows.border;
+					col =
+					{
+						active_border = rgb t.palette.muted;
+						inactive_border = rgb t.palette.line;
+					};
 					resize_on_border = true;
 					allow_tearing = false;
 					layout = "master";
 				};
 
+				# Flat, like the frame: hairline borders instead of shadows.
 				decoration =
 				{
-					rounding = 10;
+					rounding = t.windows.rounding;
 					active_opacity = 1.0;
-					inactive_opacity = 0.7;
+					inactive_opacity = 0.85;
 					fullscreen_opacity = 1.0;
 
-					shadow =
-					{
-						enabled = true;
-						range = 15;
-						color = lib.mkForce "rgba(19191966)";
-					};
+					shadow.enabled = false;
 
 					blur =
 					{
 						enabled = true;
-						size = 3;
+						size = 4;
 						passes = 2;
-						brightness = 0.6;
+						brightness = 0.5;
 						contrast = 1.0;
 						noise = 0;
 						xray = false;
@@ -206,30 +203,29 @@ in
 				{ name = "logitech-pro-x-1"; sensitivity = -0.2; }
 			];
 
+			# NIHIL motion: decisive deceleration, never a bounce.
 			curve =
 			[
 				(bezier "linear" [ [ 0 0 ] [ 1 1 ] ])
-				(bezier "snappyReturn" [ [ 0.4 0.9 ] [ 0.6 1.0 ] ])
-				(bezier "bounce" [ [ 0.4 0.9 ] [ 0.6 1.0 ] ])
-				(bezier "md3_decel" [ [ 0.05 0.7 ] [ 0.1 1 ] ])
-				(bezier "softAcDecel" [ [ 0.26 0.26 ] [ 0.15 1 ] ])
+				(bezier "nihilOut" [ [ 0.05 0.7 ] [ 0.1 1.0 ] ])
+				(bezier "nihilInOut" [ [ 0.4 0.0 ] [ 0.2 1.0 ] ])
 			];
 
 			animation =
 			[
-				{ leaf = "windows"; enabled = true; speed = 5; bezier = "snappyReturn"; style = "slidevert"; }
-				{ leaf = "windowsMove"; enabled = true; speed = 4; bezier = "bounce"; style = "slide"; }
-				{ leaf = "border"; enabled = true; speed = 10; bezier = "linear"; }
-				{ leaf = "fade"; enabled = true; speed = 3; bezier = "md3_decel"; }
-				{ leaf = "workspaces"; enabled = true; speed = 2.5; bezier = "softAcDecel"; style = "slide"; }
+				{ leaf = "windows"; enabled = true; speed = 2.6; bezier = "nihilOut"; style = "popin 94%"; }
+				{ leaf = "windowsMove"; enabled = true; speed = 2.4; bezier = "nihilOut"; style = "slide"; }
+				{ leaf = "border"; enabled = true; speed = 4; bezier = "linear"; }
+				{ leaf = "fade"; enabled = true; speed = 2; bezier = "nihilOut"; }
+				{ leaf = "workspaces"; enabled = true; speed = 3; bezier = "nihilInOut"; style = "slide"; }
 			];
 
 			gesture =
 			[
 				{ fingers = 3; direction = "horizontal"; action = "workspace"; }
 				{ fingers = 3; direction = "down"; action = "close"; }
-				{ fingers = 3; direction = "up"; action = lua ''function() hl.exec_cmd("wofi-open") end''; }
-				{ fingers = 4; direction = "vertical"; action = lua (withSound ../sounds/special.ogg "hl.dsp.workspace.toggle_special()"); }
+				{ fingers = 3; direction = "up"; action = lua ''function() hl.exec_cmd("nihil-ipc drawers toggle launcher") end''; }
+				{ fingers = 4; direction = "vertical"; action = lua (withSound sound.special "hl.dsp.workspace.toggle_special()"); }
 			];
 
 			window_rule =
@@ -242,10 +238,18 @@ in
 				(floatingPanel "vol-float" "org.pulseaudio.pavucontrol")
 			];
 
+			# The NIHIL shell animates its own surfaces (frame, drawers, widgets).
+			layer_rule =
+			[
+				{ name = "nihil-shell"; match.namespace = "^nihil-.*$"; no_anim = true; }
+			];
+
 			bind =
 			[
 				(bind "SUPER + Super_L" (exec "kitty"))
-				(bind "SUPER + Space" (exec "wofi-open"))
+				(bind "SUPER + Space" (exec "nihil-ipc drawers toggle launcher"))
+				(bind "SUPER + D" (exec "nihil-ipc drawers toggle dashboard"))
+				(bind "SUPER + P" (exec "nihil-ipc drawers toggle panel"))
 				(bind "SUPER + E" (exec "thunar"))
 				(bind "SUPER + X" (exec "zen-beta"))
 				(bind "SUPER + N" (exec "obsidian"))
@@ -257,22 +261,22 @@ in
 
 				(bind "SUPER + Q" "hl.dsp.window.close()")
 				(bind "SUPER + V" ''hl.dsp.window.float({ action = "toggle" })'')
-				(bind "SUPER + F" (withSound ../sounds/fullscreen.ogg ''hl.dsp.window.fullscreen({ mode = "maximized" })''))
-				(bind "SUPER + SHIFT + F" (withSound ../sounds/fullscreen.ogg ''hl.dsp.window.fullscreen({ mode = "fullscreen" })''))
+				(bind "SUPER + F" (withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "maximized" })''))
+				(bind "SUPER + SHIFT + F" (withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "fullscreen" })''))
 
 				(bind "SUPER + left" ''hl.dsp.focus({ direction = "left" })'')
 				(bind "SUPER + right" ''hl.dsp.focus({ direction = "right" })'')
 				(bind "SUPER + up" ''hl.dsp.focus({ direction = "up" })'')
 				(bind "SUPER + down" ''hl.dsp.focus({ direction = "down" })'')
 
-				(bind "SUPER + Escape" (withSound ../sounds/special.ogg "hl.dsp.workspace.toggle_special()"))
+				(bind "SUPER + Escape" (withSound sound.special "hl.dsp.workspace.toggle_special()"))
 				(bind "SUPER + Control_L" ''hl.dsp.window.move({ workspace = "special" })'')
 				(bind "SUPER + Tab" ''hl.dsp.focus({ workspace = "e+1" })'')
 
 				(bindWith "XF86AudioRaiseVolume" (exec "osd-volume up") { locked = true; repeating = true; })
 				(bindWith "XF86AudioLowerVolume" (exec "osd-volume down") { locked = true; repeating = true; })
 				(bindWith "XF86AudioMute" (exec "osd-volume mute") { locked = true; })
-				(bindWith "XF86AudioMicMute" (exec "sh -c 'wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle; mic-led-sync'") { locked = true; })
+				(bindWith "XF86AudioMicMute" (exec "osd-mic") { locked = true; })
 				(bindWith "XF86MonBrightnessUp" (exec "osd-brightness up") { locked = true; repeating = true; })
 				(bindWith "XF86MonBrightnessDown" (exec "osd-brightness down") { locked = true; repeating = true; })
 
@@ -297,10 +301,10 @@ in
 			[
 				(onEvent "hyprland.start" autostart)
 				(onEvent "config.reloaded" keepLidState)
-				(onEvent "monitor.added" keepLidState)
-				(soundOn "workspace.active" ../sounds/switch.ogg)
-				(soundOn "window.open" ../sounds/open.ogg)
-				(soundOn "window.close" ../sounds/close.ogg)
+				(onEvent "monitor.added" ''function() (${keepLidState})() hl.exec_cmd("nihil-wallpaper restore") end'')
+				(soundOn "workspace.active" sound.switch)
+				(soundOn "window.open" sound.open)
+				(soundOn "window.close" sound.close)
 			];
 		};
 	};

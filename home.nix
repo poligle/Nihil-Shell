@@ -10,22 +10,20 @@
         ./home/thunar.nix
 		./home/hyprland.nix
 		./home/kitty.nix
-		./home/waybar.nix
         ./home/scripts.nix
-        ./home/wofi.nix
         ./home/desktop-entries.nix
-		./home/awww.nix
+		./home/wallpaper.nix
 		./home/hypridle.nix
 		./home/hyprlock.nix
-		./home/dunst.nix
         ./home/python.nix
         ./home/zen.nix
         ./home/vscode.nix
-		./home/eww.nix
 		./home/bluetooth.nix
 		./home/engineering.nix
 		./home/cli.nix
 		./home/refresh.nix
+		./home/shell.nix
+		./home/fastfetch.nix
 	];
 
 	home.username = "poligle";
@@ -35,8 +33,6 @@
 
 	home.packages = 
 	[
-        pkgs.colloid-icon-theme
-		pkgs.poppins
 		pkgs.pavucontrol
 		pkgs.networkmanagerapplet
 		pkgs.libnotify

@@ -1,6 +1,9 @@
 # nvim.nix by poligle
 
-{ config, pkgs, ... }:
+{ config, osConfig, pkgs, ... }:
+let
+    t = osConfig.nihil.tokens;
+in
 {
     programs.neovim = 
     {
@@ -224,6 +227,23 @@
             require("lualine").setup(
             {
                 options = { theme = "auto", globalstatus = true },
+            })
+
+            -- NIHIL: base08 is the interrupt red, so identifiers fall back to
+            -- the foreground and only errors and deletions stay red.
+            local function nihilHighlights()
+                local foreground = "#${t.base16.base05}"
+                for _, group in ipairs({ "Identifier", "@variable", "@variable.member", "@variable.parameter", "@property", "@field", "@parameter", "@tag", "@tag.attribute" }) do
+                    vim.api.nvim_set_hl(0, group, { fg = foreground })
+                end
+                vim.api.nvim_set_hl(0, "Keyword", { fg = "#${t.base16.base0E}", bold = true })
+                vim.api.nvim_set_hl(0, "@keyword", { fg = "#${t.base16.base0E}", bold = true })
+            end
+
+            vim.api.nvim_create_autocmd({ "VimEnter", "ColorScheme" },
+            {
+                group = vim.api.nvim_create_augroup("NihilHighlights", { clear = true }),
+                callback = nihilHighlights,
             })
         '';
     };
