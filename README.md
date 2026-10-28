@@ -8,7 +8,7 @@
 <p align="center"><b>ex nihilo</b> &nbsp;·&nbsp; a monochrome, dot-matrix desktop for NixOS</p>
 
 <p align="center">
-  <a href="https://poligle.github.io/NixOS-Config/">Website</a> &nbsp;·&nbsp;
+  <a href="https://nihilshell.com/">Website</a> &nbsp;·&nbsp;
   <a href="#install">Install</a> &nbsp;·&nbsp;
   <a href="#options">Options</a> &nbsp;·&nbsp;
   <a href="#keybindings">Keybindings</a>
