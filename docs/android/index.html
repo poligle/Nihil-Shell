@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIHIL for Android — a dot-matrix launcher</title>
+<meta name="description" content="The NIHIL language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. No ads, no tracking, no internet permission.">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://nihilshell.com/android/">
+<link rel="icon" href="../favicon.ico" sizes="48x48">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NIHIL for Android — ex nihilo">
+<meta property="og:description" content="A monochrome, dot-matrix launcher for Android. No internet permission.">
+<meta property="og:url" content="https://nihilshell.com/android/">
+<meta property="og:image" content="https://nihilshell.com/assets/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="../assets/fonts/space-grotesk.woff" as="font" type="font/woff" crossorigin>
+<style>
+@font-face { font-family: "Space Grotesk"; src: url("../assets/fonts/space-grotesk.woff") format("woff"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-400.woff") format("woff"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Doto"; src: url("../assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+
+/* NIHIL tokens: the same as the desktop page */
+:root {
+  --void: #000000;
+  --surface: #0E0E0E;
+  --raised: #1A1A1A;
+  --line: #2A2A2A;
+  --off: #333333;
+  --muted: #7A7A7A;
+  --dim: #A3A3A3;
+  --ink: #F2F2F2;
+  --signal: #D71921;
+
+  --sans: "Space Grotesk", system-ui, sans-serif;
+  --mono: "Space Mono", ui-monospace, monospace;
+  --dot: "Doto", "Space Mono", monospace;
+
+  --t: 8px;
+  --top: 8px;
+  --left: 44px;
+  --r: 20px;
+  --pitch: 9px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  color: var(--ink);
+  font: 400 18px/1.55 var(--sans);
+  background-color: var(--void);
+  background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px);
+  background-size: var(--pitch) var(--pitch);
+  background-attachment: fixed;
+}
+::selection { background: var(--ink); color: var(--void); }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+img { display: block; max-width: 100%; height: auto; }
+code, kbd, pre { font-family: var(--mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
+
+/* ---------- frame, bar and Glyph light ---------- */
+.frame {
+  position: fixed; z-index: 40; pointer-events: none;
+  top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
+  border-radius: var(--r);
+  box-shadow: 0 0 0 200vmax var(--void);
+}
+.glyph { position: fixed; inset: 0; z-index: 45; pointer-events: none; width: 100%; height: 100%; }
+.glyph path { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(242, 242, 242, 0.75)); }
+
+.bar {
+  position: fixed; z-index: 50; left: 0; top: 0; bottom: 0; width: var(--left);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 16px 0 14px;
+}
+.bar .mark { display: block; width: 26px; height: 26px; border-radius: 50%; }
+.bar .mark svg { display: block; width: 26px; height: 26px; }
+.leds { display: flex; flex-direction: column; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.leds a { position: relative; display: grid; place-items: center; width: 20px; height: 22px; }
+.leds a::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transition: height 240ms, background-color 240ms; }
+.leds a[aria-current="true"]::before { height: 20px; background: var(--ink); }
+.leds a:hover::before { background: var(--ink); }
+.leds .tip {
+  position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+  padding: 3px 9px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line);
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--dim); white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 140ms;
+}
+.leds a:hover .tip, .leds a:focus-visible .tip { opacity: 1; }
+.bar-end { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.bar-end .gh { display: grid; place-items: center; width: 26px; height: 26px; color: var(--dim); }
+.bar-end .gh:hover { color: var(--ink); }
+.clock { font: 700 17px/0.95 var(--dot); color: var(--dim); text-align: center; letter-spacing: 0.02em; }
+.clock[hidden] { display: none; }
+.bar .word { display: none; }
+
+/* ---------- layout ---------- */
+main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
+.wrap { max-width: 1180px; margin: 0 auto; }
+section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
+.prose { max-width: 62ch; }
+h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(36px, 5.2vw, 62px); line-height: 1.04; max-width: 15ch; }
+h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; margin-bottom: 18px; }
+h3 { font-size: 21px; line-height: 1.3; margin-bottom: 6px; }
+p { margin: 0 0 16px; }
+.lede { color: var(--dim); font-size: 21px; line-height: 1.5; max-width: 50ch; margin-top: 22px; }
+.quiet { color: var(--dim); }
+.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
+
+/* ---------- hero ---------- */
+.hero { padding-bottom: 120px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 56px; align-items: center; }
+.wordmark { width: min(560px, 100%); margin: 0 0 14px -4px; }
+.wordmark svg, .wordmark img { display: block; width: 100%; height: auto; }
+.motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 64px; text-transform: lowercase; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 22px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 24px;
+  border-radius: 999px; border: 1px solid var(--line); text-decoration: none;
+  font: 500 16px/1 var(--sans); color: var(--ink); background: var(--void);
+  transition: border-color 140ms, background-color 140ms;
+}
+.pill:hover { border-color: var(--muted); }
+.pill.primary { background: var(--ink); color: var(--void); border-color: var(--ink); }
+.pill.primary:hover { background: #ffffff; }
+.pill svg { width: 18px; height: 18px; }
+.shot { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
+
+/* ---------- the phone, drawn by this page ---------- */
+.phone {
+  position: relative; width: min(300px, 78vw); aspect-ratio: 9 / 19.5;
+  border-radius: 46px; background: var(--void); border: 1px solid var(--line);
+  box-shadow: 0 0 0 10px var(--void);
+}
+.phone .status {
+  position: absolute; top: 11px; left: 26px; right: 26px; display: flex; justify-content: space-between; align-items: center;
+  font: 400 10px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
+}
+.phone .status i { display: block; width: 9px; height: 9px; border-radius: 50%; background: #111; box-shadow: inset 0 0 0 1px #222; }
+.phone .card {
+  position: absolute; top: 30px; left: 6px; right: 6px; bottom: 16px; border-radius: 26px; overflow: hidden;
+  background-color: var(--void);
+  background-image: radial-gradient(circle, #191919 0 1.1px, transparent 1.5px);
+  background-size: 8px 8px;
+}
+/* a dot-matrix wallpaper: LEDs that grow towards a bright horizon, a few stars */
+.phone .card i, .phone .card::after { content: ""; position: absolute; inset: 0; }
+.phone .card i { background-size: 8px 8px; }
+.phone .card .l3 {
+  background-image: radial-gradient(circle, rgba(242, 242, 242, 0.5) 0 1.3px, transparent 1.7px);
+  -webkit-mask-image: radial-gradient(ellipse 125% 46% at 64% 104%, #000 0 55%, transparent 80%);
+          mask-image: radial-gradient(ellipse 125% 46% at 64% 104%, #000 0 55%, transparent 80%);
+}
+.phone .card .l2 {
+  background-image: radial-gradient(circle, rgba(242, 242, 242, 0.72) 0 2px, transparent 2.4px);
+  -webkit-mask-image: radial-gradient(ellipse 100% 35% at 64% 104%, #000 0 55%, transparent 82%);
+          mask-image: radial-gradient(ellipse 100% 35% at 64% 104%, #000 0 55%, transparent 82%);
+}
+.phone .card .l1 {
+  background-image: radial-gradient(circle, rgba(242, 242, 242, 0.95) 0 2.9px, transparent 3.3px);
+  -webkit-mask-image: radial-gradient(ellipse 72% 23% at 62% 104%, #000 0 55%, transparent 85%);
+          mask-image: radial-gradient(ellipse 72% 23% at 62% 104%, #000 0 55%, transparent 85%);
+}
+.phone .card::after {
+  background:
+    radial-gradient(circle at 76px 252px, #cfcfcf 0 1.8px, transparent 2.3px),
+    radial-gradient(circle at 196px 220px, #9a9a9a 0 1.5px, transparent 2px),
+    radial-gradient(circle at 228px 300px, #e6e6e6 0 2px, transparent 2.5px),
+    radial-gradient(circle at 124px 332px, #8a8a8a 0 1.4px, transparent 1.9px),
+    radial-gradient(circle at 44px 380px, #bdbdbd 0 1.7px, transparent 2.2px),
+    radial-gradient(circle at 252px 404px, #a8a8a8 0 1.5px, transparent 2px),
+    radial-gradient(circle at 164px 428px, #dadada 0 1.9px, transparent 2.4px),
+    linear-gradient(rgba(0, 0, 0, 0.55), transparent 44%, transparent 50%, rgba(0, 0, 0, 0.62));
+}
+.phone .home { position: absolute; z-index: 1; inset: 0; padding: 22px 16px 14px; display: flex; flex-direction: column; }
+.ledclock { display: block; width: 78%; height: auto; border-radius: 8px; background: rgba(0, 0, 0, 0.82); }
+.ledclock .off { fill: rgba(255, 255, 255, 0.18); }
+.ledclock .on { fill: var(--ink); opacity: 0; transition: opacity 480ms cubic-bezier(0.2, 0, 0, 1); }
+.ledclock .on.lit { opacity: 1; }
+.pdate { margin: 12px 0 0; font: 400 10.5px/1 var(--mono); letter-spacing: 0.08em; color: var(--ink); text-transform: uppercase; text-shadow: 0 0 6px #000; }
+.pbatt { display: flex; align-items: center; gap: 3px; margin-top: 10px; }
+.pbatt i { width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+.pbatt i.o { transform: scale(0.62); background: rgba(255, 255, 255, 0.22); }
+.pbatt span { margin-left: 7px; font: 400 9.5px/1 var(--mono); letter-spacing: 0.06em; color: var(--dim); }
+.pfavs { margin: auto 0 0; padding: 0 0 0 2px; list-style: none; }
+.pfavs li { font: 400 19px/2.1 var(--sans); color: var(--ink); text-shadow: 0 0 8px #000; }
+.pglyph { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.pglyph circle { fill: var(--ink); opacity: 0; }
+.pglyph path { fill: none; stroke: none; }
+
+/* ---------- screens ---------- */
+.phones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 48px; max-width: 980px; }
+.phones figure { margin: 0; }
+.phones a { display: block; border-radius: 28px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
+.phones a:hover { border-color: var(--muted); }
+.phones figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 56px 0 0; }
+.rules p { color: var(--dim); margin: 0; }
+
+/* ---------- drawer ---------- */
+.examples { display: grid; gap: 16px; margin: 36px 0 0; padding: 0; list-style: none; max-width: 860px; }
+.examples li { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: baseline; color: var(--dim); }
+.examples kbd { justify-self: start; }
+.examples code { font-size: 15px; color: var(--ink); }
+kbd {
+  display: inline-block; padding: 5px 8px 4px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface);
+  font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
+}
+
+/* ---------- studio ---------- */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+.studio-shot { justify-self: center; width: min(300px, 78vw); margin: 0; }
+.studio-shot img { border-radius: 28px; border: 1px solid var(--line); }
+.studio-shot figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--muted); }
+
+/* ---------- code, steps, table ---------- */
+.code {
+  display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
+}
+.code pre { flex: 1 1 auto; min-width: 0; margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.65; color: var(--ink); }
+.code .c { color: var(--muted); }
+.copy {
+  flex: none; margin: 10px 10px 0 0; appearance: none; cursor: pointer;
+  border: 1px solid var(--line); background: var(--void); color: var(--dim); border-radius: 999px;
+  min-height: 30px; padding: 0 12px; font: 400 12px/1 var(--mono);
+}
+.copy:hover { color: var(--ink); border-color: var(--muted); }
+.steps { margin: 40px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; max-width: 860px; }
+.steps > li { counter-increment: step; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 14px; min-width: 0; }
+.steps > li::before {
+  content: counter(step); grid-row: span 3; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--line); display: grid; place-items: center; font: 700 15px/1 var(--dot); color: var(--dim);
+}
+.steps p { color: var(--dim); margin: 0; }
+.table { margin-top: 48px; max-width: 860px; }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+th, td { text-align: left; vertical-align: top; padding: 13px 14px 13px 0; border-bottom: 1px solid var(--line); }
+th { font: 400 12px/1.4 var(--mono); color: var(--muted); font-weight: 400; }
+td code { font-size: 14px; color: var(--ink); white-space: nowrap; }
+td { color: var(--dim); }
+td.what { color: var(--ink); }
+.note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
+.source { margin-top: 64px; max-width: 860px; }
+
+/* ---------- footer ---------- */
+/* the same side padding as main, so the frame and the bar never cover it */
+footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
+footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
+footer p { margin: 0 0 10px; max-width: 70ch; }
+footer a { color: var(--dim); }
+footer a:hover { color: var(--ink); }
+
+/* ---------- narrow screens: the bar moves to the top ---------- */
+@media (max-width: 860px) {
+  :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
+  .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
+  .bar .leds, .bar .clock { display: none; }
+  .bar-start { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .bar .word { display: block; font: 400 13px/1 var(--mono); letter-spacing: 0.4em; color: var(--dim); }
+  .bar-end { flex-direction: row; }
+  main { padding: calc(var(--top) + 36px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
+  section { padding-bottom: 96px; }
+  .hero-grid, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
+  .hero-grid { gap: 48px; }
+  .phone { justify-self: center; }
+  .rules { gap: 28px; }
+  .motto { margin-bottom: 44px; letter-spacing: 0.45em; }
+  .phones { gap: 12px; }
+  .phones a { border-radius: 16px; }
+  .phones figcaption { font-size: 10px; letter-spacing: 0.04em; }
+  .examples li { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .split { gap: 32px; }
+  .steps > li { grid-template-columns: 40px minmax(0, 1fr); }
+  td code { white-space: normal; }
+  footer { padding: 0 calc(var(--t) + 16px) 48px calc(var(--left) + 16px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .leds a::before, .ledclock .on { transition: none; }
+}
+</style>
+</head>
+<body>
+<a class="sr-only skip" href="#title">Skip to content</a>
+
+<div class="frame" aria-hidden="true"></div>
+<svg class="glyph" aria-hidden="true"><path id="glyph-path" d=""/></svg>
+
+<header class="bar">
+  <a class="bar-start" href="#top" aria-label="NIHIL for Android, back to the top">
+    <span class="mark">
+      <svg viewBox="0 0 90 90" aria-hidden="true"><g fill="#F2F2F2"><circle cx="45.00" cy="12.60" r="4.95"/><circle cx="57.40" cy="15.07" r="4.95"/><circle cx="67.91" cy="22.09" r="4.95"/><circle cx="74.93" cy="32.60" r="4.95"/><circle cx="77.40" cy="45.00" r="4.95"/><circle cx="74.93" cy="57.40" r="4.95"/><circle cx="67.91" cy="67.91" r="4.95"/><circle cx="57.40" cy="74.93" r="4.95"/><circle cx="45.00" cy="77.40" r="4.95"/><circle cx="32.60" cy="74.93" r="4.95"/><circle cx="22.09" cy="67.91" r="4.95"/><circle cx="15.07" cy="57.40" r="4.95"/><circle cx="12.60" cy="45.00" r="4.95"/><circle cx="15.07" cy="32.60" r="4.95"/><circle cx="22.09" cy="22.09" r="4.95"/><circle cx="32.60" cy="15.07" r="4.95"/></g><circle cx="45" cy="45" r="6.75" fill="#D71921"/></svg>
+    </span>
+    <span class="word" aria-hidden="true">NIHIL</span>
+  </a>
+  <nav aria-label="Sections">
+    <ul class="leds">
+      <li><a href="#top" aria-current="true"><span class="tip">Overview</span></a></li>
+      <li><a href="#screen"><span class="tip">Screen</span></a></li>
+      <li><a href="#drawer"><span class="tip">Drawer</span></a></li>
+      <li><a href="#studio"><span class="tip">Studio</span></a></li>
+      <li><a href="#privacy"><span class="tip">Privacy</span></a></li>
+      <li><a href="#install"><span class="tip">Install</span></a></li>
+    </ul>
+  </nav>
+  <div class="bar-end">
+    <a class="gh" href="../" aria-label="NIHIL for NixOS" title="NIHIL for NixOS">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="9" rx="1.6"/><path d="M5.5 14.2h5M8 11.6v2.6"/></svg>
+    </a>
+    <a class="gh" href="https://github.com/poligle/Nihil-Launcher" aria-label="Source code on GitHub" title="Source code on GitHub">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <div class="clock" hidden aria-hidden="true"><span id="hh">00</span><br><span id="mm">00</span></div>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap">
+
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-grid">
+        <div>
+          <div class="wordmark" id="wordmark"><img src="../assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
+          <p class="motto">ex nihilo</p>
+          <h1 id="title">A dot&#8209;matrix launcher for Android</h1>
+          <p class="lede">The same language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. No ads, no tracking and no internet permission.</p>
+          <div class="actions">
+            <a class="pill primary" href="https://github.com/poligle/Nihil-Launcher/releases/latest">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8.5M4.5 7.2 8 10.7l3.5-3.5M2.5 13.8h11"/></svg>
+              Download the APK
+            </a>
+            <a class="pill" href="https://github.com/poligle/Nihil-Launcher">
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+              View the code
+            </a>
+          </div>
+          <p class="meta">Android 12 or newer · Kotlin, no libraries · MIT</p>
+        </div>
+
+        <div class="phone" id="phone" role="img" aria-label="Drawing of the NIHIL home screen: an LED clock with the time, the date, the battery as ten LEDs and the favourites at the bottom, over a dot-matrix wallpaper.">
+          <div class="status" aria-hidden="true"><span id="p-time">00:00</span><i></i><span>72%</span></div>
+          <div class="card" aria-hidden="true"><i class="l3"></i><i class="l2"></i><i class="l1"></i></div>
+          <div class="home" aria-hidden="true">
+            <svg class="ledclock" id="ledclock" viewBox="-5 -5 260 80"></svg>
+            <p class="pdate" id="p-date">&nbsp;</p>
+            <div class="pbatt"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><span>72 %</span></div>
+            <ul class="pfavs"><li>Phone</li><li>Messages</li><li>Camera</li><li>Browser</li><li>Music</li></ul>
+          </div>
+          <svg class="pglyph" id="pglyph" aria-hidden="true"></svg>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen" aria-labelledby="screen-title">
+      <div class="prose">
+        <h2 id="screen-title">The frame grows</h2>
+        <p class="quiet">The screen is black and the wallpaper is a rounded card set into it: the desktop's frame, on a phone. The status bar and the gesture bar sit on the frame. Swipe up and the card's bottom edge follows your finger until everything is frame. That is the drawer, and its content switches on at the end, like LEDs.</p>
+      </div>
+
+      <div class="phones" id="phones">
+        <figure data-optional>
+          <a href="../assets/screens/android-home.png"><img src="../assets/screens/android-home.png" width="1080" height="2340" decoding="async" alt="NIHIL's home screen on a Galaxy A35: the LED clock, the date, the battery LEDs and the favourites."></a>
+          <figcaption>Home</figcaption>
+        </figure>
+        <figure data-optional>
+          <a href="../assets/screens/android-drawer.png"><img src="../assets/screens/android-drawer.png" width="1080" height="2340" decoding="async" alt="The drawer: a search field, results with themed icons, the first one ready for enter."></a>
+          <figcaption>Drawer</figcaption>
+        </figure>
+        <figure data-optional>
+          <a href="../assets/screens/android-menu.png"><img src="../assets/screens/android-menu.png" width="1080" height="2340" decoding="async" alt="The menu of an app: its shortcuts, then add to home, hide, app info and uninstall in red."></a>
+          <figcaption>App menu</figcaption>
+        </figure>
+      </div>
+
+      <div class="rules">
+        <div>
+          <h3>A clock made of LEDs</h3>
+          <p>A 25&nbsp;×&nbsp;7 panel where every LED is there, the unlit ones faintly. When the minute changes it refreshes column by column, like the one above.</p>
+        </div>
+        <div>
+          <h3>Red only to interrupt</h3>
+          <p>The battery is ten LEDs. They turn red at 15&nbsp;% when it isn't charging; a call or an alarm is the only other red on the screen.</p>
+        </div>
+        <div>
+          <h3>Light on the frame</h3>
+          <p>With notification access, a run of LEDs goes round the frame for every notification: twice and in red for a call or an alarm, up from the bottom when the charger goes in.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="drawer" aria-labelledby="drawer-title">
+      <div class="prose">
+        <h2 id="drawer-title">One field</h2>
+        <p class="quiet">Apps, actions and sums share a single search. Accents and case don't matter, package names count, and <kbd>enter</kbd> runs the first result.</p>
+      </div>
+      <ul class="examples">
+        <li><kbd>camara</kbd><span>finds Cámara; <code>settings</code> finds Ajustes, by its package name.</span></li>
+        <li><kbd>&gt;</kbd><span>lists the actions: torch, the Wi&#8209;Fi and sound panels, Bluetooth, battery, alarms, lock, the wallpaper studio and the settings. They also turn up in normal search: <code>lin</code> is the torch.</span></li>
+        <li><kbd>=</kbd><span>is the calculator: <code>+ − × ÷ ^ % !</code>, <code>sqrt sin cos ln log</code>, <code>pi</code>, <code>2pi</code>, <code>3(4+1)</code>. A sum like <code>12*7</code> is recognised without it, and enter copies the result.</span></li>
+        <li><kbd>no match</kbd><span>offers a web search, in your own browser.</span></li>
+      </ul>
+
+      <div class="table">
+        <h3>Gestures</h3>
+        <table>
+          <thead><tr><th scope="col">On the home screen</th><th scope="col">Does</th></tr></thead>
+          <tbody>
+            <tr><td class="what">Swipe up</td><td>The drawer, following your finger</td></tr>
+            <tr><td class="what">Swipe down</td><td>The notification shade</td></tr>
+            <tr><td class="what">Double tap</td><td>Locks the phone (optional)</td></tr>
+            <tr><td class="what">Hold empty space</td><td>Wallpaper and settings</td></tr>
+            <tr><td class="what">Hold an app</td><td>Its shortcuts; add to home, move, hide, info, uninstall</td></tr>
+            <tr><td class="what">Home button</td><td>Closes whatever is open</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="studio" aria-labelledby="studio-title">
+      <div class="split">
+        <div class="prose">
+          <h2 id="studio-title">Photos become LEDs</h2>
+          <p class="quiet">The wallpaper studio turns a photo into an LED matrix at the exact resolution of the screen, with the same algorithm as the desktop's wallpapers: the light of each cell, the black point raised so a night sky stays off, single highlights lit as stars.</p>
+          <p class="quiet">Fine, normal or coarse dots; the home screen, the lock screen or both. It all happens on the phone: the photo goes nowhere.</p>
+        </div>
+        <figure class="studio-shot">
+          <img src="../assets/screens/android-studio-night.webp" width="540" height="1170" loading="lazy" alt="A photo of a night sky over snowy mountains as a phone wallpaper made of LEDs: stars as single dots, the mountains as fields of grey and white dots.">
+          <figcaption>The desktop's night.jpg through the studio's algorithm, normal dots.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="privacy" aria-labelledby="privacy-title">
+      <div class="prose">
+        <h2 id="privacy-title">Nothing leaves the phone</h2>
+        <p class="quiet">NIHIL doesn't ask for the internet permission, so it couldn't send anything anywhere even if it wanted to. No ads, no analytics, no account.</p>
+      </div>
+      <div class="table">
+        <table>
+          <thead><tr><th scope="col">Permission</th><th scope="col">What for</th></tr></thead>
+          <tbody>
+            <tr><td><code>SET_<wbr>WALLPAPER</code></td><td>The studio</td></tr>
+            <tr><td><code>EXPAND_<wbr>STATUS_<wbr>BAR</code></td><td>Swipe down for the notifications</td></tr>
+            <tr><td><code>REQUEST_<wbr>DELETE_<wbr>PACKAGES</code></td><td>“Uninstall” in the app menu</td></tr>
+            <tr><td class="what">Notification access<br><span class="meta">optional</span></td><td>The light on the frame and the unread icons. NIHIL looks at which app posted, the flags and the category, never the text. Silent notifications and anything Do Not Disturb holds back stay dark.</td></tr>
+            <tr><td class="what">Accessibility<br><span class="meta">optional</span></td><td>Only to lock the phone on a double tap. It reads nothing on the screen.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="install-title">
+      <div class="prose">
+        <h2 id="install-title">Install</h2>
+        <p class="quiet">Made for and tested on a Galaxy A35. Any phone with Android 12 or newer should work, but that is the only one it has run on so far.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3>Download the APK</h3>
+          <p>From the <a href="https://github.com/poligle/Nihil-Launcher/releases/latest">latest release</a>. The <code>.sha256</code> next to it lets you check the download.</p>
+        </li>
+        <li>
+          <h3>Install it</h3>
+          <p>Open it on the phone and let your browser or file manager install apps when Android asks.</p>
+        </li>
+        <li>
+          <h3>Make it your home screen</h3>
+          <p>Open NIHIL from the app list and tap <em>Home app</em>. The light on the frame and the double tap are off until you turn them on there; if Android calls them a restricted setting, App info → ⋮ → <em>Allow restricted settings</em>.</p>
+        </li>
+      </ol>
+
+      <div class="source">
+        <h3>From source</h3>
+        <p class="quiet">JDK 17 and the Android SDK, or the Nix shell in the repository, with the phone on USB or wireless debugging.</p>
+        <div class="code"><pre><code>git clone https://github.com/poligle/Nihil-Launcher nihil-launcher
+cd nihil-launcher
+nix develop
+./gradlew installDebug</code></pre></div>
+        <p class="note">The phone at the top of this page is drawn by the page itself, with the launcher's LED digits<span id="shots-note">; the screenshots come from a Galaxy A35</span>.</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p>NIHIL is a personal project and is not affiliated with Nothing Technology. NIHIL for Android is written in Kotlin on the Android framework alone: no AndroidX, no libraries.</p>
+      <p>Doto, Space Grotesk and Space Mono are under the <a href="../assets/fonts/OFL.txt">SIL Open Font License 1.1</a>. The code is MIT licensed.</p>
+    </div>
+    <div>
+      <p><a href="https://github.com/poligle/Nihil-Launcher">github.com/poligle/Nihil-Launcher</a></p>
+      <p><a href="https://github.com/poligle/Nihil-Launcher/releases">Releases</a> · <a href="https://github.com/poligle/Nihil-Launcher#readme">README</a></p>
+      <p><a href="../">NIHIL for NixOS</a></p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+
+  // ---- Glyph light around the page's frame, as on the desktop page
+  const path = document.getElementById("glyph-path");
+  function frameMetrics() {
+    const css = getComputedStyle(document.documentElement);
+    const px = name => parseFloat(css.getPropertyValue(name));
+    return { t: px("--t"), top: px("--top"), left: px("--left"), r: px("--r") };
+  }
+  function layoutGlyph() {
+    const m = frameMetrics(), w = innerWidth, h = innerHeight;
+    const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r;
+    path.setAttribute("d",
+      `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
+      `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
+  }
+  function glyph() {
+    if (reduce || !path.animate) return;
+    const length = path.getTotalLength();
+    const segment = Math.min(360, length * 0.16);
+    path.style.strokeDasharray = `${segment} ${length}`;
+    path.animate([
+      { strokeDashoffset: 0, opacity: 0 },
+      { opacity: 1, offset: 0.12 },
+      { opacity: 1, offset: 0.82 },
+      { strokeDashoffset: -(length - segment), opacity: 0 }
+    ], { duration: 1500, easing: "cubic-bezier(0.45, 0, 0.25, 1)" });
+  }
+  layoutGlyph();
+  addEventListener("resize", layoutGlyph);
+
+  // ---- The phone: its LED clock uses the launcher's 5 x 7 digits (core/LedFont.kt)
+  const DIGITS = [
+    [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+    [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+    [".###.", "#...#", "....#", "..##.", "....#", "#...#", ".###."],
+    ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+    ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+    ["..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."],
+    ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+    [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+    [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."]
+  ];
+  const COLS = 25, ROWS = 7, SLOTS = [0, 6, 12, 14, 20];
+  function matrix(time) {
+    const out = new Array(COLS * ROWS).fill(0);
+    const s = time.padStart(5).slice(-5);
+    for (let slot = 0; slot < 5; slot++) {
+      const c = s[slot], x0 = SLOTS[slot];
+      if (slot === 2) {
+        if (c === ":") { out[2 * COLS + x0] = 1; out[4 * COLS + x0] = 1; }
+        continue;
+      }
+      if (c < "0" || c > "9") continue;
+      const g = DIGITS[c.charCodeAt(0) - 48];
+      for (let r = 0; r < ROWS; r++) for (let dx = 0; dx < 5; dx++) if (g[r][dx] === "#") out[r * COLS + x0 + dx] = 1;
+    }
+    return out;
+  }
+  const clockSvg = document.getElementById("ledclock");
+  const lit = [];
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const cx = col * 10 + 5, cy = row * 10 + 5;
+      const off = document.createElementNS(NS, "circle");
+      off.setAttribute("class", "off"); off.setAttribute("cx", cx); off.setAttribute("cy", cy); off.setAttribute("r", 1.7);
+      const on = document.createElementNS(NS, "circle");
+      on.setAttribute("class", "on"); on.setAttribute("cx", cx); on.setAttribute("cy", cy); on.setAttribute("r", 4.2);
+      on.style.transitionDelay = `${col * 12}ms`;
+      clockSvg.append(off, on);
+      lit.push(on);
+    }
+  }
+  const pad = n => String(n).padStart(2, "0");
+  let shown = "";
+  function phoneTick() {
+    const d = new Date();
+    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    document.getElementById("p-time").textContent = time;
+    const date = new Intl.DateTimeFormat(navigator.language || "en", { weekday: "short", day: "numeric", month: "short" }).format(d);
+    document.getElementById("p-date").textContent = date.replace(/\./g, "").toUpperCase();
+    if (time === shown) return;
+    shown = time;
+    const m = matrix(time);
+    lit.forEach((led, i) => led.classList.toggle("lit", m[i] === 1));
+  }
+
+  // ---- The phone's own Glyph light: LEDs just outside its card, from the top both ways
+  const pglyph = document.getElementById("pglyph");
+  const phone = document.getElementById("phone");
+  let leds = [];
+  function layoutPhoneGlyph() {
+    pglyph.replaceChildren();
+    const w = phone.clientWidth, h = phone.clientHeight;
+    if (!w || !h) return;
+    pglyph.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const out = 3, x0 = 6 - out, y0 = 30 - out, x1 = w - 6 + out, y1 = h - 16 + out, r = 26 + out;
+    const outline = document.createElementNS(NS, "path");
+    outline.setAttribute("d",
+      `M ${(x0 + x1) / 2} ${y0} L ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} ` +
+      `A ${r} ${r} 0 0 1 ${x1 - r} ${y1} L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
+    pglyph.append(outline);
+    const length = outline.getTotalLength();
+    const count = Math.max(24, Math.floor(length / 7));
+    leds = [];
+    for (let i = 0; i < count; i++) {
+      const d = i * length / count;
+      const p = outline.getPointAtLength(d);
+      const c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", p.x.toFixed(1)); c.setAttribute("cy", p.y.toFixed(1)); c.setAttribute("r", 1.5);
+      pglyph.append(c);
+      leds.push({ c, from: Math.min(d, length - d) / (length / 2) });
+    }
+  }
+  function phoneGlyph() {
+    if (reduce || !leds.length || !leds[0].c.animate) return;
+    leds.forEach(({ c, from }) => c.animate(
+      [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0.2, offset: 0.55 }, { opacity: 0 }],
+      { duration: 1100, delay: 120 + from * 950, easing: "ease-out" }));
+  }
+  layoutPhoneGlyph();
+  let resizing;
+  addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout(layoutPhoneGlyph, 150); });
+
+  // The clock switches on, then the light runs round the phone.
+  if (reduce) phoneTick();
+  else setTimeout(phoneTick, 250);
+  setInterval(phoneTick, 15000);
+  setTimeout(phoneGlyph, 1400);
+  phone.addEventListener("click", phoneGlyph);
+
+  // ---- The wordmark lights up from nothing: the ring, its red centre, then the letters
+  const mark = document.getElementById("wordmark");
+  fetch("../assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
+    const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+    const svg = doc.documentElement;
+    if (svg.nodeName !== "svg") return;
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "NIHIL");
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    mark.replaceChildren(document.importNode(svg, true));
+    if (reduce) { glyph(); return; }
+    const live = mark.querySelector("svg");
+    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle')];
+    const box = live.viewBox.baseVal;
+    const markSize = box.height;
+    const ring = ink.filter(c => +c.getAttribute("cx") < markSize);
+    const letters = ink.filter(c => +c.getAttribute("cx") >= markSize);
+    const centre = live.querySelector('g[fill="#D71921"] circle');
+    const cx = markSize / 2;
+    ring.sort((a, b) => angle(a) - angle(b));
+    function angle(c) { return (Math.atan2(+c.getAttribute("cy") - cx, +c.getAttribute("cx") - cx) + Math.PI * 2.5) % (Math.PI * 2); }
+    const on = (el, delay) => el.animate([{ opacity: 0.08 }, { opacity: 1 }], { duration: 180, delay, fill: "backwards", easing: "ease-out" });
+    ring.forEach((c, i) => on(c, 120 + i * 32));
+    const done = 120 + ring.length * 32;
+    if (centre) on(centre, done + 60);
+    letters.forEach(c => on(c, done + 220 + (+c.getAttribute("cx") - markSize) * 2.2));
+    setTimeout(glyph, done + 520);
+  }).catch(() => setTimeout(glyph, 300));
+
+  // ---- Screenshots appear once they are in assets/screens; until then the gallery hides
+  const gallery = document.getElementById("phones");
+  function drop(figure) {
+    figure.remove();
+    if (!gallery.querySelector("figure")) {
+      gallery.remove();
+      document.getElementById("shots-note")?.remove();
+    }
+  }
+  gallery.querySelectorAll("figure[data-optional]").forEach(figure => {
+    const img = figure.querySelector("img");
+    if (img.complete && img.naturalWidth === 0) drop(figure);
+    else img.addEventListener("error", () => drop(figure));
+  });
+
+  // ---- Copy buttons; each copy sends the light around the frame and the phone
+  document.querySelectorAll(".code").forEach(block => {
+    if (!navigator.clipboard) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy";
+    button.textContent = "Copy";
+    button.addEventListener("click", () => {
+      navigator.clipboard.writeText(block.querySelector("code").innerText).then(() => {
+        button.textContent = "Copied";
+        glyph();
+        phoneGlyph();
+        setTimeout(() => { button.textContent = "Copy"; }, 1600);
+      });
+    });
+    block.append(button);
+  });
+
+  // ---- Section LEDs follow the scroll
+  const navLeds = [...document.querySelectorAll(".leds a")];
+  const targets = navLeds.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
+  const seen = new Map();
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => seen.set(e.target, e.intersectionRatio));
+    let best = 0, bestRatio = -1;
+    targets.forEach((t, i) => { const v = seen.get(t) ?? 0; if (v > bestRatio) { bestRatio = v; best = i; } });
+    navLeds.forEach((a, i) => a.setAttribute("aria-current", String(i === best)));
+  }, { threshold: [0, 0.15, 0.3, 0.5, 0.75, 1] });
+  targets.forEach(t => t && observer.observe(t));
+
+  // ---- The bar clock, in the visitor's time
+  const clock = document.querySelector(".clock");
+  function tick() {
+    const d = new Date();
+    document.getElementById("hh").textContent = pad(d.getHours());
+    document.getElementById("mm").textContent = pad(d.getMinutes());
+  }
+  tick();
+  clock.hidden = false;
+  setInterval(tick, 15000);
+})();
+</script>
+</body>
+</html>
