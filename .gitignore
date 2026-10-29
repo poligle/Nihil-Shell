@@ -22,3 +22,6 @@ result-*
 
 # Logs
 *.log
+
+# Python (the tests of home/nilo)
+__pycache__/

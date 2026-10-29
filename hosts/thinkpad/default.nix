@@ -42,6 +42,15 @@
             "HDMI-A-1" = { width = 2560; height = 1440; };
             "DP-1"     = { width = 1080; height = 1920; bar = false; };
         };
+
+        # Nilo on the Radeon of the Ryzen, through Vulkan. Set enable = false
+        # to drop it (and Ollama) altogether.
+        nilo =
+        {
+            enable = true;
+            acceleration = "vulkan";
+            integratedGpu = true;
+        };
     };
     system.stateVersion = "26.05";
 

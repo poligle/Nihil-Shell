@@ -10,6 +10,7 @@
 #
 #   nihil-ipc drawers toggle launcher|dashboard|panel
 #   nihil-ipc osd volume 40 false        nihil-ipc glyph test true
+#   nihil-ipc nilo toggle                (Nilo, modules/nilo.nix)
 #   journalctl --user -u nihil-shell -f  (logs)
 
 { config, osConfig, pkgs, lib, ... }:
@@ -19,6 +20,13 @@ let
 	quickshell = pkgs.quickshell;
 	profile = "${config.home.profileDirectory}/bin";
 	iconTheme = config.gtk.iconTheme.name;
+
+	# Nilo (modules/nilo.nix): the shell starts the agent when it first opens.
+	nilo =
+	{
+		enabled = nihil.nilo.enable;
+		agent = lib.optionalString nihil.nilo.enable "${import ./nilo { inherit pkgs lib osConfig; }}/bin/nilo-agent";
+	};
 
 	tokensQml = pkgs.writeText "Tokens.qml" ''
 		pragma Singleton
@@ -122,6 +130,7 @@ let
 		    readonly property string cavaConfig: "${cavaConfig}"
 		    readonly property var sounds: (${builtins.toJSON sounds})
 		    readonly property var cmd: (${builtins.toJSON commands})
+		    readonly property var nilo: (${builtins.toJSON nilo})
 		}
 	'';
 

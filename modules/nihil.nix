@@ -38,6 +38,8 @@ let
     };
 in
 {
+    imports = [ ./nilo.nix ];
+
     options.nihil =
     {
         tokens = lib.mkOption

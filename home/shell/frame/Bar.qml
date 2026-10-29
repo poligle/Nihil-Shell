@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import qs.theme
 import qs.services
 import qs.components
+import qs.nilo
 
 // The left side of the frame: NixOS mark, workspaces, active app, tray,
 // status, battery, clock and the privacy LED.
@@ -51,6 +52,31 @@ Item {
         anchors.bottomMargin: 16
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: 18
+
+        // Nilo is awake (its model takes memory) or downloading one.
+        Item {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 24
+            height: 14
+            visible: Nilo.enabled && (Nilo.loaded || Nilo.loading || Nilo.busy || (Nilo.pull !== null && Nilo.pull.status !== "error"))
+
+            Eyes {
+                anchors.centerIn: parent
+                eyeWidth: 4
+                eyeHeight: 11
+                gap: 5
+                mood: Nilo.busy ? (Nilo.phase === "writing" ? "writing" : "thinking") : Nilo.loading ? "waking"
+                    : Nilo.loaded ? "idle" : "asleep"
+                pulse: Nilo.pulse
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -6
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Nilo.toggle()
+            }
+        }
 
         Tray {
             anchors.horizontalCenter: parent.horizontalCenter

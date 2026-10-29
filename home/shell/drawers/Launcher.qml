@@ -6,9 +6,11 @@ import qs.theme
 import qs.config
 import qs.services
 import qs.components
+import qs.nilo
 
 // Bottom drawer. Plain text searches apps (monochrome grid, colour on the
-// selected one); ">" lists actions; "=" is a calculator (qalc).
+// selected one); ">" lists actions; "=" is a calculator (qalc); "?" is Nilo,
+// the assistant: the drawer grows and the field becomes its input.
 //   arrows / tab  move     enter  open     esc  close
 Item {
     id: root
@@ -18,8 +20,14 @@ Item {
     property string armed: ""
     property string result: ""
 
-    readonly property string mode: query.startsWith(">") ? "actions" : query.startsWith("=") ? "calc" : "apps"
+    readonly property string mode: query.startsWith("?") ? "nilo" : query.startsWith(">") ? "actions"
+        : query.startsWith("=") ? "calc" : "apps"
     readonly property string term: mode === "apps" ? query : query.slice(1).trim()
+    readonly property bool niloMode: mode === "nilo"
+
+    // 0 → 1 as the field moves to the bottom for Nilo.
+    property real niloP: niloMode ? 1 : 0
+    Behavior on niloP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
 
     readonly property var apps: mode === "apps" ? Apps.search(term) : []
 
@@ -45,11 +53,31 @@ Item {
 
     onActiveChanged: {
         if (active) {
-            input.text = "";
+            // SUPER+I (Nilo.open) opens it straight into "?".
+            input.text = Nilo.summon ? "?" : "";
+            Nilo.summon = false;
             armed = "";
             result = "";
             grid.currentIndex = 0;
             list.currentIndex = 0;
+            input.forceActiveFocus();
+        }
+        syncNilo();
+    }
+
+    function syncNilo(): void {
+        if (active || Nilo.shown) Nilo.shown = active && niloMode;
+        if (active && niloMode) Nilo.start();
+    }
+
+    onNiloModeChanged: syncNilo()
+
+    Connections {
+        target: Nilo
+        function onSummoned() {
+            if (!root.active) return;
+            root.syncNilo();
+            if (!root.niloMode) input.text = "?";
             input.forceActiveFocus();
         }
     }
@@ -62,6 +90,8 @@ Item {
         list.currentIndex = 0;
         if (query.startsWith("=")) calcDelay.restart();
         else result = "";
+        // Typing a question wakes the model, so the answer starts sooner.
+        if (query.startsWith("?") && query.slice(1).trim() !== "") Nilo.warm();
     }
 
     function launch(entry): void {
@@ -82,7 +112,8 @@ Item {
     }
 
     function accept(): void {
-        if (mode === "apps" && apps.length > 0) launch(apps[Math.max(0, grid.currentIndex)]);
+        if (mode === "nilo") niloView.accept(term);
+        else if (mode === "apps" && apps.length > 0) launch(apps[Math.max(0, grid.currentIndex)]);
         else if (mode === "actions") runAction(actions[list.currentIndex]);
         else if (mode === "calc" && result) {
             Quickshell.execDetached([Config.cmd.wlCopy, result]);
@@ -127,13 +158,29 @@ Item {
         }
     }
 
+    // Nilo, above the field once it has moved down.
+    NiloView {
+        id: niloView
+        x: 24
+        y: 14
+        width: parent.width - 48
+        height: Math.max(0, search.y - y - 16)
+        // Hidden with the drawer, so the eyes stop moving when no one sees them.
+        visible: root.niloP > 0 && root.opacity > 0
+        opacity: root.niloP
+        active: root.active && root.niloMode
+        question: root.niloMode ? root.term : ""
+        caret: input.cursorRectangle.x / Math.max(1, input.width)
+        onCleared: input.text = "?"
+        onRefocus: input.forceActiveFocus()
+    }
+
     // Search field
     Rectangle {
         id: search
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.margins: 24
+        x: 24
+        y: 24 + root.niloP * (root.height - height - 74)
+        width: parent.width - 48
         height: 48
         radius: 24
         color: Tokens.surface
@@ -147,6 +194,19 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             glyph: root.mode === "calc" ? Icons.calculator : root.mode === "actions" ? Icons.chevron : Icons.search
             color: Tokens.muted
+            opacity: 1 - root.niloP
+        }
+
+        // In "?" the magnifier becomes Nilo's eyes, in small.
+        Eyes {
+            anchors.centerIn: searchIcon
+            eyeWidth: 4
+            eyeHeight: 11
+            gap: 5
+            mood: niloView.mood
+            pulse: Nilo.pulse
+            opacity: root.niloP
+            visible: opacity > 0 && root.opacity > 0
         }
 
         QQC.TextField {
@@ -167,9 +227,26 @@ Item {
             font.pixelSize: 14
             onTextChanged: root.query = text
             onAccepted: root.accept()
-            Keys.onEscapePressed: Drawers.close()
+            Keys.onEscapePressed: if (!(root.niloMode && niloView.back())) Drawers.close()
             Keys.onPressed: event => {
-                if (root.move(event.key)) event.accepted = true;
+                if (root.niloMode ? niloView.key(event) : root.move(event.key)) event.accepted = true;
+            }
+
+            // After the "?", what to do.
+            Txt {
+                x: input.leftPadding + mark.advanceWidth + 10
+                anchors.verticalCenter: parent.verticalCenter
+                visible: input.text === "?" && niloView.view === "chat"
+                text: Lang.niloAsk
+                color: Tokens.muted
+                font.family: Tokens.fontMono
+                font.pixelSize: 14
+            }
+
+            TextMetrics {
+                id: mark
+                font: input.font
+                text: "?"
             }
         }
 
@@ -178,7 +255,8 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: 20
             anchors.verticalCenter: parent.verticalCenter
-            text: root.mode === "apps" ? Lang.appsCount.arg(root.apps.length) : root.mode === "actions" ? Lang.actions : Lang.calculator
+            text: root.mode === "apps" ? Lang.appsCount.arg(root.apps.length) : root.mode === "actions" ? Lang.actions
+                : root.mode === "nilo" ? Lang.nilo : Lang.calculator
         }
     }
 
@@ -346,6 +424,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 18
-        text: root.mode === "calc" ? Lang.hintCalc : Lang.hintApps
+        text: root.mode === "nilo" ? niloView.hint : root.mode === "calc" ? Lang.hintCalc
+            : Config.nilo.enabled ? Lang.hintAppsNilo : Lang.hintApps
     }
 }

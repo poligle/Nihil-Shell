@@ -19,7 +19,7 @@ import qs.background
 ShellRoot {
     // Singletons are created on first use; touch the ones that must run from
     // the start: notification server, IPC handlers and the battery watcher.
-    readonly property var services: [Drawers, Osd, Glyph, Notifs, Battery, Audio, Network, Bt]
+    readonly property var services: [Drawers, Osd, Glyph, Notifs, Battery, Audio, Network, Bt, Nilo]
 
     Variants {
         model: Quickshell.screens

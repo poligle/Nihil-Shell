@@ -69,7 +69,9 @@ Scope {
         readonly property real panelL: Math.min(height - 2 * root.edge - 96, 860)
         readonly property real panelD: 400
         readonly property real launcherW: Math.min(860, innerW - 120)
-        readonly property real launcherD: 470
+        // Taller for Nilo ("?"), so the conversation has room.
+        property real launcherD: launcher.niloMode ? Math.min(680, height - 2 * root.edge - 140) : 470
+        Behavior on launcherD { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         readonly property real osdL: 300
         readonly property real osdD: 64
 
@@ -291,6 +293,7 @@ Scope {
                 }
 
                 Launcher {
+                    id: launcher
                     width: win.launcherW
                     height: win.launcherD
                     active: win.launcherOpen
