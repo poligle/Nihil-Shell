@@ -11,7 +11,8 @@
   <a href="https://nihilshell.com/">Website</a> &nbsp;·&nbsp;
   <a href="#install">Install</a> &nbsp;·&nbsp;
   <a href="#options">Options</a> &nbsp;·&nbsp;
-  <a href="#keybindings">Keybindings</a>
+  <a href="#keybindings">Keybindings</a> &nbsp;·&nbsp;
+  <a href="https://github.com/poligle/Nihil-Launcher">Launcher for Android</a>
 </p>
 
 ![NIHIL desktop](docs/assets/screens/desktop.png)
@@ -29,6 +30,10 @@ screen, greeter, boot splash and the shell — is generated from it.
 > *Nihil* is Latin for "nothing", the way *caelestia* is Latin for "the heavenly".
 > *Ex nihilo* — from nothing — is also what NixOS does: the whole system, rebuilt from a
 > declaration.
+
+**On the phone, too:** [NIHIL for Android](https://github.com/poligle/Nihil-Launcher) is a
+home screen in the same language — the frame, an LED clock, the light on the edge — with
+no internet permission ([nihilshell.com/android](https://nihilshell.com/android/)).
 
 ---
 
