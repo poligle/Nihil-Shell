@@ -218,10 +218,12 @@ journalctl --user -u nihil-shell -f   # logs
 
 ## Nilo
 
-![Nilo](docs/assets/screens/nilo.png)
+<p align="center">
+  <img src="docs/assets/screens/nilo-loop.webp" width="720" alt="Nilo in the launcher: the eyes wake up while a question is typed, the answer arrives with Nix code, then a commit and push waits for enter twice and the eyes smile.">
+</p>
 
-<sub>Rendered in the test harness: the conversation is the agent recorded against a scripted
-model, not a real one.</sub>
+<sub>Rendered in the test harness: Nilo's real agent, answering a scripted model instead of
+a real one. The whole video is on [nihilshell.com](https://nihilshell.com/#nilo).</sub>
 
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
 on black: asleep while the model is unloaded, awake as soon as you type, looking up
@@ -264,9 +266,18 @@ waits for "authorize" (or the same key again). Even then, every change to a file
 diff, and every commit its files and message, and waits for enter twice or a click.
 Choosing another repository turns both off again. It cannot run other commands.
 
+| ![A change to README.md shown as a diff, waiting for confirmation](docs/assets/screens/nilo-change.png) | ![The files switch asking for authorization](docs/assets/screens/nilo-access.png) |
+|:---:|:---:|
+| A change to a file, as a diff first | Files and git, off until you authorize them |
+
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
 by default. Asleep it takes no memory; Ollama itself stays as an idle service.
+
+**History.** A conversation lives in the agent while the shell runs: closing the launcher
+keeps it, `ctrl + n` starts a new one, and nothing is written to disk. Nilo asks Ollama
+for a window of `nilo.contextLength` tokens (16 384 by default; Qwen 3.5 goes up to 262 144
+with more memory), and the oldest exchanges drop out once a conversation outgrows it.
 
 **Models.** Qwen 3.5 by default; any Ollama model with tools works, and models pulled
 with `ollama pull` show up in the list.

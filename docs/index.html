@@ -210,6 +210,19 @@ td code { font-size: 14px; color: var(--ink); white-space: nowrap; }
 td { color: var(--dim); }
 .note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
 
+/* ---------- Nilo ---------- */
+.nilo-split { align-items: start; }
+.shot video { display: block; width: 100%; height: auto; background: var(--void); }
+.tour.trio { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 28px; }
+.nilo-code { max-width: 640px; margin-top: 64px; }
+.plug {
+  appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line); background: var(--void); color: var(--dim); border-radius: 999px;
+  min-height: 30px; padding: 0 12px; font: 400 12px/1 var(--mono); letter-spacing: 0.04em;
+}
+.plug:hover { color: var(--ink); border-color: var(--muted); }
+.plug svg { width: 14px; height: 14px; }
+
 /* ---------- footer ---------- */
 footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
 footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
@@ -227,7 +240,7 @@ footer a:hover { color: var(--ink); }
   .bar-end { flex-direction: row; }
   main { padding: calc(var(--top) + 36px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
   section { padding-bottom: 96px; }
-  .tour, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
+  .tour, .tour.trio, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
   .rules { gap: 28px; }
   .motto { margin-bottom: 44px; letter-spacing: 0.45em; }
   .actions { margin-bottom: 52px; }
@@ -248,7 +261,7 @@ footer a:hover { color: var(--ink); }
 <a class="sr-only skip" href="#title">Skip to content</a>
 
 <div class="frame" aria-hidden="true"></div>
-<svg class="glyph" aria-hidden="true"><path id="glyph-path" d=""/></svg>
+<svg class="glyph" aria-hidden="true"><path id="glyph-path" d=""/><path id="rise-left-trail" d=""/><path id="rise-right-trail" d=""/><path id="rise-left" d=""/><path id="rise-right" d=""/></svg>
 
 <header class="bar">
   <a class="bar-start" href="#top" aria-label="NIHIL, back to the top">
@@ -261,6 +274,7 @@ footer a:hover { color: var(--ink); }
     <ul class="leds">
       <li><a href="#top" aria-current="true"><span class="tip">Overview</span></a></li>
       <li><a href="#tour"><span class="tip">Tour</span></a></li>
+      <li><a href="#nilo"><span class="tip">Nilo</span></a></li>
       <li><a href="#rules"><span class="tip">Design</span></a></li>
       <li><a href="#boot"><span class="tip">Boot</span></a></li>
       <li><a href="#language"><span class="tip">Language</span></a></li>
@@ -328,7 +342,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/launcher.png"><img src="assets/screens/launcher.png" width="1920" height="1200" loading="lazy" alt="The launcher drawer at the bottom: a search field and a grid of grey app icons, the selected one in colour."></a>
           <figcaption>
             <h3>Launcher</h3>
-            <p>Apps stay grey until you select them. Type <code>&gt;</code> for actions and <code>=</code> to calculate.</p>
+            <p>Apps stay grey until you select them. Type <code>&gt;</code> for actions, <code>=</code> to calculate and <code>?</code> to ask <a href="#nilo">Nilo</a>.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>SPACE</kbd><span>or three fingers up, or the bottom edge</span></div>
           </figcaption>
         </figure>
@@ -336,9 +350,58 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/notification.png"><img src="assets/screens/notification.png" width="1920" height="1200" loading="lazy" alt="A critical battery notification at the top right, and a red segment of light running along the bottom edge of the frame."></a>
           <figcaption>
             <h3>Light on the edge</h3>
-            <p>Every notification sends a segment of light around the frame. Critical ones run twice, in red; plugging the charger lights it from the left.</p>
+            <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red. Plug in the charger and two lights climb both sides from the bottom until they meet at the top.</p>
+            <button class="plug" type="button" id="plug">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2.5 5.5 13.5h6l-1 8 8-11.5h-6z"/></svg>
+              Plug in
+            </button>
           </figcaption>
         </figure>
+      </div>
+    </section>
+
+    <section id="nilo" aria-labelledby="nilo-title">
+      <div class="split nilo-split">
+        <div class="prose">
+          <h2 id="nilo-title">Nilo, an assistant that lives here</h2>
+          <p class="quiet">Two white eyes in the launcher, and a model that runs on this computer: Qwen&nbsp;3.5 on Ollama, with no account and no cloud. They sleep while the model is unloaded, wake up as you type, look up while it thinks and from side to side while it searches.</p>
+          <p class="quiet">It answers, searches the web if you let it and looks at this computer. In one repository of yours it can also change files and commit and push, once you have authorized it, and every change waits for your confirmation. After a few minutes without questions it falls asleep and the model leaves memory.</p>
+          <div class="keys"><kbd>SUPER</kbd><kbd>I</kbd><span>the Copilot key, or <code>?</code> in the launcher</span></div>
+        </div>
+        <figure class="shot">
+          <video id="nilo-video" src="assets/screens/nilo.mp4" poster="assets/screens/nilo-poster.png" width="900" height="730" muted loop playsinline preload="metadata" aria-label="Nilo in the launcher: its eyes wake up while a question is typed, the answer arrives with a block of Nix code, then a commit and push waits for confirmation and the eyes smile."></video>
+        </figure>
+      </div>
+      <div class="tour trio">
+        <figure>
+          <a class="shot" href="assets/screens/nilo-intro.png"><img src="assets/screens/nilo-intro.png" width="900" height="730" loading="lazy" alt="Nilo's first page: two eyes curved in a smile and the words Hi. I'm Nilo., in dots."></a>
+          <figcaption>
+            <h3>It introduces itself</h3>
+            <p>The first time, it says hello, shows how to call it, offers the models that fit your memory and asks what it may do.</p>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/nilo-change.png"><img src="assets/screens/nilo-change.png" width="900" height="730" loading="lazy" alt="A change to README.md waiting for confirmation: the removed line struck through, the two new lines in white, and cancel and confirm buttons."></a>
+          <figcaption>
+            <h3>Every change, as a diff first</h3>
+            <p>A file waits for enter twice or a click before it is written, like a commit. Escape leaves it as it was.</p>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/nilo-access.png"><img src="assets/screens/nilo-access.png" width="900" height="730" loading="lazy" alt="Nilo's access switches. The one for files is outlined in red and explains what it allows, above cancel and a red authorize button."></a>
+          <figcaption>
+            <h3>Nothing without your say</h3>
+            <p>Files and git stay off until you authorize them, for one repository. Choosing another turns them off again.</p>
+          </figcaption>
+        </figure>
+      </div>
+      <div class="code nilo-code">
+        <pre><code><span class="c"># hosts/&lt;name&gt;/default.nix: off by default</span>
+nihil.nilo =
+{
+    enable = true;
+    acceleration = "vulkan";   <span class="c"># or "cpu", "rocm", "cuda"</span>
+};</code></pre>
       </div>
     </section>
 
@@ -450,9 +513,12 @@ nihil.language = "<span id="lang-value">en</span>";</code></pre>
             <tr><td><code>wallpaper</code></td><td><code>"night"</code></td><td>Default wallpaper: a file name in <code>wallpapers/</code>.</td></tr>
             <tr><td><code>soundPack</code></td><td><code>"nihil"</code></td><td>The synthesised NIHIL sounds, or <code>"classic"</code> for the earlier ones.</td></tr>
             <tr><td><code>trayHidden</code></td><td><code>[ "nm-applet" "blueman" ]</code></td><td>Tray items to hide, by part of their id or title. The bar already shows Wi&#8209;Fi and Bluetooth.</td></tr>
+            <tr><td><code>nilo.<wbr>enable</code></td><td><code>false</code></td><td>Nilo, the assistant, with Ollama running its model on <code>127.0.0.1</code>.</td></tr>
+            <tr><td><code>nilo.<wbr>acceleration</code></td><td><code>"cpu"</code></td><td>What runs the model: <code>"cpu"</code>, or the GPU through <code>"vulkan"</code>, <code>"rocm"</code> or <code>"cuda"</code>.</td></tr>
+            <tr><td><code>nilo.<wbr>contextLength</code></td><td><code>16384</code></td><td>Tokens of conversation Nilo keeps in view: more remembers more and takes more memory.</td></tr>
           </tbody>
         </table>
-        <p class="note">Screenshots on this page are the shell rendered in a test harness with sample data: the networks, the track and the notifications are made up.</p>
+        <p class="note">Screenshots on this page are the shell rendered in a test harness with sample data: the networks, the track and the notifications are made up, and Nilo is its real agent answering a scripted model.</p>
       </div>
     </section>
 
@@ -506,6 +572,59 @@ nihil.language = "<span id="lang-value">en</span>";</code></pre>
   }
   layoutGlyph();
   addEventListener("resize", layoutGlyph);
+
+  // ---- The charger's light, like the shell: from the middle of the bottom
+  //      edge, up both sides, meeting at the top (70 % climbing, 30 % fading)
+  const rising = ["left", "right"].map(side => ({
+    side, trail: document.getElementById(`rise-${side}-trail`), head: document.getElementById(`rise-${side}`)
+  }));
+  function layoutRise() {
+    const m = frameMetrics(), w = innerWidth, h = innerHeight;
+    const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r, cx = (x0 + x1) / 2;
+    const d = {
+      right: `M ${cx} ${y1} L ${x1 - r} ${y1} A ${r} ${r} 0 0 0 ${x1} ${y1 - r} L ${x1} ${y0 + r} A ${r} ${r} 0 0 0 ${x1 - r} ${y0} L ${cx} ${y0}`,
+      left: `M ${cx} ${y1} L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} L ${cx} ${y0}`
+    };
+    rising.forEach(p => { p.trail.setAttribute("d", d[p.side]); p.head.setAttribute("d", d[p.side]); });
+  }
+  function rise() {
+    if (reduce || !rising[0].head.animate) return;
+    layoutRise();
+    const ease = "cubic-bezier(0.2, 0, 0, 1)";
+    rising.forEach(({ trail, head }) => {
+      const length = head.getTotalLength();
+      const segment = Math.min(220, length * 0.14);
+      head.style.strokeDasharray = `${segment} ${length + segment}`;
+      trail.style.strokeDasharray = `${length} ${length}`;
+      trail.style.filter = "none";
+      head.animate([
+        { strokeDashoffset: segment, opacity: 1, easing: ease },
+        { strokeDashoffset: segment - length, opacity: 1, offset: 0.7 },
+        { strokeDashoffset: segment - length, opacity: 0 }
+      ], { duration: 1800 });
+      trail.animate([
+        { strokeDashoffset: length, opacity: 0.3, easing: ease },
+        { strokeDashoffset: 0, opacity: 0.3, offset: 0.7 },
+        { strokeDashoffset: 0, opacity: 0 }
+      ], { duration: 1800 });
+    });
+  }
+  document.getElementById("plug").addEventListener("click", rise);
+  // And for real, where the browser tells: plugging in the laptop on this page.
+  if (navigator.getBattery) navigator.getBattery().then(battery => {
+    battery.addEventListener("chargingchange", () => { if (battery.charging) rise(); });
+  }).catch(() => {});
+
+  // ---- Nilo's video plays while it is on screen; with reduced motion, on demand
+  const video = document.getElementById("nilo-video");
+  if (reduce) {
+    video.controls = true;
+  } else {
+    new IntersectionObserver(entries => entries.forEach(e => {
+      if (e.isIntersecting) video.play().catch(() => { video.controls = true; });
+      else video.pause();
+    }), { threshold: 0.35 }).observe(video);
+  }
 
   // ---- The wordmark lights up from nothing: the ring, its red centre, then the letters
   const mark = document.getElementById("wordmark");
