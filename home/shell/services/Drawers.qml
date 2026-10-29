@@ -26,7 +26,8 @@ Singleton {
     function open(name: string, screenName: string, hover: bool): void {
         screen = screenName || focusedScreen();
         byHover = hover;
-        if (name === "launcher" && current !== "launcher")
+        // Opened by resting the pointer on the edge, it stays silent.
+        if (name === "launcher" && current !== "launcher" && !hover)
             Sounds.play(Config.sounds.menu, 0.4);
         if (name === "panel")
             Notifs.markSeen();

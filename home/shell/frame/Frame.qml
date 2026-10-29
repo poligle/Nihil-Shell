@@ -40,7 +40,7 @@ Scope {
         // turns exclusive (desktop/view/LayerSurface.cpp), which closed the
         // launcher and the panel the moment they opened. The grab below hands
         // the keyboard to this window instead.
-        WlrLayershell.keyboardFocus: launcherOpen || (panelOpen && !Drawers.byHover) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: (launcherOpen || panelOpen) && !Drawers.byHover ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
         readonly property bool dashOpen: Drawers.isOpen("dashboard", root.output)
         readonly property bool panelOpen: Drawers.isOpen("panel", root.output)
@@ -85,6 +85,7 @@ Scope {
                 Region { item: barHit },
                 Region { item: hotZone },
                 Region { item: cornerZone },
+                Region { item: bottomZone },
                 Region { item: dashHit },
                 Region { item: panelHit },
                 Region { item: launcherHit },
@@ -96,7 +97,7 @@ Scope {
         // hovering don't take the keyboard; they close when the pointer leaves.
         HyprlandFocusGrab {
             windows: [win]
-            active: win.launcherOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
+            active: (win.launcherOpen || win.panelOpen || win.dashOpen) && !Drawers.byHover
             onCleared: Drawers.close()
         }
 
@@ -197,7 +198,8 @@ Scope {
                     if (!Drawers.byHover)
                         return;
                     if ((win.dashOpen && !hotZone.containsMouse && !dashHover.hovered)
-                            || (win.panelOpen && !cornerZone.containsMouse && !panelHover.hovered))
+                            || (win.panelOpen && !cornerZone.containsMouse && !panelHover.hovered)
+                            || (win.launcherOpen && !bottomZone.containsMouse && !launcherHover.hovered))
                         Drawers.close();
                 }
             }
@@ -274,7 +276,8 @@ Scope {
                 }
             }
 
-            // Launcher: from the bottom edge, SUPER+Space or three fingers up.
+            // Launcher: from the bottom edge, SUPER+Space, three fingers up or
+            // resting the pointer on the middle of the bottom edge.
             Item {
                 x: win.centerX - win.launcherW / 2
                 y: win.height - root.edge - win.launcherD * win.launcherP
@@ -282,11 +285,50 @@ Scope {
                 height: win.launcherD * win.launcherP
                 clip: true
 
+                HoverHandler {
+                    id: launcherHover
+                    onHoveredChanged: if (!hovered) hoverClose.restart()
+                }
+
                 Launcher {
                     width: win.launcherW
                     height: win.launcherD
                     active: win.launcherOpen
                     opacity: win.reveal(win.launcherP)
+                }
+
+                // Opened by hovering, it leaves the keyboard where it was; a
+                // click inside keeps it open and hands it the keyboard, as if it
+                // had come from SUPER+Space. The press goes on to the launcher.
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: win.launcherOpen && Drawers.byHover
+                    onPressed: mouse => {
+                        Drawers.byHover = false;
+                        mouse.accepted = false;
+                    }
+                }
+            }
+
+            // The zone sits on the edge itself, under the launcher's footprint.
+            // The pointer has to rest there a moment: it often lands on the
+            // bottom edge on its way to a window's status bar.
+            MouseArea {
+                id: bottomZone
+                x: win.centerX - win.launcherW / 2
+                y: win.height - height
+                width: win.launcherW
+                height: Drawers.current === "" || (win.launcherOpen && Drawers.byHover) ? root.edge + 3 : 0
+                hoverEnabled: true
+                onContainsMouseChanged: containsMouse ? bottomOpen.restart() : hoverClose.restart()
+            }
+
+            Timer {
+                id: bottomOpen
+                interval: 350
+                onTriggered: {
+                    if (bottomZone.containsMouse && Drawers.current === "")
+                        Drawers.open("launcher", root.output, true);
                 }
             }
 

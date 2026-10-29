@@ -68,7 +68,7 @@ no internet permission ([nihilshell.com/android](https://nihilshell.com/android/
 | ![Dashboard](docs/assets/screens/dashboard.png) | ![Settings](docs/assets/screens/settings.png) |
 | Dashboard — hover the top edge or `SUPER + D` | Settings — `SUPER + P`, the status icons or the top-right corner |
 | ![Launcher](docs/assets/screens/launcher.png) | ![Notification](docs/assets/screens/notification.png) |
-| Launcher — `SUPER + Space` or three fingers up | A critical notification and its red light |
+| Launcher — `SUPER + Space`, three fingers up or the bottom edge | A critical notification and its red light |
 
 <sub>The screenshots are the shell rendered in a test harness with sample data: the
 networks, the track and the notifications are made up. App icons are Colloid's.</sub>
@@ -154,7 +154,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 
 | Keys                              | Action                                        |
 |-----------------------------------|-----------------------------------------------|
-| `SUPER + Space`, 3 fingers up     | Launcher (`>` actions, `=` calculator)        |
+| `SUPER + Space`, 3 fingers up     | Launcher (`>` actions, `=` calculator; also by resting the pointer on the bottom edge) |
 | `SUPER + D`                       | Dashboard (also by hovering the top edge)     |
 | `SUPER + P`                       | Settings panel (or rest the pointer in the top-right corner) |
 | `SUPER + K`                       | Lock                                          |
