@@ -13,9 +13,20 @@ Item {
     readonly property int pages: 5
     readonly property real column: Math.min(580, width - 64)
 
+    readonly property bool asking: page === 3 && access.asking !== ""
+
     signal finished()
 
+    // Escape first drops an authorization that is waiting.
+    function back(): bool {
+        if (!asking) return false;
+        access.asking = "";
+        return true;
+    }
+
     function next(): void {
+        // Enter on a switch that asks for authorization gives it.
+        if (asking) return access.authorize();
         if (page === 2) {
             // Leaving the models page: the chosen one starts downloading.
             if (models.current >= 0) models.choose(models.current);

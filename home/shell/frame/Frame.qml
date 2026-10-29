@@ -39,8 +39,9 @@ Scope {
         // OnDemand, not Exclusive: Hyprland drops every focus grab when a layer
         // turns exclusive (desktop/view/LayerSurface.cpp), which closed the
         // launcher and the panel the moment they opened. The grab below hands
-        // the keyboard to this window instead.
-        WlrLayershell.keyboardFocus: (launcherOpen || panelOpen) && !Drawers.byHover ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        // the keyboard to this window instead. The launcher takes it however
+        // it opened, so you can type as soon as it appears from the edge.
+        WlrLayershell.keyboardFocus: launcherOpen || (panelOpen && !Drawers.byHover) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
         readonly property bool dashOpen: Drawers.isOpen("dashboard", root.output)
         readonly property bool panelOpen: Drawers.isOpen("panel", root.output)
@@ -95,11 +96,13 @@ Scope {
             ]
         }
 
-        // Clicking outside an open drawer closes it. Drawers opened by
-        // hovering don't take the keyboard; they close when the pointer leaves.
+        // Clicking outside an open drawer closes it. The dashboard and the
+        // panel opened by hovering leave the keyboard where it was; all of
+        // them close when the pointer leaves, unless a click or a key (the
+        // launcher) kept them.
         HyprlandFocusGrab {
             windows: [win]
-            active: (win.launcherOpen || win.panelOpen || win.dashOpen) && !Drawers.byHover
+            active: win.launcherOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
             onCleared: Drawers.close()
         }
 
@@ -300,9 +303,10 @@ Scope {
                     opacity: win.reveal(win.launcherP)
                 }
 
-                // Opened by hovering, it leaves the keyboard where it was; a
-                // click inside keeps it open and hands it the keyboard, as if it
-                // had come from SUPER+Space. The press goes on to the launcher.
+                // Opened by hovering, it takes the keyboard but closes when the
+                // pointer leaves; a click inside (or a key, Launcher.qml) keeps
+                // it open, as if it had come from SUPER+Space. The press goes on
+                // to the launcher.
                 MouseArea {
                     anchors.fill: parent
                     enabled: win.launcherOpen && Drawers.byHover

@@ -19,6 +19,10 @@ let
         git = "${pkgs.git}/bin/git";
         host = osConfig.networking.hostName;
         flake = "~/nixos-config";
+        # To start Ollama when it is down, and say why it won't (modules/nilo.nix).
+        systemctl = "${osConfig.systemd.package}/bin/systemctl";
+        journalctl = "${osConfig.systemd.package}/bin/journalctl";
+        ollamaUnit = "ollama.service";
     });
 in
 pkgs.writeShellScriptBin "nilo-agent" ''

@@ -52,11 +52,12 @@ no internet permission ([nihilshell.com/android](https://nihilshell.com/android/
   actions, `=` for a calculator, `?` for Nilo.
 - **Nilo, optional.** An assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and, asking you
-  first, commit and push your config. It falls asleep and frees the memory after a few
-  minutes. See [Nilo](#nilo).
+  first, change files and commit and push in a repository of yours. It falls asleep and
+  frees the memory after a few minutes. See [Nilo](#nilo).
 - **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
-  sends a segment of light around the frame; critical ones run twice, in red. Plugging the
-  charger lights it from the left.
+  sends a segment of light around the frame; critical ones run twice, in red. Plugging in
+  the charger sends two lights up both sides from the bottom, which meet at the top, like
+  the launcher on the phone.
 - **Wallpapers as LED matrices.** Every image in `wallpapers/` is rendered at build time
   as dots, once per output at its native size, so each dot lands on exact pixels.
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth), a dotted
@@ -197,6 +198,7 @@ service. [`home/shell.nix`](home/shell.nix) generates `Tokens.qml`, `Config.qml`
 nihil-ipc drawers toggle launcher     # launcher | dashboard | panel
 nihil-ipc osd volume 40 false
 nihil-ipc glyph test true             # light the frame (critical = red)
+nihil-ipc glyph charge                # the charger's light, rising from the bottom
 nihil-ipc notifs toggleDnd
 nihil-ipc nilo toggle                 # also: open, sleep, ask "…"
 nihil-wallpaper next                  # also: prev, set <name>, list
@@ -225,7 +227,7 @@ An assistant in the launcher, with a model that runs on this computer. Two white
 on black: asleep while the model is unloaded, awake as soon as you type, looking up
 while they think and from side to side while they search. It is meant for questions,
 not for programming the config: it answers, searches the web, looks at this computer
-and, if you allow it, commits and pushes the repository.
+and, if you allow it, changes files and commits and pushes in a repository.
 
 It is off by default. In the host:
 
@@ -252,10 +254,15 @@ models that suit the RAM and asks what it may do.
 
 **What it may do**, each one a switch in its settings (the gear): **Internet** — search
 DuckDuckGo (through `ddgr`, or `nilo.searxng`) and read pages, never local addresses;
-**This computer** — NixOS version and generation, memory, disk, battery; **Git** — `git
-add -A`, commit and push in one repository (`~/nixos-config` by default). Every commit
-shows its files and message first and needs enter twice, or a click. It cannot run
-other commands or write files.
+**This computer** — NixOS version and generation, memory, disk, battery; **Files** — read,
+create and change files in one repository, never outside it or inside `.git`; **Git** —
+`git add -A`, commit and push in that repository. The repository is `~/nixos-config` by
+default; the settings list the ones under `~` (most recently used first) or take any path.
+
+Files and Git are off until you authorize them: the switch first says what it allows and
+waits for "authorize" (or the same key again). Even then, every change to a file shows its
+diff, and every commit its files and message, and waits for enter twice or a click.
+Choosing another repository turns both off again. It cannot run other commands.
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
@@ -279,10 +286,13 @@ The agent behind it is [`home/nilo/agent.py`](home/nilo/agent.py), standard-libr
 Python that the shell talks to over stdin/stdout. Its tests run against a fake Ollama:
 `python3 -m unittest home/nilo/test_agent.py`.
 
-If it doesn't answer: `systemctl status ollama`, `journalctl --user -u nihil-shell` (the
-agent logs there) and `ollama ps`. If the Copilot key does nothing, `wev` shows what it
-sends; on Linux 6.14 and later it is `SUPER + SHIFT + F23`, which xkb calls
-`XF86TouchpadOff`.
+If Ollama is down ("connection refused"), Nilo starts it (polkit lets wheel users start
+`ollama.service` without a password) and otherwise shows what systemd and the journal say,
+with a button to try again; systemd also restarts it if it stops on its own. Beyond that:
+`systemctl status ollama`, `journalctl -u ollama -b`, `journalctl --user -u nihil-shell`
+(the agent logs there) and `ollama ps`. The Copilot key sends `SUPER + SHIFT + F23` on
+Linux 6.14 and later; xkb names F23 `XF86Assistant` or `XF86TouchpadOff` depending on its
+version, so the bind uses its keycode, 201 (what `wev` shows).
 
 ---
 

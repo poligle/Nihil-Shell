@@ -25,6 +25,7 @@ Item {
         || (view === "chat" && Nilo.messages.count === 0)
 
     readonly property string hint: view === "off" || view === "starting" ? Lang.niloHintOff
+        : (view === "intro" && intro.asking) || (view === "settings" && settings.asking) ? Lang.niloHintAuthorize
         : view === "intro" ? Lang.niloHintIntro
         : view === "settings" ? Lang.niloHintSettings
         : Nilo.confirm ? Lang.niloHintConfirm
@@ -39,6 +40,7 @@ Item {
         if (view === "starting") return "asleep";
         if (view === "intro") return greeting || intro.page === intro.pages - 1 ? "happy" : "idle";
         if (Nilo.phase === "confirm") return "alert";
+        if (!Nilo.ollama) return Nilo.startingOllama ? "waking" : "asleep";
         if (Nilo.busy && (Nilo.loading || !Nilo.loaded)) return "waking";
         if (Nilo.phase === "tool") return Nilo.tool === "web_search" || Nilo.tool === "open_url" ? "searching" : "thinking";
         if (Nilo.busy) return Nilo.phase === "writing" ? "writing" : "thinking";
@@ -48,7 +50,7 @@ Item {
     }
 
     readonly property string status: {
-        if (!Nilo.ollama) return Lang.niloNoOllama;
+        if (!Nilo.ollama) return Nilo.startingOllama ? Lang.niloOllamaStartingShort : Lang.niloNoOllama;
         if (Nilo.pull && Nilo.pull.status !== "error") return Lang.niloDownloading.arg(Math.floor(Nilo.pull.progress * 100));
         if (Nilo.phase === "confirm") return Lang.niloWaitingYou;
         if (Nilo.busy && (Nilo.loading || !Nilo.loaded)) return Lang.niloWaking;
@@ -138,7 +140,11 @@ Item {
 
     // true when it was for Nilo; false lets the launcher close.
     function back(): bool {
-        if (view === "settings") { page = "chat"; return true; }
+        if (view === "settings") {
+            if (!settings.back()) page = "chat";
+            return true;
+        }
+        if (view === "intro" && intro.back()) return true;
         if (Nilo.confirm) { Nilo.answer(false); return true; }
         if (Nilo.busy) { Nilo.stop(); return true; }
         return false;

@@ -10,13 +10,25 @@ import qs.components
 Item {
     id: root
 
-    property int cursor: -1     // keyboard: models, then access, then "think"
+    property int cursor: -1     // keyboard: models, access, repositories, then "think"
 
     readonly property int modelCount: models.count
-    readonly property int total: modelCount + access.count + 1
+    readonly property int repoStart: modelCount + access.count
+    readonly property int total: repoStart + repos.count + 1
     readonly property var sleepChoices: [1, 5, 15, 30]
+    readonly property bool asking: access.asking !== ""
 
     signal done()
+
+    // The repositories are looked for each time the gear opens.
+    onVisibleChanged: if (visible) Nilo.findRepos()
+
+    // Escape first drops an authorization that is waiting.
+    function back(): bool {
+        if (!asking) return false;
+        access.asking = "";
+        return true;
+    }
 
     function gb(value: real): string {
         return Number(value).toLocaleString(Qt.locale(Lang.locale), "f", 1);
@@ -24,12 +36,18 @@ Item {
 
     function sync(): void {
         models.current = cursor >= 0 && cursor < modelCount ? cursor : -1;
-        access.current = cursor >= modelCount && cursor < modelCount + access.count ? cursor - modelCount : -1;
-        const item = models.current >= 0 ? models : access.current >= 0 ? access : think;
+        access.current = cursor >= modelCount && cursor < repoStart ? cursor - modelCount : -1;
+        repos.current = cursor >= repoStart && cursor < total - 1 ? cursor - repoStart : -1;
+        if (asking && (access.current < 0 || access.items[access.current].key !== access.asking)) access.asking = "";
+        keep(models.current >= 0 ? models : access.current >= 0 ? access : repos.current >= 0 ? repos : think);
+    }
+
+    // Scroll just enough for `item` to be seen whole.
+    function keep(item: Item): void {
         const y = item.mapToItem(content, 0, 0).y;
         if (y < flick.contentY) flick.contentY = Math.max(0, y - 40);
         else if (y + item.height > flick.contentY + flick.height)
-            flick.contentY = Math.min(flick.contentHeight - flick.height, y + item.height - flick.height + 20);
+            flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, y + item.height - flick.height + 20));
     }
 
     function move(step: int): void {
@@ -40,7 +58,8 @@ Item {
     function activate(): void {
         if (cursor < 0) return;
         if (cursor < modelCount) models.choose(cursor);
-        else if (cursor < modelCount + access.count) access.toggle(cursor - modelCount);
+        else if (cursor < repoStart) access.toggle(cursor - modelCount);
+        else if (cursor < total - 1) repos.choose(cursor - repoStart);
         else Nilo.set("think", !(Nilo.settings.think === true));
     }
 
@@ -85,6 +104,14 @@ Item {
             AccessList {
                 id: access
                 width: content.width
+                onGrew: row => root.keep(row)
+            }
+
+            Section { title: Lang.setRepo }
+
+            RepoList {
+                id: repos
+                width: content.width
             }
 
             Row {
@@ -95,7 +122,7 @@ Item {
 
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Lang.setRepo
+                    text: Lang.setRepoPath
                 }
 
                 QQC.TextField {
@@ -120,6 +147,17 @@ Item {
                     Keys.onEscapePressed: root.done()
                     onAccepted: root.done()
                 }
+            }
+
+            Txt {
+                width: content.width
+                leftPadding: 16
+                rightPadding: 16
+                text: Lang.setRepoNote
+                color: Tokens.muted
+                wrapMode: Text.Wrap
+                elide: Text.ElideNone
+                font.pixelSize: 12
             }
 
             Section { title: Lang.setMemory }

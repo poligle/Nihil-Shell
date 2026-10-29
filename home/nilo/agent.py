@@ -4,9 +4,10 @@
 # Nilo's agent. The shell (home/shell/services/Nilo.qml) talks to it with one
 # JSON object per line on stdin and stdout. It keeps the conversation, streams
 # the replies from Ollama and runs the tools Nilo is allowed to use: search
-# the web, read a page, a summary of this computer and, confirmed by the user
-# every time, git add/commit/push in one repository. Nothing else: no shell,
-# no writing files.
+# the web, read a page, a summary of this computer and, in the one repository
+# it is given, git add/commit/push and reading and changing files. Every
+# commit and every change to a file waits for the user to confirm it. Nothing
+# else: no shell, nothing outside that repository.
 #
 # Standard library only. home/nilo.nix wraps it with its configuration
 # (Ollama's address, the models on offer, the store paths of ddgr and git);
@@ -25,12 +26,16 @@
 #   {"op": "warm"}                           load the model now (the user is typing)
 #   {"op": "sleep"}                          unload it now
 #   {"op": "status"}                         ask Ollama again
+#   {"op": "repos"}                          git repositories under ~, to choose one
+#   {"op": "startOllama"}                    start ollama.service (it asks polkit)
 #
 # Events (stdout): hello, settings, models, state, start, thinking, token,
-# tool, confirm, confirmed, done, error, pull. Each carries "ev" and its fields.
+# tool, confirm, confirmed, done, error, pull, repos, ollama. Each carries
+# "ev" and its fields.
 
 import argparse
 import datetime
+import difflib
 import html.parser
 import http.client
 import ipaddress
@@ -54,6 +59,11 @@ MAX_ROUNDS = 6          # model calls per question (each tool result needs one)
 PAGE_CHARS = 6000       # text of a page handed to the model
 DIFF_CHARS = 3000       # part of the diff git_status shows, for the commit message
 CONFIRM_SECONDS = 300   # a confirmation nobody answers counts as "no"
+READ_LINES = 400        # lines of a file read_file hands over at a time
+READ_CHARS = 16000      # and at most this much text
+FILE_BYTES = 512_000    # the largest file Nilo reads or writes
+LIST_FILES = 300        # names list_files shows
+CARD_LINES = 80         # diff lines a confirmation shows
 
 DEFAULT_SETTINGS = {
     "onboarded": False,
@@ -61,6 +71,7 @@ DEFAULT_SETTINGS = {
     "web": True,
     "system": True,
     "git": False,
+    "write": False,
     "repo": "~/nixos-config",
     "keepAlive": 5,
     "think": False,
@@ -397,6 +408,31 @@ SCHEMAS = {
         {"message": {"type": "string", "description": "The commit message, in the style of the repository's latest commits"},
          "push": {"type": "boolean", "description": "Also push to the remote (default true)"}},
         ["message"])),
+    "list_files": ("write", schema(
+        "list_files",
+        "List the files of the user's repository, or of a folder in it (what git tracks, plus new files it doesn't ignore).",
+        {"path": {"type": "string", "description": "A folder inside the repository, relative to it (default: all of it)"}})),
+    "read_file": ("write", schema(
+        "read_file",
+        "Read a text file of the user's repository. Long files come in parts: ask again with from_line.",
+        {"path": {"type": "string", "description": "The file, relative to the repository"},
+         "from_line": {"type": "integer", "description": "First line to read (default 1)"}},
+        ["path"])),
+    "edit_file": ("write", schema(
+        "edit_file",
+        "Change a file of the repository by replacing one exact piece of its text. The user sees the change and "
+        "confirms it before it is written. Read the file first and copy `old` exactly; it must appear only once.",
+        {"path": {"type": "string", "description": "The file, relative to the repository"},
+         "old": {"type": "string", "description": "The exact text to replace, with enough lines around it to be unique"},
+         "new": {"type": "string", "description": "What goes in its place"}},
+        ["path", "old", "new"])),
+    "write_file": ("write", schema(
+        "write_file",
+        "Create a file in the repository, or replace all of its content. The user sees the change and confirms it "
+        "before it is written. To change part of an existing file, use edit_file.",
+        {"path": {"type": "string", "description": "The file, relative to the repository"},
+         "content": {"type": "string", "description": "The whole new content of the file"}},
+        ["path", "content"])),
 }
 
 
@@ -443,6 +479,18 @@ class Tools:
             facts["declined"] = bool(result.get("declined"))
             facts["commit"] = result.get("commit", "")
             facts["pushed"] = bool(result.get("pushed"))
+        elif name == "list_files" and ok:
+            facts["path"] = result.get("path", ".")
+            facts["count"] = len(result.get("files", [])) + result.get("more", 0)
+        elif name == "read_file" and ok:
+            facts["path"] = result.get("path", "")
+            facts["lines"] = result.get("lines", 0)
+        elif name in ("edit_file", "write_file"):
+            facts["declined"] = bool(result.get("declined"))
+            facts["path"] = result.get("path", "")
+            facts["created"] = bool(result.get("created"))
+            facts["added"] = result.get("added", 0)
+            facts["removed"] = result.get("removed", 0)
         if "error" in result:
             facts["error"] = str(result["error"])[:200]
         return facts
@@ -653,6 +701,159 @@ class Tools:
             result["output"] = (err or out).strip()[-300:]
         return result
 
+    # files, only inside the repository
+
+    def resolve(self, path, must_exist=True):
+        """(root, absolute path, path relative to the root). Symlinks are
+        followed first, so none can lead outside; .git is off limits."""
+        root = os.path.realpath(self.repo())
+        given = os.path.expanduser(str(path or "").strip() or ".")
+        full = os.path.realpath(os.path.join(root, given))
+        if os.path.commonpath([root, full]) != root:
+            raise RuntimeError("that path is outside the repository")
+        rel = os.path.relpath(full, root)
+        if ".git" in rel.split(os.sep):
+            raise RuntimeError("Nilo does not touch .git")
+        if must_exist and not os.path.exists(full):
+            raise RuntimeError(f"{rel} does not exist")
+        return root, full, rel
+
+    @staticmethod
+    def text_of(full, strict=False):
+        """The file as text. To change it (strict), it must be UTF-8: anything
+        else would come back altered in places the diff doesn't show."""
+        if os.path.getsize(full) > FILE_BYTES:
+            raise RuntimeError(f"the file is larger than {FILE_BYTES // 1000} kB")
+        with open(full, "rb") as f:
+            raw = f.read()
+        if b"\0" in raw[:8192]:
+            raise RuntimeError("it is not a text file")
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            if strict:
+                raise RuntimeError("it is not UTF-8 text: Nilo only changes UTF-8 files") from None
+            return raw.decode("utf-8", "replace")
+
+    def list_files(self, path=".", cancel=None):
+        root, full, rel = self.resolve(path)
+        if not os.path.isdir(full):
+            raise RuntimeError(f"{rel} is not a folder")
+        code, tracked, _ = self.git(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", rel)
+        if code == 0:
+            names = sorted(set(tracked.splitlines()))
+        else:
+            names = []
+            for dirpath, dirs, files in os.walk(full):
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
+                names += [os.path.relpath(os.path.join(dirpath, f), root) for f in files]
+            names.sort()
+        return {"path": rel, "files": names[:LIST_FILES], "more": max(0, len(names) - LIST_FILES)}
+
+    def read_file(self, path, from_line=1, cancel=None):
+        _, full, rel = self.resolve(path)
+        if os.path.isdir(full):
+            raise RuntimeError(f"{rel} is a folder: use list_files")
+        lines = self.text_of(full).splitlines(keepends=True)
+        try:
+            start = max(1, int(from_line))
+        except (TypeError, ValueError):
+            start = 1
+        part, size = [], 0
+        for line in lines[start - 1:start - 1 + READ_LINES]:
+            if size + len(line) > READ_CHARS and part:
+                break
+            part.append(line)
+            size += len(line)
+        end = start + len(part) - 1
+        result = {"path": rel, "lines": len(lines), "from_line": start, "to_line": end, "text": "".join(part)}
+        if end < len(lines):
+            result["next_line"] = end + 1
+        return result
+
+    @staticmethod
+    def diff(old, new):
+        """The change as lines for the confirmation card, and its size."""
+        lines = list(difflib.unified_diff(old.splitlines(), new.splitlines(), lineterm="", n=2))[2:]
+        shown, added, removed = [], 0, 0
+        for line in lines:
+            kind = "@" if line.startswith("@@") else line[:1]
+            if kind == "+":
+                added += 1
+            elif kind == "-":
+                removed += 1
+            if len(shown) < CARD_LINES:
+                shown.append({"t": kind, "s": "" if kind == "@" else line[1:][:300]})
+        return shown, max(0, len(lines) - CARD_LINES), added, removed
+
+    def confirm_change(self, rel, old, new, created, cancel):
+        shown, more, added, removed = self.diff(old, new)
+        if not added and not removed:
+            return None, {"error": "that changes nothing"}
+        ok = self.agent.ask_confirmation({
+            "action": "create" if created else "edit",
+            "repo": self.agent.settings.get("repo"),
+            "path": rel,
+            "diff": shown,
+            "more": more,
+            "added": added,
+            "removed": removed,
+        }, cancel)
+        facts = {"path": rel, "added": added, "removed": removed, "created": created}
+        if not ok:
+            return None, dict(facts, declined=True, note="The user did not confirm. The file was not changed.")
+        return facts, None
+
+    @staticmethod
+    def put(full, text):
+        """Write in place of the file at once (a temporary file, then a rename)."""
+        mode = os.stat(full).st_mode & 0o7777 if os.path.exists(full) else 0o644
+        tmp = f"{full}.nilo-{os.getpid()}"
+        try:
+            with open(tmp, "w", encoding="utf-8", newline="") as f:
+                f.write(text)
+            os.chmod(tmp, mode)
+            os.replace(tmp, full)
+        finally:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+
+    def edit_file(self, path, old, new, cancel=None):
+        _, full, rel = self.resolve(path)
+        if os.path.isdir(full):
+            raise RuntimeError(f"{rel} is a folder")
+        text = self.text_of(full, strict=True)
+        old, new = str(old or ""), str(new or "")
+        if not old:
+            return {"error": "`old` is empty: copy the text to replace from read_file"}
+        count = text.count(old)
+        if count == 0:
+            return {"error": "`old` is not in the file: read it again and copy the text exactly"}
+        if count > 1:
+            return {"error": f"`old` appears {count} times: add the lines around it so it is unique"}
+        changed = text.replace(old, new, 1)
+        facts, refused = self.confirm_change(rel, text, changed, False, cancel)
+        if refused:
+            return refused
+        self.put(full, changed)
+        return dict(facts, ok=True)
+
+    def write_file(self, path, content, cancel=None):
+        _, full, rel = self.resolve(path, must_exist=False)
+        if os.path.isdir(full):
+            raise RuntimeError(f"{rel} is a folder")
+        content = str(content or "")
+        if len(content.encode("utf-8")) > FILE_BYTES:
+            return {"error": f"the content is larger than {FILE_BYTES // 1000} kB"}
+        created = not os.path.exists(full)
+        old = "" if created else self.text_of(full, strict=True)
+        facts, refused = self.confirm_change(rel, old, content, created, cancel)
+        if refused:
+            return refused
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        self.put(full, content)
+        return dict(facts, ok=True)
+
 
 def meminfo():
     values = {}
@@ -700,7 +901,11 @@ PROMPT = {
         "git": "El repositorio es {repo}. Si te piden guardar o subir los cambios: mira git_status, escribe un "
                "mensaje de commit breve en el estilo de los últimos y llama a git_commit. El usuario lo confirma "
                "antes de que se ejecute. No hagas nada más con git.",
+        "write": "Puedes leer y cambiar archivos de {repo} con list_files, read_file, edit_file y write_file, solo "
+                 "cuando te lo pidan. Lee un archivo antes de cambiarlo; para cambios pequeños usa edit_file. El "
+                 "usuario ve cada cambio y lo confirma antes de que se escriba; si no lo confirma, no insistas.",
         "limits": "No puedes editar archivos ni ejecutar comandos: si te lo piden, explica cómo hacerlo.",
+        "limitsWrite": "No puedes ejecutar comandos ni tocar nada fuera de {repo}: si te lo piden, explica cómo hacerlo.",
         "about": "NIHIL: SUPER+Espacio abre el launcher (> acciones, = calculadora, ? tú); SUPER+D el dashboard; "
                  "SUPER+P los ajustes; {summon} te abren a ti. La configuración está en {flake} y se aplica con "
                  "`sudo nixos-rebuild switch --flake {flake}#{host}`.",
@@ -724,7 +929,11 @@ PROMPT = {
         "git": "The repository is {repo}. When asked to save or push the changes: look at git_status, write a short "
                "commit message in the style of the latest ones and call git_commit. The user confirms it before it "
                "runs. Do nothing else with git.",
+        "write": "You can read and change files of {repo} with list_files, read_file, edit_file and write_file, only "
+                 "when asked to. Read a file before changing it; for small changes use edit_file. The user sees every "
+                 "change and confirms it before it is written; if they don't, don't insist.",
         "limits": "You cannot edit files or run commands: if asked to, explain how to do it.",
+        "limitsWrite": "You cannot run commands or touch anything outside {repo}: if asked to, explain how to do it.",
         "about": "NIHIL: SUPER+Space opens the launcher (> actions, = calculator, ? you); SUPER+D the dashboard; "
                  "SUPER+P the settings; {summon} open you. The configuration lives in {flake} and is applied with "
                  "`sudo nixos-rebuild switch --flake {flake}#{host}`.",
@@ -753,7 +962,9 @@ def build_prompt(config, settings, now=None):
         rules.append(text["system"])
     if settings["git"]:
         rules.append(text["git"].format(repo=settings["repo"]))
-    rules.append(text["limits"])
+    if settings.get("write"):
+        rules.append(text["write"].format(repo=settings["repo"]))
+    rules.append(text["limitsWrite" if settings.get("write") else "limits"].format(repo=settings["repo"]))
     lines += [f"- {rule}" for rule in rules]
     lines += ["", text["about"].format(summon=config.get("summon") or text["summon"],
                                        flake=config.get("flake", "~/nixos-config"), host=config.get("host", ""))]
@@ -782,6 +993,8 @@ class Agent:
                       "sizeGB": 0, "gpu": 0}
         self.state_lock = threading.Lock()
         self.wake = threading.Event()
+        self.starting = False       # starting ollama.service
+        self.last_start = -1e9      # when Nilo last tried to (monotonic)
 
     # settings
 
@@ -834,11 +1047,16 @@ class Agent:
                 return self.out("error", code="bad-request", detail="not a model name")
             if key == "repo":
                 value = value or DEFAULT_SETTINGS["repo"]
-                if not os.path.isdir(os.path.join(os.path.expanduser(value), ".git")):
+                if not os.path.exists(os.path.join(os.path.expanduser(value), ".git")):
                     self.out("settings", settings=self.settings)
                     return self.out("error", code="bad-repo", detail=value)
+                value = self.short_path(value)
         old = self.settings.get(key)
         self.settings[key] = value
+        # Git and files were allowed for one repository: another one asks again.
+        if key == "repo" and os.path.realpath(os.path.expanduser(old or "")) != os.path.realpath(os.path.expanduser(value)):
+            self.settings["git"] = False
+            self.settings["write"] = False
         self.save_settings()
         self.out("settings", settings=self.settings)
         if key == "model" and old != value:
@@ -848,6 +1066,13 @@ class Agent:
             self.wake.set()
         elif key == "keepAlive" and self.state["loaded"]:
             threading.Thread(target=self.warm, daemon=True).start()
+
+    @staticmethod
+    def short_path(path):
+        """~/x for anything under the home directory, as the settings show it."""
+        home = os.path.expanduser("~")
+        full = os.path.abspath(os.path.expanduser(path))
+        return "~" + full[len(home):] if full == home or full.startswith(home + os.sep) else full
 
     def quietly(self, fn, *args):
         try:
@@ -939,6 +1164,7 @@ class Agent:
         model = self.settings["model"]
         if not model or self.state["loading"]:
             return
+        self.ensure_ollama()
         if not self.state["loaded"]:
             self.set_state(loading=True)
         try:
@@ -956,6 +1182,108 @@ class Agent:
         if self.state["loaded"] and self.settings["model"]:
             self.quietly(self.ollama.unload, self.settings["model"])
 
+    # Ollama itself: when it doesn't answer, what systemd says, and starting it
+
+    def run_quietly(self, *command, timeout=5):
+        try:
+            return subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return subprocess.CompletedProcess(command, 1, "", str(e))
+
+    def diagnose(self):
+        unit = self.config.get("ollamaUnit", "ollama.service")
+        info = {"unit": unit}
+        shown = self.run_quietly(self.config.get("systemctl", "systemctl"), "show", unit,
+                                 "--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,NRestarts")
+        for line in shown.stdout.splitlines():
+            key, _, value = line.partition("=")
+            if key:
+                info[key[0].lower() + key[1:]] = value
+        # The lines that say what went wrong, if any stand out; otherwise the last ones.
+        journal = self.run_quietly(self.config.get("journalctl", "journalctl"), "-u", unit, "-b", "-n", "80",
+                                   "-o", "cat", "--no-pager")
+        lines = [re.sub(r"^time=\S+\s+|\bsource=\S+\s+", "", line).strip()
+                 for line in journal.stdout.splitlines()] if journal.returncode == 0 else []
+        lines = [line for line in lines if line]
+        telling = [line for line in lines if re.search(
+            r"(?i)level=(error|warn)|\b(error|panic|fatal|failed|denied|refused|killed|exited|signal|in use|out of memory)\b", line)]
+        info["log"] = [line[:220] for line in (telling or lines)[-5:]]
+        return info
+
+    def ollama_up(self, seconds):
+        deadline = time.monotonic() + seconds
+        while True:
+            try:
+                self.ollama.ps()
+                return True
+            except OllamaError:
+                if time.monotonic() > deadline:
+                    return False
+                time.sleep(0.5)
+
+    def start_ollama(self, ask=False):
+        """Ask systemd to start Ollama (modules/nilo.nix lets polkit say yes
+        without a password) and wait for it to answer."""
+        with self.lock:
+            if self.starting:
+                return
+            self.starting = True
+            self.last_start = time.monotonic()
+        try:
+            self.out("ollama", starting=True, **self.diagnose())
+            command = [self.config.get("systemctl", "systemctl"), "start", self.config.get("ollamaUnit", "ollama.service")]
+            if not ask:
+                command.insert(1, "--no-ask-password")
+            started = self.run_quietly(*command, timeout=120)
+            up = started.returncode == 0 and self.ollama_up(20)
+            self.refresh_state()
+            if up:
+                self.out("ollama", starting=False, up=True)
+                self.send_models()
+            else:
+                self.out("ollama", starting=False, up=False, error=(started.stderr or started.stdout).strip()[-300:],
+                         **self.diagnose())
+        except Exception as e:
+            log("starting ollama failed:", repr(e))
+            self.out("ollama", starting=False, up=False, error=str(e)[-300:])
+        finally:
+            self.starting = False
+            self.wake.set()
+
+    def ensure_ollama(self):
+        """Before something that needs Ollama: if it is down, try to start it
+        (at most once a minute, so a broken service isn't hammered)."""
+        if self.state["ollama"] is not False:
+            return
+        if time.monotonic() - self.last_start < 60:
+            return
+        self.start_ollama()
+
+    def repos(self):
+        """Git repositories under ~ (three levels down), the most recently used first."""
+        home = os.path.expanduser("~")
+        skip = {"node_modules", "target", "build", "dist", "result", "venv", "vendor", "__pycache__"}
+        found, visited, began = [], 0, time.monotonic()
+        for dirpath, dirs, files in os.walk(home):
+            visited += 1
+            if visited > 8000 or time.monotonic() - began > 2:
+                break
+            if dirpath != home and (".git" in dirs or ".git" in files):
+                found.append(dirpath)
+                dirs[:] = []
+                continue
+            depth = 0 if dirpath == home else os.path.relpath(dirpath, home).count(os.sep) + 1
+            dirs[:] = [] if depth >= 3 else sorted(d for d in dirs if not d.startswith(".") and d not in skip)
+
+        def used(path):
+            try:
+                return os.stat(os.path.join(path, ".git")).st_mtime
+            except OSError:
+                return 0
+
+        found.sort(key=used, reverse=True)
+        self.out("repos", repos=[self.short_path(p) for p in found[:30]])
+
     # downloads
 
     def pull(self, model):
@@ -966,10 +1294,28 @@ class Agent:
         threading.Thread(target=self._pull, args=(model, cancel), daemon=True).start()
 
     def _pull(self, model, cancel):
+        try:
+            self.ensure_ollama()
+            status, detail, code = self._pull_once(model, cancel)
+            # Ollama was down without the agent knowing yet: start it, try again.
+            if code == "ollama-down" and not cancel.cancelled:
+                self.refresh_state()
+                self.ensure_ollama()
+                if self.state["ollama"]:
+                    status, detail, code = self._pull_once(model, cancel)
+        finally:
+            self.pulling = None
+        if status != "success":
+            self.out("pull", model=model, status=status if status in ("cancelled", "error") else "error",
+                     detail=detail or status, code=code)
+        self.send_models()
+        self.wake.set()
+
+    def _pull_once(self, model, cancel):
+        """(status, detail, error code) of one attempt."""
         layers = {}
         last = 0.0
         status = "error"
-        detail = ""
         try:
             self.out("pull", model=model, status="starting", completed=0, total=0)
             for p in self.ollama.stream("/api/pull", {"model": model, "stream": True}, cancel, timeout=120):
@@ -982,17 +1328,9 @@ class Agent:
                     done = sum(c for c, _ in layers.values())
                     total = sum(t for _, t in layers.values())
                     self.out("pull", model=model, status=status, completed=done, total=total)
-            if cancel.cancelled:
-                status = "cancelled"
+            return ("cancelled" if cancel.cancelled else status), "", ""
         except OllamaError as e:
-            status, detail = "error", e.detail or e.code
-        finally:
-            self.pulling = None
-        if status != "success":
-            self.out("pull", model=model, status=status if status in ("cancelled", "error") else "error",
-                     detail=detail or status)
-        self.send_models()
-        self.wake.set()
+            return "error", e.detail or e.code, e.code
 
     def cancel_pull(self):
         if self.pulling:
@@ -1084,6 +1422,7 @@ class Agent:
         self.out("start", model=model)
         if not model:
             raise OllamaError("no-model")
+        self.ensure_ollama()
         rounds = 0
         while rounds < MAX_ROUNDS:
             rounds += 1
@@ -1141,7 +1480,9 @@ class Agent:
                     except ValueError:
                         args = {}
                 tid = f"t{next(self.ids)}"
-                self.out("tool", id=tid, name=name, args=args, status="running")
+                # The shell shows the path or the query; a file's whole text stays here.
+                shown = {k: v[:200] if isinstance(v, str) else v for k, v in args.items()} if isinstance(args, dict) else args
+                self.out("tool", id=tid, name=name, args=shown, status="running")
                 result, facts = self.tools.run(name, args, cancel)
                 self.out("tool", id=tid, name=name, status="done", **facts)
                 message = {"role": "tool", "tool_name": name, "content": json.dumps(result, ensure_ascii=False)}
@@ -1166,9 +1507,13 @@ class Agent:
     # protocol
 
     def hello(self):
+        models = self.catalogue()
         self.out("hello", protocol=PROTOCOL, settings=self.settings, language=self.config.get("language", "en"),
-                 **self.catalogue())
+                 **models)
         self.wake.set()
+        if not models["ollama"]:
+            self.set_state(ollama=False)
+            threading.Thread(target=self.ensure_ollama, daemon=True).start()
 
     def handle(self, request):
         op = request.get("op")
@@ -1197,6 +1542,10 @@ class Agent:
         elif op == "status":
             self.wake.set()
             threading.Thread(target=self.send_models, daemon=True).start()
+        elif op == "repos":
+            threading.Thread(target=self.repos, daemon=True).start()
+        elif op == "startOllama":
+            threading.Thread(target=self.start_ollama, kwargs={"ask": True}, daemon=True).start()
         else:
             self.out("error", code="bad-request", detail=f"unknown op {op!r}")
 

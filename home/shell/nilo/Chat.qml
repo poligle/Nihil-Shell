@@ -7,8 +7,9 @@ import qs.components
 import "Markdown.js" as Markdown
 
 // The conversation: your questions after "›", Nilo's answers in Markdown,
-// what its tools do as small lines with an LED, and the git confirmation
-// as a card. Empty, it suggests a few questions.
+// what its tools do as small lines with an LED, and the confirmations (git,
+// or a change to a file with its diff) as cards. Empty, it suggests a few
+// questions; without Ollama, it says what systemd knows and offers to start it.
 Item {
     id: root
 
@@ -56,8 +57,25 @@ Item {
             if (data.declined) return Lang.toolDeclined;
             if (data.pushed) return data.commit ? Lang.toolGitPushed.arg(data.commit) : Lang.toolGitPushedOnly;
             return Lang.toolGitCommitted.arg(data.commit ?? "");
+        case "list_files":
+            return running ? Lang.toolListing : Lang.toolListed.arg(data.count ?? 0);
+        case "read_file":
+            return running ? Lang.toolOpening.arg(args.path ?? "") : Lang.toolOpened.arg(data.path ?? args.path ?? "").arg(data.lines ?? 0);
+        case "edit_file":
+        case "write_file":
+            if (running) return Lang.toolChanging.arg(args.path ?? "");
+            if (data.declined) return Lang.toolDeclined;
+            return data.created ? Lang.toolCreated.arg(data.path ?? "").arg(data.added ?? 0)
+                : Lang.toolChanged.arg(data.path ?? "").arg(data.added ?? 0).arg(data.removed ?? 0);
         }
         return name;
+    }
+
+    // What systemd says about Ollama, in one line: "ollama.service · failed · exit-code".
+    function unitLine(): string {
+        const s = Nilo.service;
+        if (!s.activeState) return "";
+        return [s.unit, s.activeState, s.result && s.result !== "success" ? s.result : s.subState].filter(x => x).join(" · ");
     }
 
     function errorText(code: string, detail: string): string {
@@ -79,7 +97,7 @@ Item {
         anchors.topMargin: Math.max(0, parent.height * 0.5 - 10)
         width: Math.min(620, parent.width - 48)
         spacing: 18
-        visible: Nilo.messages.count === 0
+        visible: Nilo.messages.count === 0 && (Nilo.ollama || !Nilo.known)
         opacity: visible ? 1 : 0
 
         Behavior on opacity { NumberAnimation { duration: Tokens.animNormal } }
@@ -124,6 +142,7 @@ Item {
                     { text: Lang.niloTryFlake, on: true },
                     { text: Lang.niloTryNews, on: Nilo.settings.web === true },
                     { text: Lang.niloTryDisk, on: Nilo.settings.system === true },
+                    { text: Lang.niloTryFiles, on: Nilo.settings.write === true },
                     { text: Lang.niloTryPush, on: Nilo.settings.git === true }
                 ].filter(s => s.on)
 
@@ -155,6 +174,86 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    // Without Ollama nothing works: what systemd and the journal say, and a
+    // button to start it (the agent has already tried once on its own).
+    Column {
+        id: down
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: Math.max(0, parent.height * 0.5 - 10)
+        width: Math.min(620, parent.width - 48)
+        spacing: 12
+        visible: Nilo.messages.count === 0 && !Nilo.ollama && Nilo.known
+
+        Txt {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: Nilo.startingOllama ? Lang.niloOllamaStarting : Lang.niloOllamaDown
+            color: Tokens.dim
+            font.pixelSize: 15
+        }
+
+        Txt {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: text !== "" && !Nilo.startingOllama
+            text: root.unitLine()
+            color: Tokens.muted
+            font.family: Tokens.fontMono
+            font.pixelSize: 12
+        }
+
+        Column {
+            width: parent.width
+            spacing: 3
+            visible: !Nilo.startingOllama && (Nilo.service.log ?? []).length > 0
+            topPadding: 2
+
+            Repeater {
+                model: (Nilo.service.log ?? []).slice(-4)
+
+                Txt {
+                    required property string modelData
+                    width: parent.width
+                    text: modelData
+                    horizontalAlignment: Text.AlignHCenter
+                    color: Tokens.muted
+                    font.family: Tokens.fontMono
+                    font.pixelSize: 11
+                    wrapMode: Text.WrapAnywhere
+                    maximumLineCount: 2
+                }
+            }
+        }
+
+        Txt {
+            width: parent.width
+            visible: !Nilo.startingOllama && (Nilo.service.error ?? "") !== ""
+            text: Nilo.service.error ?? ""
+            horizontalAlignment: Text.AlignHCenter
+            color: Tokens.dim
+            wrapMode: Text.Wrap
+            elide: Text.ElideNone
+            font.pixelSize: 13
+        }
+
+        Item { width: 1; height: 2 }
+
+        PillButton {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: !Nilo.startingOllama
+            text: Lang.niloStartOllama
+            accent: true
+            onClicked: Nilo.startOllama()
+        }
+
+        Txt {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: Lang.niloOllamaHelp
+            color: Tokens.muted
+            font.family: Tokens.fontMono
+            font.pixelSize: 11
         }
     }
 
@@ -326,6 +425,7 @@ Item {
                     id: card
 
                     readonly property var facts: { try { return JSON.parse(entry.info || "{}"); } catch (e) { return {}; } }
+                    readonly property bool file: facts.action === "edit" || facts.action === "create"
                     readonly property bool open: entry.status === "asking"
                     readonly property bool isArmed: open && root.armed === entry.cid
 
@@ -347,22 +447,73 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: "git · " + (card.facts.action === "commit-push" ? Lang.confirmCommitPush
-                                : card.facts.action === "push" ? Lang.confirmPush : Lang.confirmCommit)
+                            text: card.file ? Lang.confirmFile + " · " + (card.facts.action === "create" ? Lang.confirmCreate : Lang.confirmEdit)
+                                : "git · " + (card.facts.action === "commit-push" ? Lang.confirmCommitPush
+                                    : card.facts.action === "push" ? Lang.confirmPush : Lang.confirmCommit)
                             color: Tokens.ink
                         }
 
                         Txt {
                             width: parent.width
-                            text: (card.facts.repo ?? "") + " · " + (card.facts.branch ?? "") + (card.facts.remote ? "  →  " + card.facts.remote : "")
+                            text: card.file
+                                ? (card.facts.repo ?? "") + " · " + (card.facts.path ?? "") + "   +" + (card.facts.added ?? 0)
+                                    + ((card.facts.removed ?? 0) > 0 ? " −" + card.facts.removed : "")
+                                : (card.facts.repo ?? "") + " · " + (card.facts.branch ?? "") + (card.facts.remote ? "  →  " + card.facts.remote : "")
                             color: Tokens.dim
                             font.family: Tokens.fontMono
                             font.pixelSize: 12
                         }
 
+                        // The change itself, as a diff: what goes in, what goes out.
+                        Rectangle {
+                            visible: card.file
+                            width: parent.width
+                            height: visible ? lines.implicitHeight + 20 : 0
+                            radius: 12
+                            color: Tokens.black
+                            border.width: 1
+                            border.color: Tokens.line
+
+                            Column {
+                                id: lines
+                                x: 12
+                                y: 10
+                                width: parent.width - 24
+                                spacing: 1
+
+                                Repeater {
+                                    // "···" between the parts of the file that change, not before the first.
+                                    model: card.file ? (card.facts.diff ?? []).filter((d, i) => i > 0 || d.t !== "@") : []
+
+                                    Txt {
+                                        required property var modelData
+                                        width: parent.width
+                                        text: modelData.t === "@" ? "···"
+                                            : (modelData.t === "+" ? "+ " : modelData.t === "-" ? "− " : "  ") + modelData.s.replace(/\t/g, "    ")
+                                        color: modelData.t === "+" ? Tokens.ink : modelData.t === "-" ? Tokens.dim : Tokens.muted
+                                        font.family: Tokens.fontMono
+                                        font.pixelSize: 12
+                                        font.strikeout: modelData.t === "-"
+                                        wrapMode: Text.WrapAnywhere
+                                        elide: Text.ElideNone
+                                    }
+                                }
+
+                                Txt {
+                                    visible: (card.facts.more ?? 0) > 0
+                                    text: Lang.confirmMoreLines.arg(card.facts.more ?? 0)
+                                    color: Tokens.muted
+                                    font.family: Tokens.fontMono
+                                    font.pixelSize: 12
+                                    topPadding: 4
+                                }
+                            }
+                        }
+
                         Column {
                             width: parent.width
                             spacing: 2
+                            visible: !card.file
 
                             Repeater {
                                 model: (card.facts.files ?? []).slice(0, 8)
@@ -463,7 +614,7 @@ Item {
                     }
 
                     Txt {
-                        width: entry.width - (download.visible ? download.width + 30 : 16)
+                        width: entry.width - (download.visible ? download.width + 30 : start.visible ? start.width + 30 : 16)
                         text: root.errorText(entry.name, entry.text)
                         color: Tokens.dim
                         wrapMode: Text.Wrap
@@ -477,6 +628,14 @@ Item {
                         text: Lang.niloDownload
                         accent: true
                         onClicked: Nilo.download(Nilo.settings.model)
+                    }
+
+                    PillButton {
+                        id: start
+                        visible: entry.name === "ollama-down" && !Nilo.ollama && !Nilo.startingOllama
+                        text: Lang.niloStartOllama
+                        accent: true
+                        onClicked: Nilo.startOllama()
                     }
                 }
             }

@@ -29,6 +29,14 @@ Singleton {
     property real ramGB: 0
     property bool ollama: true
 
+    // Ollama's service when it is down: { starting, up, error, unit,
+    // activeState, subState, result, log } (systemctl show and the journal).
+    property var service: ({})
+    readonly property bool startingOllama: service.starting === true
+
+    // Git repositories under ~, for the settings (most recently used first).
+    property var repos: []
+
     // The model in Ollama
     property bool loaded: false
     property bool loading: false
@@ -125,9 +133,18 @@ Singleton {
     }
 
     function download(tag: string): void {
-        pull = { model: tag, status: "starting", progress: 0, error: "" };
+        pull = { model: tag, status: "starting", progress: 0, error: "", code: "" };
         send({ op: "pull", model: tag });
     }
+
+    // The agent tries on its own; this is the button (it may ask for a password).
+    function startOllama(): void {
+        if (startingOllama) return;
+        service = Object.assign({}, service, { starting: true, error: "" });
+        send({ op: "startOllama" });
+    }
+
+    function findRepos(): void { send({ op: "repos" }); }
 
     function cancelDownload(): void { send({ op: "cancelPull" }); }
     function remove(tag: string): void { send({ op: "delete", model: tag }); }
@@ -184,7 +201,24 @@ Singleton {
             expires = e.expires ?? 0;
             sizeGB = e.sizeGB ?? 0;
             gpu = e.gpu ?? 0;
-            if (e.ollama !== null && e.ollama !== undefined) ollama = e.ollama;
+            if (e.ollama !== null && e.ollama !== undefined) {
+                // It just went down: what systemd said last time no longer applies.
+                if (ollama && e.ollama === false) service = ({});
+                ollama = e.ollama;
+            }
+            break;
+        case "ollama":
+            service = e;
+            if (e.up === true) {
+                ollama = true;
+                // A download that failed only because Ollama was down can go again.
+                if (pull && pull.code === "ollama-down") pull = null;
+            } else if (e.up === false) {
+                ollama = false;
+            }
+            break;
+        case "repos":
+            repos = e.repos ?? [];
             break;
         case "reset":
             break;
@@ -216,7 +250,8 @@ Singleton {
                 const i = findTool(e.id);
                 if (i >= 0) {
                     const args = JSON.parse(messages.get(i).info || "{}");
-                    messages.set(i, { done: true, status: e.ok ? "done" : "failed",
+                    // Declined (git or a file change) is not a failure: it says "cancelled".
+                    messages.set(i, { done: true, status: e.ok || e.declined ? "done" : "failed",
                                       info: JSON.stringify(Object.assign({}, e, { args: args })) });
                 }
                 if (e.name === "git_commit" && e.ok && !e.declined) mood = "happy";
@@ -266,9 +301,9 @@ Singleton {
             break;
         case "pull":
             if (e.status === "error" || e.status === "cancelled" || e.status === "busy") {
-                pull = e.status === "error" ? { model: e.model, status: "error", progress: 0, error: e.detail ?? "" } : null;
+                pull = e.status === "error" ? { model: e.model, status: "error", progress: 0, error: e.detail ?? "", code: e.code ?? "" } : null;
             } else {
-                pull = { model: e.model, status: e.status, error: "",
+                pull = { model: e.model, status: e.status, error: "", code: "",
                          progress: e.total > 0 ? e.completed / e.total : (pull?.progress ?? 0) };
             }
             break;
@@ -318,6 +353,7 @@ Singleton {
             root.ready = false;
             root.known = false;
             root.loading = false;
+            root.service = ({});
             if (root.busy) {
                 root.closeReply();
                 root.busy = false;

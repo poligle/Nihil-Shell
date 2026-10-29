@@ -100,6 +100,7 @@
 		niloHintConfirm = "enter dos veces confirma · esc cancela";
 		niloHintIntro = "enter sigue · ↑↓ elige · espacio marca · esc cierra";
 		niloHintSettings = "↑↓ elige · espacio marca · esc vuelve";
+		niloHintAuthorize = "espacio o enter autoriza · esc cancela";
 		niloOff = "Nilo está apagado";
 		niloOffHow = "Actívalo con nihil.nilo.enable = true en tu host y haz rebuild.";
 		niloAsleep = "dormido";
@@ -110,6 +111,11 @@
 		niloWorking = "trabajando";
 		niloWaitingYou = "esperándote";
 		niloNoOllama = "sin ollama";
+		niloOllamaStartingShort = "arrancando ollama";
+		niloOllamaDown = "Ollama no está en marcha.";
+		niloOllamaStarting = "Arrancando Ollama…";
+		niloStartOllama = "arrancar ollama";
+		niloOllamaHelp = "más en: journalctl -u ollama -b";
 		niloDownloading = "descargando · %1%";
 		niloDownloadingModel = "Descargando %1 · %2%";
 		niloEmpty = "Pregúntame algo. Si hace falta, busco en internet.";
@@ -117,6 +123,7 @@
 		niloTryFlake = "¿Qué es un flake de Nix?";
 		niloTryNews = "¿Qué hay de nuevo en NixOS?";
 		niloTryDisk = "¿Cuánto disco me queda?";
+		niloTryFiles = "¿Qué hay en mi repositorio?";
 		niloTryPush = "Sube los cambios de mi config";
 		niloCopy = "copiar";
 		niloCopied = "copiado";
@@ -137,19 +144,30 @@
 		toolGitPushedOnly = "subido";
 		toolDeclined = "cancelado";
 		toolFailed = "falló · %1";
+		toolListing = "mirando los archivos";
+		toolListed = "%1 archivos";
+		toolOpening = "abriendo %1";
+		toolOpened = "leído %1 · %2 líneas";
+		toolChanging = "preparando %1";
+		toolChanged = "cambiado %1 · +%2 −%3";
+		toolCreated = "creado %1 · %2 líneas";
 
 		confirmCommitPush = "commit y push";
 		confirmCommit = "commit";
 		confirmPush = "push";
 		confirmMore = "y %1 más";
 		confirmAhead = "%1 commits sin subir";
+		confirmFile = "archivo";
+		confirmEdit = "cambiar";
+		confirmCreate = "crear";
+		confirmMoreLines = "y %1 líneas más";
 		confirmOk = "confirmar";
 		confirmCancel = "cancelar";
 		confirmDone = "confirmado";
 		confirmDeclined = "cancelado";
 		quoted = "«%1»";
 
-		niloErrOllama = "Ollama no responde: mira «systemctl status ollama».";
+		niloErrOllama = "Ollama no está en marcha.";
 		niloErrModel = "Falta el modelo %1.";
 		niloErrMemory = "No hay memoria para %1: prueba uno más pequeño.";
 		niloErrNoModel = "Elige un modelo en el engranaje.";
@@ -183,6 +201,7 @@
 		modelRam = "≈ %1 GB de RAM";
 		modelTight = "justo para tu RAM";
 		modelFailed = "no se ha podido descargar · %1";
+		modelFailedOllama = "ollama no está en marcha";
 
 		accessWeb = "Internet";
 		accessWebSub = "buscar y leer páginas";
@@ -190,10 +209,17 @@
 		accessSystemSub = "memoria, disco, batería, versión de NixOS";
 		accessGit = "Git";
 		accessGitSub = "add, commit y push en %1, siempre preguntándote antes";
+		accessGitGuard = "Podré hacer add, commit y push en %1 con tu usuario de git. Antes de cada commit o push te enseño qué voy a hacer y espero tu confirmación.";
+		accessWrite = "Archivos";
+		accessWriteSub = "leer, crear y cambiar archivos en %1, enseñándote cada cambio antes";
+		accessWriteGuard = "Podré leer, crear y cambiar archivos dentro de %1, nunca fuera de él ni en .git. Antes de cada cambio te enseño el diff y no toco nada hasta que confirmes.";
+		accessAuthorize = "autorizar";
 
 		setModel = "modelo";
 		setAccess = "acceso";
 		setRepo = "repositorio";
+		setRepoPath = "ruta";
+		setRepoNote = "Al cambiar de repositorio, git y archivos se apagan hasta que los autorices otra vez.";
 		setMemory = "memoria";
 		setSleepAfter = "dormir tras";
 		setMinutes = "%1 min";
@@ -289,6 +315,7 @@
 		niloHintConfirm = "enter twice confirms · esc cancels";
 		niloHintIntro = "enter next · ↑↓ choose · space toggles · esc closes";
 		niloHintSettings = "↑↓ choose · space toggles · esc goes back";
+		niloHintAuthorize = "space or enter authorizes · esc cancels";
 		niloOff = "Nilo is off";
 		niloOffHow = "Turn it on with nihil.nilo.enable = true in your host and rebuild.";
 		niloAsleep = "asleep";
@@ -299,6 +326,11 @@
 		niloWorking = "working";
 		niloWaitingYou = "waiting for you";
 		niloNoOllama = "no ollama";
+		niloOllamaStartingShort = "starting ollama";
+		niloOllamaDown = "Ollama isn't running.";
+		niloOllamaStarting = "Starting Ollama…";
+		niloStartOllama = "start ollama";
+		niloOllamaHelp = "more in: journalctl -u ollama -b";
 		niloDownloading = "downloading · %1%";
 		niloDownloadingModel = "Downloading %1 · %2%";
 		niloEmpty = "Ask me something. I'll search the web if I need to.";
@@ -306,6 +338,7 @@
 		niloTryFlake = "What is a Nix flake?";
 		niloTryNews = "What's new in NixOS?";
 		niloTryDisk = "How much disk space is left?";
+		niloTryFiles = "What's in my repository?";
 		niloTryPush = "Push my config changes";
 		niloCopy = "copy";
 		niloCopied = "copied";
@@ -326,19 +359,30 @@
 		toolGitPushedOnly = "pushed";
 		toolDeclined = "cancelled";
 		toolFailed = "failed · %1";
+		toolListing = "looking at the files";
+		toolListed = "%1 files";
+		toolOpening = "opening %1";
+		toolOpened = "read %1 · %2 lines";
+		toolChanging = "preparing %1";
+		toolChanged = "changed %1 · +%2 −%3";
+		toolCreated = "created %1 · %2 lines";
 
 		confirmCommitPush = "commit and push";
 		confirmCommit = "commit";
 		confirmPush = "push";
 		confirmMore = "and %1 more";
 		confirmAhead = "%1 commits not pushed yet";
+		confirmFile = "file";
+		confirmEdit = "change";
+		confirmCreate = "create";
+		confirmMoreLines = "and %1 more lines";
 		confirmOk = "confirm";
 		confirmCancel = "cancel";
 		confirmDone = "confirmed";
 		confirmDeclined = "cancelled";
 		quoted = "“%1”";
 
-		niloErrOllama = "Ollama isn't answering: check “systemctl status ollama”.";
+		niloErrOllama = "Ollama isn't running.";
 		niloErrModel = "The model %1 isn't downloaded.";
 		niloErrMemory = "Not enough memory for %1: try a smaller one.";
 		niloErrNoModel = "Choose a model in the settings.";
@@ -372,6 +416,7 @@
 		modelRam = "≈ %1 GB of RAM";
 		modelTight = "tight for your RAM";
 		modelFailed = "download failed · %1";
+		modelFailedOllama = "ollama isn't running";
 
 		accessWeb = "Internet";
 		accessWebSub = "search and read pages";
@@ -379,10 +424,17 @@
 		accessSystemSub = "memory, disk, battery, NixOS version";
 		accessGit = "Git";
 		accessGitSub = "add, commit and push in %1, always asking you first";
+		accessGitGuard = "I'll be able to add, commit and push in %1 as your git user. Before each commit or push I show you what I'll do and wait for your confirmation.";
+		accessWrite = "Files";
+		accessWriteSub = "read, create and change files in %1, showing you each change first";
+		accessWriteGuard = "I'll be able to read, create and change files inside %1, never outside it or in .git. Before each change I show you the diff, and nothing is touched until you confirm.";
+		accessAuthorize = "authorize";
 
 		setModel = "model";
 		setAccess = "access";
 		setRepo = "repository";
+		setRepoPath = "path";
+		setRepoNote = "Switching repositories turns git and files off until you authorize them again.";
 		setMemory = "memory";
 		setSleepAfter = "sleep after";
 		setMinutes = "%1 min";

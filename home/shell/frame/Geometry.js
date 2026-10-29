@@ -107,3 +107,21 @@ function outline(W, H, L, T, R, B, radius, fillet, drawerRadius, bumps, start) {
 function ringLength(W, H, L, T, R, B, radius) {
     return 2 * ((W - L - R) + (H - T - B)) - 8 * radius + 2 * Math.PI * radius;
 }
+
+// Half of the plain inner outline: from the middle of the bottom edge, up
+// one side (1 right, -1 left), to the middle of the top edge. The charging
+// light rises along both. Each is ringLength / 2 long.
+function rise(W, H, L, T, R, B, radius, side) {
+    if (W <= 0 || H <= 0) return "";
+    const x0 = L, y0 = T, x1 = W - R, y1 = H - B;
+    const cx = (x0 + x1) / 2;
+    const x = side > 0 ? x1 : x0;          // the side it climbs
+    const inward = side > 0 ? -radius : radius;
+    let p = "M" + fmt([cx, y1]);
+    p += " L" + fmt([x + inward, y1]);
+    p += corner([x + inward, y1], [x, y1], [x, y1 - radius]);
+    p += " L" + fmt([x, y0 + radius]);
+    p += corner([x, y0 + radius], [x, y0], [x + inward, y0]);
+    p += " L" + fmt([cx, y0]);
+    return p;
+}

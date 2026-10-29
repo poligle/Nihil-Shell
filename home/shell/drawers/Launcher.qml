@@ -65,6 +65,11 @@ Item {
         syncNilo();
     }
 
+    function modifierOnly(key: int): bool {
+        return [Qt.Key_Shift, Qt.Key_Control, Qt.Key_Meta, Qt.Key_Alt, Qt.Key_AltGr, Qt.Key_Super_L, Qt.Key_Super_R,
+                Qt.Key_Hyper_L, Qt.Key_Hyper_R, Qt.Key_CapsLock, Qt.Key_NumLock].indexOf(key) >= 0;
+    }
+
     function syncNilo(): void {
         if (active || Nilo.shown) Nilo.shown = active && niloMode;
         if (active && niloMode) Nilo.start();
@@ -229,6 +234,9 @@ Item {
             onAccepted: root.accept()
             Keys.onEscapePressed: if (!(root.niloMode && niloView.back())) Drawers.close()
             Keys.onPressed: event => {
+                // Opened from the edge, the first real key keeps it open (a
+                // modifier alone may be the start of a SUPER shortcut).
+                if (Drawers.byHover && !root.modifierOnly(event.key)) Drawers.byHover = false;
                 if (root.niloMode ? niloView.key(event) : root.move(event.key)) event.accepted = true;
             }
 

@@ -19,11 +19,13 @@ let
 	moveToWorkspace = workspace: ''hl.dsp.window.move({ workspace = "${workspace}" })'';
 
 	# Nilo (modules/nilo.nix). The Copilot key sends SUPER + SHIFT + F23
-	# (Linux 6.14 and later), which xkb names XF86TouchpadOff.
+	# (Linux 6.14 and later). Its name depends on xkeyboard-config (recent
+	# ones say XF86Assistant, older ones XF86TouchpadOff), so the bind goes
+	# by the keycode wev shows: 201. One bind only, or a press would toggle twice.
 	niloBinds = lib.optionals osConfig.nihil.nilo.enable
 	[
 		(bind "SUPER + I" (exec "nihil-ipc nilo toggle"))
-		(bind "SUPER + SHIFT + XF86TouchpadOff" (exec "nihil-ipc nilo toggle"))
+		(bind "SUPER + SHIFT + code:201" (exec "nihil-ipc nilo toggle"))
 	];
 
 	workspaceBinds = lib.concatMap

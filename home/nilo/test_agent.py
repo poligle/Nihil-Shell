@@ -12,6 +12,7 @@ import json
 import os
 import queue
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -29,8 +30,8 @@ class FakeOllama(http.server.ThreadingHTTPServer):
 
     daemon_threads = True
 
-    def __init__(self):
-        super().__init__(("127.0.0.1", 0), Handler)
+    def __init__(self, port=0):
+        super().__init__(("127.0.0.1", port), Handler)
         self.installed = {"qwen3.5:4b": 3_400_000_000}
         self.loaded = {}            # model -> expiry (epoch)
         self.chats = []             # every /api/chat body
@@ -173,6 +174,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif "sube" in question:
                 result = json.loads(tools_done[-1]["content"])
                 self.say("Hecho." if result.get("ok") else "No he hecho nada.")
+            elif "edita" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "read_file", "arguments": {"path": "notes.md"}}}])
+            elif "edita" in question and len(tools_done) == 1:
+                self.say(tool_calls=[{"function": {"name": "edit_file", "arguments": {
+                    "path": "notes.md", "old": "notes", "new": "Notas de Nilo"}}}])
+            elif "edita" in question or "crea" in question and tools_done:
+                result = json.loads(tools_done[-1]["content"])
+                self.say("Cambiado." if result.get("ok") else "No lo he cambiado.")
+            elif "crea" in question:
+                self.say(tool_calls=[{"function": {"name": "write_file", "arguments": {
+                    "path": "docs/nuevo.md", "content": "# Nuevo\n\nHola.\n"}}}])
             elif "lento" in question:
                 for i in range(200):
                     self.chunk({"message": {"role": "assistant", "content": f"{i} "}, "done": False})
@@ -209,11 +221,11 @@ def git(cwd, *args):
 
 
 class AgentProcess:
-    def __init__(self, config, state):
+    def __init__(self, config, state, env=None):
         self.proc = subprocess.Popen([sys.executable, "-I", os.path.join(HERE, "agent.py"), "--config", config,
                                       "--state", state],
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                     text=True, encoding="utf-8", bufsize=1)
+                                     text=True, encoding="utf-8", bufsize=1, env=env)
         self.events = queue.Queue()
         self.log = []
         threading.Thread(target=self._read, daemon=True).start()
@@ -233,7 +245,7 @@ class AgentProcess:
         while True:
             left = deadline - time.monotonic()
             if left <= 0:
-                raise AssertionError(f"no {ev!r} event; got {[e['ev'] for e in self.log][-30:]}")
+                raise AssertionError(f"no {ev!r} event; got {[e['ev'] for e in self.log][-30:]}; last {self.log[-3:]}")
             try:
                 event = self.events.get(timeout=left)
             except queue.Empty:
@@ -285,6 +297,22 @@ class AgentTest(unittest.TestCase):
                     '{"title": "No url", "url": "", "abstract": ""}]\n'
                     "EOF\n")
         os.chmod(self.ddgr, 0o755)
+        # systemctl: "show" says Ollama failed; "start" leaves a mark (and fails if told to).
+        self.systemctl = os.path.join(self.dir, "systemctl")
+        with open(self.systemctl, "w") as f:
+            f.write("#!/bin/sh\n"
+                    "d=$(dirname \"$0\")\n"
+                    "case \"$1\" in\n"
+                    "  show) printf 'LoadState=loaded\\nActiveState=failed\\nSubState=failed\\n"
+                    "Result=exit-code\\nExecMainStatus=1\\nNRestarts=0\\n' ;;\n"
+                    "  *) echo \"$@\" >> \"$d/started\"\n"
+                    "     if [ -e \"$d/start-fails\" ]; then echo 'Job failed' >&2; exit 1; fi ;;\n"
+                    "esac\n")
+        self.journalctl = os.path.join(self.dir, "journalctl")
+        with open(self.journalctl, "w") as f:
+            f.write("#!/bin/sh\necho 'Error: listen tcp 127.0.0.1:11434: bind: address already in use'\n")
+        os.chmod(self.systemctl, 0o755)
+        os.chmod(self.journalctl, 0o755)
         self.config = os.path.join(self.dir, "config.json")
         self.write_config()
         self.state = os.path.join(self.dir, "state", "nilo.json")
@@ -294,6 +322,7 @@ class AgentTest(unittest.TestCase):
         with open(self.config, "w") as f:
             json.dump(dict({"ollama": self.ollama.url, "language": "es", "models": MODELS, "contextLength": 8192,
                             "ddgr": self.ddgr, "git": shutil.which("git"), "host": "thinkpad",
+                            "systemctl": self.systemctl, "journalctl": self.journalctl,
                             "flake": "~/nixos-config"}, **extra), f)
 
     def tearDown(self):
@@ -303,12 +332,12 @@ class AgentTest(unittest.TestCase):
         self.ollama.server_close()
         shutil.rmtree(self.dir, ignore_errors=True)
 
-    def start(self, settings=None):
+    def start(self, settings=None, env=None):
         if settings is not None:
             os.makedirs(os.path.dirname(self.state), exist_ok=True)
             with open(self.state, "w") as f:
                 json.dump(settings, f)
-        self.agent = AgentProcess(self.config, self.state)
+        self.agent = AgentProcess(self.config, self.state, env)
         self.agent.send(op="hello")
         return self.agent.wait("hello")
 
@@ -496,6 +525,18 @@ class AgentTest(unittest.TestCase):
         hello = self.start()
         self.assertEqual(hello["settings"]["model"], "qwen3.5:9b")
 
+    def test_new_repo_asks_again(self):
+        repo = self.make_notes_repo()
+        other = os.path.join(self.dir, "other")
+        os.makedirs(os.path.join(other, ".git"))
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "git": True, "write": True, "repo": repo})
+        self.agent.send(op="set", key="repo", value=repo + "/")
+        same = self.agent.wait("settings")["settings"]
+        self.assertEqual((same["git"], same["write"]), (True, True))
+        self.agent.send(op="set", key="repo", value=other)
+        moved = self.agent.wait("settings")["settings"]
+        self.assertEqual((moved["repo"], moved["git"], moved["write"]), (other, False, False))
+
     def test_pull_and_delete(self):
         self.start()
         self.agent.send(op="pull", model="qwen3.5:9b")
@@ -548,6 +589,195 @@ class AgentTest(unittest.TestCase):
         self.agent.send(op="status")
         models = self.agent.wait("models", where=lambda e: e["ollama"])
         self.assertTrue({m["tag"]: m for m in models["models"]}["qwen3.5:4b"]["installed"])
+
+    def free_port(self):
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            return probe.getsockname()[1]
+
+    def test_ollama_down_is_started(self):
+        port = self.free_port()
+        self.write_config(ollama=f"http://127.0.0.1:{port}")
+        late = {}
+
+        def come_up():
+            mark = os.path.join(self.dir, "started")
+            for _ in range(200):
+                if os.path.exists(mark):
+                    late["server"] = FakeOllama(port)
+                    threading.Thread(target=late["server"].serve_forever, daemon=True).start()
+                    return
+                time.sleep(0.05)
+
+        threading.Thread(target=come_up, daemon=True).start()
+        hello = self.start({"model": "qwen3.5:4b", "onboarded": True})
+        self.assertFalse(hello["ollama"])
+        starting = self.agent.wait("ollama", where=lambda e: e.get("starting"))
+        self.assertEqual((starting["activeState"], starting["result"]), ("failed", "exit-code"))
+        self.assertIn("address already in use", starting["log"][0])
+        self.agent.wait("ollama", where=lambda e: e.get("up"))
+        models = self.agent.wait("models", where=lambda e: e["ollama"])
+        self.assertTrue({m["tag"]: m for m in models["models"]}["qwen3.5:4b"]["installed"])
+        with open(os.path.join(self.dir, "started")) as f:
+            self.assertEqual(f.read().split(), ["--no-ask-password", "start", "ollama.service"])
+        late["server"].shutdown()
+        late["server"].server_close()
+
+    def test_pull_when_ollama_cannot_start(self):
+        self.write_config(ollama=f"http://127.0.0.1:{self.free_port()}")
+        open(os.path.join(self.dir, "start-fails"), "w").close()
+        self.start({"model": "qwen3.5:4b", "onboarded": True})
+        failed = self.agent.wait("ollama", where=lambda e: e.get("up") is False)
+        self.assertEqual(failed["error"], "Job failed")
+        self.agent.send(op="pull", model="qwen3.5:9b")
+        pull = self.agent.wait("pull", where=lambda e: e["status"] == "error")
+        self.assertEqual(pull["code"], "ollama-down")
+        self.agent.send(op="startOllama")
+        self.agent.wait("ollama", where=lambda e: e.get("starting"))
+        self.agent.wait("ollama", where=lambda e: e.get("up") is False)
+        with open(os.path.join(self.dir, "started")) as f:
+            self.assertEqual(f.read().splitlines()[-1].split(), ["start", "ollama.service"])  # may ask polkit
+
+    def make_notes_repo(self):
+        repo, _ = self.make_repo()
+        with open(os.path.join(repo, ".gitignore"), "w") as f:
+            f.write("secret.txt\n")
+        with open(os.path.join(repo, "secret.txt"), "w") as f:
+            f.write("x\n")
+        return repo
+
+    def test_edit_file_confirmed(self):
+        repo = self.make_notes_repo()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "write": True, "repo": repo})
+        confirms = []
+
+        def accept(event):
+            confirms.append(event)
+            self.agent.send(op="confirm", id=event["id"], ok=True)
+
+        self.agent.on_confirm = accept
+        self.agent.send(op="ask", text="Edita las notas")
+        events = self.agent.until_done()
+        self.assertEqual(len(confirms), 1)
+        card = confirms[0]
+        self.assertEqual((card["action"], card["path"], card["added"], card["removed"]), ("edit", "notes.md", 1, 1))
+        self.assertEqual([(d["t"], d["s"]) for d in card["diff"] if d["t"] != "@"],
+                         [("-", "notes"), ("+", "Notas de Nilo")])
+        with open(os.path.join(repo, "notes.md")) as f:
+            self.assertEqual(f.read(), "Notas de Nilo\n")
+        self.assertIn("Cambiado.", self.text_of(events))
+        read = json.loads(self.ollama.chats[1]["messages"][-1]["content"])
+        self.assertEqual((read["path"], read["text"], read["lines"]), ("notes.md", "notes\n", 1))
+        tools = {t["function"]["name"] for t in self.ollama.chats[0]["tools"]}
+        self.assertTrue({"list_files", "read_file", "edit_file", "write_file"} <= tools)
+        self.assertIn("edit_file", self.ollama.chats[0]["messages"][0]["content"])
+
+    def test_edit_file_declined(self):
+        repo = self.make_notes_repo()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "write": True, "repo": repo})
+        self.agent.on_confirm = lambda event: self.agent.send(op="confirm", id=event["id"], ok=False)
+        self.agent.send(op="ask", text="Edita las notas")
+        events = self.agent.until_done()
+        with open(os.path.join(repo, "notes.md")) as f:
+            self.assertEqual(f.read(), "notes\n")
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"]
+        self.assertTrue(done[-1]["declined"])
+        self.assertIn("No lo he cambiado.", self.text_of(events))
+
+    def test_write_file_creates(self):
+        repo = self.make_notes_repo()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "write": True, "repo": repo})
+        confirms = []
+
+        def accept(event):
+            confirms.append(event)
+            self.agent.send(op="confirm", id=event["id"], ok=True)
+
+        self.agent.on_confirm = accept
+        self.agent.send(op="ask", text="Crea un documento")
+        events = self.agent.until_done()
+        self.assertEqual((confirms[0]["action"], confirms[0]["added"]), ("create", 3))
+        with open(os.path.join(repo, "docs", "nuevo.md")) as f:
+            self.assertEqual(f.read(), "# Nuevo\n\nHola.\n")
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"]
+        self.assertTrue(done[-1]["created"])
+
+    def test_no_files_without_permission(self):
+        repo = self.make_notes_repo()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "git": True, "repo": repo})
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        tools = {t["function"]["name"] for t in self.ollama.chats[-1]["tools"]}
+        self.assertFalse({"list_files", "read_file", "edit_file", "write_file"} & tools)
+        tools = agent.Tools(type("A", (), {"settings": {"write": False}, "config": {}})())
+        result, facts = tools.run("write_file", {"path": "x", "content": "y"}, agent.Cancel())
+        self.assertIn("not allowed", result["error"])
+
+    def test_paths_stay_inside(self):
+        repo = self.make_notes_repo()
+        os.symlink(self.dir, os.path.join(repo, "escape"))
+        fake = type("A", (), {"settings": {"write": True, "repo": repo}, "config": {"git": shutil.which("git")}})()
+        tools = agent.Tools(fake)
+        for path in ("../config.json", "/etc/passwd", "escape/config.json", ".git/config", "~/x"):
+            result, facts = tools.run("read_file", {"path": path}, agent.Cancel())
+            self.assertIn("error", result, path)
+        listed, _ = tools.run("list_files", {}, agent.Cancel())
+        self.assertIn("notes.md", listed["files"])
+        self.assertNotIn("secret.txt", listed["files"])
+        with open(os.path.join(repo, "notes.md"), "w") as f:
+            f.write("a\nb\na\n")
+        twice, _ = tools.run("edit_file", {"path": "notes.md", "old": "a", "new": "c"}, agent.Cancel())
+        self.assertIn("2 times", twice["error"])
+        missing, _ = tools.run("edit_file", {"path": "notes.md", "old": "zzz", "new": "c"}, agent.Cancel())
+        self.assertIn("not in the file", missing["error"])
+        os.makedirs(os.path.join(repo, "sub", ".git"))
+        with open(os.path.join(repo, "sub", ".git", "config"), "w") as f:
+            f.write("x\n")
+        nested, _ = tools.run("read_file", {"path": "sub/.git/config"}, agent.Cancel())
+        self.assertIn(".git", nested["error"])
+        # Not UTF-8: it can be read, but not changed (the rest would come back altered).
+        with open(os.path.join(repo, "latin.txt"), "wb") as f:
+            f.write("caf\xe9 y m\xe1s\n".encode("latin-1"))
+        read, _ = tools.run("read_file", {"path": "latin.txt"}, agent.Cancel())
+        self.assertIn("caf", read["text"])
+        latin, _ = tools.run("edit_file", {"path": "latin.txt", "old": "caf", "new": "te"}, agent.Cancel())
+        self.assertIn("UTF-8", latin["error"])
+        with open(os.path.join(repo, "latin.txt"), "rb") as f:
+            self.assertEqual(f.read(), "caf\xe9 y m\xe1s\n".encode("latin-1"))
+        # Confirmed, a change keeps the file's line endings and mode.
+        fake.ask_confirmation = lambda payload, cancel: True
+        crlf = os.path.join(repo, "crlf.sh")
+        with open(crlf, "wb") as f:
+            f.write(b"#!/bin/sh\r\necho a\r\n")
+        os.chmod(crlf, 0o755)
+        done, _ = tools.run("edit_file", {"path": "crlf.sh", "old": "echo a", "new": "echo b"}, agent.Cancel())
+        self.assertTrue(done["ok"])
+        with open(crlf, "rb") as f:
+            self.assertEqual(f.read(), b"#!/bin/sh\r\necho b\r\n")
+        self.assertEqual(os.stat(crlf).st_mode & 0o777, 0o755)
+
+    def test_read_file_in_parts(self):
+        repo = self.make_notes_repo()
+        with open(os.path.join(repo, "long.txt"), "w") as f:
+            f.write("".join(f"line {i}\n" for i in range(1, 1001)))
+        fake = type("A", (), {"settings": {"write": True, "repo": repo}, "config": {}})()
+        first, _ = agent.Tools(fake).run("read_file", {"path": "long.txt"}, agent.Cancel())
+        self.assertEqual((first["from_line"], first["to_line"], first["next_line"], first["lines"]), (1, 400, 401, 1000))
+        last, _ = agent.Tools(fake).run("read_file", {"path": "long.txt", "from_line": 801}, agent.Cancel())
+        self.assertNotIn("next_line", last)
+        self.assertTrue(last["text"].endswith("line 1000\n"))
+
+    def test_repos(self):
+        home = os.path.join(self.dir, "home")
+        for path in ("", "nixos-config", "code/codewizards", "code/apps/baitspace", "deep/a/b/c/hidden", ".cache/x"):
+            os.makedirs(os.path.join(home, path, ".git"), exist_ok=True)
+        os.makedirs(os.path.join(home, "code/node_modules/pkg/.git"))
+        self.start(env=dict(os.environ, HOME=home))
+        self.agent.send(op="repos")
+        repos = self.agent.wait("repos")["repos"]
+        self.assertEqual(sorted(repos), ["~/code/apps/baitspace", "~/code/codewizards", "~/nixos-config"])
+        self.agent.send(op="set", key="repo", value=os.path.join(home, "code", "codewizards") + "/")
+        self.assertEqual(self.agent.wait("settings")["settings"]["repo"], "~/code/codewizards")
 
     def test_bad_requests(self):
         self.start()
