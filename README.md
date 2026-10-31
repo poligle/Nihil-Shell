@@ -17,7 +17,7 @@
 
 ![NIHIL desktop](docs/assets/screens/desktop.png)
 
-NIHIL is my NixOS configuration for `poligle@thinkpad`. It takes the structure of
+NIHIL is a personal NixOS configuration. It takes the structure of
 [Caelestia](https://github.com/caelestia-dots/shell) — a frame around the screen with
 drawers that grow out of it — and dresses it in the language of Nothing: monochrome,
 dot-matrix type, red only to interrupt, and light that runs along the edge.
@@ -32,8 +32,7 @@ screen, greeter, boot splash and the shell — is generated from it.
 > declaration.
 
 **On the phone, too:** [NIHIL for Android](https://github.com/poligle/Nihil-Launcher) is a
-home screen in the same language — the frame, an LED clock, the light on the edge — with
-no internet permission ([nihilshell.com/android](https://nihilshell.com/android/)).
+home screen in the same language: the frame, an LED clock, the light on the edge, with no internet permission ([nihilshell.com/android](https://nihilshell.com/android/)).
 
 ---
 
@@ -51,7 +50,7 @@ no internet permission ([nihilshell.com/android](https://nihilshell.com/android/
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
-- **Nilo, optional.** An assistant with a local model (Qwen 3.5 on Ollama): two white eyes
+- **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and, asking you
   first, change files and commit and push in a repository of yours. It falls asleep and
   frees the memory after a few minutes. See [Nilo](#nilo).

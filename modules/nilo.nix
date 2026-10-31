@@ -58,7 +58,7 @@ in
         acceleration = lib.mkOption
         {
             type = lib.types.enum [ "cpu" "vulkan" "rocm" "cuda" ];
-            default = "vulkan";
+            default = "cpu";
             example = "vulkan";
             description = ''
                 What runs the model: the CPU, or the GPU through Vulkan (AMD, Intel,
@@ -69,7 +69,7 @@ in
         integratedGpu = lib.mkOption
         {
             type = lib.types.bool;
-            default = true;
+            default = false;
             description = ''
                 Let Ollama use an integrated GPU, like the Radeon of a Ryzen laptop
                 with `acceleration = "vulkan"`. Ollama leaves them out unless told
