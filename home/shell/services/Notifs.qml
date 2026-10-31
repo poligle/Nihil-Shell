@@ -7,6 +7,9 @@ import Quickshell.Services.Notifications
 import qs.config
 
 // Notification daemon (replaces dunst). Every popup also lights the frame.
+// A notification with the hint x-nihil-tag replaces the earlier ones with the
+// same tag, and still lights the frame (a D-Bus replace would update the old
+// card silently): the battery warnings use it.
 Singleton {
     id: root
 
@@ -28,6 +31,15 @@ Singleton {
         for (const n of server.trackedNotifications.values.slice())
             n.dismiss();
         popups = [];
+    }
+
+    function tagOf(n): string {
+        return String(n?.hints?.["x-nihil-tag"] ?? "");
+    }
+
+    function dismissTag(tag: string, except: var): void {
+        for (const n of server.trackedNotifications.values.slice())
+            if (n !== except && tagOf(n) === tag) n.dismiss();
     }
 
     function isCritical(n): bool {
@@ -54,6 +66,7 @@ Singleton {
         onNotification: n => {
             n.tracked = true;
             n.closed.connect(() => root.hidePopup(n));
+            if (root.tagOf(n) !== "") root.dismissTag(root.tagOf(n), n);
 
             const critical = root.isCritical(n);
             if (root.dnd && !critical)

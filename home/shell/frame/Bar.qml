@@ -82,6 +82,21 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
         }
 
+        // Caffeine is on: the screen stays awake. A click turns it off.
+        Ico {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: Caffeine.on
+            glyph: Icons.coffee
+            color: Tokens.ink
+
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -6
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Caffeine.set(false)
+            }
+        }
+
         Status {
             anchors.horizontalCenter: parent.horizontalCenter
             output: root.output

@@ -40,8 +40,17 @@ Scope {
         // turns exclusive (desktop/view/LayerSurface.cpp), which closed the
         // launcher and the panel the moment they opened. The grab below hands
         // the keyboard to this window instead. The launcher takes it however
-        // it opened, so you can type as soon as it appears from the edge.
-        WlrLayershell.keyboardFocus: launcherOpen || (panelOpen && !Drawers.byHover) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        // it opened, so you can type as soon as it appears from the edge; the
+        // panel and the dashboard once they are kept (the Wi-Fi password, a
+        // new task in the kanban).
+        WlrLayershell.keyboardFocus: launcherOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
+            ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+        // Caffeine (services/Caffeine.qml): while it is on, hypridle waits.
+        IdleInhibitor {
+            window: win
+            enabled: Caffeine.on
+        }
 
         readonly property bool dashOpen: Drawers.isOpen("dashboard", root.output)
         readonly property bool panelOpen: Drawers.isOpen("panel", root.output)
@@ -66,7 +75,7 @@ Scope {
         readonly property real centerX: root.inset + innerW / 2
 
         readonly property real dashW: Math.min(980, innerW - 120)
-        readonly property real dashD: 300
+        readonly property real dashD: 520
         readonly property real panelL: Math.min(height - 2 * root.edge - 96, 860)
         readonly property real panelD: 400
         readonly property real launcherW: Math.min(860, innerW - 120)
@@ -183,6 +192,17 @@ Scope {
                         anchors.bottom: parent.bottom
                         active: win.dashOpen
                         opacity: win.reveal(win.dashP)
+                    }
+                }
+
+                // A click inside keeps a dashboard opened by hovering, and lets
+                // it take the keyboard. The press goes on to the dashboard.
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: win.dashOpen && Drawers.byHover
+                    onPressed: mouse => {
+                        Drawers.byHover = false;
+                        mouse.accepted = false;
                     }
                 }
             }

@@ -47,6 +47,8 @@ Singleton {
     readonly property string chevron: g(0xF0142)
     readonly property string terminal: g(0xF018D)
     readonly property string plus: g(0xF0415)
+    readonly property string coffee: g(0xF0176)
+    readonly property string chevronLeft: g(0xF0141)
 
     function volume(level: real, muted: bool): string {
         if (muted || level <= 0) return volMute;
