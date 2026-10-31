@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NIHIL for Android — a dot-matrix launcher</title>
-<meta name="description" content="The NIHIL language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. No ads, no tracking, no internet permission.">
+<title>NIHIL Launcher</title>
+<meta name="description" content="The NIHIL language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. Open source, no ads, no tracking.">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://nihilshell.com/android/">
@@ -12,8 +12,8 @@
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="NIHIL for Android — ex nihilo">
-<meta property="og:description" content="A monochrome, dot-matrix launcher for Android. No internet permission.">
+<meta property="og:title" content="NIHIL for Android">
+<meta property="og:description" content="A monochrome, dot-matrix launcher for Android.">
 <meta property="og:url" content="https://nihilshell.com/android/">
 <meta property="og:image" content="https://nihilshell.com/assets/og.png">
 <meta property="og:image:width" content="1280">
@@ -334,9 +334,9 @@ footer a:hover { color: var(--ink); }
       <div class="hero-grid">
         <div>
           <div class="wordmark" id="wordmark"><img src="../assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
-          <p class="motto">ex nihilo</p>
+          <p class="motto"><i>ex nihilo</i></p>
           <h1 id="title">A dot&#8209;matrix launcher for Android</h1>
-          <p class="lede">The same language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. No ads, no tracking and no internet permission.</p>
+          <p class="lede">The same language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. Open source, no ads, no tracking.</p>
           <div class="actions">
             <a class="pill primary" href="https://github.com/poligle/Nihil-Launcher/releases/latest">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8.5M4.5 7.2 8 10.7l3.5-3.5M2.5 13.8h11"/></svg>
@@ -351,7 +351,7 @@ footer a:hover { color: var(--ink); }
               Desktop for NixOS
             </a>
           </div>
-          <p class="meta">Android 12 or newer · Kotlin, no libraries · MIT</p>
+          <p class="meta">Android 12 or newer. Kotlin, no libraries. MIT</p>
         </div>
 
         <div class="phone" id="phone" role="img" aria-label="Drawing of the NIHIL home screen: an LED clock with the time, the date, the battery as ten LEDs and the favourites at the bottom, over a dot-matrix wallpaper.">
@@ -371,7 +371,7 @@ footer a:hover { color: var(--ink); }
     <section id="screen" aria-labelledby="screen-title">
       <div class="prose">
         <h2 id="screen-title">The frame grows</h2>
-        <p class="quiet">The screen is black and the wallpaper is a rounded card set into it: the desktop's frame, on a phone. The status bar and the gesture bar sit on the frame. Swipe up and the card's bottom edge follows your finger until everything is frame. That is the drawer, and its content switches on at the end, like LEDs.</p>
+        <p class="quiet">The screen is black and the wallpaper is a rounded card set into it: the desktop's frame, on a phone. The status bar and the gesture bar sit on the frame. Swipe up and the card's bottom edge follows your finger until everything is frame.</p>
       </div>
 
       <div class="phones" id="phones">
@@ -413,7 +413,7 @@ footer a:hover { color: var(--ink); }
       <ul class="examples">
         <li><kbd>camara</kbd><span>finds Cámara; <code>settings</code> finds Ajustes, by its package name.</span></li>
         <li><kbd>&gt;</kbd><span>lists the actions: torch, the Wi&#8209;Fi and sound panels, Bluetooth, battery, alarms, lock, the wallpaper studio and the settings. They also turn up in normal search: <code>lin</code> is the torch.</span></li>
-        <li><kbd>=</kbd><span>is the calculator: <code>+ − × ÷ ^ % !</code>, <code>sqrt sin cos ln log</code>, <code>pi</code>, <code>2pi</code>, <code>3(4+1)</code>. A sum like <code>12*7</code> is recognised without it, and enter copies the result.</span></li>
+        <li><kbd>=</kbd><span>is the calculator: <code>+ − × ÷ ^ % !</code>, <code>sqrt sin cos ln log</code>, <code>pi</code>, <code>2pi</code>, <code>3(4+1)</code>. Enter copies the result.</span></li>
         <li><kbd>no match</kbd><span>offers a web search, in your own browser.</span></li>
       </ul>
 
@@ -427,7 +427,6 @@ footer a:hover { color: var(--ink); }
             <tr><td class="what">Double tap</td><td>Locks the phone (optional)</td></tr>
             <tr><td class="what">Hold empty space</td><td>Wallpaper and settings</td></tr>
             <tr><td class="what">Hold an app</td><td>Its shortcuts; add to home, move, hide, info, uninstall</td></tr>
-            <tr><td class="what">Home button</td><td>Closes whatever is open</td></tr>
           </tbody>
         </table>
       </div>
@@ -469,7 +468,7 @@ footer a:hover { color: var(--ink); }
     <section id="install" aria-labelledby="install-title">
       <div class="prose">
         <h2 id="install-title">Install</h2>
-        <p class="quiet">Made for and tested on a Galaxy A35. Any phone with Android 12 or newer should work, but that is the only one it has run on so far.</p>
+        <p class="quiet">Works on Android 12, or newer.</p>
       </div>
       <ol class="steps">
         <li>
@@ -493,7 +492,7 @@ footer a:hover { color: var(--ink); }
 cd nihil-launcher
 nix develop
 ./gradlew installDebug</code></pre></div>
-        <p class="note">The phone at the top of this page is drawn by the page itself, with the launcher's LED digits<span id="shots-note">; the three screens are renders of the launcher's own layout at a Galaxy A35's resolution, with generic app icons</span>.</p>
+        <p class="note">The phone at the top of this page is drawn by the page itself, with the launcher's LED digits<span id="shots-note">; the three screens are renders of the launcher's own layout, with generic app icons</span>.</p>
       </div>
     </section>
 
@@ -510,6 +509,7 @@ nix develop
       <p><a href="https://github.com/poligle/Nihil-Launcher">github.com/poligle/Nihil-Launcher</a></p>
       <p><a href="https://github.com/poligle/Nihil-Launcher/releases">Releases</a> · <a href="https://github.com/poligle/Nihil-Launcher#readme">README</a></p>
       <p><a href="../">NIHIL for NixOS</a></p>
+      <p><a href="mailto:ceo@nihilshell.com">Contact Mail</a></p>
     </div>
   </div>
 </footer>

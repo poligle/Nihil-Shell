@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NIHIL — a dot-matrix desktop for NixOS</title>
+<title>NIHIL Shell</title>
 <meta name="description" content="A monochrome, dot-matrix desktop for NixOS: Caelestia's frame and drawers in the language of Nothing, declared in Nix from the boot splash to the lock screen.">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
@@ -11,7 +11,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="NIHIL — ex nihilo">
+<meta property="og:title" content="NIHIL Shell">
 <meta property="og:description" content="A monochrome, dot-matrix desktop for NixOS.">
 <meta property="og:url" content="https://nihilshell.com/">
 <meta property="og:image" content="https://nihilshell.com/assets/og.png">
@@ -297,7 +297,7 @@ footer a:hover { color: var(--ink); }
 
     <section class="hero" aria-labelledby="title">
       <div class="wordmark" id="wordmark"><img src="assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
-      <p class="motto">ex nihilo</p>
+      <p class="motto"><i>ex nihilo</i></p>
       <h1 id="title">A monochrome, dot&#8209;matrix desktop for NixOS</h1>
       <p class="lede">Caelestia's frame and drawers, dressed in the language of Nothing: greys for hierarchy, dots for display, red only to interrupt. All of it declared in Nix, from the boot splash to the lock screen.</p>
       <div class="actions">
@@ -323,10 +323,10 @@ footer a:hover { color: var(--ink); }
       </div>
       <div class="tour">
         <figure>
-          <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/dashboard.png" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: dot-matrix clock, a track with its cover and a spectrum in LED columns, CPU, RAM and temperature dials, and a network scope."></a>
+          <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/dashboard.png" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: dot-matrix clock and the caffeine switch, a track with its cover and a spectrum in LED columns, CPU, RAM and temperature dials, a network scope, and a kanban with tasks to do, doing and done."></a>
           <figcaption>
             <h3>Dashboard</h3>
-            <p>Time, music with its cover and spectrum drawn in dots, system dials and a network oscilloscope.</p>
+            <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a small kanban and caffeine to keep the screen awake.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or hover the top edge</span></div>
           </figcaption>
         </figure>
@@ -350,7 +350,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/notification.png"><img src="assets/screens/notification.png" width="1920" height="1200" loading="lazy" alt="A critical battery notification at the top right, and a red segment of light running along the bottom edge of the frame."></a>
           <figcaption>
             <h3>Light on the edge</h3>
-            <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red. Plug in the charger and two lights climb both sides from the bottom until they meet at the top.</p>
+            <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red, like the battery warnings at 15, 10 and 5&nbsp;%. Plug in the charger and two lights climb both sides from the bottom until they meet at the top.</p>
             <button class="plug" type="button" id="plug">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2.5 5.5 13.5h6l-1 8 8-11.5h-6z"/></svg>
               Plug in
@@ -535,6 +535,7 @@ nihil.language = "<span id="lang-value">en</span>";</code></pre>
       <p><a href="android/">NIHIL for Android</a></p>
       <p><a href="https://github.com/poligle/Nihil-Shell">github.com/poligle/Nihil-Shell</a></p>
       <p><a href="https://github.com/poligle/Nihil-Shell#readme">README</a></p>
+      <p><a href="mailto:ceo@nihilshell.com">Contact Mail</a></p>
     </div>
   </div>
 </footer>
