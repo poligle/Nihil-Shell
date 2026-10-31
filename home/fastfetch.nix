@@ -9,7 +9,6 @@ let
 	grid = lib.filter (row: lib.any (cell: cell != "0") (lib.stringToCharacters row))
 		(lib.splitString "\n" (lib.removeSuffix "\n" (builtins.readFile ../theme/art/snowflake-19.txt)));
 
-	# Coverage 0-9 per cell: solid LED ($1), dim LED ($2) or nothing.
 	led = cell:
 		let v = lib.toInt cell; in
 		if v >= 5 then "$1● " else if v >= 2 then "$2· " else "  ";
