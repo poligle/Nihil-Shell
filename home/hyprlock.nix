@@ -1,8 +1,4 @@
 # hyprlock.nix by poligle
-#
-# NIHIL lock screen: dot-matrix wallpaper per output, Doto clock, and the
-# password drawn as a row of dots that light up while typing. Fingerprint
-# stays enabled; red only appears when authentication fails.
 
 { config, osConfig, pkgs, lib, ... }:
 let
@@ -18,6 +14,56 @@ let
 		color = rgb t.palette.void;
 		brightness = 0.55;
 	}) nihil.outputs;
+
+	python = pkgs.python3.withPackages (ps: [ ps.numpy ps.pillow ]);
+
+	# cover renderer
+	cover = pkgs.runCommand "nihil-lock-cover"
+	{
+		nativeBuildInputs = [ python pkgs.makeWrapper ];
+	} ''
+		mkdir -p $out/bin $out/share
+		cp ${../theme/dotmatrix.py} $out/share/dotmatrix.py
+		cp ${./lock/cover.py} $out/share/cover.py
+		python3 $out/share/cover.py --placeholder $out/share/noart.png
+		python3 $out/share/cover.py --blank $out/share/blank.png
+		rm -rf $out/share/__pycache__
+		makeWrapper ${python}/bin/python3 $out/bin/nihil-lock-cover \
+			--set PYTHONDONTWRITEBYTECODE 1 --add-flags $out/share/cover.py
+	'';
+
+	media = pkgs.writeShellScript "nihil-lock-media" (''
+		export PATH=${lib.makeBinPath [ pkgs.playerctl pkgs.coreutils pkgs.util-linux pkgs.curl ]}
+		export INK=${t.palette.ink} DIM=${t.palette.dim} MUTED=${t.palette.muted}
+		export SANS=${lib.escapeShellArg t.fonts.sans} MONO=${lib.escapeShellArg t.fonts.mono} ICONS=${lib.escapeShellArg t.fonts.icons}
+		export PAUSED=${lib.escapeShellArg s.lockPaused}
+		export RENDER=${cover}/bin/nihil-lock-cover BLANK=${cover}/share/blank.png NOART=${cover}/share/noart.png
+	'' + builtins.readFile ./lock/media.sh);
+
+	mediaLabel = attrs:
+	{
+		monitor = "";
+		font_family = t.fonts.mono;
+		font_size = 9;
+		color = rgb t.palette.ink;
+		halign = "left";
+		valign = "bottom";
+	} // attrs;
+
+	shadow =
+	{
+		shadow_passes = 2;
+		shadow_size = 5;
+		shadow_color = rgb t.palette.void;
+		shadow_boost = 1.4;
+	};
+
+	mediaButton = { action, x, y, every }: mediaLabel
+	{
+		text = "cmd[update:${toString every}] ${media} button ${action}";
+		onclick = "${media} ${action}";
+		position = "${toString x}, ${toString y}";
+	};
 in
 {
 	stylix.targets.hyprlock.enable = false;
@@ -29,11 +75,27 @@ in
 		{
 			general =
 			{
-				hide_cursor = true;
+				hide_cursor = false;
 				ignore_empty_input = true;
 			};
 
 			background = backgrounds;
+
+			image =
+			[
+				{
+					monitor = "";
+					path = "${cover}/share/blank.png";
+					reload_cmd = "${media} cover";
+					reload_time = 3;
+					size = 120;
+					rounding = 16;
+					border_size = 0;
+					position = "56, 88";
+					halign = "left";
+					valign = "bottom";
+				}
+			];
 
 			label =
 			[
@@ -77,6 +139,20 @@ in
 					halign = "center";
 					valign = "bottom";
 				}
+
+				(mediaLabel (shadow //
+				{
+					text = "cmd[update:2000] ${media} info";
+					position = "198, 146";
+				}))
+				(mediaLabel (shadow //
+				{
+					text = "cmd[update:1000] ${media} progress";
+					position = "56, 56";
+				}))
+				(mediaButton { action = "prev"; x = 186; y = 94; every = 3000; })
+				(mediaButton { action = "toggle"; x = 222; y = 88; every = 1000; })
+				(mediaButton { action = "next"; x = 272; y = 94; every = 3000; })
 			];
 
 			"input-field" =
