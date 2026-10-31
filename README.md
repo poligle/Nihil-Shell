@@ -45,7 +45,8 @@ no internet permission ([nihilshell.com/android](https://nihilshell.com/android/
 - **Drawers.** The dashboard, the settings panel and the launcher are bumps of the frame
   itself, with concave joints, so they look like part of the hardware.
 - **Dashboard.** Time, music with the cover rendered as a dot matrix and a spectrum in
-  LED columns, CPU/RAM/temperature dials and a network oscilloscope.
+  LED columns, CPU/RAM/temperature dials, a network oscilloscope, a small kanban (to do,
+  doing, done) and caffeine, which keeps the screen from dimming, locking or sleeping.
 - **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
@@ -55,13 +56,14 @@ no internet permission ([nihilshell.com/android](https://nihilshell.com/android/
   first, change files and commit and push in a repository of yours. It falls asleep and
   frees the memory after a few minutes. See [Nilo](#nilo).
 - **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
-  sends a segment of light around the frame; critical ones run twice, in red. Plugging in
-  the charger sends two lights up both sides from the bottom, which meet at the top, like
-  the launcher on the phone.
+  sends a segment of light around the frame; critical ones run twice, in red, like the
+  battery warnings at 15, 10 and 5 %. Plugging in the charger sends two lights up both
+  sides from the bottom, which meet at the top, like the launcher on the phone.
 - **Wallpapers as LED matrices.** Every image in `wallpapers/` is rendered at build time
   as dots, once per output at its native size, so each dot lands on exact pixels.
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth), a dotted
-  greeter (ReGreet) and a lock screen with the password drawn as dots (hyprlock).
+  greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
+  in a corner: the cover in dots, the progress in LEDs and buttons you can click (hyprlock).
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, and monochrome keys.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
   the greeter and the scripts, and the language of their dates.
@@ -201,6 +203,9 @@ nihil-ipc glyph test true             # light the frame (critical = red)
 nihil-ipc glyph charge                # the charger's light, rising from the bottom
 nihil-ipc notifs toggleDnd
 nihil-ipc nilo toggle                 # also: open, sleep, ask "…"
+nihil-ipc caffeine toggle             # also: on, off, status
+nihil-ipc tasks add "Hand in the lab" # also: list
+nihil-ipc battery warn 10             # show the low-battery warning
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -210,7 +215,7 @@ journalctl --user -u nihil-shell -f   # logs
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
 | `drawers/`    | Dashboard, settings panel, launcher, OSD, notifications         |
 | `background/` | Desktop widgets                                                 |
-| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, Nilo |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, Nilo |
 | `components/` | LEDs, dials, segmented sliders, dot-matrix image, buttons, text |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
 
@@ -320,7 +325,7 @@ nixos-config/
 │   └── art/          LED maps of the NixOS snowflake (19 for fastfetch, 29 for boot)
 ├── hosts/thinkpad/   hardware, hostname, NIHIL outputs
 ├── modules/          system modules (nihil.nix, nilo.nix, stylix, plymouth, regreet, …)
-├── home/             Home Manager: shell/, nilo/ (Nilo's agent), hyprland, hyprlock, …
+├── home/             Home Manager: shell/, nilo/ (Nilo's agent), lock/, hyprland, hyprlock, …
 ├── sounds/           interface sounds (nihil/ is the NIHIL pack)
 ├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
@@ -453,7 +458,19 @@ engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
 - **Quickshell and Hyprland focus:** drawers that take the keyboard use
   `WlrKeyboardFocus.OnDemand` together with a `HyprlandFocusGrab`. `Exclusive` would not
   work: Hyprland drops every focus grab when a layer becomes exclusive.
-- **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables.
+- **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables. At
+  15, 10 and 5 % it sends a critical notification, once per threshold and discharge; each
+  one replaces the last (`x-nihil-tag` hint) and plugging in the charger dismisses it.
+- **Caffeine:** while it is on, every frame window holds a Wayland idle inhibitor, which
+  hypridle honours: no dimming, no lock, no screen off, no suspend on its own. Closing the
+  lid still suspends. It starts off with every session.
+- **Tasks:** the kanban lives in `~/.local/state/nihil/tasks.json`; edit it by hand and the
+  board follows.
+- **Lock screen media:** [`home/lock/media.sh`](home/lock/media.sh) asks the players
+  (playerctl) at most once a second and hyprlock's labels read the result; covers are
+  drawn as dot matrices by [`home/lock/cover.py`](home/lock/cover.py) and cached in
+  `$XDG_RUNTIME_DIR`. The cursor stays visible on the lock screen so the buttons can be
+  clicked; the media keys work as well.
 - **Pre-existing files:** if a file Home Manager wants to manage already exists, it is
   renamed to `*.hm-backup` instead of aborting the activation.
 - **Own scripts:** packaged with `writeShellScriptBin` and explicit dependencies:

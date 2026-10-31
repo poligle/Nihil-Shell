@@ -42,6 +42,7 @@ Item {
         { id: "prev", name: Lang.actPrevWallpaper, hint: Lang.hintWallpaper, keys: "wallpaper previous", glyph: Icons.image, command: [Config.cmd.wallpaper, "prev"] },
         { id: "dnd", name: Lang.actDnd, hint: Notifs.dnd ? Lang.hintOn : Lang.hintOff, keys: "dnd silent", glyph: Notifs.dnd ? Icons.bellOff : Icons.bell },
         { id: "night", name: Lang.actNight, hint: Toggles.night ? Lang.hintOn : Lang.hintOff, keys: "night light", glyph: Icons.night },
+        { id: "caffeine", name: Lang.actCaffeine, hint: Caffeine.on ? Lang.hintOn : Lang.hintOff, keys: "caffeine cafeina coffee awake screen", glyph: Icons.coffee },
         { id: "terminal", name: Lang.actTerminal, hint: "kitty", glyph: Icons.terminal, command: [Config.cmd.terminal] }
     ].concat(Config.wallpapers.map(name => ({
         id: "wp-" + name, name: Lang.actWallpaper.arg(name), hint: Lang.hintWallpaper, keys: "wallpaper",
@@ -113,6 +114,7 @@ Item {
         Drawers.close();
         if (action.id === "dnd") Notifs.dnd = !Notifs.dnd;
         else if (action.id === "night") Toggles.night = !Toggles.night;
+        else if (action.id === "caffeine") Caffeine.toggle();
         else Quickshell.execDetached(action.command);
     }
 

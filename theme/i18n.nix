@@ -25,6 +25,7 @@
 		authFailed = "ERROR · $ATTEMPTS";
 		fingerprintReady = "TOCA EL SENSOR";
 		fingerprintPresent = "LEYENDO HUELLA";
+		lockPaused = "EN PAUSA";
 		welcome = "Bienvenido";
 
 		# launcher
@@ -47,6 +48,7 @@
 		actWallpaper = "Fondo · %1";
 		actDnd = "No molestar";
 		actNight = "Luz nocturna";
+		actCaffeine = "Cafeína";
 		actTerminal = "Terminal";
 		hintOn = "activado";
 		hintOff = "desactivado";
@@ -81,10 +83,24 @@
 		# dashboard, widgets, notifications
 		battery = "batería %1%";
 		charging = "cargando";
+		batteryApp = "Batería";
+		batteryLow = "Batería al %1 %";
+		batteryLowPlug = "Conecta el cargador.";
+		batteryLowLast = "Conecta el cargador ya: queda muy poco.";
 		network = "red · %1";
 		noConnection = "sin conexión";
 		media = "multimedia";
 		nothingPlaying = "Nada sonando";
+		caffeine = "Cafeína";
+		caffeineOff = "que la pantalla no se apague";
+		caffeineOn = "pantalla encendida desde las %1";
+		tasks = "tareas";
+		tasksTodo = "por hacer";
+		tasksDoing = "haciendo";
+		tasksDone = "hecho";
+		tasksAdd = "nueva tarea";
+		tasksClear = "limpiar";
+		tasksEmpty = "Escribe una tarea y pulsa enter. Un clic la pasa a la siguiente columna.";
 		notice = "aviso";
 
 		# terminal messages of the engineering wrappers (home/engineering.nix)
@@ -245,6 +261,7 @@
 		authFailed = "FAILED · $ATTEMPTS";
 		fingerprintReady = "TOUCH THE SENSOR";
 		fingerprintPresent = "READING FINGERPRINT";
+		lockPaused = "PAUSED";
 		welcome = "Welcome";
 
 		search = "SEARCH";
@@ -266,6 +283,7 @@
 		actWallpaper = "Wallpaper · %1";
 		actDnd = "Do not disturb";
 		actNight = "Night light";
+		actCaffeine = "Caffeine";
 		actTerminal = "Terminal";
 		hintOn = "on";
 		hintOff = "off";
@@ -297,11 +315,25 @@
 		enterpriseHint = "%1 uses WPA-Enterprise (e.g. eduroam): set it up in the advanced settings";
 
 		battery = "battery %1%";
+		batteryApp = "Battery";
+		batteryLow = "Battery at %1%";
+		batteryLowPlug = "Plug in the charger.";
+		batteryLowLast = "Plug in the charger now: very little is left.";
 		charging = "charging";
 		network = "network · %1";
 		noConnection = "no connection";
 		media = "media";
 		nothingPlaying = "Nothing playing";
+		caffeine = "Caffeine";
+		caffeineOff = "keep the screen on";
+		caffeineOn = "screen on since %1";
+		tasks = "tasks";
+		tasksTodo = "to do";
+		tasksDoing = "doing";
+		tasksDone = "done";
+		tasksAdd = "new task";
+		tasksClear = "clear";
+		tasksEmpty = "Type a task and press enter. A click moves it to the next column.";
 		notice = "notice";
 
 		cliMissing = "%1 is not installed in %2";
