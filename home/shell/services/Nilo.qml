@@ -472,6 +472,7 @@ Singleton {
                 pull = e.status === "error" ? { model: e.model, status: "error", progress: 0, error: e.detail ?? "", code: e.code ?? "" } : null;
             } else {
                 pull = { model: e.model, status: e.status, error: "", code: "",
+                         attempt: e.attempt ?? 0, attempts: e.attempts ?? 0,
                          progress: e.total > 0 ? e.completed / e.total : (pull?.progress ?? 0) };
             }
             break;

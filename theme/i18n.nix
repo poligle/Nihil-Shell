@@ -244,6 +244,11 @@
 		modelTight = "justo para tu RAM";
 		modelFailed = "no se ha podido descargar · %1";
 		modelFailedOllama = "ollama no está en marcha";
+		modelRetrying = "se ha cortado · reintentando (%1 de %2)";
+		modelFailedNetwork = "se ha cortado varias veces · revisa la conexión y vuelve a probar";
+		modelFailedRate = "el registro de Ollama limita las descargas · prueba en unos minutos";
+		modelFailedSpace = "no queda espacio en el disco";
+		modelFailedMissing = "el registro de Ollama no lo tiene";
 
 		accessWeb = "Internet";
 		accessWebSub = "buscar y leer páginas";
@@ -512,6 +517,11 @@
 		modelTight = "tight for your RAM";
 		modelFailed = "download failed · %1";
 		modelFailedOllama = "ollama isn't running";
+		modelRetrying = "it broke off · trying again (%1 of %2)";
+		modelFailedNetwork = "it kept breaking off · check the connection and try again";
+		modelFailedRate = "Ollama's registry is limiting downloads · try again in a few minutes";
+		modelFailedSpace = "the disk is full";
+		modelFailedMissing = "Ollama's registry doesn't have it";
 
 		accessWeb = "Internet";
 		accessWebSub = "search and read pages";

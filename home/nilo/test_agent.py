@@ -32,6 +32,7 @@ class FakeOllama(http.server.ThreadingHTTPServer):
 
     def __init__(self, port=0):
         super().__init__(("127.0.0.1", port), Handler)
+        self.pull_failures = []
         self.installed = {"qwen3.5:4b": 3_400_000_000}
         self.loaded = {}            # model -> expiry (epoch)
         self.chats = []             # every /api/chat body
@@ -131,6 +132,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             model = body.get("model")
             self.start_stream()
             self.chunk({"status": "pulling manifest"})
+            with s.lock:
+                failure = s.pull_failures.pop(0) if s.pull_failures else ""
+            if failure:
+                self.chunk({"status": "pulling aaa", "digest": "sha256:aaa", "total": 1000, "completed": 300})
+                self.chunk({"error": failure})
+                return self.end_stream()
             for done in range(0, 101, 25):
                 self.chunk({"status": "pulling aaa", "digest": "sha256:aaa", "total": 1000, "completed": done * 10})
                 time.sleep(0.02)
@@ -344,7 +351,7 @@ class AgentTest(unittest.TestCase):
             json.dump(dict({"ollama": self.ollama.url, "language": "es", "models": MODELS, "contextLength": 8192,
                             "ddgr": self.ddgr, "git": shutil.which("git"), "host": "thinkpad",
                             "systemctl": self.systemctl, "journalctl": self.journalctl,
-                            "bash": shutil.which("bash"), "terminal": self.terminal, "shellSeconds": 1,
+                            "bash": shutil.which("bash"), "terminal": self.terminal, "shellSeconds": 1, "pullWait": 0.1,
                             "flake": "~/nixos-config"}, **extra), f)
 
     def tearDown(self):
@@ -995,6 +1002,29 @@ class AgentTest(unittest.TestCase):
         self.agent.wait("notes")
         with open(path) as f:
             self.assertEqual(f.read(), "mine\n")
+
+    def test_pull_tries_again(self):
+        self.write_config()
+        self.start({"model": "qwen3.5:4b", "onboarded": True})
+        cut = 'max retries exceeded: Get "https://dd20.r2.cloudflarestorage.com/ollama/docker/registry/v2/blobs": EOF'
+        self.ollama.pull_failures = [cut]
+        self.agent.send(op="pull", model="qwen3.5:2b")
+        retry = self.agent.wait("pull", where=lambda e: e["status"] == "retrying")
+        self.assertEqual((retry["attempt"], retry["attempts"], retry["detail"]), (2, 4, cut))
+        self.agent.wait("pull", where=lambda e: e["status"] == "success", timeout=20)
+        self.assertIn("qwen3.5:2b", self.ollama.installed)
+
+    def test_pull_says_why(self):
+        self.write_config()
+        self.start({"model": "qwen3.5:4b", "onboarded": True})
+        self.ollama.pull_failures = ["write /var/lib/ollama/blobs/x: no space left on device"]
+        self.agent.send(op="pull", model="qwen3.5:2b")
+        failed = self.agent.wait("pull", where=lambda e: e["status"] == "error")
+        self.assertEqual(failed["code"], "space")
+        self.assertIn("no space left", failed["detail"])
+        self.assertEqual([e for e in self.agent.log if e["ev"] == "pull" and e["status"] == "retrying"], [])
+        self.assertEqual(agent.pull_error("pull model manifest: 429: Too Many Requests"), "rate")
+        self.assertEqual(agent.pull_error("pull model manifest: file does not exist"), "missing")
 
     def test_bad_requests(self):
         self.start()

@@ -11,6 +11,19 @@ import qs.components
 Column {
     id: root
 
+    // Why a download failed, in words (agent.py, pull_error); the whole
+    // message from Ollama is in the journal: journalctl --user -u nihil-shell
+    function failure(pull: var): string {
+        switch (pull?.code ?? "") {
+        case "ollama-down": return Lang.modelFailedOllama;
+        case "network": return Lang.modelFailedNetwork;
+        case "rate": return Lang.modelFailedRate;
+        case "space": return Lang.modelFailedSpace;
+        case "missing": return Lang.modelFailedMissing;
+        }
+        return Lang.modelFailed.arg(String(pull?.error ?? "").slice(0, 90));
+    }
+
     property int current: -1        // highlighted with the keyboard
     property bool manage: false     // settings: offer to delete downloaded ones
 
@@ -166,8 +179,9 @@ Column {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: text !== ""
-                    text: row.pulling ? Lang.niloDownloading.arg(Math.floor((Nilo.pull?.progress ?? 0) * 100))
-                        : row.failed ? (Nilo.pull.code === "ollama-down" ? Lang.modelFailedOllama : Lang.modelFailed.arg(Nilo.pull.error.slice(0, 40)))
+                    text: row.pulling ? (Nilo.pull.status === "retrying" ? Lang.modelRetrying.arg(Nilo.pull.attempt).arg(Nilo.pull.attempts)
+                            : Lang.niloDownloading.arg(Math.floor((Nilo.pull?.progress ?? 0) * 100)))
+                        : row.failed ? root.failure(Nilo.pull)
                         : Nilo.settings.auto === true && Nilo.fast === row.modelData.tag ? Lang.modelFast
                         : Nilo.recommended === row.modelData.tag ? Lang.modelRecommended
                         : row.selected && row.modelData.installed ? Lang.modelSelected
