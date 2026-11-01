@@ -5,7 +5,7 @@
 # the shell starts it the first time Nilo opens and talks to it over
 # stdin/stdout. Tests: python3 -m unittest home/nilo/test_agent.py
 
-{ pkgs, lib, osConfig }:
+{ pkgs, lib, osConfig, terminal ? "kitty" }:
 let
     nihil = osConfig.nihil;
     ollama = osConfig.services.ollama;
@@ -17,6 +17,10 @@ let
         inherit (nihil.nilo) models contextLength searxng;
         ddgr = "${pkgs.ddgr}/bin/ddgr";
         git = "${pkgs.git}/bin/git";
+        # run_command: bash for what Nilo runs, the terminal for what the user
+        # has to see or type into (sudo).
+        bash = "${pkgs.bash}/bin/bash";
+        inherit terminal;
         host = osConfig.networking.hostName;
         flake = "~/nixos-config";
         # To start Ollama when it is down, and say why it won't (modules/nilo.nix).

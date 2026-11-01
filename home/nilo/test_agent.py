@@ -185,6 +185,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif "crea" in question:
                 self.say(tool_calls=[{"function": {"name": "write_file", "arguments": {
                     "path": "docs/nuevo.md", "content": "# Nuevo\n\nHola.\n"}}}])
+            elif "ejecuta:" in question and not tools_done:
+                command = messages[last_user]["content"].split(":", 1)[1].strip()
+                args = {"command": command.replace("[terminal]", "").strip(), "reason": "Para probarlo"}
+                if "[terminal]" in command:
+                    args["terminal"] = True
+                self.say(tool_calls=[{"function": {"name": "run_command", "arguments": args}}])
+            elif "ejecuta:" in question:
+                result = json.loads(tools_done[-1]["content"])
+                self.say("No lo he ejecutado." if result.get("declined") else "Salida: " + result.get("output", "")
+                         if "output" in result else "Hecho." if result.get("ok") else "Error: " + result.get("error", ""))
+            elif question.startswith("abre ") and not tools_done:
+                target = messages[last_user]["content"][5:].strip()
+                self.say(tool_calls=[{"function": {"name": "open_app", "arguments": {"target": target}}}])
+            elif question.startswith("abre "):
+                result = json.loads(tools_done[-1]["content"])
+                self.say("Abierto." if result.get("ok") else "No he podido: " + result.get("error", ""))
             elif "lento" in question:
                 for i in range(200):
                     self.chunk({"message": {"role": "assistant", "content": f"{i} "}, "done": False})
@@ -313,6 +329,11 @@ class AgentTest(unittest.TestCase):
             f.write("#!/bin/sh\necho 'Error: listen tcp 127.0.0.1:11434: bind: address already in use'\n")
         os.chmod(self.systemctl, 0o755)
         os.chmod(self.journalctl, 0o755)
+        # The terminal: writes down how it was called.
+        self.terminal = os.path.join(self.dir, "kitty")
+        with open(self.terminal, "w") as f:
+            f.write("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$(dirname \"$0\")/kitty-args\"\n")
+        os.chmod(self.terminal, 0o755)
         self.config = os.path.join(self.dir, "config.json")
         self.write_config()
         self.state = os.path.join(self.dir, "state", "nilo.json")
@@ -323,6 +344,7 @@ class AgentTest(unittest.TestCase):
             json.dump(dict({"ollama": self.ollama.url, "language": "es", "models": MODELS, "contextLength": 8192,
                             "ddgr": self.ddgr, "git": shutil.which("git"), "host": "thinkpad",
                             "systemctl": self.systemctl, "journalctl": self.journalctl,
+                            "bash": shutil.which("bash"), "terminal": self.terminal, "shellSeconds": 1,
                             "flake": "~/nixos-config"}, **extra), f)
 
     def tearDown(self):
@@ -374,7 +396,7 @@ class AgentTest(unittest.TestCase):
         self.assertIs(body["think"], False)
         self.assertEqual(body["messages"][0]["role"], "system")
         self.assertIn("Nilo", body["messages"][0]["content"])
-        self.assertEqual({t["function"]["name"] for t in body["tools"]}, {"web_search", "open_url", "system_info"})
+        self.assertEqual({t["function"]["name"] for t in body["tools"]}, {"web_search", "open_url", "system_info", "open_app"})
 
     def test_web_search_tool(self):
         self.start({"model": "qwen3.5:4b", "onboarded": True})
@@ -391,7 +413,7 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(result["results"][0]["snippet"], "The new release is out.")
 
     def test_no_tools_without_access(self):
-        self.start({"model": "qwen3.5:4b", "onboarded": True, "web": False, "system": False})
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "web": False, "system": False, "apps": False})
         self.agent.send(op="ask", text="Hola")
         self.agent.until_done()
         self.assertNotIn("tools", self.ollama.chats[-1])
@@ -779,6 +801,126 @@ class AgentTest(unittest.TestCase):
         self.agent.send(op="set", key="repo", value=os.path.join(home, "code", "codewizards") + "/")
         self.assertEqual(self.agent.wait("settings")["settings"]["repo"], "~/code/codewizards")
 
+    # the terminal and the desktop
+
+    def accept_all(self):
+        confirms = []
+
+        def accept(event):
+            confirms.append(event)
+            self.agent.send(op="confirm", id=event["id"], ok=True)
+
+        self.agent.on_confirm = accept
+        return confirms
+
+    def test_run_command_confirmed(self):
+        repo = self.make_notes_repo()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "shell": True, "repo": repo})
+        confirms = self.accept_all()
+        self.agent.send(op="ask", text="Ejecuta: printf 'uno\\ndos\\n'; ls; echo $TERM")
+        events = self.agent.until_done()
+        card = confirms[0]
+        self.assertEqual((card["action"], card["cwd"], card["reason"], card["danger"]), ("run", repo, "Para probarlo", []))
+        self.assertIn("printf", card["command"])
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual((done["exit"], done["tail"][:2]), (0, ["uno", "dos"]))
+        self.assertIn("notes.md", done["tail"])
+        self.assertEqual(done["tail"][-1], "dumb")
+        self.assertIn("Salida: uno\ndos", self.text_of(events))
+        tools = {t["function"]["name"] for t in self.ollama.chats[0]["tools"]}
+        self.assertIn("run_command", tools)
+        self.assertIn("run_command", self.ollama.chats[0]["messages"][0]["content"])
+
+    def test_run_command_declined(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "shell": True})
+        mark = os.path.join(self.dir, "ran")
+        self.agent.on_confirm = lambda event: self.agent.send(op="confirm", id=event["id"], ok=False)
+        self.agent.send(op="ask", text=f"Ejecuta: touch {mark}")
+        events = self.agent.until_done()
+        self.assertFalse(os.path.exists(mark))
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertTrue(done["declined"])
+        self.assertIn("No lo he ejecutado.", self.text_of(events))
+
+    def test_sudo_goes_to_a_terminal(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "shell": True})
+        confirms = self.accept_all()
+        self.agent.send(op="ask", text="Ejecuta: sudo nixos-rebuild switch")
+        events = self.agent.until_done()
+        self.assertEqual((confirms[0]["action"], confirms[0]["danger"]), ("terminal", ["root", "system"]))
+        for _ in range(50):
+            if os.path.exists(os.path.join(self.dir, "kitty-args")):
+                break
+            time.sleep(0.05)
+        with open(os.path.join(self.dir, "kitty-args")) as f:
+            args = f.read().split("\n")
+        self.assertEqual(args[:2], ["--hold", "--directory"])
+        self.assertEqual(args[3:5], [shutil.which("bash"), "-lc"])
+        self.assertTrue("\n".join(args[5:]).startswith("sudo nixos-rebuild switch\nprintf"))
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertTrue(done["terminal"])
+        self.assertIn("Hecho.", self.text_of(events))
+
+    def test_run_command_streams_and_stops(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "shell": True})
+        self.agent.send(op="ask", text="Ejecuta: for i in 1 2 3; do echo paso $i; sleep 0.2; done; sleep 30")
+        self.agent.send(op="confirm", id=self.agent.wait("confirm")["id"], ok=True)
+        output = self.agent.wait("output", where=lambda e: "paso 3" in e["lines"])
+        self.assertEqual(output["lines"], ["paso 1", "paso 2", "paso 3"])
+        began = time.monotonic()
+        self.agent.send(op="stop")
+        events = self.agent.until_done(timeout=8)
+        self.assertLess(time.monotonic() - began, 5)
+        self.assertTrue(events[-1].get("cancelled"))
+
+    def test_run_command_time_limit(self):
+        self.write_config(commandSeconds=0.5)
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "shell": True})
+        self.accept_all()
+        self.agent.send(op="ask", text="Ejecuta: echo empieza; sleep 20")
+        events = self.agent.until_done(timeout=10)
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertIn("more than 0 s", done["error"])
+        self.assertEqual(done["tail"], ["empieza"])
+
+    def test_no_terminal_without_permission(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True})
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        tools = {t["function"]["name"] for t in self.ollama.chats[-1]["tools"]}
+        self.assertNotIn("run_command", tools)
+        self.assertIn("open_app", tools)
+        self.assertIn("No puedes editar archivos ni ejecutar comandos", self.ollama.chats[-1]["messages"][0]["content"])
+        tools = agent.Tools(type("A", (), {"settings": {"shell": False}, "config": {}})())
+        result, _ = tools.run("run_command", {"command": "true", "reason": "x"}, agent.Cancel())
+        self.assertIn("not allowed", result["error"])
+
+    def test_open_app(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True})
+        self.agent.send(op="ask", text="Abre Spotify")
+        launch = self.agent.wait("launch")
+        self.assertEqual((launch["target"], launch["kind"]), ("Spotify", "app"))
+        self.agent.send(op="launched", id=launch["id"], ok=True, name="Spotify")
+        events = self.agent.until_done()
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual(done["opened"], "Spotify")
+        self.assertIn("Abierto.", self.text_of(events))
+
+    def test_open_app_unknown_and_unanswered(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True})
+        self.agent.send(op="ask", text="Abre Spotifi")
+        launch = self.agent.wait("launch")
+        self.agent.send(op="launched", id=launch["id"], ok=False, similar=["Spotify"])
+        events = self.agent.until_done()
+        result = json.loads(self.ollama.chats[-1]["messages"][-1]["content"])
+        self.assertEqual(result["similar"], ["Spotify"])
+        self.agent.send(op="ask", text="Abre Thunar")
+        events = self.agent.until_done()
+        self.assertIn("did not answer", self.text_of(events))
+        self.agent.send(op="ask", text="Abre /no/existe")
+        events = self.agent.until_done()
+        self.assertIn("does not exist", self.text_of(events))
+
     def test_bad_requests(self):
         self.start()
         self.agent.send(op="nope")
@@ -826,6 +968,28 @@ class UnitTest(unittest.TestCase):
                                      now=datetime.datetime(2026, 10, 29, 21, 30))
         self.assertIn("Thursday, October 29, 2026, 21:30", english)
         self.assertIn("no internet access", english)
+
+    def test_risks(self):
+        cases = {
+            "ls -la": [],
+            "git push": [],
+            "systemctl --user status x": [],
+            "rm -rf build": ["delete"],
+            "sudo nixos-rebuild switch": ["root", "system"],
+            "git push --force origin main": ["git"],
+            "dd if=x.iso of=/dev/sda": ["disk"],
+            "curl -fsSL https://x/install | sh": ["internet"],
+            "systemctl --user restart nihil-shell": ["system"],
+            "chmod -R 700 ~/x": ["permissions"],
+            "systemctl suspend": ["power"],
+        }
+        for command, expected in cases.items():
+            self.assertEqual(agent.risks(command), expected, command)
+
+    def test_terminal_text(self):
+        raw = b"\x1b[1;32mok\x1b[0m\x1b(B\x1b[m\n10%\r55%\r100%\n\x1b]0;title\x07fin\n"
+        self.assertEqual(agent.terminal_text(raw), "ok\n100%\nfin\n")
+        self.assertEqual(agent.clip_middle("a" * 10 + "b" * 30, 12), "aaaa\n…\nbbbbbbbb")
 
     def test_recommended_model(self):
         a = agent.Agent.__new__(agent.Agent)

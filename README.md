@@ -260,15 +260,21 @@ models that suit the RAM and asks what it may do.
 
 **What it may do**, each one a switch in its settings (the gear): **Internet** — search
 DuckDuckGo (through `ddgr`, or `nilo.searxng`) and read pages, never local addresses;
-**This computer** — NixOS version and generation, memory, disk, battery; **Files** — read,
+**This computer** — NixOS version and generation, memory, disk, battery; **Apps** — open
+apps by name, and files, folders and web pages in whatever opens them; **Files** — read,
 create and change files in one repository, never outside it or inside `.git`; **Git** —
-`git add -A`, commit and push in that repository. The repository is `~/nixos-config` by
-default; the settings list the ones under `~` (most recently used first) or take any path.
+`git add -A`, commit and push in that repository; **Terminal** — run commands with bash,
+as you. The repository is `~/nixos-config` by default; the settings list the ones under
+`~` (most recently used first) or take any path.
 
-Files and Git are off until you authorize them: the switch first says what it allows and
-waits for "authorize" (or the same key again). Even then, every change to a file shows its
-diff, and every commit its files and message, and waits for enter twice or a click.
-Choosing another repository turns both off again. It cannot run other commands.
+Files, Git and Terminal are off until you authorize them: the switch first says what it
+allows and waits for "authorize" (or the same key again). Even then, every change to a
+file shows its diff, every commit its files and message, and every command itself, where
+it runs and why, and each waits for enter twice or a click. Commands that delete, touch
+disks, rewrite git history, run as root or change the system come in a red card. Anything
+with `sudo` opens in a kitty window, where you type the password; the rest run in the
+background with their last lines under them, for two minutes at most. Choosing another
+repository turns Files and Git off again.
 
 | ![A change to README.md shown as a diff, waiting for confirmation](docs/assets/screens/nilo-change.png) | ![The files switch asking for authorization](docs/assets/screens/nilo-access.png) |
 |:---:|:---:|

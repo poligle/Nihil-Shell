@@ -7,8 +7,9 @@ import qs.components
 import "Markdown.js" as Markdown
 
 // The conversation: your questions after "›", Nilo's answers in Markdown,
-// what its tools do as small lines with an LED, and the confirmations (git,
-// or a change to a file with its diff) as cards. Empty, it suggests a few
+// what its tools do as small lines with an LED (a command with its last lines
+// under it), and the confirmations (git, a change to a file with its diff, a
+// command exactly as it will run) as cards. Empty, it suggests a few
 // questions; without Ollama, it says what systemd knows and offers to start it.
 Item {
     id: root
@@ -67,8 +68,33 @@ Item {
             if (data.declined) return Lang.toolDeclined;
             return data.created ? Lang.toolCreated.arg(data.path ?? "").arg(data.added ?? 0)
                 : Lang.toolChanged.arg(data.path ?? "").arg(data.added ?? 0).arg(data.removed ?? 0);
+        case "run_command": {
+            const line = String(args.command ?? "").split("\n")[0];
+            const command = line.length > 48 ? line.slice(0, 47) + "…" : line;
+            if (running) return Lang.toolRunning.arg(command);
+            if (data.declined) return Lang.toolDeclined;
+            if (data.terminal) return Lang.toolInTerminal.arg(command);
+            return data.exit === 0 ? Lang.toolRanOk.arg(command) : Lang.toolRanFail.arg(command).arg(data.exit ?? "?");
+        }
+        case "open_app":
+            return running ? Lang.toolLaunching.arg(args.target ?? "") : Lang.toolLaunched.arg(data.opened || args.target || "");
         }
         return name;
+    }
+
+    // Why a command's card is red (agent.py, RISKS).
+    function dangerText(code: string): string {
+        switch (code) {
+        case "root": return Lang.dangerRoot;
+        case "delete": return Lang.dangerDelete;
+        case "disk": return Lang.dangerDisk;
+        case "git": return Lang.dangerGit;
+        case "power": return Lang.dangerPower;
+        case "system": return Lang.dangerSystem;
+        case "permissions": return Lang.dangerPermissions;
+        case "internet": return Lang.dangerInternet;
+        }
+        return code;
     }
 
     // What systemd says about Ollama, in one line: "ollama.service · failed · exit-code".
@@ -142,9 +168,11 @@ Item {
                     { text: Lang.niloTryFlake, on: true },
                     { text: Lang.niloTryNews, on: Nilo.settings.web === true },
                     { text: Lang.niloTryDisk, on: Nilo.settings.system === true },
+                    { text: Lang.niloTryShell, on: Nilo.settings.shell === true },
+                    { text: Lang.niloTryApps, on: Nilo.settings.apps === true },
                     { text: Lang.niloTryFiles, on: Nilo.settings.write === true },
                     { text: Lang.niloTryPush, on: Nilo.settings.git === true }
-                ].filter(s => s.on)
+                ].filter(s => s.on).slice(0, 5)
 
                 Rectangle {
                     required property var modelData
@@ -386,34 +414,65 @@ Item {
             Component {
                 id: toolView
 
-                Row {
-                    spacing: 10
-                    height: 18
+                Column {
+                    spacing: 6
 
-                    Rectangle {
-                        id: dot
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 6
-                        height: 6
-                        radius: 3
-                        color: entry.status === "failed" ? Tokens.interrupt : entry.status === "running" ? Tokens.ink : Tokens.muted
+                    Row {
+                        spacing: 10
+                        height: 18
 
-                        SequentialAnimation on opacity {
-                            running: entry.status === "running"
-                            loops: Animation.Infinite
-                            onRunningChanged: if (!running) dot.opacity = 1
-                            NumberAnimation { to: 0.2; duration: 420 }
-                            NumberAnimation { to: 1; duration: 420 }
+                        Rectangle {
+                            id: dot
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 6
+                            height: 6
+                            radius: 3
+                            color: entry.status === "failed" ? Tokens.interrupt : entry.status === "running" ? Tokens.ink : Tokens.muted
+
+                            SequentialAnimation on opacity {
+                                running: entry.status === "running"
+                                loops: Animation.Infinite
+                                onRunningChanged: if (!running) dot.opacity = 1
+                                NumberAnimation { to: 0.2; duration: 420 }
+                                NumberAnimation { to: 1; duration: 420 }
+                            }
+                        }
+
+                        Txt {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: entry.width - 16
+                            text: root.toolText(entry.name, entry.status, entry.info)
+                            color: entry.status === "running" ? Tokens.dim : Tokens.muted
+                            font.family: Tokens.fontMono
+                            font.pixelSize: 11
                         }
                     }
 
-                    Txt {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: entry.width - 16
-                        text: root.toolText(entry.name, entry.status, entry.info)
-                        color: entry.status === "running" ? Tokens.dim : Tokens.muted
-                        font.family: Tokens.fontMono
-                        font.pixelSize: 11
+                    // A command's last lines: live while it runs, then the end.
+                    Rectangle {
+                        x: 16
+                        visible: entry.name === "run_command" && entry.text !== ""
+                        width: Math.min(entry.width - 16, 620)
+                        height: visible ? output.implicitHeight + 16 : 0
+                        radius: 10
+                        color: Tokens.black
+                        border.width: 1
+                        border.color: Tokens.line
+
+                        Txt {
+                            id: output
+                            x: 12
+                            y: 8
+                            width: parent.width - 24
+                            text: entry.text
+                            textFormat: Text.PlainText
+                            color: entry.status === "running" ? Tokens.dim : Tokens.muted
+                            font.family: Tokens.fontMono
+                            font.pixelSize: 11
+                            wrapMode: Text.WrapAnywhere
+                            elide: Text.ElideNone
+                            maximumLineCount: 8
+                        }
                     }
                 }
             }
@@ -426,6 +485,8 @@ Item {
 
                     readonly property var facts: { try { return JSON.parse(entry.info || "{}"); } catch (e) { return {}; } }
                     readonly property bool file: facts.action === "edit" || facts.action === "create"
+                    readonly property bool command: facts.action === "run" || facts.action === "terminal"
+                    readonly property bool risky: command && (facts.danger ?? []).length > 0
                     readonly property bool open: entry.status === "asking"
                     readonly property bool isArmed: open && root.armed === entry.cid
 
@@ -434,7 +495,7 @@ Item {
                     radius: 18
                     color: Tokens.surface
                     border.width: 1
-                    border.color: isArmed ? Tokens.interrupt : Tokens.line
+                    border.color: isArmed || (open && risky) ? Tokens.interrupt : Tokens.line
                     opacity: open ? 1 : 0.55
 
                     Behavior on opacity { NumberAnimation { duration: Tokens.animNormal } }
@@ -448,6 +509,7 @@ Item {
 
                         Label {
                             text: card.file ? Lang.confirmFile + " · " + (card.facts.action === "create" ? Lang.confirmCreate : Lang.confirmEdit)
+                                : card.command ? Lang.confirmShell + " · " + (card.facts.action === "terminal" ? Lang.confirmTerminal : Lang.confirmRun)
                                 : "git · " + (card.facts.action === "commit-push" ? Lang.confirmCommitPush
                                     : card.facts.action === "push" ? Lang.confirmPush : Lang.confirmCommit)
                             color: Tokens.ink
@@ -458,10 +520,67 @@ Item {
                             text: card.file
                                 ? (card.facts.repo ?? "") + " · " + (card.facts.path ?? "") + "   +" + (card.facts.added ?? 0)
                                     + ((card.facts.removed ?? 0) > 0 ? " −" + card.facts.removed : "")
+                                : card.command ? (card.facts.cwd ?? "")
                                 : (card.facts.repo ?? "") + " · " + (card.facts.branch ?? "") + (card.facts.remote ? "  →  " + card.facts.remote : "")
                             color: Tokens.dim
                             font.family: Tokens.fontMono
                             font.pixelSize: 12
+                        }
+
+                        // The command, exactly as it will run.
+                        Rectangle {
+                            visible: card.command
+                            width: parent.width
+                            height: visible ? commandText.implicitHeight + 20 : 0
+                            radius: 12
+                            color: Tokens.black
+                            border.width: 1
+                            border.color: Tokens.line
+
+                            Txt {
+                                id: commandText
+                                x: 12
+                                y: 10
+                                width: parent.width - 24
+                                text: "$ " + (card.facts.command ?? "")
+                                textFormat: Text.PlainText
+                                color: Tokens.ink
+                                font.family: Tokens.fontMono
+                                font.pixelSize: 12
+                                wrapMode: Text.WrapAnywhere
+                                elide: Text.ElideNone
+                            }
+                        }
+
+                        // What for, in Nilo's words.
+                        Txt {
+                            width: parent.width
+                            visible: card.command && (card.facts.reason ?? "") !== ""
+                            text: card.facts.reason ?? ""
+                            textFormat: Text.PlainText
+                            color: Tokens.dim
+                            wrapMode: Text.Wrap
+                            elide: Text.ElideNone
+                            font.pixelSize: 13
+                        }
+
+                        // And what deserves a second look.
+                        Row {
+                            visible: card.risky
+                            spacing: 8
+
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 6
+                                height: 6
+                                radius: 3
+                                color: Tokens.interrupt
+                            }
+
+                            Label {
+                                text: (card.facts.danger ?? []).map(code => root.dangerText(code)).join(" · ")
+                                color: Tokens.dim
+                            }
                         }
 
                         // The change itself, as a diff: what goes in, what goes out.
@@ -513,7 +632,7 @@ Item {
                         Column {
                             width: parent.width
                             spacing: 2
-                            visible: !card.file
+                            visible: !card.file && !card.command
 
                             Repeater {
                                 model: (card.facts.files ?? []).slice(0, 8)

@@ -25,7 +25,7 @@ let
 	nilo =
 	{
 		enabled = nihil.nilo.enable;
-		agent = lib.optionalString nihil.nilo.enable "${import ./nilo { inherit pkgs lib osConfig; }}/bin/nilo-agent";
+		agent = lib.optionalString nihil.nilo.enable "${import ./nilo { inherit pkgs lib osConfig; inherit (commands) terminal; }}/bin/nilo-agent";
 	};
 
 	tokensQml = pkgs.writeText "Tokens.qml" ''
