@@ -377,6 +377,13 @@ Item {
                         property bool copied: false
                         readonly property var stats: { try { return JSON.parse(entry.info || "{}"); } catch (e) { return {}; } }
 
+                        // Which model answered, when Nilo picks it.
+                        Label {
+                            visible: Nilo.settings.auto === true && (meta.stats.model ?? "") !== ""
+                            text: meta.stats.model ?? ""
+                            color: Tokens.muted
+                        }
+
                         Label {
                             visible: (meta.stats.tokens ?? 0) > 0 && (meta.stats.seconds ?? 0) > 0
                             text: Lang.niloRate.arg(Math.round(meta.stats.tokens / meta.stats.seconds))

@@ -238,6 +238,7 @@
 		modelRecommended = "recomendado";
 		modelInstalled = "descargado";
 		modelSelected = "en uso";
+		modelFast = "para lo sencillo";
 		modelSize = "%1 GB";
 		modelRam = "≈ %1 GB de RAM";
 		modelTight = "justo para tu RAM";
@@ -277,6 +278,9 @@
 		setAsleep = "dormido · no ocupa memoria";
 		setThink = "Pensar antes de responder";
 		setThinkSub = "más lento; mejor para problemas difíciles";
+		setAuto = "Elegir el modelo en cada pregunta";
+		setAutoSub = "lo sencillo, con el más pequeño que tengas; lo demás, con el elegido";
+		setAutoNeedsTwo = "descarga un modelo más pequeño que el elegido para usarlo";
 		setIntro = "volver a presentarse";
 		setRebuild = "Activar o quitar Nilo y elegir CPU o GPU se hace en nihil.nilo, en tu host (rebuild).";
 	};
@@ -502,6 +506,7 @@
 		modelRecommended = "recommended";
 		modelInstalled = "downloaded";
 		modelSelected = "in use";
+		modelFast = "for simple ones";
 		modelSize = "%1 GB";
 		modelRam = "≈ %1 GB of RAM";
 		modelTight = "tight for your RAM";
@@ -541,6 +546,9 @@
 		setAsleep = "asleep · takes no memory";
 		setThink = "Think before answering";
 		setThinkSub = "slower; better for hard problems";
+		setAuto = "Choose the model for each question";
+		setAutoSub = "simple ones with the smallest you have, the rest with the chosen one";
+		setAutoNeedsTwo = "download a model smaller than the chosen one to use it";
 		setIntro = "introduce yourself again";
 		setRebuild = "Turning Nilo on or off and choosing CPU or GPU is done in nihil.nilo, in your host (rebuild).";
 	};

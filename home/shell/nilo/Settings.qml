@@ -10,10 +10,12 @@ import qs.components
 Item {
     id: root
 
-    property int cursor: -1     // keyboard: models, access, repositories, then "think"
+    property int cursor: -1     // keyboard: models, "auto", access, repositories, then "think"
 
     readonly property int modelCount: models.count
-    readonly property int repoStart: modelCount + access.count
+    readonly property int autoIndex: modelCount
+    readonly property int accessStart: modelCount + 1
+    readonly property int repoStart: accessStart + access.count
     readonly property int total: repoStart + repos.count + 1
     readonly property var sleepChoices: [1, 5, 15, 30]
     readonly property bool asking: access.asking !== ""
@@ -36,10 +38,11 @@ Item {
 
     function sync(): void {
         models.current = cursor >= 0 && cursor < modelCount ? cursor : -1;
-        access.current = cursor >= modelCount && cursor < repoStart ? cursor - modelCount : -1;
+        access.current = cursor >= accessStart && cursor < repoStart ? cursor - accessStart : -1;
         repos.current = cursor >= repoStart && cursor < total - 1 ? cursor - repoStart : -1;
         if (asking && (access.current < 0 || access.items[access.current].key !== access.asking)) access.asking = "";
-        keep(models.current >= 0 ? models : access.current >= 0 ? access : repos.current >= 0 ? repos : think);
+        keep(models.current >= 0 ? models : cursor === autoIndex ? autoRow : access.current >= 0 ? access
+            : repos.current >= 0 ? repos : think);
     }
 
     // Scroll just enough for `item` to be seen whole.
@@ -58,7 +61,8 @@ Item {
     function activate(): void {
         if (cursor < 0) return;
         if (cursor < modelCount) models.choose(cursor);
-        else if (cursor < repoStart) access.toggle(cursor - modelCount);
+        else if (cursor === autoIndex) Nilo.set("auto", !(Nilo.settings.auto === true));
+        else if (cursor < repoStart) access.toggle(cursor - accessStart);
         else if (cursor < total - 1) repos.choose(cursor - repoStart);
         else Nilo.set("think", !(Nilo.settings.think === true));
     }
@@ -97,6 +101,54 @@ Item {
                 id: models
                 width: content.width
                 manage: true
+            }
+
+            // Simple questions to the smallest model downloaded (agent.py, route).
+            Rectangle {
+                id: autoRow
+                width: content.width
+                height: 56
+                radius: 14
+                color: root.cursor === root.autoIndex || autoArea.containsMouse ? Tokens.raised : "transparent"
+
+                MouseArea {
+                    id: autoArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Nilo.set("auto", !(Nilo.settings.auto === true))
+                }
+
+                Column {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 16
+                    anchors.right: autoLed.left
+                    anchors.rightMargin: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 3
+
+                    Txt {
+                        width: parent.width
+                        text: Lang.setAuto
+                        color: Nilo.settings.auto ? Tokens.ink : Tokens.dim
+                        font.pixelSize: 15
+                    }
+
+                    Txt {
+                        width: parent.width
+                        text: Nilo.settings.auto && Nilo.fast === "" ? Lang.setAutoNeedsTwo : Lang.setAutoSub
+                        color: Tokens.muted
+                        font.pixelSize: 12
+                    }
+                }
+
+                Led {
+                    id: autoLed
+                    anchors.right: parent.right
+                    anchors.rightMargin: 18
+                    anchors.verticalCenter: parent.verticalCenter
+                    on: Nilo.settings.auto === true
+                }
             }
 
             Section { title: Lang.setAccess }
