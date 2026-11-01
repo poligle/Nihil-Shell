@@ -60,7 +60,8 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   sides from the bottom, which meet at the top, like the launcher on the phone.
 - **Wallpapers as LED matrices.** Every image in `wallpapers/` is rendered at build time
   as dots, once per output at its native size, so each dot lands on exact pixels.
-- **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth), a dotted
+- **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
+  whole at least once, even when the boot is faster than it), a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
   in a corner: the cover in dots, the progress in LEDs and buttons you can click (hyprlock).
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, and monochrome keys.
