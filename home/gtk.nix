@@ -55,10 +55,24 @@ in
         };
     };
 
-    # Red carries ink, as in the shell, never black.
+    # Red carries ink, as in the shell, never black. Selected files and text
+    # get a grey wash under ink in every view: the accent is white here, and
+    # anything painting it solid would leave the names white on white.
     stylix.targets.gtk.extraCss = ''
         @define-color destructive_fg_color ${colors.base06};
         @define-color error_fg_color ${colors.base06};
+        @define-color theme_selected_bg_color alpha(${colors.base06}, 0.25);
+        @define-color theme_selected_fg_color ${colors.base06};
+
+        .view:selected, .view:selected:focus, iconview:selected, iconview:selected:focus,
+        treeview.view:selected, treeview.view:selected:focus, flowbox flowboxchild:selected,
+        .view text:selected, iconview text:selected, textview text:selected,
+        .view text selection, iconview text selection, textview text selection,
+        entry selection, label selection, .cell:selected
+        {
+            background-color: alpha(${colors.base06}, 0.25);
+            color: ${colors.base06};
+        }
     '';
 
     # Extra font package for CJK
