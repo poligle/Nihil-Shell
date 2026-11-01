@@ -460,6 +460,10 @@ engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
 - **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables. At
   15, 10 and 5 % it sends a critical notification, once per threshold and discharge; each
   one replaces the last (`x-nihil-tag` hint) and plugging in the charger dismisses it.
+- **Notifications:** a popup lasts what its app asks for (`notify-send -t`, at most 30 s)
+  or 5 s, and critical ones 15 s; the pointer on a popup holds it, and every notification
+  stays in the panel's history. Quickshell hands the timeout on in milliseconds, although
+  its documentation says seconds.
 - **Caffeine:** while it is on, every frame window holds a Wayland idle inhibitor, which
   hypridle honours: no dimming, no lock, no screen off, no suspend on its own. Closing the
   lid still suspends. It starts off with every session.
