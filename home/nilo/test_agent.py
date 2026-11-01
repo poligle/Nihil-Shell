@@ -921,6 +921,47 @@ class AgentTest(unittest.TestCase):
         events = self.agent.until_done()
         self.assertIn("does not exist", self.text_of(events))
 
+    def test_context_in_the_prompt(self):
+        repo = self.make_notes_repo()
+        with open(os.path.join(repo, "NILO.md"), "w") as f:
+            f.write("# Repo\n\nUse tabs in {repo}.\n")
+        context = os.path.join(self.dir, "nilo.md")
+        with open(context, "w") as f:
+            f.write("<!-- for people -->\n## Rules\n\nAsk {user} first.\n\n## Terminal {shell}\n\nbash only.\n"
+                    "\n## Git {git}\n\nShort messages.\n\n### Branches\n\nNever force.\n")
+        config_home = os.path.join(self.dir, "config")
+        os.makedirs(os.path.join(config_home, "nihil"))
+        with open(os.path.join(config_home, "nihil", "nilo.md"), "w") as f:
+            f.write("I am Pol. {web}\n")
+        self.write_config(context=context)
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "git": True, "repo": repo},
+                   env=dict(os.environ, XDG_CONFIG_HOME=config_home))
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        prompt = self.ollama.chats[-1]["messages"][0]["content"]
+        self.assertIn("## Rules\n\nAsk ", prompt)
+        self.assertNotIn("for people", prompt)
+        self.assertNotIn("bash only", prompt)
+        self.assertIn("## Git\n\nShort messages.\n\n### Branches\n\nNever force.", prompt)
+        self.assertIn("I am Pol. {web}", prompt)
+        self.assertIn(f"Use tabs in {repo}.", prompt)
+        self.assertTrue(prompt.index("Ask ") < prompt.index("I am Pol") < prompt.index("Use tabs"))
+
+    def test_notes(self):
+        config_home = os.path.join(self.dir, "config")
+        self.start(env=dict(os.environ, XDG_CONFIG_HOME=config_home))
+        self.agent.send(op="notes")
+        path = self.agent.wait("notes")["path"]
+        self.assertEqual(path, os.path.join(config_home, "nihil", "nilo.md"))
+        with open(path) as f:
+            self.assertIn("Tus notas para Nilo", f.read())
+        with open(path, "w") as f:
+            f.write("mine\n")
+        self.agent.send(op="notes")
+        self.agent.wait("notes")
+        with open(path) as f:
+            self.assertEqual(f.read(), "mine\n")
+
     def test_bad_requests(self):
         self.start()
         self.agent.send(op="nope")
@@ -990,6 +1031,17 @@ class UnitTest(unittest.TestCase):
         raw = b"\x1b[1;32mok\x1b[0m\x1b(B\x1b[m\n10%\r55%\r100%\n\x1b]0;title\x07fin\n"
         self.assertEqual(agent.terminal_text(raw), "ok\n100%\nfin\n")
         self.assertEqual(agent.clip_middle("a" * 10 + "b" * 30, 12), "aaaa\n…\nbbbbbbbb")
+
+    def test_context_sections(self):
+        text = ("<!-- note\nover lines -->\n# Top\nkept {user}\n## Off {shell}\nno\n### Sub\nno either\n"
+                "## On {apps}\nyes in {repo}\n## Plain\nplain\n")
+        values = {"user": "pol", "repo": "~/r"}
+        got = agent.context_sections(text, {"shell": False, "apps": True}, values)
+        self.assertEqual(got, "# Top\nkept pol\n## On\nyes in ~/r\n## Plain\nplain")
+        self.assertIn("### Sub\nno either", agent.context_sections(text, {"shell": True, "apps": True}, values))
+        shipped = agent.context_sections(agent.read_text(os.path.join(HERE, "nilo.md")), {}, values)
+        self.assertIn("Every step, authorized first", shipped)
+        self.assertNotIn("Terminal", shipped)
 
     def test_recommended_model(self):
         a = agent.Agent.__new__(agent.Agent)

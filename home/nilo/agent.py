@@ -30,10 +30,15 @@
 #   {"op": "startOllama"}                    start ollama.service (it asks polkit)
 #   {"op": "launched", "id": "c2", "ok": true, "name": "Spotify"}
 #                                            the shell opened what open_app asked for
+#   {"op": "notes"}                          the user's notes for Nilo (made if missing)
 #
 # Events (stdout): hello, settings, models, state, start, thinking, token,
-# tool, output, confirm, confirmed, launch, done, error, pull, repos, ollama.
-# Each carries "ev" and its fields.
+# tool, output, confirm, confirmed, launch, done, error, pull, repos, ollama,
+# notes. Each carries "ev" and its fields.
+#
+# What Nilo knows about the system and the rules it works by are in nilo.md
+# (next to this file), added to the prompt with the user's own notes and the
+# repository's NILO.md: see build_context.
 
 import argparse
 import datetime
@@ -73,6 +78,7 @@ COMMAND_SECONDS = 120   # a command running longer is stopped (the terminal has 
 OUTPUT_KEEP = 65536     # bytes of a command's output kept from its start, and from its end
 OUTPUT_CHARS = 6000     # of which the model gets this much text
 OUTPUT_LINES = 6        # the last lines the shell shows under the command
+CONTEXT_CHARS = 9000    # nilo.md, the user's notes and the repository's NILO.md, together
 
 DEFAULT_SETTINGS = {
     "onboarded": False,
@@ -1176,6 +1182,78 @@ PROMPT = {
 }
 
 
+# --- nilo.md ----------------------------------------------------------------------
+
+NOTES = {
+    "es": "<!--\nTus notas para Nilo. Lo que escribas fuera de este comentario se añade a lo que sabe \n"
+          "(home/nilo/nilo.md) en cada pregunta: quién eres, cómo te gustan las respuestas, tus proyectos.\n"
+          "Una sección cuyo título acaba en {web}, {system}, {apps}, {write}, {git} o {shell} solo cuenta\n"
+          "con ese permiso activado; {user}, {host}, {flake} y {repo} se rellenan solos.\n-->\n",
+    "en": "<!--\nYour notes for Nilo. Whatever you write outside this comment is added to what it knows\n"
+          "(home/nilo/nilo.md) on every question: who you are, how you like answers, your projects.\n"
+          "A section whose heading ends in {web}, {system}, {apps}, {write}, {git} or {shell} only counts\n"
+          "while that switch is on; {user}, {host}, {flake} and {repo} are filled in.\n-->\n",
+}
+
+SWITCH_TAG = re.compile(r"\s*\{(web|system|apps|write|git|shell)\}\s*$")
+
+
+def notes_path():
+    return os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "nihil", "nilo.md")
+
+
+def read_text(path):
+    if not path:
+        return ""
+    try:
+        with open(os.path.expanduser(str(path)), encoding="utf-8", errors="replace") as f:
+            return f.read(4 * CONTEXT_CHARS)
+    except OSError:
+        return ""
+
+
+def context_sections(text, settings, values):
+    """What of a nilo.md applies now: no comments, no sections of switches
+    that are off (a heading ending in {shell} keeps its section, subsections
+    included, only with that switch on), and the placeholders filled in."""
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    kept, off = [], 0           # off: depth of the heading whose section is left out
+    for line in text.splitlines():
+        heading = re.match(r"(#{1,6})\s", line)
+        if heading:
+            depth = len(heading.group(1))
+            if off and depth > off:
+                continue
+            off = 0
+            tag = SWITCH_TAG.search(line)
+            if tag:
+                if not settings.get(tag.group(1)):
+                    off = depth
+                    continue
+                line = line[:tag.start()]
+        elif off:
+            continue
+        kept.append(line)
+    text = "\n".join(kept)
+    for key, value in values.items():
+        text = text.replace("{" + key + "}", str(value))
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def build_context(config, settings, user):
+    """nilo.md, then the user's notes, then (with files or git allowed) the
+    repository's own NILO.md."""
+    values = {"user": user, "host": config.get("host", ""), "flake": config.get("flake", "~/nixos-config"),
+              "repo": settings.get("repo", "")}
+    parts = [read_text(config.get("context")), read_text(notes_path())]
+    if settings.get("write") or settings.get("git"):
+        repo = os.path.expanduser(str(settings.get("repo") or ""))
+        parts.append(next((read_text(os.path.join(repo, name)) for name in ("NILO.md", "nilo.md")
+                           if repo and os.path.isfile(os.path.join(repo, name))), ""))
+    text = "\n\n".join(part for part in (context_sections(p, settings, values) for p in parts) if part)
+    return clip(text, CONTEXT_CHARS)
+
+
 def build_prompt(config, settings, now=None):
     language = config.get("language", "en") if config.get("language") in PROMPT else "en"
     text = PROMPT[language]
@@ -1207,6 +1285,9 @@ def build_prompt(config, settings, now=None):
     lines += [f"- {rule}" for rule in rules]
     lines += ["", text["about"].format(summon=config.get("summon") or text["summon"],
                                        flake=config.get("flake", "~/nixos-config"), host=config.get("host", ""))]
+    context = build_context(config, settings, user)
+    if context:
+        lines += ["", context]
     return "\n".join(lines)
 
 
@@ -1524,6 +1605,19 @@ class Agent:
         found.sort(key=used, reverse=True)
         self.out("repos", repos=[self.short_path(p) for p in found[:30]])
 
+    def notes(self):
+        """The user's notes for Nilo, for the shell to open in an editor."""
+        path = notes_path()
+        if not os.path.exists(path):
+            language = self.config.get("language", "en")
+            try:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(NOTES.get(language, NOTES["en"]))
+            except OSError as e:
+                return self.out("error", code="notes", detail=str(e))
+        self.out("notes", path=path)
+
     # downloads
 
     def pull(self, model):
@@ -1808,6 +1902,8 @@ class Agent:
             threading.Thread(target=self.start_ollama, kwargs={"ask": True}, daemon=True).start()
         elif op == "launched":
             self.answer_shell(request.get("id"), request)
+        elif op == "notes":
+            self.notes()
         else:
             self.out("error", code="bad-request", detail=f"unknown op {op!r}")
 

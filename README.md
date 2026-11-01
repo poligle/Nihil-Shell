@@ -312,6 +312,13 @@ with `ollama pull` show up in the list.
 The model, the switches, the minutes and "think before answering" apply at once and live
 in `~/.local/state/nihil/nilo.json`; only the options above need a rebuild.
 
+**What it knows.** [`home/nilo/nilo.md`](home/nilo/nilo.md) tells Nilo about this system
+and the rules it works by: one step per tool call, each one authorized, look before
+changing, nothing destructive unless asked. It goes into every prompt with only the
+sections of the switches that are on. After it come your own notes,
+`~/.config/nihil/nilo.md` ("edit my notes" in the settings), and, with Files or Git
+authorized, the `NILO.md` of the repository if it has one.
+
 The agent behind it is [`home/nilo/agent.py`](home/nilo/agent.py), standard-library
 Python that the shell talks to over stdin/stdout. Its tests run against a fake Ollama:
 `python3 -m unittest home/nilo/test_agent.py`.
