@@ -8,10 +8,11 @@ import "Markdown.js" as Markdown
 // What Nilo did while the launcher was closed, in a drawer that comes out of
 // the bar next to its eyes (Frame.qml): the question, then the answer, the
 // error, or what it is waiting to be confirmed. A click anywhere opens the
-// conversation; it goes back into the bar on its own, never while the
-// pointer is on it, and a confirmation waits until it is answered.
+// conversation; it goes back into the bar on its own (services/Nilo.qml).
 Item {
     id: root
+
+    property bool shown: false      // this is the screen it is out on
 
     readonly property bool confirming: Nilo.peekKind === "confirm"
     readonly property bool failed: Nilo.peekKind === "error"
@@ -23,12 +24,9 @@ Item {
 
     implicitHeight: content.implicitHeight + 40
 
-    HoverHandler { id: hover }
-
-    Timer {
-        interval: Nilo.peekSeconds * 1000
-        running: Nilo.peeking && !root.confirming && !hover.hovered
-        onTriggered: Nilo.unpeek()
+    // Moving over it keeps it out a moment longer.
+    HoverHandler {
+        onPointChanged: if (root.shown) Nilo.peekTouch()
     }
 
     Column {

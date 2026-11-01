@@ -182,6 +182,7 @@ Singleton {
     function peek(kind: string): void {
         if (shown || kind !== peekKind) return;
         peekScreen = barScreen();
+        peekUntil = Date.now() + (kind === "confirm" ? 30 : peekSeconds) * 1000;
         peeking = true;
     }
 
@@ -189,9 +190,23 @@ Singleton {
         peeking = false;
     }
 
-    // How long the panel stays: longer for longer answers; a confirmation
-    // waits until it is answered.
+    // The panel goes back on its own, clicked or not: after a few seconds,
+    // more for longer answers, half a minute for a confirmation (then the
+    // eyes in the bar keep waiting with it). The pointer moving over it
+    // buys a few more; a pointer resting there doesn't.
     readonly property int peekSeconds: Math.min(20, 7 + Math.ceil(plain(peekText).length / 45))
+    property real peekUntil: 0
+
+    function peekTouch(): void {
+        if (peeking) peekUntil = Math.max(peekUntil, Date.now() + 4000);
+    }
+
+    Timer {
+        interval: 500
+        repeat: true
+        running: root.peeking
+        onTriggered: if (Date.now() >= root.peekUntil) root.unpeek()
+    }
 
     // --- Requests ---------------------------------------------------------------
 

@@ -72,8 +72,9 @@ Item {
                 eyeWidth: 4
                 eyeHeight: 11
                 gap: 5
-                mood: Nilo.peeking && Nilo.peekScreen === root.output
-                    ? (Nilo.peekKind === "confirm" ? "alert" : Nilo.peekKind === "error" ? "error" : "happy")
+                mood: Nilo.confirm !== null && !Nilo.shown ? "alert"
+                    : Nilo.peeking && Nilo.peekScreen === root.output
+                    ? (Nilo.peekKind === "error" ? "error" : "happy")
                     : Nilo.busy ? (Nilo.phase === "writing" ? "writing" : "thinking") : Nilo.loading ? "waking"
                     : Nilo.loaded ? "idle" : "asleep"
                 pulse: Nilo.pulse
