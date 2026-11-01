@@ -921,6 +921,36 @@ class AgentTest(unittest.TestCase):
         events = self.agent.until_done()
         self.assertIn("does not exist", self.text_of(events))
 
+    def test_auto_model(self):
+        self.ollama.installed.update({"qwen3.5:2b": 2_700_000_000, "qwen3.5:9b": 6_600_000_000})
+        hello = self.start({"model": "qwen3.5:9b", "onboarded": True, "auto": True})
+        self.assertEqual(hello["fast"], "qwen3.5:2b")
+        self.agent.send(op="ask", text="Hola")
+        events = self.agent.until_done()
+        self.assertEqual(self.ollama.chats[-1]["model"], "qwen3.5:2b")
+        start = next(e for e in events if e["ev"] == "start")
+        self.assertEqual((start["model"], start["auto"]), ("qwen3.5:2b", True))
+        self.assertEqual(events[-1]["stats"]["model"], "qwen3.5:2b")
+        self.agent.send(op="ask", text="Explica qué es un flake de Nix y para qué sirve")
+        events = self.agent.until_done()
+        self.assertEqual(self.ollama.chats[-1]["model"], "qwen3.5:9b")
+        self.assertEqual(events[-1]["stats"]["model"], "qwen3.5:9b")
+        self.agent.send(op="set", key="think", value=True)
+        self.agent.wait("settings", where=lambda e: e["settings"]["think"])
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        self.assertEqual(self.ollama.chats[-1]["model"], "qwen3.5:9b")
+        self.agent.send(op="set", key="think", value=False)
+        self.agent.send(op="set", key="auto", value=False)
+        self.agent.wait("settings", where=lambda e: not e["settings"]["auto"])
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        self.assertEqual(self.ollama.chats[-1]["model"], "qwen3.5:9b")
+        self.agent.send(op="sleep")
+        self.agent.wait("state", where=lambda e: not e["loaded"])
+        unloaded = {b["model"] for b in self.ollama.loads if b.get("keep_alive") == 0}
+        self.assertLessEqual({"qwen3.5:2b", "qwen3.5:9b"}, unloaded)  # both were in memory: sleep frees both
+
     def test_context_in_the_prompt(self):
         repo = self.make_notes_repo()
         with open(os.path.join(repo, "NILO.md"), "w") as f:
@@ -1031,6 +1061,13 @@ class UnitTest(unittest.TestCase):
         raw = b"\x1b[1;32mok\x1b[0m\x1b(B\x1b[m\n10%\r55%\r100%\n\x1b]0;title\x07fin\n"
         self.assertEqual(agent.terminal_text(raw), "ok\n100%\nfin\n")
         self.assertEqual(agent.clip_middle("a" * 10 + "b" * 30, 12), "aaaa\n…\nbbbbbbbb")
+
+    def test_simple(self):
+        for text in ("Hola", "¿Qué hora es?", "¿Qué tiempo hace mañana en Sabadell?", "Abre Spotify", "gracias!"):
+            self.assertTrue(agent.simple(text), text)
+        for text in ("¿Qué es un flake de Nix?", "Sube los cambios de mi config", "Escribe un script",
+                     "¿Por qué falla?", "Explain this", "x" * 200, "¿Una? ¿Dos?", "```code```"):
+            self.assertFalse(agent.simple(text), text)
 
     def test_context_sections(self):
         text = ("<!-- note\nover lines -->\n# Top\nkept {user}\n## Off {shell}\nno\n### Sub\nno either\n"

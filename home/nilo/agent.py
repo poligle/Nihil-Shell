@@ -92,7 +92,26 @@ DEFAULT_SETTINGS = {
     "repo": "~/nixos-config",
     "keepAlive": 5,
     "think": False,
+    "auto": False,
 }
+
+
+# Automatic model (setting "auto"): a question that looks simple goes to the
+# smallest model downloaded, everything else to the one chosen. Simple means
+# short, one question, no code and none of the words of the work that needs
+# the big one (explaining, writing, files, git, commands, Nix).
+DEMANDING = re.compile(
+    r"(?i)(c[oó]digo|\bcode\b|script|programa|funci[oó]n|function|debug|error|traceback|\bnix|flake|config|"
+    r"instal|commit|\bpush|\bgit\b|archivo|fichero|\bfiles?\b|repo|comando|command|terminal|ejecut|\brun\b|"
+    r"compil|build|explica|explain|por ?qu[eé]|\bwhy\b|compar|anali[sz]|analy[sz]|resum|summar|paso a paso|"
+    r"step by step|escrib|\bwrite|redact|traduc|translat|\bplan|dise[ñn]|design|calcul|demuestra|\bprove|"
+    r"matem|\bmath|ecuaci|equation|ensayo|essay|informe|report|corrig|\bfix)")
+
+
+def simple(text):
+    text = str(text or "").strip()
+    return (len(text) <= 140 and "\n" not in text and "```" not in text and text.count("?") <= 1
+            and not DEMANDING.search(text))
 
 
 def log(*parts):
@@ -1312,6 +1331,8 @@ class Agent:
         self.no_tools = False       # the model said it can't use tools
         self.state = {"ollama": None, "loaded": False, "loading": False, "model": "", "expires": None,
                       "sizeGB": 0, "gpu": 0}
+        self.installed = set()      # model names Ollama has, as of the last catalogue
+        self.active = ""            # the model of the latest answer (auto may pick a smaller one)
         self.state_lock = threading.Lock()
         self.wake = threading.Event()
         self.starting = False       # starting ollama.service
@@ -1326,6 +1347,28 @@ class Agent:
         budget = self.ram_gb * 0.45
         fitting = [m for m in models if m.get("ram", 0) <= budget]
         return (max(fitting, key=lambda m: m.get("ram", 0)) if fitting else models[0])["tag"]
+
+    def current(self):
+        """The model Nilo is using: the one chosen, or the one auto used last."""
+        return self.active or self.settings["model"]
+
+    def has(self, tag):
+        return tag in self.installed or f"{tag}:latest" in self.installed
+
+    def fast(self):
+        """For auto: the smallest model of the list that is downloaded and
+        smaller than the one chosen (\"\" if there is none)."""
+        models = [m for m in self.config.get("models", []) if m.get("ram", 0) > 0 and self.has(m["tag"])]
+        chosen = next((m.get("ram", 0) for m in self.config.get("models", []) if m["tag"] == self.settings["model"]), 0)
+        smaller = [m for m in models if m["tag"] != self.settings["model"] and (not chosen or m["ram"] < chosen)]
+        return min(smaller, key=lambda m: m["ram"])["tag"] if smaller else ""
+
+    def route(self, text):
+        """The model for one question."""
+        chosen = self.settings["model"]
+        if not self.settings.get("auto") or self.settings.get("think") or not simple(text):
+            return chosen
+        return self.fast() or chosen
 
     def load_settings(self):
         settings = dict(DEFAULT_SETTINGS)
@@ -1374,6 +1417,8 @@ class Agent:
                 value = self.short_path(value)
         old = self.settings.get(key)
         self.settings[key] = value
+        if key in ("model", "auto"):
+            self.active = ""
         # Git and files were allowed for one repository: another one asks again.
         if key == "repo" and os.path.realpath(os.path.expanduser(old or "")) != os.path.realpath(os.path.expanduser(value)):
             self.settings["git"] = False
@@ -1382,9 +1427,11 @@ class Agent:
         self.out("settings", settings=self.settings)
         if key == "model" and old != value:
             self.no_tools = False
-            if self.state["loaded"] and old:
-                threading.Thread(target=self.quietly, args=(self.ollama.unload, old), daemon=True).start()
+            if self.state["loaded"] and self.state["model"]:
+                threading.Thread(target=self.quietly, args=(self.ollama.unload, self.state["model"]), daemon=True).start()
             self.wake.set()
+        elif key == "auto":
+            self.send_models()
         elif key == "keepAlive" and self.state["loaded"]:
             threading.Thread(target=self.warm, daemon=True).start()
 
@@ -1421,14 +1468,16 @@ class Agent:
         current = self.settings["model"]
         if current and current not in {m["tag"] for m in known}:
             known.append({"tag": current, "label": current, "size": 0, "ram": 0, "installed": False, "extra": True})
+        if installed is not None:
+            self.installed = set(installed)
         return {"models": known, "recommended": self.recommended(), "ramGB": self.ram_gb,
-                "ollama": installed is not None}
+                "ollama": installed is not None, "fast": self.fast()}
 
     def send_models(self):
         self.out("models", **self.catalogue())
 
     def refresh_state(self):
-        model = self.settings["model"]
+        model = self.current()
         state = {"model": model}
         try:
             running = self.ollama.ps()
@@ -1482,7 +1531,7 @@ class Agent:
         return f"{int(self.settings['keepAlive'])}m"
 
     def warm(self):
-        model = self.settings["model"]
+        model = self.current()
         if not model or self.state["loading"]:
             return
         self.ensure_ollama()
@@ -1500,8 +1549,15 @@ class Agent:
             self.wake.set()
 
     def sleep(self):
-        if self.state["loaded"] and self.settings["model"]:
-            self.quietly(self.ollama.unload, self.settings["model"])
+        """Every model of Nilo's that is in memory (auto may have two)."""
+        try:
+            running = [m.get("name", "") for m in self.ollama.ps()]
+        except OllamaError:
+            return
+        ours = {m["tag"] for m in self.config.get("models", [])} | {self.settings["model"], self.active}
+        for name in running:
+            if name in ours or name.removesuffix(":latest") in ours:
+                self.quietly(self.ollama.unload, name)
 
     # Ollama itself: when it doesn't answer, what systemd says, and starting it
 
@@ -1767,12 +1823,16 @@ class Agent:
     def _turn(self, text, cancel, stats):
         """One question: model calls and tools until it answers. Returns what
         "done" should add ({"cancelled": True} when stopped)."""
-        model = self.settings["model"]
+        model = self.route(text)
+        if model != self.current():
+            self.set_state(model=model, loaded=False)
+        self.active = model
+        stats["model"] = model
         # The conversation this question belongs to: "reset" starts a new list,
         # so an answer cut short by it lands in the old one.
         history = self.history
         history.append({"role": "user", "content": text})
-        self.out("start", model=model)
+        self.out("start", model=model, auto=model != self.settings["model"])
         if not model:
             raise OllamaError("no-model")
         self.ensure_ollama()

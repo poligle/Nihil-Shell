@@ -153,6 +153,7 @@ All of them live under `nihil.*` ([`modules/nihil.nix`](modules/nihil.nix)).
 | `nilo.acceleration` | `"cpu"` | `"cpu"`, `"vulkan"`, `"rocm"` or `"cuda"`: what runs the model |
 | `nilo.integratedGpu` | `false` | Let Ollama use an integrated GPU (it leaves them out by default) |
 | `nilo.models`   | Qwen 3.5, 0.8B to 35B-A3B | Models offered in Nilo's settings |
+| `nilo.loadedModels` | `1` | Models Ollama keeps in memory at once; `2` lets the automatic choice switch without reloading |
 | `nilo.contextLength` | `16384` | Context window, in tokens |
 | `nilo.searxng`  | `null`     | A SearXNG instance for web searches instead of DuckDuckGo |
 
@@ -299,7 +300,11 @@ for a window of `nilo.contextLength` tokens (16 384 by default; Qwen 3.5 goes up
 with more memory), and the oldest exchanges drop out once a conversation outgrows it.
 
 **Models.** Qwen 3.5 by default; any Ollama model with tools works, and models pulled
-with `ollama pull` show up in the list.
+with `ollama pull` show up in the list. With "choose the model for each question" on and a
+smaller model downloaded, simple questions (short, one question, no code, nothing to
+explain, write, run or commit) go to the smallest one and the rest to the one chosen; the
+answer says which. With `nilo.loadedModels = 2` both stay in memory and switching is
+instant; with 1, Ollama swaps them.
 
 | Model | Download | RAM, roughly | Recommended from |
 |---|---|---|---|

@@ -168,6 +168,7 @@ Column {
                     visible: text !== ""
                     text: row.pulling ? Lang.niloDownloading.arg(Math.floor((Nilo.pull?.progress ?? 0) * 100))
                         : row.failed ? (Nilo.pull.code === "ollama-down" ? Lang.modelFailedOllama : Lang.modelFailed.arg(Nilo.pull.error.slice(0, 40)))
+                        : Nilo.settings.auto === true && Nilo.fast === row.modelData.tag ? Lang.modelFast
                         : Nilo.recommended === row.modelData.tag ? Lang.modelRecommended
                         : row.selected && row.modelData.installed ? Lang.modelSelected
                         : row.modelData.installed ? Lang.modelInstalled

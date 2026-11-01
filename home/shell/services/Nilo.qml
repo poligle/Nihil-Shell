@@ -28,6 +28,8 @@ Singleton {
     property var settings: ({})
     property var models: []
     property string recommended: ""
+    property string fast: ""              // the model auto uses for simple questions
+    property string inUse: ""             // the model of the latest answer
     property real ramGB: 0
     property bool ollama: true
 
@@ -303,6 +305,7 @@ Singleton {
     function catalogue(e: var): void {
         models = e.models ?? [];
         recommended = e.recommended ?? "";
+        fast = e.fast ?? "";
         ramGB = e.ramGB ?? 0;
         ollama = e.ollama !== false;
     }
@@ -326,6 +329,7 @@ Singleton {
             if (pull && pull.status === "success") pull = null;
             break;
         case "state":
+            if (e.model) inUse = e.model;
             loaded = e.loaded;
             loading = e.loading;
             expires = e.expires ?? 0;
@@ -359,6 +363,7 @@ Singleton {
         case "start":
             busy = true;
             phase = "waiting";
+            inUse = e.model ?? "";
             break;
         case "thinking":
             if (phase === "waiting") phase = "thinking";

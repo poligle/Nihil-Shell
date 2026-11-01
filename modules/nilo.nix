@@ -97,6 +97,19 @@ in
             '';
         };
 
+        loadedModels = lib.mkOption
+        {
+            type = lib.types.ints.between 1 4;
+            default = 1;
+            example = 2;
+            description = ''
+                Models Ollama keeps in memory at once. With 2, Nilo's automatic
+                choice (a small model for simple questions) switches between the
+                small one and the chosen one without loading them again, at the
+                cost of the memory of both.
+            '';
+        };
+
         contextLength = lib.mkOption
         {
             type = lib.types.ints.between 2048 262144;
@@ -127,8 +140,9 @@ in
                 # Nilo sends its own keep-alive (its settings); this one is for
                 # everything else that talks to Ollama.
                 OLLAMA_KEEP_ALIVE = "5m";
-                # One model in memory at a time: switching models frees the old one.
-                OLLAMA_MAX_LOADED_MODELS = "1";
+                # One model in memory at a time by default: switching models
+                # frees the old one.
+                OLLAMA_MAX_LOADED_MODELS = toString cfg.loadedModels;
                 # Local only: no models that run on ollama.com.
                 OLLAMA_NO_CLOUD = "1";
             }
