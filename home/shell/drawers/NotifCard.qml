@@ -25,14 +25,14 @@ Rectangle {
 
     Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
 
-    HoverHandler { id: hover }
-
-    // Popups expire on their own (not while hovered); history cards stay.
-    Timer {
-        interval: Math.max(1, Notifs.timeoutFor(root.notification))
-        running: root.popup && Notifs.timeoutFor(root.notification) > 0 && !hover.hovered
-        onTriggered: Notifs.hidePopup(root.notification)
+    // Popups expire in Notifs.qml, never while the pointer is on them;
+    // history cards stay.
+    HoverHandler {
+        id: hover
+        onHoveredChanged: if (root.popup) Notifs.hold(root.notification, hovered)
     }
+
+    Component.onDestruction: if (root.popup && hover.hovered) Notifs.hold(root.notification, false)
 
     MouseArea {
         anchors.fill: parent
