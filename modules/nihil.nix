@@ -153,7 +153,7 @@ in
         nihil.sounds =
             let
                 freedesktop = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo";
-                events = [ "switch" "open" "close" "special" "fullscreen" "lock" "power" "menu" "notify" "critical" "volume" ];
+                events = [ "switch" "open" "close" "special" "fullscreen" "lock" "power" "menu" "notify" "critical" "volume" "charge" ];
             in
             if cfg.soundPack == "nihil" then
                 lib.genAttrs events (event: ../sounds/nihil + "/${event}.ogg")
@@ -163,6 +163,7 @@ in
                     notify = "${freedesktop}/message.oga";
                     critical = "${freedesktop}/dialog-error.oga";
                     volume = "${freedesktop}/audio-volume-change.oga";
+                    charge = "${freedesktop}/power-plug.oga";
                 };
 
         fonts.packages = [ cfg.fonts ];
