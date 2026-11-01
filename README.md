@@ -279,6 +279,10 @@ create and change files in one repository, never outside it or inside `.git`; **
 as you. The repository is `~/nixos-config` by default; the settings list the ones under
 `~` (most recently used first) or take any path.
 
+**Opening apps.** With Apps on, "abre spotify" or "open zen and thunar" opens them at
+once, without the model: the launcher's own search, when every name matches an app
+closely. Anything more ("open spotify and play something") goes to Nilo as usual.
+
 **Co-author.** Every commit Nilo makes carries
 `Co-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>` (`nilo.coauthor`), and the card
 shows it before you confirm. That is the noreply address of

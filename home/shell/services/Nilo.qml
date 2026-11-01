@@ -213,6 +213,7 @@ Singleton {
     function ask(text: string): void {
         const question = text.trim();
         if (!question || busy) return;
+        if (quickOpen(question)) return;
         messages.append({ kind: "user", text: question, done: true, name: "", status: "", info: "", cid: "" });
         busy = true;
         phase = "waiting";
@@ -261,6 +262,43 @@ Singleton {
 
     // ~/.config/nihil/nilo.md, made by the agent if missing, in the editor.
     function editNotes(): void { send({ op: "notes" }); }
+
+    // "abre spotify", "open zen and thunar": with Apps allowed, these open
+    // right away, without waiting for the model: the launcher's own search,
+    // and only when every name matches an app closely (or is a web address).
+    // Anything else, or anything more ("abre spotify y pon algo"), goes to
+    // Nilo as usual. The agent doesn't hear of it.
+    readonly property var opener: /^(?:[áa]bre(?:me)?|abrir|lanza|arranca|open|launch|start)\s+(.+?)[.!]*$/i
+
+    function quickOpen(text: string): bool {
+        if (settings.apps !== true) return false;
+        const m = text.match(opener);
+        if (!m) return false;
+        const targets = m[1].split(/\s*,\s*|\s+(?:y|e|and)\s+/i)
+            .map(t => t.replace(/^(?:el|la|los|las|the|an?)\s+/i, "").trim())
+            .filter(t => t !== "");
+        if (targets.length === 0 || targets.length > 4) return false;
+        const plan = [];
+        for (const t of targets) {
+            if (/^(?:https?:\/\/|mailto:)\S+$/i.test(t)) {
+                plan.push({ url: t, name: t });
+                continue;
+            }
+            const q = t.toLowerCase();
+            const hits = Apps.search(q);
+            if (hits.length === 0 || Apps.score(hits[0], q) < 400) return false;
+            plan.push({ entry: hits[0], name: hits[0].name });
+        }
+        messages.append({ kind: "user", text: text, done: true, name: "", status: "", info: "", cid: "" });
+        for (const p of plan) {
+            messages.append({ kind: "tool", text: "", done: true, name: "open_app", status: "done", cid: "",
+                              info: JSON.stringify({ ok: true, opened: p.name, args: { target: p.name } }) });
+            if (p.entry) Apps.launch(p.entry);
+            else Qt.openUrlExternally(p.url);
+        }
+        Drawers.close();
+        return true;
+    }
 
     // open_app: an app by its name, as the launcher finds it (only a good
     // match: a name, a word of it or its keywords), or a path or an address
