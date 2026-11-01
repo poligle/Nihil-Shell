@@ -388,6 +388,7 @@ Scope {
 
                 Peek {
                     id: peek
+                    shown: win.peekOpen
                     anchors.right: parent.right
                     width: win.peekD
                     height: win.peekL

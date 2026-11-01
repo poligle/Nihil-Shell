@@ -265,9 +265,10 @@ models that suit the RAM and asks what it may do.
 ends, or when Nilo needs a confirmation, it sends a notification: the light runs round
 the frame from the left, and instead of a popup a panel comes out of the bar next to the
 eyes, with the question and the answer (or the command waiting for you). A click opens
-the conversation; on its own it goes back after a few seconds, longer for long answers,
-and a confirmation stays until it is answered. With do not disturb on, only the panel's
-history keeps it.
+the conversation; on its own it goes back after a few seconds, longer for long answers
+(moving the pointer over it buys a few more). A confirmation stays half a minute, and
+after that the eyes in the bar stay alert until you answer it. With do not disturb on,
+only the panel's history keeps it.
 
 **What it may do**, each one a switch in its settings (the gear): **Internet** — search
 DuckDuckGo (through `ddgr`, or `nilo.searxng`) and read pages, never local addresses;
