@@ -75,7 +75,9 @@ Scope {
         readonly property real centerX: root.inset + innerW / 2
 
         readonly property real dashW: Math.min(980, innerW - 120)
-        readonly property real dashD: 520
+        // As deep as the dashboard asks: its kanban grows with the tasks.
+        property real dashD: Math.min(dashboard.implicitHeight, height - 2 * root.edge - 96)
+        Behavior on dashD { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
         readonly property real panelL: Math.min(height - 2 * root.edge - 96, 860)
         readonly property real panelD: 400
         readonly property real launcherW: Math.min(860, innerW - 120)
@@ -187,6 +189,7 @@ Scope {
                     clip: true
 
                     Dashboard {
+                        id: dashboard
                         width: win.dashW
                         height: win.dashD
                         anchors.bottom: parent.bottom

@@ -14,12 +14,16 @@ Item {
 
     property bool active: false
 
+    // The drawer is as deep as this (Frame.qml): the kanban grows and shrinks.
+    implicitHeight: layout.implicitHeight + 22 + 24
+
     SystemClock {
         id: clock
         precision: SystemClock.Minutes
     }
 
     ColumnLayout {
+        id: layout
         anchors.fill: parent
         anchors.leftMargin: 32
         anchors.rightMargin: 32
