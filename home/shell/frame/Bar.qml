@@ -13,6 +13,9 @@ Item {
 
     required property string output
 
+    // Where Nilo's eyes are: its panel comes out of the bar there (Frame.qml).
+    readonly property real eyesY: tail.y + eyes.y + eyes.height / 2
+
     Column {
         anchors.top: parent.top
         anchors.topMargin: 16
@@ -48,24 +51,30 @@ Item {
     }
 
     Column {
+        id: tail
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 16
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: 18
 
-        // Nilo is awake (its model takes memory) or downloading one.
+        // Nilo is awake (its model takes memory), downloading one, or has
+        // something to say (its panel is out, next to them).
         Item {
+            id: eyes
             anchors.horizontalCenter: parent.horizontalCenter
             width: 24
             height: 14
-            visible: Nilo.enabled && (Nilo.loaded || Nilo.loading || Nilo.busy || (Nilo.pull !== null && Nilo.pull.status !== "error"))
+            visible: Nilo.enabled && (Nilo.loaded || Nilo.loading || Nilo.busy || Nilo.peeking
+                || (Nilo.pull !== null && Nilo.pull.status !== "error"))
 
             Eyes {
                 anchors.centerIn: parent
                 eyeWidth: 4
                 eyeHeight: 11
                 gap: 5
-                mood: Nilo.busy ? (Nilo.phase === "writing" ? "writing" : "thinking") : Nilo.loading ? "waking"
+                mood: Nilo.peeking && Nilo.peekScreen === root.output
+                    ? (Nilo.peekKind === "confirm" ? "alert" : Nilo.peekKind === "error" ? "error" : "happy")
+                    : Nilo.busy ? (Nilo.phase === "writing" ? "writing" : "thinking") : Nilo.loading ? "waking"
                     : Nilo.loaded ? "idle" : "asleep"
                 pulse: Nilo.pulse
             }

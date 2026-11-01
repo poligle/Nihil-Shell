@@ -105,15 +105,7 @@ Item {
     }
 
     function errorText(code: string, detail: string): string {
-        const model = Nilo.settings.model ?? "";
-        switch (code) {
-        case "ollama-down": return Lang.niloErrOllama;
-        case "model-missing": return Lang.niloErrModel.arg(model);
-        case "memory": return Lang.niloErrMemory.arg(model);
-        case "no-model": return Lang.niloErrNoModel;
-        case "bad-repo": return Lang.niloErrRepo.arg(detail);
-        }
-        return Lang.niloErrOther.arg((detail || code).slice(0, 160));
+        return Nilo.errorText(code, detail);
     }
 
     // Empty: a line and some questions to start with.

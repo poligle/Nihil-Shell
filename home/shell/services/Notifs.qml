@@ -87,6 +87,11 @@ Singleton {
         return n.urgency === NotificationUrgency.Critical;
     }
 
+    // Nilo's own: done, confirm or error (services/Nilo.qml), or "".
+    function niloKind(n): string {
+        return String(n?.hints?.["x-nihil-nilo"] ?? "");
+    }
+
     // Milliseconds a popup stays up. Quickshell documents expireTimeout in
     // seconds but hands on the D-Bus value as it comes, in milliseconds:
     // read as seconds, notify-send -t 5000 (hyprshot, nm-applet) stayed up
@@ -117,6 +122,15 @@ Singleton {
             const critical = root.isCritical(n);
             if (root.dnd && !critical)
                 return;
+
+            // Nilo answered with the launcher closed: no popup, its panel comes
+            // out of the bar next to the eyes, and the light starts there.
+            if (root.niloKind(n) !== "") {
+                Glyph.nilo();
+                Sounds.play(Config.sounds.notify, 0.4);
+                Nilo.peek(root.niloKind(n));
+                return;
+            }
 
             root.show(n);
             Glyph.notify(critical);

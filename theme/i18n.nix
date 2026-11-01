@@ -111,7 +111,7 @@
 		nilo = "nilo";
 		niloAsk = "pregúntame lo que quieras";
 		niloHint = "enter pregunta · ctrl+n nueva conversación · esc cierra";
-		niloHintBusy = "esc para la respuesta";
+		niloHintBusy = "ctrl+c para la respuesta · esc cierra y te aviso al acabar";
 		niloHintOff = "borra el ? para volver · esc cierra";
 		niloHintConfirm = "enter dos veces confirma · esc cancela";
 		niloHintIntro = "enter sigue · ↑↓ elige · espacio marca · esc cierra";
@@ -147,6 +147,12 @@
 		niloCopied = "copiado";
 		niloStopped = "parado";
 		niloRate = "%1 tok/s";
+		niloPeekDone = "Nilo ha terminado";
+		niloPeekWaiting = "Nilo te espera";
+		niloPeekFailed = "Nilo no ha podido";
+		niloPeekOpen = "clic para seguir";
+		niloPeekMore = "clic para leerlo entero";
+		niloPeekConfirm = "clic para confirmar o cancelar";
 
 		toolSearching = "buscando «%1»";
 		toolSearched = "%1 resultados de «%2»";
@@ -366,7 +372,7 @@
 		nilo = "nilo";
 		niloAsk = "ask me anything";
 		niloHint = "enter asks · ctrl+n new conversation · esc closes";
-		niloHintBusy = "esc stops the answer";
+		niloHintBusy = "ctrl+c stops the answer · esc closes, I'll tell you when I'm done";
 		niloHintOff = "delete the ? to go back · esc closes";
 		niloHintConfirm = "enter twice confirms · esc cancels";
 		niloHintIntro = "enter next · ↑↓ choose · space toggles · esc closes";
@@ -402,6 +408,12 @@
 		niloCopied = "copied";
 		niloStopped = "stopped";
 		niloRate = "%1 tok/s";
+		niloPeekDone = "Nilo is done";
+		niloPeekWaiting = "Nilo is waiting for you";
+		niloPeekFailed = "Nilo couldn't do it";
+		niloPeekOpen = "click to carry on";
+		niloPeekMore = "click to read it all";
+		niloPeekConfirm = "click to confirm or cancel";
 
 		toolSearching = "searching “%1”";
 		toolSearched = "%1 results for “%2”";
