@@ -79,6 +79,24 @@ OUTPUT_KEEP = 65536     # bytes of a command's output kept from its start, and f
 OUTPUT_CHARS = 6000     # of which the model gets this much text
 OUTPUT_LINES = 6        # the last lines the shell shows under the command
 CONTEXT_CHARS = 9000    # nilo.md, the user's notes and the repository's NILO.md, together
+PULL_ATTEMPTS = 4       # a download that breaks off is tried again (Ollama resumes it)
+PULL_WAIT = 5           # seconds before the second attempt; then 20, 45
+
+# Why a download failed, from Ollama's own words ("max retries exceeded: Get
+# https://…r2.cloudflarestorage.com/…: EOF"). Network trouble and the
+# registry's rate limit are worth another try; a full disk or a name the
+# registry doesn't know are not.
+PULL_ERRORS = [
+    ("rate", r"(?i)\b429\b|too many requests|rate.?limit"),
+    ("space", r"(?i)no space left"),
+    ("missing", r"(?i)file does not exist|manifest unknown|pull model manifest: 404|not found"),
+    ("network", r"(?i)max retries exceeded|connection (reset|refused|lost)|\beof\b|i/o timeout|timed out|"
+                r"tls|no such host|temporary failure|network is unreachable|stream error|http2|dial tcp"),
+]
+
+
+def pull_error(detail):
+    return next((code for code, pattern in PULL_ERRORS if re.search(pattern, str(detail or ""))), "")
 
 DEFAULT_SETTINGS = {
     "onboarded": False,
@@ -1702,11 +1720,25 @@ class Agent:
                 self.ensure_ollama()
                 if self.state["ollama"]:
                     status, detail, code = self._pull_once(model, cancel)
+            # Broken off (the network, the registry's limit): again, from where it stopped.
+            for attempt in range(2, PULL_ATTEMPTS + 1):
+                if status == "success" or cancel.cancelled or code == "ollama-down" or pull_error(detail) not in ("network", "rate"):
+                    break
+                wait = float(self.config.get("pullWait", PULL_WAIT)) * (attempt - 1) ** 2
+                log(f"pull {model} broke off ({detail}); attempt {attempt} in {wait} s")
+                self.out("pull", model=model, status="retrying", attempt=attempt, attempts=PULL_ATTEMPTS, detail=detail)
+                deadline = time.monotonic() + wait
+                while time.monotonic() < deadline and not cancel.cancelled:
+                    time.sleep(0.2)
+                if not cancel.cancelled:
+                    status, detail, code = self._pull_once(model, cancel)
         finally:
             self.pulling = None
         if status != "success":
+            if status != "cancelled":
+                log(f"pull {model} failed: {detail or status}")
             self.out("pull", model=model, status=status if status in ("cancelled", "error") else "error",
-                     detail=detail or status, code=code)
+                     detail=detail or status, code=code if code == "ollama-down" else pull_error(detail) or code)
         self.send_models()
         self.wake.set()
 
