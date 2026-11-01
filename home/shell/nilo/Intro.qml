@@ -45,8 +45,23 @@ Item {
 
     function move(step: int): bool {
         if (page === 2) { models.move(step); return true; }
-        if (page === 3) { access.move(step); return true; }
+        if (page === 3) {
+            access.move(step);
+            const row = access.rowAt(access.current);
+            if (row) reveal(row);
+            return true;
+        }
         return false;
+    }
+
+    // The switches scroll when they don't fit: show a row (and its
+    // authorization) whole.
+    function reveal(row: Item): void {
+        const y = row.mapToItem(access, 0, 0).y;
+        if (y < accessFlick.contentY)
+            accessFlick.contentY = Math.max(0, y);
+        else if (y + row.height > accessFlick.contentY + accessFlick.height)
+            accessFlick.contentY = Math.max(0, Math.min(accessFlick.contentHeight - accessFlick.height, y + row.height - accessFlick.height));
     }
 
     function toggle(): bool {
@@ -207,28 +222,46 @@ Item {
             here: root.page === 3
 
             Column {
-                anchors.centerIn: parent
+                id: accessPage
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: Math.max(0, (parent.height - height) / 2)
                 width: root.column
-                spacing: 6
+                spacing: 14
 
-                Txt {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: Lang.introAccess
-                    font.pixelSize: 20
-                }
-
-                Txt {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: Lang.introAccessSub
-                    color: Tokens.muted
-                    font.pixelSize: 13
-                }
-
-                Item { width: 1; height: 8 }
-
-                AccessList {
-                    id: access
+                Column {
+                    id: accessHead
                     width: parent.width
+                    spacing: 6
+
+                    Txt {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: Lang.introAccess
+                        font.pixelSize: 20
+                    }
+
+                    Txt {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: Lang.introAccessSub
+                        color: Tokens.muted
+                        font.pixelSize: 13
+                    }
+                }
+
+                // Six switches, with an authorization open under one, can be
+                // taller than the page: then they scroll.
+                Flickable {
+                    id: accessFlick
+                    width: parent.width
+                    height: Math.max(0, Math.min(access.implicitHeight, stage.height - accessHead.height - accessPage.spacing))
+                    contentHeight: access.implicitHeight
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    AccessList {
+                        id: access
+                        width: accessFlick.width
+                        onGrew: row => root.reveal(row)
+                    }
                 }
             }
         }

@@ -4,10 +4,10 @@
 # Nilo's agent. The shell (home/shell/services/Nilo.qml) talks to it with one
 # JSON object per line on stdin and stdout. It keeps the conversation, streams
 # the replies from Ollama and runs the tools Nilo is allowed to use: search
-# the web, read a page, a summary of this computer and, in the one repository
-# it is given, git add/commit/push and reading and changing files. Every
-# commit and every change to a file waits for the user to confirm it. Nothing
-# else: no shell, nothing outside that repository.
+# the web, read a page, a summary of this computer, open apps and, in the one
+# repository it is given, git add/commit/push and reading and changing files.
+# With the terminal allowed it also runs commands. Every commit, every change
+# to a file and every command waits for the user to confirm it.
 #
 # Standard library only. home/nilo.nix wraps it with its configuration
 # (Ollama's address, the models on offer, the store paths of ddgr and git);
@@ -28,13 +28,16 @@
 #   {"op": "status"}                         ask Ollama again
 #   {"op": "repos"}                          git repositories under ~, to choose one
 #   {"op": "startOllama"}                    start ollama.service (it asks polkit)
+#   {"op": "launched", "id": "c2", "ok": true, "name": "Spotify"}
+#                                            the shell opened what open_app asked for
 #
 # Events (stdout): hello, settings, models, state, start, thinking, token,
-# tool, confirm, confirmed, done, error, pull, repos, ollama. Each carries
-# "ev" and its fields.
+# tool, output, confirm, confirmed, launch, done, error, pull, repos, ollama.
+# Each carries "ev" and its fields.
 
 import argparse
 import datetime
+import collections
 import difflib
 import html.parser
 import http.client
@@ -45,6 +48,7 @@ import os
 import pwd
 import re
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -55,7 +59,7 @@ import urllib.parse
 import urllib.request
 
 PROTOCOL = 1
-MAX_ROUNDS = 6          # model calls per question (each tool result needs one)
+MAX_ROUNDS = 8          # model calls per question (each tool result needs one)
 PAGE_CHARS = 6000       # text of a page handed to the model
 DIFF_CHARS = 3000       # part of the diff git_status shows, for the commit message
 CONFIRM_SECONDS = 300   # a confirmation nobody answers counts as "no"
@@ -64,6 +68,11 @@ READ_CHARS = 16000      # and at most this much text
 FILE_BYTES = 512_000    # the largest file Nilo reads or writes
 LIST_FILES = 300        # names list_files shows
 CARD_LINES = 80         # diff lines a confirmation shows
+COMMAND_CHARS = 4000    # the longest command Nilo may run
+COMMAND_SECONDS = 120   # a command running longer is stopped (the terminal has no limit)
+OUTPUT_KEEP = 65536     # bytes of a command's output kept from its start, and from its end
+OUTPUT_CHARS = 6000     # of which the model gets this much text
+OUTPUT_LINES = 6        # the last lines the shell shows under the command
 
 DEFAULT_SETTINGS = {
     "onboarded": False,
@@ -72,6 +81,8 @@ DEFAULT_SETTINGS = {
     "system": True,
     "git": False,
     "write": False,
+    "apps": True,
+    "shell": False,
     "repo": "~/nixos-config",
     "keepAlive": 5,
     "think": False,
@@ -433,7 +444,59 @@ SCHEMAS = {
         {"path": {"type": "string", "description": "The file, relative to the repository"},
          "content": {"type": "string", "description": "The whole new content of the file"}},
         ["path", "content"])),
+    "open_app": ("apps", schema(
+        "open_app",
+        "Open an application on the desktop by its name (Spotify, Thunar, Zen…), or a file, a folder or a web "
+        "address in the application that opens it.",
+        {"target": {"type": "string", "description": "The app's name, an absolute path or an http(s) address"}},
+        ["target"])),
+    "run_command": ("shell", schema(
+        "run_command",
+        "Run a bash command on this computer and get its output. The user sees the exact command and confirms it "
+        "before it runs: one command per call, and say in `reason` what it does and why. Commands that need a "
+        "password (sudo), are interactive or take minutes go with terminal=true: they open in a terminal window "
+        "for the user and you don't see their output.",
+        {"command": {"type": "string", "description": "The command, as typed in bash"},
+         "reason": {"type": "string", "description": "One short sentence for the user: what it does and why"},
+         "cwd": {"type": "string", "description": "Folder to run it in (default: the repository, or ~)"},
+         "terminal": {"type": "boolean", "description": "Open it in a terminal window instead (default false)"}},
+        ["command", "reason"])),
 }
+
+# What makes a command worth a red card. The user confirms every command
+# anyway; these say why this one deserves a second look.
+RISKS = [
+    ("root", r"(^|[;&|(\s])(sudo|doas|pkexec|run0)\s"),
+    ("delete", r"(^|[;&|(\s])(rm\s+(-\w*[rRf]|--recursive|--force)|shred\s|find\s.*-delete\b|truncate\s)"),
+    ("disk", r"(^|[;&|(\s])(mkfs\S*|wipefs|fdisk|sfdisk|parted|sgdisk|cryptsetup|dd)\s|>\s*/dev/(sd|nvme|mmcblk|vd)"),
+    ("git", r"\bgit\s+(push\s.*(--force|-f\b|--delete)|reset\s+--hard|clean\s+-\w*f|branch\s+-D|checkout\s+--\s|restore\s)"),
+    ("power", r"(^|[;&|(\s])(shutdown|reboot|poweroff|halt|systemctl\s+(--\S+\s+)*(poweroff|reboot|halt|suspend|hibernate|kexec))\b"),
+    ("system", r"\b(nixos-rebuild|nix-collect-garbage|nix-env)\b|\bsystemctl\s+(--\S+\s+)*(stop|disable|mask|restart|kill)\b|\bnix\s+(profile\s+(remove|wipe-history)|store\s+(delete|gc))"),
+    ("permissions", r"\bch(mod|own|grp)\s+(-\w*R|--recursive)"),
+    ("internet", r"\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba|z|da)?sh\b"),
+]
+
+
+def risks(command):
+    return [name for name, pattern in RISKS if re.search(pattern, command)]
+
+
+ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()*+][0-9A-Za-z]|\x1b[@-~]")
+
+
+def terminal_text(raw):
+    """A command's output as plain text: no colours, and of a line redrawn
+    with \\r (progress bars) only what was left on screen."""
+    text = ANSI.sub("", raw.decode("utf-8", "replace"))
+    return "\n".join(line.rstrip("\r").rsplit("\r", 1)[-1].rstrip() for line in text.split("\n"))
+
+
+def clip_middle(text, limit):
+    """The start and, mostly, the end: errors come last."""
+    if len(text) <= limit:
+        return text
+    head = limit // 3
+    return text[:head].rstrip() + "\n…\n" + text[-(limit - head):].lstrip()
 
 
 class Tools:
@@ -491,6 +554,15 @@ class Tools:
             facts["created"] = bool(result.get("created"))
             facts["added"] = result.get("added", 0)
             facts["removed"] = result.get("removed", 0)
+        elif name == "open_app":
+            facts["opened"] = result.get("opened", "")
+        elif name == "run_command":
+            facts["declined"] = bool(result.get("declined"))
+            facts["terminal"] = bool(result.get("terminal"))
+            facts["exit"] = result.get("exit")
+            facts["seconds"] = result.get("seconds", 0)
+            lines = [line for line in str(result.get("output", "")).splitlines() if line.strip()]
+            facts["tail"] = [line[:200] for line in lines[-OUTPUT_LINES:]]
         if "error" in result:
             facts["error"] = str(result["error"])[:200]
         return facts
@@ -854,6 +926,155 @@ class Tools:
         self.put(full, content)
         return dict(facts, ok=True)
 
+    # the desktop: the shell opens apps (it knows the desktop entries)
+
+    def open_app(self, target, cancel=None):
+        target = re.sub(r"\s+", " ", str(target or "")).strip()[:300]
+        if not target:
+            return {"error": "say what to open"}
+        kind = "app"
+        if re.match(r"(?i)^(https?|mailto):", target):
+            kind = "url"
+        elif target.startswith(("/", "~")):
+            kind = "path"
+            target = os.path.expanduser(target)
+            if not os.path.exists(target):
+                return {"error": f"{target} does not exist"}
+        answer = self.agent.call_shell("launch", {"target": target, "kind": kind}, cancel)
+        if not isinstance(answer, dict):
+            return {"error": "the desktop did not answer"}
+        if not answer.get("ok"):
+            result = {"error": answer.get("error") or f"nothing called {target} to open"}
+            if answer.get("similar"):
+                result["similar"] = [str(name) for name in answer["similar"]][:8]
+            return result
+        return {"ok": True, "opened": str(answer.get("name") or target)}
+
+    # the terminal: every command is confirmed first
+
+    def folder(self, cwd):
+        """Where a command runs: `cwd` (relative to the default), or the
+        repository, or the home folder."""
+        home = os.path.expanduser("~")
+        default = os.path.expanduser(str(self.agent.settings.get("repo") or ""))
+        default = default if default and os.path.isdir(default) else home
+        path = os.path.join(default, os.path.expanduser(str(cwd).strip())) if cwd and str(cwd).strip() else default
+        if not os.path.isdir(path):
+            raise RuntimeError(f"{cwd} is not a folder")
+        return os.path.realpath(path)
+
+    def run_command(self, command, reason="", cwd=None, terminal=False, cancel=None):
+        command = str(command or "").strip()
+        if not command:
+            return {"error": "the command is empty"}
+        if len(command) > COMMAND_CHARS:
+            return {"error": f"the command is longer than {COMMAND_CHARS} characters: split it or write a script"}
+        folder = self.folder(cwd)
+        danger = risks(command)
+        # sudo asks for a password on a terminal, and here there is none.
+        terminal = terminal is True or str(terminal).lower() == "true" or "root" in danger
+        ok = self.agent.ask_confirmation({
+            "action": "terminal" if terminal else "run",
+            "command": command,
+            "cwd": self.agent.short_path(folder),
+            "reason": re.sub(r"\s+", " ", str(reason or "")).strip()[:300],
+            "danger": danger,
+        }, cancel)
+        if not ok:
+            return {"declined": True, "note": "The user did not confirm. Nothing ran."}
+        if terminal:
+            return self.in_terminal(command, folder)
+        return self.execute(command, folder, cancel)
+
+    def in_terminal(self, command, folder):
+        """In a terminal window the user sees and can type in (a password),
+        kept open when the command ends, with its exit code at the bottom."""
+        script = command + "\nprintf '\\n[%s]\\n' \"$?\""
+        try:
+            subprocess.Popen([self.config.get("terminal", "kitty"), "--hold", "--directory", folder,
+                              self.config.get("bash", "bash"), "-lc", script],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+        except OSError as e:
+            return {"error": f"cannot open the terminal: {e}"}
+        return {"ok": True, "terminal": True, "cwd": self.agent.short_path(folder),
+                "note": "It is running in a terminal window: you don't see its output. Tell the user to look there."}
+
+    def execute(self, command, folder, cancel):
+        limit = float(self.config.get("commandSeconds", COMMAND_SECONDS))
+        env = dict(os.environ, TERM="dumb", NO_COLOR="1", PAGER="cat", GIT_PAGER="cat", SYSTEMD_PAGER="",
+                   SYSTEMD_COLORS="0", GIT_TERMINAL_PROMPT="0")
+        started = time.monotonic()
+        try:
+            proc = subprocess.Popen([self.config.get("bash", "bash"), "-c", command], cwd=folder, env=env,
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    start_new_session=True)
+        except OSError as e:
+            return {"error": f"cannot run bash: {e}"}
+        head, tail, total = bytearray(), bytearray(), [0]
+
+        def pump():
+            # The output's start and its end; whatever is in between only counts.
+            while True:
+                try:
+                    chunk = os.read(proc.stdout.fileno(), 65536)
+                except OSError:
+                    return
+                if not chunk:
+                    return
+                total[0] += len(chunk)
+                room = OUTPUT_KEEP - len(head)
+                if room > 0:
+                    head.extend(chunk[:room])
+                    chunk = chunk[room:]
+                if chunk:
+                    tail.extend(chunk)
+                    del tail[:-OUTPUT_KEEP]
+
+        reader = threading.Thread(target=pump, daemon=True)
+        reader.start()
+        stopped, shown, last = "", None, 0.0
+        while proc.poll() is None:
+            if cancel and cancel.cancelled:
+                stopped = "cancelled"
+            elif time.monotonic() - started > limit:
+                stopped = "timeout"
+            if stopped:
+                self.kill(proc)
+                break
+            time.sleep(0.1)
+            if time.monotonic() - last > 0.3:
+                last = time.monotonic()
+                lines = [line for line in terminal_text(bytes((head + tail)[-4096:])).splitlines() if line.strip()]
+                lines = [line[:200] for line in lines[-OUTPUT_LINES:]]
+                if lines != shown:
+                    shown = lines
+                    self.agent.out("output", id=self.agent.current_tool, lines=lines)
+        reader.join(timeout=2)
+        dropped = total[0] - len(head) - len(tail)
+        text = terminal_text(bytes(head)) + (f"\n… ({dropped} bytes) …\n" if dropped > 0 else "") + terminal_text(bytes(tail))
+        result = {"exit": proc.returncode, "seconds": round(time.monotonic() - started, 1),
+                  "cwd": self.agent.short_path(folder), "output": clip_middle(text.strip(), OUTPUT_CHARS) or "(no output)"}
+        if stopped == "timeout":
+            result["error"] = f"it ran for more than {int(limit)} s and was stopped: use terminal=true for long commands"
+        elif stopped == "cancelled":
+            result["note"] = "The user stopped it."
+        return result
+
+    @staticmethod
+    def kill(proc):
+        """The command and everything it started: they share its session."""
+        for sig, wait in ((signal.SIGTERM, 2), (signal.SIGKILL, 2)):
+            try:
+                os.killpg(proc.pid, sig)
+            except (ProcessLookupError, PermissionError):
+                return
+            try:
+                proc.wait(timeout=wait)
+                return
+            except subprocess.TimeoutExpired:
+                continue
+
 
 def meminfo():
     values = {}
@@ -904,8 +1125,15 @@ PROMPT = {
         "write": "Puedes leer y cambiar archivos de {repo} con list_files, read_file, edit_file y write_file, solo "
                  "cuando te lo pidan. Lee un archivo antes de cambiarlo; para cambios pequeños usa edit_file. El "
                  "usuario ve cada cambio y lo confirma antes de que se escriba; si no lo confirma, no insistas.",
+        "apps": "Con open_app abres aplicaciones, archivos, carpetas y webs en el escritorio cuando te lo pidan.",
+        "shell": "Con run_command ejecutas comandos de bash en este ordenador. El usuario ve cada comando y lo confirma "
+                 "antes de que se ejecute: uno por llamada, y di en reason qué hace y por qué. Mira antes de cambiar "
+                 "nada. Lo que pide contraseña (sudo), es interactivo o tarda minutos va con terminal=true: se abre "
+                 "en una terminal para el usuario y tú no ves la salida.",
         "limits": "No puedes editar archivos ni ejecutar comandos: si te lo piden, explica cómo hacerlo.",
         "limitsWrite": "No puedes ejecutar comandos ni tocar nada fuera de {repo}: si te lo piden, explica cómo hacerlo.",
+        "limitsShell": "Ejecuta solo lo que haga falta para lo que te piden, y nunca algo destructivo que no te hayan "
+                       "pedido claramente.",
         "about": "NIHIL: SUPER+Espacio abre el launcher (> acciones, = calculadora, ? tú); SUPER+D el dashboard; "
                  "SUPER+P los ajustes; {summon} te abren a ti. La configuración está en {flake} y se aplica con "
                  "`sudo nixos-rebuild switch --flake {flake}#{host}`.",
@@ -932,8 +1160,14 @@ PROMPT = {
         "write": "You can read and change files of {repo} with list_files, read_file, edit_file and write_file, only "
                  "when asked to. Read a file before changing it; for small changes use edit_file. The user sees every "
                  "change and confirms it before it is written; if they don't, don't insist.",
+        "apps": "With open_app you open apps, files, folders and web pages on the desktop when asked to.",
+        "shell": "With run_command you run bash commands on this computer. The user sees every command and confirms "
+                 "it before it runs: one per call, and say in reason what it does and why. Look before you change "
+                 "anything. Whatever asks for a password (sudo), is interactive or takes minutes goes with "
+                 "terminal=true: it opens in a terminal for the user and you don't see its output.",
         "limits": "You cannot edit files or run commands: if asked to, explain how to do it.",
         "limitsWrite": "You cannot run commands or touch anything outside {repo}: if asked to, explain how to do it.",
+        "limitsShell": "Run only what the request needs, and never anything destructive you weren't clearly asked for.",
         "about": "NIHIL: SUPER+Space opens the launcher (> actions, = calculator, ? you); SUPER+D the dashboard; "
                  "SUPER+P the settings; {summon} open you. The configuration lives in {flake} and is applied with "
                  "`sudo nixos-rebuild switch --flake {flake}#{host}`.",
@@ -964,7 +1198,12 @@ def build_prompt(config, settings, now=None):
         rules.append(text["git"].format(repo=settings["repo"]))
     if settings.get("write"):
         rules.append(text["write"].format(repo=settings["repo"]))
-    rules.append(text["limitsWrite" if settings.get("write") else "limits"].format(repo=settings["repo"]))
+    if settings.get("apps"):
+        rules.append(text["apps"])
+    if settings.get("shell"):
+        rules.append(text["shell"])
+    limits = "limitsShell" if settings.get("shell") else "limitsWrite" if settings.get("write") else "limits"
+    rules.append(text[limits].format(repo=settings["repo"]))
     lines += [f"- {rule}" for rule in rules]
     lines += ["", text["about"].format(summon=config.get("summon") or text["summon"],
                                        flake=config.get("flake", "~/nixos-config"), host=config.get("host", ""))]
@@ -986,8 +1225,9 @@ class Agent:
         self.lock = threading.Lock()
         self.turn = None            # Cancel of the answer being written
         self.pulling = None         # (model, Cancel)
-        self.confirms = {}          # id -> [Event, answer]
+        self.confirms = {}          # id -> [Event, answer]: confirmations and the shell's replies
         self.ids = itertools.count(1)
+        self.current_tool = ""      # id of the tool running, for its live output
         self.no_tools = False       # the model said it can't use tools
         self.state = {"ollama": None, "loaded": False, "loading": False, "model": "", "expires": None,
                       "sizeGB": 0, "gpu": 0}
@@ -1366,6 +1606,25 @@ class Agent:
             entry[1] = bool(ok)
             entry[0].set()
 
+    def call_shell(self, ev, detail, cancel, seconds=8):
+        """Ask the shell to do something only it can (open an app) and wait
+        for its reply; None if it doesn't answer."""
+        cid = f"c{next(self.ids)}"
+        event = threading.Event()
+        self.confirms[cid] = [event, None]
+        self.out(ev, id=cid, **detail)
+        deadline = time.monotonic() + seconds
+        while not event.wait(0.1):
+            if (cancel and cancel.cancelled) or time.monotonic() > deadline:
+                break
+        return self.confirms.pop(cid, [None, None])[1]
+
+    def answer_shell(self, cid, reply):
+        entry = self.confirms.get(cid)
+        if entry:
+            entry[1] = {k: v for k, v in reply.items() if k not in ("op", "id")}
+            entry[0].set()
+
     def messages(self, history):
         system = build_prompt(self.config, self.settings)
         budget = int(self.config.get("contextLength", 16384) * 2.5) - len(system)
@@ -1483,6 +1742,7 @@ class Agent:
                 # The shell shows the path or the query; a file's whole text stays here.
                 shown = {k: v[:200] if isinstance(v, str) else v for k, v in args.items()} if isinstance(args, dict) else args
                 self.out("tool", id=tid, name=name, args=shown, status="running")
+                self.current_tool = tid
                 result, facts = self.tools.run(name, args, cancel)
                 self.out("tool", id=tid, name=name, status="done", **facts)
                 message = {"role": "tool", "tool_name": name, "content": json.dumps(result, ensure_ascii=False)}
@@ -1546,6 +1806,8 @@ class Agent:
             threading.Thread(target=self.repos, daemon=True).start()
         elif op == "startOllama":
             threading.Thread(target=self.start_ollama, kwargs={"ask": True}, daemon=True).start()
+        elif op == "launched":
+            self.answer_shell(request.get("id"), request)
         else:
             self.out("error", code="bad-request", detail=f"unknown op {op!r}")
 

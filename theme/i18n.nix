@@ -141,6 +141,8 @@
 		niloTryDisk = "¿Cuánto disco me queda?";
 		niloTryFiles = "¿Qué hay en mi repositorio?";
 		niloTryPush = "Sube los cambios de mi config";
+		niloTryShell = "¿Qué ocupa más en mi carpeta personal?";
+		niloTryApps = "Abre Spotify";
 		niloCopy = "copiar";
 		niloCopied = "copiado";
 		niloStopped = "parado";
@@ -167,6 +169,12 @@
 		toolChanging = "preparando %1";
 		toolChanged = "cambiado %1 · +%2 −%3";
 		toolCreated = "creado %1 · %2 líneas";
+		toolRunning = "ejecutando %1";
+		toolRanOk = "%1 · hecho";
+		toolRanFail = "%1 · salió con %2";
+		toolInTerminal = "%1 · en una terminal";
+		toolLaunching = "abriendo %1";
+		toolLaunched = "abierto %1";
 
 		confirmCommitPush = "commit y push";
 		confirmCommit = "commit";
@@ -177,6 +185,17 @@
 		confirmEdit = "cambiar";
 		confirmCreate = "crear";
 		confirmMoreLines = "y %1 líneas más";
+		confirmShell = "terminal";
+		confirmRun = "ejecutar";
+		confirmTerminal = "en una terminal";
+		dangerRoot = "como root";
+		dangerDelete = "borra archivos";
+		dangerDisk = "toca discos";
+		dangerGit = "reescribe git";
+		dangerPower = "apaga o suspende";
+		dangerSystem = "cambia el sistema";
+		dangerPermissions = "cambia permisos";
+		dangerInternet = "ejecuta un script de internet";
 		confirmOk = "confirmar";
 		confirmCancel = "cancelar";
 		confirmDone = "confirmado";
@@ -229,6 +248,11 @@
 		accessWrite = "Archivos";
 		accessWriteSub = "leer, crear y cambiar archivos en %1, enseñándote cada cambio antes";
 		accessWriteGuard = "Podré leer, crear y cambiar archivos dentro de %1, nunca fuera de él ni en .git. Antes de cada cambio te enseño el diff y no toco nada hasta que confirmes.";
+		accessApps = "Aplicaciones";
+		accessAppsSub = "abrir apps, archivos, carpetas y webs";
+		accessShell = "Terminal";
+		accessShellSub = "ejecutar comandos, cada uno con tu confirmación";
+		accessShellGuard = "Podré ejecutar comandos con tu usuario en este ordenador. Antes de cada uno te enseño el comando exacto, dónde se ejecuta y para qué, y no hago nada hasta que confirmes. Lo que pide sudo se abre en una terminal para que escribas tú la contraseña.";
 		accessAuthorize = "autorizar";
 
 		setModel = "modelo";
@@ -372,6 +396,8 @@
 		niloTryDisk = "How much disk space is left?";
 		niloTryFiles = "What's in my repository?";
 		niloTryPush = "Push my config changes";
+		niloTryShell = "What takes the most space in my home folder?";
+		niloTryApps = "Open Spotify";
 		niloCopy = "copy";
 		niloCopied = "copied";
 		niloStopped = "stopped";
@@ -398,6 +424,12 @@
 		toolChanging = "preparing %1";
 		toolChanged = "changed %1 · +%2 −%3";
 		toolCreated = "created %1 · %2 lines";
+		toolRunning = "running %1";
+		toolRanOk = "%1 · done";
+		toolRanFail = "%1 · exited with %2";
+		toolInTerminal = "%1 · in a terminal";
+		toolLaunching = "opening %1";
+		toolLaunched = "opened %1";
 
 		confirmCommitPush = "commit and push";
 		confirmCommit = "commit";
@@ -408,6 +440,17 @@
 		confirmEdit = "change";
 		confirmCreate = "create";
 		confirmMoreLines = "and %1 more lines";
+		confirmShell = "terminal";
+		confirmRun = "run";
+		confirmTerminal = "in a terminal";
+		dangerRoot = "as root";
+		dangerDelete = "deletes files";
+		dangerDisk = "touches disks";
+		dangerGit = "rewrites git";
+		dangerPower = "powers off or suspends";
+		dangerSystem = "changes the system";
+		dangerPermissions = "changes permissions";
+		dangerInternet = "runs a script from the internet";
 		confirmOk = "confirm";
 		confirmCancel = "cancel";
 		confirmDone = "confirmed";
@@ -460,6 +503,11 @@
 		accessWrite = "Files";
 		accessWriteSub = "read, create and change files in %1, showing you each change first";
 		accessWriteGuard = "I'll be able to read, create and change files inside %1, never outside it or in .git. Before each change I show you the diff, and nothing is touched until you confirm.";
+		accessApps = "Apps";
+		accessAppsSub = "open apps, files, folders and web pages";
+		accessShell = "Terminal";
+		accessShellSub = "run commands, each one confirmed by you";
+		accessShellGuard = "I will be able to run commands as your user on this computer. Before each one I show you the exact command, where it runs and what for, and nothing happens until you confirm. Whatever needs sudo opens in a terminal, so you type the password yourself.";
 		accessAuthorize = "authorize";
 
 		setModel = "model";

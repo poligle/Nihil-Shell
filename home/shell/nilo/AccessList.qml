@@ -4,11 +4,12 @@ import qs.config
 import qs.services
 import qs.components
 
-// What Nilo may do: one LED switch per kind of tool. Files and git touch
-// the repository, so turning them on takes a second step: the row says
-// what it allows and waits for "authorize" (or the same key again). Even
-// then, every change to a file and every commit or push asks first, and
-// choosing another repository turns both off again (agent.py).
+// What Nilo may do: one LED switch per kind of tool. Files, git and the
+// terminal can change things, so turning them on takes a second step: the
+// row says what it allows and waits for "authorize" (or the same key
+// again). Even then, every change to a file, every commit or push and
+// every command asks first, and choosing another repository turns files
+// and git off again (agent.py).
 Column {
     id: root
 
@@ -19,8 +20,10 @@ Column {
     readonly property var items: [
         { key: "web", title: Lang.accessWeb, sub: Lang.accessWebSub, guard: "" },
         { key: "system", title: Lang.accessSystem, sub: Lang.accessSystemSub, guard: "" },
+        { key: "apps", title: Lang.accessApps, sub: Lang.accessAppsSub, guard: "" },
         { key: "write", title: Lang.accessWrite, sub: Lang.accessWriteSub.arg(repo), guard: Lang.accessWriteGuard.arg(repo) },
-        { key: "git", title: Lang.accessGit, sub: Lang.accessGitSub.arg(repo), guard: Lang.accessGitGuard.arg(repo) }
+        { key: "git", title: Lang.accessGit, sub: Lang.accessGitSub.arg(repo), guard: Lang.accessGitGuard.arg(repo) },
+        { key: "shell", title: Lang.accessShell, sub: Lang.accessShellSub, guard: Lang.accessShellGuard }
     ]
     readonly property int count: items.length
 
@@ -53,7 +56,12 @@ Column {
         if (asking !== "" && items[current].key !== asking) asking = "";
     }
 
+    function rowAt(index: int): Item {
+        return rows.itemAt(index);
+    }
+
     Repeater {
+        id: rows
         model: root.items
 
         Rectangle {

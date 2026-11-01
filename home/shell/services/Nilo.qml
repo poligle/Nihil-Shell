@@ -9,6 +9,7 @@ import qs.config
 // starts the first time Nilo opens and stays (it holds the conversation and
 // any download); it speaks one JSON object per line. The model itself lives
 // in Ollama and goes to sleep on its own after `settings.keepAlive` minutes.
+// Opening apps is done here, where the desktop entries are (open_app).
 //   qs -c nihil ipc call nilo toggle|open|sleep      nilo ask "..."
 Singleton {
     id: root
@@ -146,6 +147,25 @@ Singleton {
 
     function findRepos(): void { send({ op: "repos" }); }
 
+    // open_app: an app by its name, as the launcher finds it (only a good
+    // match: a name, a word of it or its keywords), or a path or an address
+    // in whatever opens it. The launcher closes, as when an app is opened
+    // from it; the answer goes on without it.
+    function launch(target: string, kind: string): var {
+        if (kind === "url" || kind === "path") {
+            const ok = Qt.openUrlExternally(kind === "path" ? "file://" + encodeURI(target) : target);
+            if (ok) Drawers.close();
+            return ok ? { ok: true, name: target } : { ok: false, error: "nothing opens " + target };
+        }
+        const q = String(target ?? "").trim().toLowerCase();
+        const found = q ? Apps.search(q) : [];
+        const best = found.length > 0 && Apps.score(found[0], q) >= 200 ? found[0] : null;
+        if (!best) return { ok: false, similar: found.slice(0, 5).map(e => e.name) };
+        Drawers.close();
+        Apps.launch(best);
+        return { ok: true, name: best.name };
+    }
+
     function cancelDownload(): void { send({ op: "cancelPull" }); }
     function remove(tag: string): void { send({ op: "delete", model: tag }); }
     function sleep(): void { send({ op: "sleep" }); }
@@ -250,14 +270,24 @@ Singleton {
                 const i = findTool(e.id);
                 if (i >= 0) {
                     const args = JSON.parse(messages.get(i).info || "{}");
-                    // Declined (git or a file change) is not a failure: it says "cancelled".
+                    // Declined (git, a file change or a command) is not a failure: it says "cancelled".
                     messages.set(i, { done: true, status: e.ok || e.declined ? "done" : "failed",
-                                      info: JSON.stringify(Object.assign({}, e, { args: args })) });
+                                      info: JSON.stringify(Object.assign({}, e, { args: args })),
+                                      text: e.tail ? e.tail.join("\n") : messages.get(i).text });
                 }
                 if (e.name === "git_commit" && e.ok && !e.declined) mood = "happy";
                 phase = "waiting";
                 tool = "";
             }
+            break;
+        case "output": {
+            // A command's last lines while it runs.
+            const i = findTool(e.id);
+            if (i >= 0) messages.setProperty(i, "text", (e.lines ?? []).join("\n"));
+            break;
+        }
+        case "launch":
+            send(Object.assign({ op: "launched", id: e.id }, launch(e.target, e.kind)));
             break;
         case "confirm":
             confirm = e;
