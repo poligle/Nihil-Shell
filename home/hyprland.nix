@@ -242,7 +242,10 @@ in
 			[
 				{ name = "suppress-maximize"; match.class = ".*"; suppress_event = "maximize"; }
 				{ name = "kitty-float"; match.class = "kitty"; float = true; size = "800 500"; center = true; }
-				{ name = "thunar-float"; match.class = "thunar"; float = true; size = "1000 700"; center = true; }
+				# Every Thunar window floats; only the main ones ("Downloads - Thunar")
+				# get the size, so its dialogs (rename, progress) keep their own.
+				{ name = "thunar-float"; match.class = "thunar"; float = true; center = true; }
+				{ name = "thunar-size"; match.class = "thunar"; match.title = ".+ - Thunar"; size = "1000 700"; }
 				(floatingPanel "wifi-float" "nm-connection-editor")
 				(floatingPanel "bluetooth-float" ".*blueman-manager.*")
 				(floatingPanel "vol-float" "org.pulseaudio.pavucontrol")
