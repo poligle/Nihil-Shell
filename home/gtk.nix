@@ -1,10 +1,19 @@
 # gtk.nix by poligle
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
+let
+    colors = config.lib.stylix.colors.withHashtag;
+in
 {
     gtk =
     {
         enable = true; 
+
+        # Stylix picks adw-gtk3, the light variant, and recolours it with the
+        # NIHIL palette. Some rules of the light variant keep their own dark
+        # text, like the buttons of message dialogs (Thunar's "delete?"):
+        # black on the dark dialog. The dark variant has light text there.
+        theme.name = lib.mkForce "adw-gtk3-dark";
 
         # Icon Configuration: Colloid in its grey variant, so folders and
         # symbolic icons follow the NIHIL monochrome (the shell also shows
@@ -45,6 +54,12 @@
             gtk-xft-rgba = "rgb";
         };
     };
+
+    # Red carries ink, as in the shell, never black.
+    stylix.targets.gtk.extraCss = ''
+        @define-color destructive_fg_color ${colors.base06};
+        @define-color error_fg_color ${colors.base06};
+    '';
 
     # Extra font package for CJK
     home.packages = 
