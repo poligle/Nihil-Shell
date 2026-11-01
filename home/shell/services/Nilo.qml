@@ -242,6 +242,9 @@ Singleton {
 
     function findRepos(): void { send({ op: "repos" }); }
 
+    // ~/.config/nihil/nilo.md, made by the agent if missing, in the editor.
+    function editNotes(): void { send({ op: "notes" }); }
+
     // open_app: an app by its name, as the launcher finds it (only a good
     // match: a name, a word of it or its keywords), or a path or an address
     // in whatever opens it. The launcher closes, as when an app is opened
@@ -346,6 +349,10 @@ Singleton {
             break;
         case "repos":
             repos = e.repos ?? [];
+            break;
+        case "notes":
+            Drawers.close();
+            Qt.openUrlExternally("file://" + encodeURI(e.path));
             break;
         case "reset":
             break;

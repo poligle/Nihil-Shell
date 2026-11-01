@@ -160,6 +160,31 @@ Item {
                 font.pixelSize: 12
             }
 
+            Section { title: Lang.setContext }
+
+            Row {
+                width: content.width
+                spacing: 16
+                leftPadding: 16
+
+                PillButton {
+                    id: notes
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Lang.setContextEdit
+                    onClicked: Nilo.editNotes()
+                }
+
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: content.width - notes.width - 48
+                    text: Lang.setContextNote
+                    color: Tokens.muted
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideNone
+                    font.pixelSize: 12
+                }
+            }
+
             Section { title: Lang.setMemory }
 
             Txt {

@@ -23,6 +23,9 @@ let
         inherit terminal;
         host = osConfig.networking.hostName;
         flake = "~/nixos-config";
+        # What Nilo knows about the system and its rules (the user's notes
+        # and the repository's NILO.md are read where they are).
+        context = "${./nilo.md}";
         # To start Ollama when it is down, and say why it won't (modules/nilo.nix).
         systemctl = "${osConfig.systemd.package}/bin/systemctl";
         journalctl = "${osConfig.systemd.package}/bin/journalctl";

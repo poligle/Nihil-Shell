@@ -266,6 +266,9 @@
 		setRepo = "repositorio";
 		setRepoPath = "ruta";
 		setRepoNote = "Al cambiar de repositorio, git y archivos se apagan hasta que los autorices otra vez.";
+		setContext = "contexto";
+		setContextNote = "En cada pregunta Nilo lee nilo.md (este sistema y sus reglas), tus notas y, con archivos o git, el NILO.md del repositorio.";
+		setContextEdit = "editar mis notas";
 		setMemory = "memoria";
 		setSleepAfter = "dormir tras";
 		setMinutes = "%1 min";
@@ -527,6 +530,9 @@
 		setRepo = "repository";
 		setRepoPath = "path";
 		setRepoNote = "Switching repositories turns git and files off until you authorize them again.";
+		setContext = "context";
+		setContextNote = "On every question Nilo reads nilo.md (this system and its rules), your notes and, with files or git, the repository's NILO.md.";
+		setContextEdit = "edit my notes";
 		setMemory = "memory";
 		setSleepAfter = "sleep after";
 		setMinutes = "%1 min";
