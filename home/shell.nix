@@ -112,6 +112,7 @@ let
 		menu = "${nihil.sounds.menu}";
 		notify = "${nihil.sounds.notify}";
 		critical = "${nihil.sounds.critical}";
+		charge = "${nihil.sounds.charge}";
 	};
 
 	configQml = pkgs.writeText "Config.qml" ''

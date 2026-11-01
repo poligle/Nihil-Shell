@@ -497,6 +497,8 @@ engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
 - **Quickshell and Hyprland focus:** drawers that take the keyboard use
   `WlrKeyboardFocus.OnDemand` together with a `HyprlandFocusGrab`. `Exclusive` would not
   work: Hyprland drops every focus grab when a layer becomes exclusive.
+- **Charger:** plugging it in lights the frame from the bottom and plays `charge`, three
+  climbing notes (`tools/sounds.py`; the classic pack uses freedesktop's `power-plug`).
 - **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables. At
   15, 10 and 5 % it sends a critical notification, once per threshold and discharge; each
   one replaces the last (`x-nihil-tag` hint) and plugging in the charger dismisses it.

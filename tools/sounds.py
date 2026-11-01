@@ -69,6 +69,9 @@ SOUNDS = {
     "critical": place([(0.12 * k, tone(A6, 0.07, 0.03, third=0.3), 0.6) for k in range(3)], 0.34),
     # volume step
     "volume": place([(0, tone(1200, 0.03, 0.008), 0.6)], 0.035),
+    # charger in: three notes climbing as the light rises from the bottom
+    "charge": place([(0, tone(E5, 0.09, 0.03), 0.6), (0.06, tone(B5, 0.09, 0.03), 0.6),
+                     (0.12, tone(E6, 0.22, 0.09, glide=0.03), 0.65)], 0.34),
 }
 
 

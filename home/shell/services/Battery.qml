@@ -44,8 +44,13 @@ Singleton {
         }
     }
 
+    // The charger goes in: the light rises from the bottom, and a sound
+    // climbs with it (not with do not disturb on).
     onChargingChanged: {
-        if (charging && armed) Glyph.charge();
+        if (charging && armed) {
+            Glyph.charge();
+            if (!Notifs.dnd) Sounds.play(Config.sounds.charge, 0.4);
+        }
         check();
     }
     onBandChanged: check()
