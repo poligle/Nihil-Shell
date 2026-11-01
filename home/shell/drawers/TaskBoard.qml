@@ -9,12 +9,25 @@ import qs.components
 // The dashboard's kanban (services/Tasks.qml): to do, doing, done. The field
 // adds to "to do"; a click on a card moves it on, its arrows move it either
 // way and the cross deletes it; a card can also be dragged to a column.
+//
+// It is as tall as its fullest column, up to `maxRows` cards (the wheel
+// scrolls the rest); with no tasks it is just the field and one line. The
+// dashboard and its drawer follow `implicitHeight` (Frame.qml).
 Item {
     id: root
 
     property bool active: false
 
     readonly property var titles: [Lang.tasksTodo, Lang.tasksDoing, Lang.tasksDone]
+
+    readonly property int maxRows: 5
+    readonly property real pitch: 36    // a card and the gap under it
+    readonly property bool empty: Tasks.cards.length === 0
+    readonly property int fullest: Math.max(...Tasks.cards.reduce((n, c) => { n[c.column]++; return n; }, [0, 0, 0]))
+    readonly property int rows: Math.max(1, Math.min(maxRows, fullest))
+
+    implicitHeight: header.implicitHeight + 12 + (empty ? hint.implicitHeight
+        : laneProbe.implicitHeight + 10 + rows * pitch - 6 + (fullest > maxRows ? 14 : 0))
 
     // A card being dragged: its id and text, the column under the pointer and
     // where the pointer is, in this item.
@@ -48,12 +61,20 @@ Item {
         return -1;
     }
 
+    // The height of a column's title, for implicitHeight.
+    Label {
+        id: laneProbe
+        visible: false
+        text: "0"
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
 
         // Title, count and the field for a new task.
         RowLayout {
+            id: header
             Layout.fillWidth: true
             spacing: 12
 
@@ -94,10 +115,24 @@ Item {
             }
         }
 
+        // With no tasks at all, how it works.
+        Txt {
+            id: hint
+            Layout.fillWidth: true
+            visible: root.empty
+            text: Lang.tasksEmpty
+            color: Tokens.muted
+            wrapMode: Text.Wrap
+            elide: Text.ElideNone
+            font.pixelSize: 12
+            lineHeight: 1.2
+        }
+
         RowLayout {
             id: columnsRow
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: !root.empty
             spacing: 18
 
             Repeater {
@@ -177,24 +212,10 @@ Item {
                         }
                     }
 
-                    // With no tasks at all, how it works.
-                    Txt {
-                        anchors.top: laneHead.bottom
-                        anchors.topMargin: 12
-                        width: parent.width
-                        visible: lane.column === 0 && Tasks.cards.length === 0
-                        text: Lang.tasksEmpty
-                        color: Tokens.muted
-                        wrapMode: Text.Wrap
-                        elide: Text.ElideNone
-                        font.pixelSize: 12
-                        lineHeight: 1.2
-                    }
-
                     // As many whole cards as fit; the wheel scrolls the rest.
                     ListView {
                         id: list
-                        readonly property real pitch: 30 + spacing
+                        readonly property real pitch: root.pitch
                         anchors.top: laneHead.bottom
                         anchors.topMargin: 10
                         width: parent.width
