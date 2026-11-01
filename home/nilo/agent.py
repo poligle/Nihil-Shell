@@ -762,6 +762,14 @@ class Tools:
         if not changes and not (push and status["ahead"] > 0):
             return {"error": "there is nothing to commit or push"}
         action = ("commit-push" if push else "commit") if changes else "push"
+        # Nilo signs as co-author (nihil.nilo.coauthor): GitHub shows its face
+        # next to the user's when the email belongs to an account.
+        coauthor = self.config.get("coauthor") or {}
+        trailer = ""
+        if changes and coauthor.get("email"):
+            trailer = f"Co-authored-by: {coauthor.get('name') or 'Nilo'} <{coauthor['email']}>"
+            if trailer.lower() in message.lower():
+                trailer = ""
         _, remotes, _ = self.git(repo, "remote")
         remotes = remotes.split()
         if push and not status["upstream"] and "origin" not in remotes:
@@ -775,6 +783,7 @@ class Tools:
             "more": len(changes) - 30 + status["more"] if len(changes) > 30 else status["more"],
             "ahead": status["ahead"],
             "message": message if changes else "",
+            "trailer": trailer,
         }, cancel)
         if not ok:
             return {"declined": True, "note": "The user did not confirm. Nothing was done."}
@@ -783,7 +792,7 @@ class Tools:
             code, _, err = self.git(repo, "add", "-A")
             if code != 0:
                 return {"error": "git add failed", "detail": err.strip()[-400:]}
-            code, out, err = self.git(repo, "commit", "-m", message)
+            code, out, err = self.git(repo, "commit", "-m", message, *(["--trailer", trailer] if trailer else []))
             if code != 0:
                 return {"error": "git commit failed", "detail": (err or out).strip()[-400:]}
             _, sha, _ = self.git(repo, "rev-parse", "--short", "HEAD")

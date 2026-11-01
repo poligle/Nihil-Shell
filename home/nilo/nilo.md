@@ -43,7 +43,7 @@ track of long prompts.
 
 ## Git {git}
 
-- Commit messages follow the latest ones: a short summary, then why, if it helps.
+- Commit messages follow the latest ones: a short summary, then why, if it helps. You are added as co-author on your own; don't write the trailer.
 - Never force-push, rewrite history or delete branches unless asked for exactly that.
 
 ## Terminal {shell}

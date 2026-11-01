@@ -675,6 +675,17 @@ Item {
                             topPadding: 4
                         }
 
+                        // Nilo signs it too (nihil.nilo.coauthor).
+                        Txt {
+                            width: parent.width
+                            visible: (card.facts.trailer ?? "") !== ""
+                            text: card.facts.trailer ?? ""
+                            textFormat: Text.PlainText
+                            color: Tokens.muted
+                            font.family: Tokens.fontMono
+                            font.pixelSize: 11
+                        }
+
                         Item { width: 1; height: 4 }
 
                         Row {
