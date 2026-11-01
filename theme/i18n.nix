@@ -75,7 +75,7 @@
 		clear = "limpiar";
 		dndOn = "no molestar activo";
 		nothingNew = "nada nuevo";
-		confirmAgain = "otra vez para confirmar";
+		confirmAgain = "otra vez";
 		connectFailed = "No se ha podido conectar";
 		connectedTo = "Conectado a %1";
 		enterpriseHint = "%1 usa WPA-Enterprise (p. ej. eduroam): créala en la configuración avanzada";
@@ -309,7 +309,7 @@
 		clear = "clear";
 		dndOn = "do not disturb is on";
 		nothingNew = "nothing new";
-		confirmAgain = "again to confirm";
+		confirmAgain = "again";
 		connectFailed = "Could not connect";
 		connectedTo = "Connected to %1";
 		enterpriseHint = "%1 uses WPA-Enterprise (e.g. eduroam): set it up in the advanced settings";
