@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
 
@@ -64,6 +65,29 @@ Singleton {
     property bool summon: false
     signal summoned()
 
+    // The answer goes on with the launcher closed (esc, a click outside, an
+    // app it opened): when it ends, or when it needs a confirmation, Nilo
+    // sends a notification. Notifs.qml lights the frame from the left and,
+    // instead of a popup, this panel comes out of the bar next to the eyes
+    // (nilo/Peek.qml); with do not disturb on, only the history keeps it.
+    property bool behind: false
+    property bool peeking: false
+    property string peekKind: ""        // done, confirm or error
+    property string peekScreen: ""
+    property string peekQuestion: ""
+    property string peekText: ""
+    property var peekFacts: ({})        // the confirmation, or the answer's stats
+
+    onShownChanged: {
+        if (shown) {
+            behind = false;
+            unpeek();
+            Notifs.dismissTag("nilo");
+        } else if (busy) {
+            behind = true;
+        }
+    }
+
     readonly property bool onboarded: settings.onboarded === true
     readonly property var current: models.find(m => m.tag === settings.model) ?? null
     readonly property bool installed: current?.installed === true
@@ -95,6 +119,77 @@ Singleton {
         if (shown && Drawers.current === "launcher") Drawers.close();
         else open();
     }
+
+    // --- Away from the launcher -------------------------------------------------
+
+    // The screen of the panel: the focused one if it has the bar (and the eyes).
+    function barScreen(): string {
+        const focused = Hyprland.focusedMonitor?.name ?? "";
+        const bars = Config.barOutputs;
+        if (bars.indexOf(focused) >= 0) return focused;
+        return bars.indexOf(Config.primaryOutput) >= 0 ? Config.primaryOutput : (bars[0] ?? focused);
+    }
+
+    // The last message of a kind in the latest exchange (after its question).
+    function latest(kind: string): var {
+        for (let i = messages.count - 1; i >= 0; i--) {
+            const m = messages.get(i);
+            if (m.kind === kind) return m;
+            if (m.kind === "user") break;
+        }
+        return null;
+    }
+
+    function plain(text: string): string {
+        return String(text ?? "")
+            .replace(/```[\s\S]*?```/g, " … ")
+            .replace(/\[([^\]\n]+)\]\([^)\s]+\)/g, "$1")
+            .replace(/[*_`#>]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function confirmText(c: var): string {
+        if (!c) return "";
+        if (c.action === "run" || c.action === "terminal") return "$ " + (c.command ?? "");
+        if (c.action === "edit" || c.action === "create")
+            return (c.action === "create" ? Lang.confirmCreate : Lang.confirmEdit) + " " + (c.path ?? "");
+        return "git · " + (c.message || (c.action === "push" ? Lang.confirmPush : Lang.confirmCommit));
+    }
+
+    // What the panel shows, and the notification that brings it.
+    function tell(kind: string): void {
+        const question = latest("user");
+        const reply = latest("nilo");
+        const failure = latest("error");
+        peekKind = kind;
+        peekQuestion = question ? question.text : "";
+        peekText = kind === "confirm" ? confirmText(confirm)
+            : kind === "error" ? (failure ? errorText(failure.name, failure.text) : "")
+            : (reply ? reply.text : "");
+        peekFacts = kind === "confirm" ? (confirm ?? {}) : (() => { try { return JSON.parse(reply?.info || "{}"); } catch (e) { return {}; } })();
+        const body = plain(peekText);
+        Quickshell.execDetached([Config.cmd.notifySend, "--app-name=Nilo", "--hint=string:x-nihil-tag:nilo",
+                                 "--hint=string:x-nihil-nilo:" + kind,
+                                 kind === "confirm" ? Lang.niloPeekWaiting : kind === "error" ? Lang.niloPeekFailed : Lang.niloPeekDone,
+                                 (body.length > 220 ? body.slice(0, 219) + "…" : body)
+                                     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")]);
+    }
+
+    // Notifs.qml, once the notification is in: out of the bar it comes.
+    function peek(kind: string): void {
+        if (shown || kind !== peekKind) return;
+        peekScreen = barScreen();
+        peeking = true;
+    }
+
+    function unpeek(): void {
+        peeking = false;
+    }
+
+    // How long the panel stays: longer for longer answers; a confirmation
+    // waits until it is answered.
+    readonly property int peekSeconds: Math.min(20, 7 + Math.ceil(plain(peekText).length / 45))
 
     // --- Requests ---------------------------------------------------------------
 
@@ -188,6 +283,18 @@ Singleton {
         for (let i = messages.count - 1; i >= 0; i--)
             if (messages.get(i).cid === id) return i;
         return -1;
+    }
+
+    function errorText(code: string, detail: string): string {
+        const model = settings.model ?? "";
+        switch (code) {
+        case "ollama-down": return Lang.niloErrOllama;
+        case "model-missing": return Lang.niloErrModel.arg(model);
+        case "memory": return Lang.niloErrMemory.arg(model);
+        case "no-model": return Lang.niloErrNoModel;
+        case "bad-repo": return Lang.niloErrRepo.arg(detail);
+        }
+        return Lang.niloErrOther.arg((detail || code).slice(0, 160));
     }
 
     function catalogue(e: var): void {
@@ -294,12 +401,14 @@ Singleton {
             messages.append({ kind: "confirm", text: "", done: false, name: e.action, status: "asking",
                               info: JSON.stringify(e), cid: e.id });
             phase = "confirm";
+            if (!shown) tell("confirm");
             break;
         case "confirmed": {
             const i = findTool(e.id);
             if (i >= 0) messages.set(i, { done: true, status: e.ok ? "ok" : "declined" });
             confirm = null;
             phase = "tool";
+            if (peeking && peekKind === "confirm") unpeek();
             break;
         }
         case "done": {
@@ -309,6 +418,8 @@ Singleton {
                 messages.append({ kind: "note", text: "", done: true, name: "stopped", status: "", info: "", cid: "" });
             else if (l && l.kind === "nilo" && e.stats && e.stats.tokens)
                 messages.setProperty(messages.count - 1, "info", JSON.stringify(e.stats));
+            if (behind && !shown && !e.cancelled) tell(e.failed ? "error" : "done");
+            behind = false;
             busy = false;
             stopping = false;
             phase = "idle";

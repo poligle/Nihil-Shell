@@ -6,6 +6,7 @@ import qs.theme
 import qs.config
 import qs.services
 import qs.drawers
+import qs.nilo
 
 // One per output: a fullscreen, click-through layer that draws the frame and
 // grows the drawers out of it. Only the bar, the open drawers and the
@@ -87,11 +88,23 @@ Scope {
         readonly property real osdL: 300
         readonly property real osdD: 64
 
+        // Nilo's panel, out of the bar next to its eyes (nilo/Peek.qml): its
+        // middle at the eyes, never into the frame's corners.
+        readonly property bool peekOpen: root.hasBar && Nilo.peeking && Nilo.peekScreen === root.output
+            && Drawers.current === ""
+        property real peekP: peekOpen ? 1 : 0
+        Behavior on peekP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
+        readonly property real peekD: 400
+        readonly property real peekL: Math.min(peek.implicitHeight, height - 2 * root.edge - 2 * (Tokens.frameRadius + Tokens.fillet))
+        readonly property real peekA: Math.max(root.edge + Tokens.frameRadius + Tokens.fillet,
+            Math.min(barHit.eyesY - peekL / 2, height - root.edge - Tokens.frameRadius - Tokens.fillet - peekL))
+
         readonly property var bumps: [
             { edge: 0, a: centerX - dashW / 2, b: centerX + dashW / 2, d: dashD * dashP },
             { edge: 1, a: root.edge, b: root.edge + panelL, d: panelD * panelP },
             { edge: 1, a: height / 2 - osdL / 2, b: height / 2 + osdL / 2, d: panelP > 0 ? 0 : osdD * osdP },
-            { edge: 2, a: centerX - launcherW / 2, b: centerX + launcherW / 2, d: launcherD * launcherP }
+            { edge: 2, a: centerX - launcherW / 2, b: centerX + launcherW / 2, d: launcherD * launcherP },
+            { edge: 3, a: peekA, b: peekA + peekL, d: peekD * peekP }
         ]
 
         mask: Region {
@@ -103,6 +116,7 @@ Scope {
                 Region { item: dashHit },
                 Region { item: panelHit },
                 Region { item: launcherHit },
+                Region { item: peekHit },
                 Region { item: popups }
             ]
         }
@@ -359,6 +373,25 @@ Scope {
                 onTriggered: {
                     if (bottomZone.containsMouse && Drawers.current === "")
                         Drawers.open("launcher", root.output, true);
+                }
+            }
+
+            // Nilo's panel grows from the bar to the right, its content
+            // sliding out with it.
+            Item {
+                id: peekHit
+                x: root.inset
+                y: win.peekA
+                width: win.peekP > 0 ? win.peekD * win.peekP : 0
+                height: win.peekL
+                clip: true
+
+                Peek {
+                    id: peek
+                    anchors.right: parent.right
+                    width: win.peekD
+                    height: win.peekL
+                    opacity: win.reveal(win.peekP)
                 }
             }
 

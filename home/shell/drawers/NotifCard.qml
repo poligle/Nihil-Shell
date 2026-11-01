@@ -38,6 +38,11 @@ Rectangle {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onClicked: {
+            // Nilo's open the conversation (services/Nilo.qml).
+            if (Notifs.niloKind(root.notification) !== "") {
+                Nilo.open();
+                return;
+            }
             const action = (root.notification?.actions ?? []).find(a => a.identifier === "default");
             if (action) action.invoke();
             if (root.popup) Notifs.hidePopup(root.notification);

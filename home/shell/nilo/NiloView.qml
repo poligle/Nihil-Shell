@@ -132,6 +132,8 @@ Item {
         }
         if (view === "chat") {
             if ((event.modifiers & Qt.ControlModifier) && k === Qt.Key_N) { Nilo.reset(); return true; }
+            // Esc closes and the answer goes on (Nilo tells when it ends); ctrl+c stops it.
+            if ((event.modifiers & Qt.ControlModifier) && k === Qt.Key_C && Nilo.busy) { Nilo.stop(); return true; }
             if (k === Qt.Key_PageUp || k === Qt.Key_PageDown) { chat.scroll((k === Qt.Key_PageUp ? -0.8 : 0.8) * chat.height); return true; }
             if (k === Qt.Key_Up || k === Qt.Key_Down) { chat.scroll(k === Qt.Key_Up ? -60 : 60); return true; }
         }
@@ -146,7 +148,6 @@ Item {
         }
         if (view === "intro" && intro.back()) return true;
         if (Nilo.confirm) { Nilo.answer(false); return true; }
-        if (Nilo.busy) { Nilo.stop(); return true; }
         return false;
     }
 

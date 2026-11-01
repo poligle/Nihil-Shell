@@ -254,9 +254,18 @@ models that suit the RAM and asks what it may do.
 |---|---|
 | `SUPER + I`, the Copilot key | open or close Nilo |
 | `?` in the launcher | the same, typed: `?what's a flake` |
-| enter / esc | ask / stop the answer, or close |
+| enter / esc | ask / close (an answer goes on) |
+| `ctrl + c` | stop the answer |
 | `ctrl + n` | new conversation |
 | the eyes in the bar | the model is in memory; click to open |
+
+**Away from the launcher.** Close it while Nilo answers and the answer goes on. When it
+ends, or when Nilo needs a confirmation, it sends a notification: the light runs round
+the frame from the left, and instead of a popup a panel comes out of the bar next to the
+eyes, with the question and the answer (or the command waiting for you). A click opens
+the conversation; on its own it goes back after a few seconds, longer for long answers,
+and a confirmation stays until it is answered. With do not disturb on, only the panel's
+history keeps it.
 
 **What it may do**, each one a switch in its settings (the gear): **Internet** — search
 DuckDuckGo (through `ddgr`, or `nilo.searxng`) and read pages, never local addresses;

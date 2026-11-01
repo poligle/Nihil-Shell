@@ -6,7 +6,8 @@ import Quickshell.Io
 import qs.theme
 
 // Glyph Interface homage: light that runs along the frame (GlyphLight.qml).
-//   sweep: startEdge 0 top, 1 right, 2 bottom, 3 left (clockwise from that corner)
+//   sweep: startEdge 0 top, 1 right, 2 bottom, 3 left (clockwise from that corner);
+//          Nilo's start on the left, where its eyes are
 //   rise:  from the middle of the bottom edge up both sides (the charger)
 //   qs -c nihil ipc call glyph test true      qs -c nihil ipc call glyph charge
 Singleton {
@@ -21,6 +22,10 @@ Singleton {
 
     function charge(): void {
         root.rise(Tokens.ink);
+    }
+
+    function nilo(): void {
+        root.sweep(Tokens.ink, 1, 3);
     }
 
     IpcHandler {
