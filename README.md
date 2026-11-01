@@ -156,6 +156,7 @@ All of them live under `nihil.*` ([`modules/nihil.nix`](modules/nihil.nix)).
 | `nilo.loadedModels` | `1` | Models Ollama keeps in memory at once; `2` lets the automatic choice switch without reloading |
 | `nilo.contextLength` | `16384` | Context window, in tokens |
 | `nilo.searxng`  | `null`     | A SearXNG instance for web searches instead of DuckDuckGo |
+| `nilo.coauthor` | [nilo-nihil](https://github.com/nilo-nihil) | Who Nilo signs its commits as (`Co-authored-by`); `null` for no trailer |
 
 Read-only: `tokens` (the design tokens), `strings` (the selected language), `sounds`,
 `wallpapers` and `fonts`. To add a language, add a block to
@@ -276,6 +277,13 @@ create and change files in one repository, never outside it or inside `.git`; **
 `git add -A`, commit and push in that repository; **Terminal** — run commands with bash,
 as you. The repository is `~/nixos-config` by default; the settings list the ones under
 `~` (most recently used first) or take any path.
+
+**Co-author.** Every commit Nilo makes carries
+`Co-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>` (`nilo.coauthor`), and the card
+shows it before you confirm. That is the noreply address of
+[github.com/nilo-nihil](https://github.com/nilo-nihil), so GitHub draws Nilo's face next
+to yours: [`assets/brand/nilo-avatar.png`](assets/brand/nilo-avatar.png), drawn by
+`tools/brand.py`.
 
 Files, Git and Terminal are off until you authorize them: the switch first says what it
 allows and waits for "authorize" (or the same key again). Even then, every change to a

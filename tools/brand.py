@@ -4,6 +4,8 @@
 # NIHIL brand assets, all drawn with LED dots:
 #   mark     a ring of 16 LEDs (nihil, the void) around one red LED (ex nihilo)
 #   logo     the mark plus "NIHIL" in a 5x7 dot-matrix face defined below
+#   nilo     Nilo's face for its account (its commits' co-author): the two
+#            eyes of home/shell/nilo/Eyes.qml, open, on black
 #
 #   python3 tools/brand.py [--wallpaper PNG] [--mono-font TTF]
 # Writes assets/brand/* and the favicons and images of the site in docs/,
@@ -93,6 +95,25 @@ def raster(circles, width, height, colours, scale, background=None, radius=0, su
     return img.resize((round(width * scale), round(height * scale)), Image.LANCZOS)
 
 
+def nilo_avatar(size=512):
+    """(svg text, png image) of Nilo's face: two upright pills in the
+    proportions of the eyes in the launcher (30 x 76, 46 apart), on black,
+    small enough for a round crop."""
+    width, height, gap = 0.125 * size, 0.316 * size, 0.19 * size
+    top = (size - height) / 2
+    xs = (size / 2 - gap / 2 - width, size / 2 + gap / 2)
+    eyes = "".join(f'<rect x="{x:.1f}" y="{top:.1f}" width="{width:.1f}" height="{height:.1f}" rx="{width / 2:.1f}"/>'
+                   for x in xs)
+    text = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" width="{size}" height="{size}">\n'
+            f'<rect width="{size}" height="{size}" fill="{VOID}"/>\n<g fill="{INK}">{eyes}</g>\n</svg>\n')
+    s = 4
+    img = Image.new("RGB", (size * s, size * s), VOID)
+    draw = ImageDraw.Draw(img)
+    for x in xs:
+        draw.rounded_rectangle((x * s, top * s, (x + width) * s, (top + height) * s), radius=width / 2 * s, fill=INK)
+    return text, img.resize((size, size), Image.LANCZOS)
+
+
 def favicon_circles():
     # 12 LEDs read better than 16 at 16-32 px.
     return ring(16, 16, 32, leds=12, dot=0.068, centre=0.09, radius=0.33)
@@ -163,6 +184,10 @@ def main():
 
     mark = ring(45, 45, 90)
     open(os.path.join(brand, "nihil-mark.svg"), "w").write(svg(mark, 90, 90, dark))
+
+    face, picture = nilo_avatar()
+    open(os.path.join(brand, "nilo-avatar.svg"), "w").write(face)
+    picture.save(os.path.join(brand, "nilo-avatar.png"), optimize=True)
     open(os.path.join(brand, "nihil-mark-light.svg"), "w").write(svg(mark, 90, 90, light))
 
     fav = favicon_circles()

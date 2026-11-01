@@ -448,6 +448,7 @@ class AgentTest(unittest.TestCase):
 
     def test_git_commit_confirmed(self):
         repo, remote = self.make_repo()
+        self.write_config(coauthor={"name": "Nilo", "email": "351236008+nilo-nihil@users.noreply.github.com"})
         self.start({"model": "qwen3.5:4b", "onboarded": True, "git": True, "repo": repo})
         confirms = []
 
@@ -466,6 +467,8 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(confirm["message"], "Add notes")
         self.assertEqual(sorted(confirm["files"]), [" M a.txt", "?? notes.md"])
         self.assertEqual(git(repo, "log", "-1", "--pretty=%s"), "Add notes")
+        self.assertEqual(confirm["trailer"], "Co-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>")
+        self.assertEqual(git(repo, "log", "-1", "--pretty=%B").strip(), "Add notes\n\nCo-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>")
         self.assertEqual(git(remote, "rev-parse", "main"), git(repo, "rev-parse", "HEAD"))
         done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"]
         self.assertTrue(done[-1]["pushed"])
@@ -484,6 +487,7 @@ class AgentTest(unittest.TestCase):
         self.agent.send(op="ask", text="Sube los cambios")
         events = self.agent.until_done()
         self.assertEqual(git(repo, "log", "-1", "--pretty=%s"), "First")
+        self.assertEqual(next(e for e in events if e["ev"] == "confirm")["trailer"], "")
         done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"]
         self.assertTrue(done[-1]["declined"])
         self.assertIn("No he hecho nada.", self.text_of(events))

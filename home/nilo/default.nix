@@ -14,7 +14,7 @@ let
     {
         ollama = "http://${ollama.host}:${toString ollama.port}";
         inherit (nihil) language;
-        inherit (nihil.nilo) models contextLength searxng;
+        inherit (nihil.nilo) models contextLength searxng coauthor;
         ddgr = "${pkgs.ddgr}/bin/ddgr";
         git = "${pkgs.git}/bin/git";
         # run_command: bash for what Nilo runs, the terminal for what the user

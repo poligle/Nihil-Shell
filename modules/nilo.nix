@@ -117,6 +117,40 @@ in
             description = "Context window Nilo asks for, in tokens: more remembers more and takes more memory.";
         };
 
+        coauthor = lib.mkOption
+        {
+            type = lib.types.nullOr (lib.types.submodule
+            {
+                options =
+                {
+                    name = lib.mkOption
+                    {
+                        type = lib.types.str;
+                        default = "Nilo";
+                        description = "Name in the trailer.";
+                    };
+                    email = lib.mkOption
+                    {
+                        type = lib.types.str;
+                        description = "Email in the trailer: GitHub matches it to an account.";
+                    };
+                };
+            });
+            default =
+            {
+                name = "Nilo";
+                # The noreply address of github.com/nilo-nihil: GitHub ties it to
+                # that account, so its picture shows on the commit.
+                email = "351236008+nilo-nihil@users.noreply.github.com";
+            };
+            description = ''
+                Who Nilo signs its commits as, with a Co-authored-by trailer, so they
+                show both of you. By default the account github.com/nilo-nihil
+                (picture: assets/brand/nilo-avatar.png); GitHub shows the picture of
+                whichever account the email belongs to. null leaves commits as they are.
+            '';
+        };
+
         searxng = lib.mkOption
         {
             type = lib.types.nullOr lib.types.str;
