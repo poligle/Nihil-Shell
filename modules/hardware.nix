@@ -30,6 +30,11 @@ in
         HandleLidSwitchDocked = "ignore";
     };
     services.fprintd.enable = config.nihil.fingerprint;
+
+    # Most Wi-Fi and Bluetooth cards and GPUs need linux-firmware, and new ones
+    # a recent kernel: the same the installer boots with.
+    hardware.enableRedistributableFirmware = lib.mkDefault true;
+    boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
     security.pam.services = lib.genAttrs [ "sudo" "su" "login" "polkit-1" "greetd" ] skipFingerprintWhenLidClosed //
     {
         hyprlock.fprintAuth = false;

@@ -39,10 +39,25 @@ fi
 
 # --- Network: the install downloads most of NIHIL --------------------------------
 
+# Without a connection: a Wi-Fi network, again (a cable, or a phone sharing
+# its connection over USB, work by themselves), or out to a shell.
 until curl -fsI --max-time 6 https://cache.nixos.org >/dev/null; do
-    dim "$(t "There is no connection to the Internet. Choose a network, or plug in a cable." \
-             "No hay conexión a Internet. Elige una red o conecta un cable.")"
-    nmtui-connect || true
+    if ! nmcli -t -f TYPE device 2>/dev/null | grep -qx wifi; then
+        dim "$(t "No Wi-Fi card shows up (it may need a driver this image lacks). A cable, or a phone sharing its connection over USB, work too." \
+                 "No aparece ninguna tarjeta Wi-Fi (puede que necesite un driver que esta imagen no trae). Un cable, o un móvil compartiendo la conexión por USB, también sirven.")"
+    fi
+    wifi=$(t "Choose a Wi-Fi network" "Elegir una red Wi-Fi")
+    retry=$(t "Try again" "Probar otra vez")
+    leave=$(t "Leave the installer" "Salir del instalador")
+    case $(gum choose --header "$(t "There is no connection to the Internet." "No hay conexión a Internet.")" "$wifi" "$retry" "$leave") in
+        "$wifi") nmtui-connect || true ;;
+        "$leave")
+            dim "$(t "sudo nihil-install starts it again; nmcli device lists the network cards." \
+                     "sudo nihil-install lo vuelve a empezar; nmcli device muestra las tarjetas de red.")"
+            exit 0
+            ;;
+        *) sleep 2 ;;
+    esac
 done
 
 # --- Keyboard and time zone ------------------------------------------------------
