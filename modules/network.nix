@@ -8,12 +8,15 @@
     services.blueman.enable = true;
     networking.networkmanager.wifi.powersave = false;
 
-    # The shell turns Bluetooth back on as the user (rfkill unblock): the
-    # active session gets /dev/rfkill, as it gets the GPU or the sound card.
-    # Without it only blueman, through its root helper, could.
-    services.udev.extraRules = ''
-        KERNEL=="rfkill", SUBSYSTEM=="misc", TAG+="uaccess"
-    '';
+    # The panel unblocks Bluetooth as the user if a key blocked it: the active
+    # session gets /dev/rfkill, as it gets the GPU. uaccess has to be tagged
+    # before 73-seat-late.rules applies it, so not in extraRules (99-local).
+    services.udev.packages =
+    [
+        (pkgs.writeTextDir "lib/udev/rules.d/70-nihil-rfkill.rules" ''
+            KERNEL=="rfkill", SUBSYSTEM=="misc", TAG+="uaccess"
+        '')
+    ];
 
     systemd.services.bluetooth-off-at-boot = 
     {
@@ -24,7 +27,8 @@
         serviceConfig = 
         {
             Type = "oneshot";
-            ExecStartPre = "${pkgs.coreutils}/bin/sleep 3";
+            # Off, but not blocked: the panel only has to power it on.
+            ExecStartPre = [ "${pkgs.coreutils}/bin/sleep 3" "${pkgs.util-linux}/bin/rfkill unblock bluetooth" ];
             ExecStart = "${pkgs.bluez}/bin/bluetoothctl power off";
         };
     };
