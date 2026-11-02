@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NIHIL Studio · your picture as LEDs</title>
+<meta name="description" content="Drop a wallpaper and see it the way NIHIL draws its own: every cell of the screen an LED, lit by the picture underneath. It all happens in your browser.">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://nihilshell.com/studio/">
+<link rel="icon" href="../favicon.ico" sizes="48x48">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NIHIL Studio">
+<meta property="og:description" content="Your picture as an LED matrix, the way NIHIL draws its wallpapers.">
+<meta property="og:url" content="https://nihilshell.com/studio/">
+<meta property="og:image" content="https://nihilshell.com/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="../assets/fonts/space-grotesk.woff" as="font" type="font/woff" crossorigin>
+<style>
+@font-face { font-family: "Space Grotesk"; src: url("../assets/fonts/space-grotesk.woff") format("woff"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-400.woff") format("woff"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Doto"; src: url("../assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+
+/* NIHIL tokens: the same as the desktop page */
+:root {
+  --void: #000000;
+  --surface: #0E0E0E;
+  --raised: #1A1A1A;
+  --line: #2A2A2A;
+  --off: #333333;
+  --muted: #7A7A7A;
+  --dim: #A3A3A3;
+  --ink: #F2F2F2;
+  --signal: #D71921;
+
+  --sans: "Space Grotesk", system-ui, sans-serif;
+  --mono: "Space Mono", ui-monospace, monospace;
+  --dot: "Doto", "Space Mono", monospace;
+
+  --t: 8px;
+  --top: 8px;
+  --left: 44px;
+  --r: 20px;
+  --pitch: 9px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  color: var(--ink);
+  font: 400 18px/1.55 var(--sans);
+  background-color: var(--void);
+  background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px);
+  background-size: var(--pitch) var(--pitch);
+  background-attachment: fixed;
+}
+::selection { background: var(--ink); color: var(--void); }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+img { display: block; max-width: 100%; height: auto; }
+code, kbd, pre { font-family: var(--mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
+
+/* ---------- frame, bar and Glyph light ---------- */
+.frame {
+  position: fixed; z-index: 40; pointer-events: none;
+  top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
+  border-radius: var(--r);
+  box-shadow: 0 0 0 200vmax var(--void);
+}
+.glyph { position: fixed; inset: 0; z-index: 45; pointer-events: none; width: 100%; height: 100%; }
+.glyph path { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(242, 242, 242, 0.75)); }
+
+.bar {
+  position: fixed; z-index: 50; left: 0; top: 0; bottom: 0; width: var(--left);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 16px 0 14px;
+}
+.bar .mark { display: block; width: 26px; height: 26px; border-radius: 50%; }
+.bar .mark svg { display: block; width: 26px; height: 26px; }
+.leds { display: flex; flex-direction: column; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.leds a { position: relative; display: grid; place-items: center; width: 20px; height: 22px; }
+.leds a::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transition: height 240ms, background-color 240ms; }
+.leds a[aria-current="true"]::before { height: 20px; background: var(--ink); }
+.leds a:hover::before { background: var(--ink); }
+.leds .tip {
+  position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+  padding: 3px 9px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line);
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--dim); white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 140ms;
+}
+.leds a:hover .tip, .leds a:focus-visible .tip { opacity: 1; }
+.bar-end { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.bar-end .gh { display: grid; place-items: center; width: 26px; height: 26px; color: var(--dim); }
+.bar-end .gh:hover { color: var(--ink); }
+.clock { font: 700 17px/0.95 var(--dot); color: var(--dim); text-align: center; letter-spacing: 0.02em; }
+.clock[hidden] { display: none; }
+.bar .word { display: none; }
+
+/* ---------- layout ---------- */
+main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
+.wrap { max-width: 1180px; margin: 0 auto; }
+section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
+.prose { max-width: 62ch; }
+h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(36px, 5.2vw, 62px); line-height: 1.04; max-width: 15ch; }
+h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; margin-bottom: 18px; }
+h3 { font-size: 21px; line-height: 1.3; margin-bottom: 6px; }
+p { margin: 0 0 16px; }
+.lede { color: var(--dim); font-size: 21px; line-height: 1.5; max-width: 50ch; margin-top: 22px; }
+.quiet { color: var(--dim); }
+.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
+
+
+/* ---------- hero ---------- */
+.hero { padding-bottom: 56px; }
+.motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 40px; text-transform: lowercase; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 22px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 24px;
+  border-radius: 999px; border: 1px solid var(--line); text-decoration: none;
+  font: 500 16px/1 var(--sans); color: var(--ink); background: var(--void);
+  transition: border-color 140ms, background-color 140ms;
+}
+.pill:hover { border-color: var(--muted); }
+.pill.primary { background: var(--ink); color: var(--void); border-color: var(--ink); }
+.pill.primary:hover { background: #ffffff; }
+.pill svg { width: 18px; height: 18px; }
+
+.pill[disabled] { opacity: 0.4; cursor: default; }
+button.pill, label.pill { cursor: pointer; }
+
+/* ---------- the studio ---------- */
+.studio { padding-bottom: 120px; }
+.stage {
+  position: relative; border-radius: 18px; border: 1px solid var(--line); background: var(--void);
+  overflow: hidden; transition: border-color 140ms;
+}
+.stage.over { border-color: var(--ink); }
+.stage.actual { overflow: auto; max-height: 78vh; }
+.screen { position: relative; width: 100%; aspect-ratio: var(--ratio, 16 / 10); }
+.stage.actual .screen { width: auto; aspect-ratio: auto; }
+.screen canvas, .screen svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage.actual .screen canvas#leds { position: static; width: auto; height: auto; }
+.stage.actual .screen canvas#original, .stage.actual .screen svg { width: auto; height: auto; }
+#original { clip-path: inset(0 calc(100% - var(--split, 50%)) 0 0); visibility: hidden; }
+.stage.compare #original { visibility: visible; }
+.handle { position: absolute; top: 0; bottom: 0; left: var(--split, 50%); width: 0; display: none; }
+.stage.compare .handle { display: block; }
+.handle::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: var(--ink); box-shadow: 0 0 6px rgba(242, 242, 242, 0.75); }
+.handle span {
+  position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%);
+  padding: 4px 10px; border-radius: 999px; background: var(--ink); color: var(--void);
+  font: 400 11px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+}
+.empty {
+  position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; padding: 24px;
+  background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px); background-size: 9px 9px;
+}
+.empty[hidden] { display: none; }
+.empty p { margin: 0; }
+.empty .big { font: 700 clamp(26px, 4vw, 40px)/1.1 var(--dot); color: var(--dim); }
+.busy { position: absolute; right: 14px; bottom: 12px; font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.busy[hidden] { display: none; }
+
+.controls { display: grid; gap: 14px; margin-top: 18px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.url { display: flex; flex: 1 1 320px; gap: 10px; min-width: 0; margin: 0; }
+.url input, select {
+  min-height: 46px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink); font: 400 15px/1 var(--sans); min-width: 0;
+}
+.url input { flex: 1 1 auto; }
+.url input:focus, select:focus { outline: none; border-color: var(--muted); }
+select { padding-right: 36px; appearance: none; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%), linear-gradient(135deg, var(--dim) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.label { font: 400 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button {
+  appearance: none; border: 0; border-radius: 999px; min-height: 38px; padding: 0 16px; cursor: pointer;
+  background: transparent; color: var(--dim); font: 400 14px/1 var(--sans);
+}
+.seg button[aria-checked="true"] { background: var(--ink); color: var(--void); }
+.toggle { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; color: var(--dim); font-size: 15px; user-select: none; }
+.toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.toggle i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--line); background: var(--off); transition: background-color 140ms; }
+.toggle input:checked + i { background: var(--ink); border-color: var(--ink); box-shadow: 0 0 6px rgba(242, 242, 242, 0.6); }
+.toggle input:focus-visible + i { outline: 2px solid var(--ink); outline-offset: 3px; }
+.toggle:hover { color: var(--ink); }
+.spacer { flex: 1 1 auto; }
+.status { margin: 0; }
+.status.warn::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--signal); margin-right: 8px; vertical-align: 2px; }
+
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 40px 0 0; }
+.rules p { color: var(--dim); margin: 0; }
+/* ---------- code, steps, table ---------- */
+.code {
+  display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
+}
+.code pre { flex: 1 1 auto; min-width: 0; margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.65; color: var(--ink); }
+.code .c { color: var(--muted); }
+.copy {
+  flex: none; margin: 10px 10px 0 0; appearance: none; cursor: pointer;
+  border: 1px solid var(--line); background: var(--void); color: var(--dim); border-radius: 999px;
+  min-height: 30px; padding: 0 12px; font: 400 12px/1 var(--mono);
+}
+.copy:hover { color: var(--ink); border-color: var(--muted); }
+.steps { margin: 40px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; max-width: 860px; }
+.steps > li { counter-increment: step; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 14px; min-width: 0; }
+.steps > li::before {
+  content: counter(step); grid-row: span 3; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--line); display: grid; place-items: center; font: 700 15px/1 var(--dot); color: var(--dim);
+}
+.steps p { color: var(--dim); margin: 0; }
+.table { margin-top: 48px; max-width: 860px; }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+th, td { text-align: left; vertical-align: top; padding: 13px 14px 13px 0; border-bottom: 1px solid var(--line); }
+th { font: 400 12px/1.4 var(--mono); color: var(--muted); font-weight: 400; }
+td code { font-size: 14px; color: var(--ink); white-space: nowrap; }
+td { color: var(--dim); }
+td.what { color: var(--ink); }
+.note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
+.source { margin-top: 64px; max-width: 860px; }
+
+/* ---------- footer ---------- */
+/* the same side padding as main, so the frame and the bar never cover it */
+footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
+footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
+footer p { margin: 0 0 10px; max-width: 70ch; }
+footer a { color: var(--dim); }
+footer a:hover { color: var(--ink); }
+
+
+/* ---------- footer ---------- */
+footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
+footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
+footer p { margin: 0 0 10px; max-width: 70ch; }
+footer a { color: var(--dim); }
+footer a:hover { color: var(--ink); }
+
+/* ---------- narrow screens: the bar moves to the top ---------- */
+@media (max-width: 860px) {
+  :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
+  .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
+  .bar .leds, .bar .clock { display: none; }
+  .bar-start { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .bar .word { display: block; font: 400 13px/1 var(--mono); letter-spacing: 0.4em; color: var(--dim); }
+  .bar-end { flex-direction: row; }
+  main { padding: calc(var(--top) + 36px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
+  section { padding-bottom: 96px; }
+  .rules, footer .wrap { grid-template-columns: minmax(0, 1fr); }
+  .rules { gap: 28px; }
+  .motto { margin-bottom: 32px; letter-spacing: 0.45em; }
+  .steps > li { grid-template-columns: 40px minmax(0, 1fr); }
+  footer { padding: 0 calc(var(--t) + 16px) 48px calc(var(--left) + 16px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .leds a::before { transition: none; }
+}
+</style>
+</head>
+<body>
+<a class="sr-only skip" href="#title">Skip to content</a>
+
+<div class="frame" aria-hidden="true"></div>
+<svg class="glyph" aria-hidden="true"><path id="glyph-path" d=""/></svg>
+
+<header class="bar">
+  <a class="bar-start" href="../" aria-label="NIHIL, the home page">
+    <span class="mark">
+      <svg viewBox="0 0 90 90" aria-hidden="true"><g fill="#F2F2F2"><circle cx="45.00" cy="12.60" r="4.95"/><circle cx="57.40" cy="15.07" r="4.95"/><circle cx="67.91" cy="22.09" r="4.95"/><circle cx="74.93" cy="32.60" r="4.95"/><circle cx="77.40" cy="45.00" r="4.95"/><circle cx="74.93" cy="57.40" r="4.95"/><circle cx="67.91" cy="67.91" r="4.95"/><circle cx="57.40" cy="74.93" r="4.95"/><circle cx="45.00" cy="77.40" r="4.95"/><circle cx="32.60" cy="74.93" r="4.95"/><circle cx="22.09" cy="67.91" r="4.95"/><circle cx="15.07" cy="57.40" r="4.95"/><circle cx="12.60" cy="45.00" r="4.95"/><circle cx="15.07" cy="32.60" r="4.95"/><circle cx="22.09" cy="22.09" r="4.95"/><circle cx="32.60" cy="15.07" r="4.95"/></g><circle cx="45" cy="45" r="6.75" fill="#D71921"/></svg>
+    </span>
+    <span class="word" aria-hidden="true">NIHIL</span>
+  </a>
+  <nav aria-label="Sections">
+    <ul class="leds">
+      <li><a href="#top" aria-current="true"><span class="tip">Studio</span></a></li>
+      <li><a href="#how"><span class="tip">How</span></a></li>
+      <li><a href="#use"><span class="tip">Use it</span></a></li>
+    </ul>
+  </nav>
+  <div class="bar-end">
+    <a class="gh" href="../" aria-label="NIHIL for NixOS" title="NIHIL for NixOS">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="9" rx="1.6"/><path d="M5.5 14.2h5M8 11.6v2.6"/></svg>
+    </a>
+    <a class="gh" href="https://github.com/poligle/Nihil-Shell/blob/nihil/theme/dotmatrix.py" aria-label="The algorithm on GitHub" title="The algorithm on GitHub">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap">
+
+    <section class="hero" aria-labelledby="title">
+      <p class="motto"><i>ex nihilo</i></p>
+      <h1 id="title">Your picture, as&nbsp;LEDs</h1>
+      <p class="lede">Drop a wallpaper here, paste it or give its address, and see it the way NIHIL draws its own: every cell of the screen an LED, lit by the picture underneath. It all happens in this page; the picture goes nowhere.</p>
+    </section>
+
+    <section class="studio" aria-label="Studio">
+      <div class="stage" id="stage">
+        <div class="screen" id="screen">
+          <canvas id="leds" aria-label="The picture as an LED matrix" role="img"></canvas>
+          <canvas id="original" aria-hidden="true"></canvas>
+          <svg id="frame" aria-hidden="true" preserveAspectRatio="none"><path fill="#000" fill-rule="evenodd" d=""/></svg>
+          <div class="handle" aria-hidden="true"><span>photo · leds</span></div>
+          <div class="empty" id="empty">
+            <p class="big">Drop a picture</p>
+            <p class="meta">or paste one (ctrl&nbsp;+&nbsp;v), choose a file, give its address below, or <a href="#" id="sample">try a night sky</a></p>
+          </div>
+          <div class="busy" id="busy" hidden>drawing</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="row">
+          <label class="pill primary" for="file">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13.5V5M4.5 8.3 8 4.8l3.5 3.5M2.5 2.2h11"/></svg>
+            Choose a picture
+          </label>
+          <input type="file" id="file" accept="image/*" hidden>
+          <form class="url" id="url-form">
+            <label class="sr-only" for="url">A picture's address</label>
+            <input id="url" type="url" inputmode="url" placeholder="https://… a picture's address" autocomplete="off">
+            <button class="pill" type="submit">Load</button>
+          </form>
+        </div>
+        <div class="row">
+          <span class="label" id="size-label">Screen</span>
+          <select id="size" aria-labelledby="size-label"></select>
+          <span class="label" id="dots-label">Dots</span>
+          <div class="seg" role="radiogroup" aria-labelledby="dots-label" id="pitch">
+            <button type="button" role="radio" aria-checked="false" data-pitch="7">Fine</button>
+            <button type="button" role="radio" aria-checked="true" data-pitch="9">Normal</button>
+            <button type="button" role="radio" aria-checked="false" data-pitch="12">Coarse</button>
+          </div>
+          <label class="toggle"><input type="checkbox" id="frame-on" checked><i></i>Frame</label>
+          <label class="toggle"><input type="checkbox" id="compare-on"><i></i>Compare</label>
+          <label class="toggle"><input type="checkbox" id="actual-on"><i></i>1&nbsp;:&nbsp;1</label>
+          <span class="spacer"></span>
+          <button class="pill primary" type="button" id="download" disabled>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8.5M4.5 7.2 8 10.7l3.5-3.5M2.5 13.8h11"/></svg>
+            Download PNG
+          </button>
+        </div>
+        <p class="meta status" id="status" aria-live="polite">No picture yet.</p>
+      </div>
+    </section>
+
+    <section id="how" aria-labelledby="how-title">
+      <div class="prose">
+        <h2 id="how-title">How it's drawn</h2>
+        <p class="quiet">The same steps as the desktop's wallpapers (<code>theme/dotmatrix.py</code>) and the phone's studio, with the same numbers.</p>
+      </div>
+      <div class="rules">
+        <div>
+          <h3>One LED per cell</h3>
+          <p>The picture is cut to the exact size of the screen, so every LED lands on whole pixels, and split into cells of 9&nbsp;px. The light of each cell sets how big and how bright its LED is; the unlit ones stay faintly visible.</p>
+        </div>
+        <div>
+          <h3>The night stays off</h3>
+          <p>The black point is raised: a dark sky stays dark instead of turning into a field of dim dots, and the brightest parts reach full white.</p>
+        </div>
+        <div>
+          <h3>Stars stay</h3>
+          <p>A single bright point lights its cell even when the cell around it is dark, so a star in the photo is a star on the screen.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="use" aria-labelledby="use-title">
+      <div class="prose">
+        <h2 id="use-title">Make it your wallpaper</h2>
+        <p class="quiet">On NIHIL, give the system the original picture, not this render: it draws it the same way for every screen, at each one's own size.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3>Put the picture in the configuration</h3>
+          <div class="code"><pre><code>cp ~/Downloads/night.jpg ~/nixos-config/wallpapers/</code></pre></div>
+        </li>
+        <li>
+          <h3>Rebuild, then pick it</h3>
+          <div class="code"><pre><code>sudo nixos-rebuild switch --flake ~/nixos-config#&lt;host&gt;
+nihil-wallpaper set night</code></pre></div>
+        </li>
+        <li>
+          <h3>Anywhere else</h3>
+          <p>The PNG from this page is the wallpaper as it is, at the size you chose. On a phone, <a href="../android/#studio">NIHIL for Android</a> has its own studio.</p>
+        </li>
+      </ol>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p>NIHIL is a personal project and is not affiliated with Nothing Technology. Pictures you open here stay in your browser: nothing is uploaded.</p>
+      <p>Doto, Space Grotesk and Space Mono are under the <a href="../assets/fonts/OFL.txt">SIL Open Font License 1.1</a>.</p>
+    </div>
+    <div>
+      <p><a href="../">NIHIL for NixOS</a></p>
+      <p><a href="../android/">NIHIL for Android</a></p>
+      <p><a href="https://github.com/poligle/Nihil-Shell">github.com/poligle/Nihil-Shell</a></p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = id => document.getElementById(id);
+
+  // ---- Glyph light around the page's frame, as on the other pages
+  const path = $("glyph-path");
+  function layoutGlyph() {
+    const css = getComputedStyle(document.documentElement);
+    const px = name => parseFloat(css.getPropertyValue(name));
+    const t = px("--t"), x0 = px("--left"), y0 = px("--top"), r = px("--r");
+    const x1 = innerWidth - t, y1 = innerHeight - t;
+    path.setAttribute("d",
+      `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
+      `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
+  }
+  function glyph() {
+    if (reduce || !path.animate) return;
+    const length = path.getTotalLength();
+    const segment = Math.min(360, length * 0.16);
+    path.style.strokeDasharray = `${segment} ${length}`;
+    path.animate([
+      { strokeDashoffset: 0, opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.82 },
+      { strokeDashoffset: -(length - segment), opacity: 0 }
+    ], { duration: 1500, easing: "cubic-bezier(0.45, 0, 0.25, 1)" });
+  }
+  layoutGlyph();
+  addEventListener("resize", layoutGlyph);
+
+  // ---- theme/dotmatrix.py, the same numbers: a cell of `pitch` px per LED.
+  const DOTS = { gamma: 1.25, black: 0.10, star: 0.55, starGain: 0.9, off: 0.07 };
+
+  // The value below which a share of the pixels fall, from a histogram:
+  // numpy's percentile, to a 4096th.
+  function percentile(hist, count, share) {
+    const target = share * (count - 1);
+    let seen = 0;
+    for (let i = 0; i < hist.length; i++) {
+      seen += hist[i];
+      if (seen > target) return (i + 0.5) / hist.length;
+    }
+    return 1;
+  }
+
+  // Each cell's LED level (0..1) from RGBA pixels already cut to the screen.
+  function dotLevels(rgba, width, height, pitch) {
+    const n = width * height, lum = new Float32Array(n), hist = new Uint32Array(4096);
+    for (let i = 0, j = 0; i < n; i++, j += 4) {
+      const v = (0.2126 * rgba[j] + 0.7152 * rgba[j + 1] + 0.0722 * rgba[j + 2]) / 255;
+      lum[i] = v;
+      hist[Math.min(4095, Math.floor(v * 4096))]++;
+    }
+    const low = percentile(hist, n, 0.02), high = percentile(hist, n, 0.997);
+    const span = Math.max(high - low, 1e-6);
+    const cols = Math.floor(width / pitch), rows = Math.floor(height / pitch);
+    const ox = Math.floor((width - cols * pitch) / 2), oy = Math.floor((height - rows * pitch) / 2);
+    const level = new Float32Array(cols * rows);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let sum = 0, top = 0;
+        for (let y = oy + r * pitch, ye = y + pitch; y < ye; y++) {
+          for (let x = ox + c * pitch, i = y * width + x, xe = i + pitch; i < xe; i++) {
+            const v = Math.min(1, Math.max(0, (lum[i] - low) / span));
+            sum += v;
+            if (v > top) top = v;
+          }
+        }
+        const mean = sum / (pitch * pitch);
+        const lit = Math.pow(Math.min(1, Math.max(0, (mean - DOTS.black) / (1 - DOTS.black))), DOTS.gamma);
+        const star = Math.min(1, Math.max(0, (top - DOTS.star) / (1 - DOTS.star)));
+        level[r * cols + c] = Math.max(lit, DOTS.starGain * star);
+      }
+    }
+    return { cols, rows, ox, oy, level };
+  }
+
+  // The LEDs, one path per shade: the unlit ones first, the lit ones over them.
+  function drawDots(ctx, width, height, pitch, d) {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, width, height);
+    // PIL draws them 3x larger with the edge included: 1/6 px more radius at 1x.
+    const off = Math.round(255 * DOTS.off), rOff = 0.16 * pitch + 1 / 6, rMax = 0.44 * pitch;
+    const shades = new Map();
+    const dot = (grey, x, y, r) => {
+      let p = shades.get(grey);
+      if (!p) shades.set(grey, p = new Path2D());
+      p.moveTo(x + r, y);
+      p.arc(x, y, r, 0, 2 * Math.PI);
+    };
+    for (let r = 0; r < d.rows; r++) {
+      for (let c = 0; c < d.cols; c++) {
+        const x = d.ox + c * pitch + pitch / 2, y = d.oy + r * pitch + pitch / 2;
+        dot(off, x, y, rOff);
+        const v = d.level[r * d.cols + c];
+        if (v <= 0.02) continue;
+        const grey = Math.round(30 + 206 * v);
+        if (grey > off) dot(grey, x, y, rMax * (0.25 + 0.75 * Math.sqrt(v)) + 1 / 6);
+      }
+    }
+    for (const [grey, p] of [...shades].sort((a, b) => a[0] - b[0])) {
+      ctx.fillStyle = `rgb(${grey}, ${grey}, ${grey})`;
+      ctx.fill(p);
+    }
+  }
+
+  // ---- Screens to draw for
+  const dpr = devicePixelRatio || 1;
+  const own = [Math.round(screen.width * dpr), Math.round(screen.height * dpr)];
+  const sizes = [
+    { label: `This screen · ${own[0]} × ${own[1]}`, w: own[0], h: own[1] },
+    { label: "Full HD · 1920 × 1080", w: 1920, h: 1080 },
+    { label: "1920 × 1200", w: 1920, h: 1200 },
+    { label: "QHD · 2560 × 1440", w: 2560, h: 1440 },
+    { label: "2560 × 1600", w: 2560, h: 1600 },
+    { label: "4K · 3840 × 2160", w: 3840, h: 2160 },
+    { label: "Portrait · 1080 × 1920", w: 1080, h: 1920 },
+    { label: "Phone · 1080 × 2400", w: 1080, h: 2400 }
+  ];
+  const sizeSelect = $("size");
+  sizes.forEach((s, i) => sizeSelect.add(new Option(s.label, String(i))));
+
+  // ---- State and drawing
+  const stage = $("stage"), screenBox = $("screen"), leds = $("leds"), original = $("original");
+  const frame = $("frame"), status = $("status"), busy = $("busy"), empty = $("empty"), download = $("download");
+  let source = null, name = "wallpaper", pitch = 9, drawing = 0;
+
+  function say(text, warn) {
+    status.textContent = text;
+    status.classList.toggle("warn", !!warn);
+  }
+
+  function layoutFrame(width, height) {
+    // The desktop's frame: 8 px round the screen, the bar 44 px on the left, corners of 20 px.
+    const t = 8, bar = 44, r = 20, x0 = bar, y0 = t, x1 = width - t, y1 = height - t;
+    frame.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    frame.firstElementChild.setAttribute("d",
+      `M0 0H${width}V${height}H0Z M${x0 + r} ${y0}H${x1 - r}A${r} ${r} 0 0 1 ${x1} ${y0 + r}V${y1 - r}` +
+      `A${r} ${r} 0 0 1 ${x1 - r} ${y1}H${x0 + r}A${r} ${r} 0 0 1 ${x0} ${y1 - r}V${y0 + r}A${r} ${r} 0 0 1 ${x0 + r} ${y0}Z`);
+    frame.style.display = $("frame-on").checked ? "block" : "none";
+  }
+
+  function render() {
+    const size = sizes[Number(sizeSelect.value) || 0];
+    const width = size.w, height = size.h;
+    screenBox.style.setProperty("--ratio", `${width} / ${height}`);
+    layoutFrame(width, height);
+    if (!source) return;
+    const ticket = ++drawing;
+    busy.hidden = false;
+    // Let the page show "drawing" before the work starts.
+    requestAnimationFrame(() => setTimeout(() => {
+      if (ticket !== drawing) return;
+      const began = performance.now();
+      original.width = leds.width = width;
+      original.height = leds.height = height;
+      const o = original.getContext("2d", { willReadFrequently: true });
+      // Cover: scale the picture to fill the screen and keep its middle.
+      const sw = source.width, sh = source.height, scale = Math.max(width / sw, height / sh);
+      const cw = width / scale, ch = height / scale;
+      o.imageSmoothingEnabled = true;
+      o.imageSmoothingQuality = "high";
+      o.fillStyle = "#000";
+      o.fillRect(0, 0, width, height);
+      o.drawImage(source, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, width, height);
+      let d;
+      try {
+        d = dotLevels(o.getImageData(0, 0, width, height).data, width, height, pitch);
+      } catch (e) {
+        busy.hidden = true;
+        say("This browser won't let the page read that picture. Download it and drop it here.", true);
+        return;
+      }
+      drawDots(leds.getContext("2d"), width, height, pitch, d);
+      busy.hidden = true;
+      empty.hidden = true;
+      download.disabled = false;
+      const ms = Math.round(performance.now() - began);
+      say(`${name} · ${width} × ${height} · ${d.cols} × ${d.rows} LEDs · ${ms} ms`);
+      if (ticket === 1) glyph();
+    }, 0));
+  }
+
+  async function open(blob, label) {
+    try {
+      const bitmap = await createImageBitmap(blob);
+      if (source && source.close) source.close();
+      source = bitmap;
+      name = (label || "wallpaper").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-").slice(0, 60) || "wallpaper";
+      render();
+    } catch (e) {
+      say("That doesn't open as a picture.", true);
+    }
+  }
+
+  // ---- Ways in: a file, a drop, a paste, an address, or a night sky
+  $("file").addEventListener("change", e => { const f = e.target.files[0]; if (f) open(f, f.name); e.target.value = ""; });
+
+  ["dragenter", "dragover"].forEach(type => stage.addEventListener(type, e => { e.preventDefault(); stage.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(type => stage.addEventListener(type, () => stage.classList.remove("over")));
+  stage.addEventListener("drop", e => {
+    e.preventDefault();
+    const f = [...(e.dataTransfer?.files ?? [])].find(f => f.type.startsWith("image/"));
+    if (f) return open(f, f.name);
+    const url = e.dataTransfer?.getData("text/uri-list") || e.dataTransfer?.getData("text/plain");
+    if (url) fetchPicture(url.trim());
+  });
+  addEventListener("dragover", e => e.preventDefault());
+  addEventListener("drop", e => e.preventDefault());
+
+  addEventListener("paste", e => {
+    if (e.target instanceof HTMLInputElement) return;
+    const item = [...(e.clipboardData?.items ?? [])].find(i => i.type.startsWith("image/"));
+    if (item) { e.preventDefault(); open(item.getAsFile(), "pasted"); }
+  });
+
+  async function fetchPicture(url) {
+    if (!/^https?:\/\//i.test(url)) { say("That isn't a web address.", true); return; }
+    say("Loading…");
+    try {
+      const reply = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (!reply.ok) throw new Error(String(reply.status));
+      const blob = await reply.blob();
+      if (!blob.type.startsWith("image/")) { say("That address isn't a picture.", true); return; }
+      open(blob, decodeURIComponent(url.split(/[?#]/)[0].split("/").pop() || "wallpaper"));
+    } catch (e) {
+      // Most sites don't let other pages read their pictures (CORS).
+      say("That site doesn't let other pages read its pictures. Download it and drop it here.", true);
+    }
+  }
+  $("url-form").addEventListener("submit", e => { e.preventDefault(); fetchPicture($("url").value.trim()); });
+
+  // A night sky drawn here: dark, a few stars, a glow behind the mountains.
+  $("sample").addEventListener("click", e => {
+    e.preventDefault();
+    const w = 1600, h = 1000, c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const g = c.getContext("2d");
+    const sky = g.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#020206"); sky.addColorStop(0.62, "#0b0f1d"); sky.addColorStop(0.8, "#3a3550");
+    g.fillStyle = sky; g.fillRect(0, 0, w, h);
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 220; i++) {
+      const x = rnd() * w, y = rnd() * h * 0.7, r = rnd() < 0.08 ? 2.4 : 1 + rnd();
+      g.fillStyle = `rgba(255, 255, 255, ${0.35 + rnd() * 0.65})`;
+      g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill();
+    }
+    const glow = g.createRadialGradient(w * 0.62, h * 0.86, 10, w * 0.62, h * 0.86, w * 0.45);
+    glow.addColorStop(0, "rgba(255, 236, 214, 0.9)"); glow.addColorStop(1, "rgba(255, 236, 214, 0)");
+    g.fillStyle = glow; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#000";
+    g.beginPath(); g.moveTo(0, h);
+    for (let x = 0; x <= w; x += 20) g.lineTo(x, h * 0.78 - Math.sin(x / 170) * 60 - Math.sin(x / 61) * 22 - (x > w * 0.55 && x < w * 0.7 ? 90 * Math.sin((x - w * 0.55) / (w * 0.15) * Math.PI) : 0));
+    g.lineTo(w, h); g.closePath(); g.fill();
+    c.toBlob(blob => open(blob, "night-sky"));
+  });
+
+  // ---- Options
+  sizeSelect.addEventListener("change", render);
+  $("pitch").addEventListener("click", e => {
+    const b = e.target.closest("button[data-pitch]");
+    if (!b) return;
+    pitch = Number(b.dataset.pitch);
+    for (const other of $("pitch").querySelectorAll("button")) other.setAttribute("aria-checked", String(other === b));
+    render();
+  });
+  $("frame-on").addEventListener("change", () => { frame.style.display = $("frame-on").checked ? "block" : "none"; });
+  $("compare-on").addEventListener("change", e => stage.classList.toggle("compare", e.target.checked));
+  $("actual-on").addEventListener("change", e => stage.classList.toggle("actual", e.target.checked));
+
+  // Compare: the photo on the left of the line, the LEDs on the right.
+  function split(e) {
+    if (!stage.classList.contains("compare")) return;
+    const box = screenBox.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (e.clientX - box.left) / box.width));
+    screenBox.style.setProperty("--split", `${(x * 100).toFixed(2)}%`);
+  }
+  screenBox.addEventListener("pointermove", e => { if (e.buttons || e.pointerType === "mouse") split(e); });
+  screenBox.addEventListener("pointerdown", split);
+
+  download.addEventListener("click", () => {
+    if (!source) return;
+    leds.toBlob(blob => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name}-nihil-${leds.width}x${leds.height}.png`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      glyph();
+    }, "image/png");
+  });
+
+  // ---- Copy buttons on the commands
+  document.querySelectorAll(".code").forEach(block => {
+    if (!navigator.clipboard) return;
+    const button = document.createElement("button");
+    button.className = "copy";
+    button.type = "button";
+    button.textContent = "copy";
+    button.addEventListener("click", () => navigator.clipboard.writeText(block.querySelector("code").textContent).then(() => {
+      button.textContent = "copied";
+      glyph();
+      setTimeout(() => (button.textContent = "copy"), 1400);
+    }));
+    block.append(button);
+  });
+
+  render();
+  setTimeout(glyph, 500);
+})();
+</script>
+</body>
+</html>
