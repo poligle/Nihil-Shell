@@ -54,7 +54,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 60
                 text: (root.confirming ? Lang.niloPeekWaiting : root.failed ? Lang.niloPeekFailed : Lang.niloPeekDone)
-                    + ((Nilo.peekFacts.model ?? "") !== "" ? " · " + Nilo.peekFacts.model : "")
+                    + ((Nilo.peekFacts.model ?? "") !== "" ? " (" + Nilo.peekFacts.model + ")" : "")
                 color: Tokens.dim
             }
         }
@@ -131,10 +131,7 @@ Item {
 
         Label {
             topPadding: 2
-            text: root.confirming ? Lang.niloPeekConfirm
-                : answerBox.cut ? Lang.niloPeekMore
-                : Lang.niloPeekOpen + ((Nilo.peekFacts.tokens ?? 0) > 0 && (Nilo.peekFacts.seconds ?? 0) > 0
-                    ? " · " + Lang.niloRate.arg(Math.round(Nilo.peekFacts.tokens / Nilo.peekFacts.seconds)) : "")
+            text: root.confirming ? Lang.niloPeekConfirm : answerBox.cut ? Lang.niloPeekMore : Lang.niloPeekOpen
             color: area.containsMouse ? Tokens.dim : Tokens.muted
         }
     }

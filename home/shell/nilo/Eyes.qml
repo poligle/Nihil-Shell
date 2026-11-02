@@ -4,8 +4,8 @@ import qs.theme
 
 // Nilo's face: two white pills, and everything else black. `mood` decides
 // what they do:
-//   off · asleep · waking · idle · listening · thinking · searching ·
-//   writing · happy · alert · error
+//   off, asleep, waking, idle, listening, thinking, searching, writing,
+//   happy, alert, error
 // `pulse` bounces them once per word written; with `looking`, `lookX` and
 // `lookY` (-1..1) point them somewhere (the pointer, the caret).
 Item {
