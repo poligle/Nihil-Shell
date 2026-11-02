@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><b>ex nihilo</b> &nbsp;·&nbsp; a monochrome, dot-matrix desktop for NixOS</p>
+<p align="center"><b>ex nihilo</b><br>a monochrome, dot-matrix desktop for NixOS</p>
 
 <p align="center">
   <a href="https://nihilshell.com/">Website</a> &nbsp;·&nbsp;
@@ -359,7 +359,7 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 
 ```
 nixos-config/
-├── flake.nix · flake.lock · home.nix
+├── flake.nix, flake.lock, home.nix
 ├── theme/            Design system: tokens, i18n, fonts, wallpaper and boot renderers
 │   ├── nihil.nix     palette, base16, fonts, frame geometry, motion
 │   ├── i18n.nix      every string, per language

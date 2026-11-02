@@ -165,8 +165,8 @@ Item {
         }
 
         Label {
-            text: (Nilo.settings.auto === true && Nilo.inUse !== "" ? Nilo.inUse + " · auto" : (Nilo.settings.model ?? ""))
-                + " · " + root.status
+            text: (Nilo.settings.auto === true && Nilo.inUse !== "" ? Nilo.inUse + " (auto)" : (Nilo.settings.model ?? ""))
+                + ": " + root.status
         }
     }
 

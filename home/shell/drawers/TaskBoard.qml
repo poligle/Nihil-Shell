@@ -79,7 +79,7 @@ Item {
             spacing: 12
 
             Label {
-                text: Lang.tasks + " · " + Tasks.cards.filter(c => c.column < 2).length
+                text: Lang.tasks + " (" + Tasks.cards.filter(c => c.column < 2).length + ")"
             }
 
             Item { Layout.fillWidth: true }
@@ -190,7 +190,7 @@ Item {
                         }
 
                         Label {
-                            text: root.titles[lane.column] + " · " + lane.cards.length
+                            text: root.titles[lane.column] + " (" + lane.cards.length + ")"
                             color: lane.column === 1 && lane.cards.length > 0 ? Tokens.dim : Tokens.muted
                         }
 

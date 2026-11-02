@@ -156,7 +156,7 @@ Singleton {
         if (c.action === "run" || c.action === "terminal") return "$ " + (c.command ?? "");
         if (c.action === "edit" || c.action === "create")
             return (c.action === "create" ? Lang.confirmCreate : Lang.confirmEdit) + " " + (c.path ?? "");
-        return "git · " + (c.message || (c.action === "push" ? Lang.confirmPush : Lang.confirmCommit));
+        return c.message ? "git commit: " + c.message : "git " + (c.action === "push" ? Lang.confirmPush : Lang.confirmCommit);
     }
 
     // What the panel shows, and the notification that brings it.

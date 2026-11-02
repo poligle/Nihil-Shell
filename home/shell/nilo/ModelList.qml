@@ -154,7 +154,7 @@ Column {
                 Label {
                     width: parent.width
                     text: row.modelData.ram > 0
-                        ? Lang.modelSize.arg(root.gb(row.modelData.size)) + " · " + Lang.modelRam.arg(root.gb(row.modelData.ram))
+                        ? Lang.modelSize.arg(root.gb(row.modelData.size)) + ", " + Lang.modelRam.arg(root.gb(row.modelData.ram))
                         : row.modelData.size > 0 ? Lang.modelSize.arg(root.gb(row.modelData.size)) : row.modelData.tag
                 }
             }
