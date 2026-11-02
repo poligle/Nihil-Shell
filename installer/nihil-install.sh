@@ -21,6 +21,9 @@ if [ "$(id -u)" != 0 ]; then
     exec sudo "$0" "$@"
 fi
 
+trap 'gum style --foreground 1 "$(t "The installation stopped here. sudo nihil-install starts it again." \
+    "La instalación se ha parado aquí. sudo nihil-install la vuelve a empezar.")" >&2' ERR
+
 clear
 gum style --foreground 15 --bold --margin "1 2" "N I H I L" "$(gum style --foreground 7 'ex nihilo')"
 
@@ -78,10 +81,18 @@ done
 
 # --- The disk ------------------------------------------------------------------------
 
-# Every disk but the one this image runs from.
+# Disks worth installing on. lsblk calls a floppy (QEMU has one), zram,
+# RAM disks and an eMMC's boot areas disks too: not those, not read-only
+# ones, not the one this image runs from, and 20 GB or more.
 live=$(lsblk -no PKNAME "$(findmnt -no SOURCE /iso 2>/dev/null || true)" 2>/dev/null || true)
-mapfile -t disks < <(lsblk -dnpo NAME,SIZE,MODEL,TYPE | awk -v live="/dev/$live" '$NF == "disk" && $1 != live { $NF = ""; print }')
-[ "${#disks[@]}" -gt 0 ] || fail "$(t "No disk to install on." "No hay ningún disco donde instalar.")"
+mapfile -t found < <(lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="/dev/$live" -v least=20000000000 '
+    $4 == "disk" && $3 == 0 && $2 >= least && $1 != live &&
+    $1 !~ /^\/dev\/(fd|zram|ram|loop)[0-9]/ && $1 !~ /(boot[0-9]+|rpmb)$/ { print $1 }')
+[ "${#found[@]}" -gt 0 ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
+disks=()
+for candidate in "${found[@]}"; do
+    disks+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")
+done
 disk=$(gum choose --header "$(t "Install on (everything on it will be erased)" "Instalar en (se borrará todo lo que contiene)")" "${disks[@]}")
 disk=${disk%% *}
 
@@ -111,6 +122,7 @@ part() {
 
 say "$(t "Preparing the disk…" "Preparando el disco…")"
 umount -R /mnt 2>/dev/null || true
+cryptsetup close cryptroot 2>/dev/null || true
 wipefs -af "$disk" >/dev/null
 sgdisk --zap-all "$disk" >/dev/null
 sgdisk -n1:0:+1G -t1:ef00 -c1:BOOT -n2:0:0 -t2:8300 -c2:nixos "$disk" >/dev/null
