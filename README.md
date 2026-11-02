@@ -63,7 +63,7 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   [studio](https://nihilshell.com/studio/) does the same in the browser with any picture
   (`docs/studio/`, the same numbers as `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
-  whole at least once, even when the boot is faster than it), a dotted
+  whole at least once on the way up and on the way down), a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
   in a corner: the cover in dots, the progress in LEDs and buttons you can click (hyprlock).
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, and monochrome keys.

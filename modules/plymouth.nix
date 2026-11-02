@@ -7,15 +7,23 @@ let
   # once, plus what loading the frames takes before it starts.
   splashSeconds = "4.5";
 
-  # How long plymouthd has been up (its start in /proc, in the kernel's
-  # 100 Hz ticks), and the rest of splashSeconds asleep.
+  # Since when the splash has been on screen: plymouthd's start (in /proc,
+  # in the kernel's 100 Hz ticks) or, if later, the GPU's DRM device
+  # appearing, since Plymouth draws nothing until there is one. The rest of
+  # splashSeconds, asleep.
   splashWait = pkgs.writeShellScript "nihil-splash-wait" ''
     read -r pid 2>/dev/null < /run/plymouth/pid || exit 0
     [ -r "/proc/$pid/stat" ] || exit 0
     read -r -a stat < "/proc/$pid/stat"
     read -r now _ < /proc/uptime
-    left=$(${pkgs.gawk}/bin/awk -v started="''${stat[21]}" -v now="$now" -v want=${splashSeconds} \
-      'BEGIN { w = want - (now - started / 100); if (w > want) w = want; printf "%.2f", (w > 0 ? w : 0) }')
+    wall=$(${pkgs.coreutils}/bin/date +%s.%N)
+    card=$(${pkgs.coreutils}/bin/stat -c %.3Z /dev/dri/card* 2>/dev/null | ${pkgs.coreutils}/bin/sort -n | ${pkgs.coreutils}/bin/tail -n 1)
+    left=$(${pkgs.gawk}/bin/awk -v started="''${stat[21]}" -v now="$now" -v wall="$wall" -v card="''${card:-0}" \
+      -v want=${splashSeconds} 'BEGIN {
+        shown = started / 100
+        if (card > 0 && now - (wall - card) > shown) shown = now - (wall - card)
+        w = want - (now - shown); if (w > want) w = want
+        printf "%.2f", (w > 0 ? w : 0) }')
     exec ${pkgs.coreutils}/bin/sleep "$left"
   '';
 in
@@ -49,9 +57,18 @@ in
 
   stylix.targets.plymouth.enable = false;
 
-  # A fast boot reached the login screen before the splash had played
-  # once. plymouth-quit ends the splash (greetd waits for it), so it waits
-  # until the splash has been up for one whole animation: nothing when the
-  # boot is slower than that, never more than splashSeconds.
-  systemd.services.plymouth-quit.serviceConfig.ExecStartPre = [ "${splashWait}" ];
+  # The splash plays whole at least once, both ways. Booting, plymouth-quit
+  # ends it (greetd waits for that), so it waits until the splash has been
+  # on screen for one whole animation: nothing when the boot is slower,
+  # never more than splashSeconds. Shutting down, the splash comes up as
+  # the session goes and the machine is off a moment later: the services
+  # that show it (ordered before poweroff, reboot…) hold for one animation.
+  systemd.services = lib.genAttrs [ "plymouth-poweroff" "plymouth-reboot" "plymouth-halt" "plymouth-kexec" ] (_:
+  {
+    serviceConfig.ExecStartPost = [ "-${pkgs.coreutils}/bin/sleep ${splashSeconds}" ];
+  })
+  //
+  {
+    plymouth-quit.serviceConfig.ExecStartPre = [ "${splashWait}" ];
+  };
 }
