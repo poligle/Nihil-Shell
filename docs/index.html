@@ -285,6 +285,9 @@ footer a:hover { color: var(--ink); }
     <a class="gh" href="android/" aria-label="NIHIL for Android" title="NIHIL for Android">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.3h2"/></svg>
     </a>
+    <a class="gh" href="studio/" aria-label="Wallpaper studio" title="Wallpaper studio">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3.5" r="1.3"/><circle cx="8" cy="3.5" r="1.3"/><circle cx="12.5" cy="3.5" r="1.3"/><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.9"/><circle cx="12.5" cy="8" r="1.3"/><circle cx="3.5" cy="12.5" r="1.3"/><circle cx="8" cy="12.5" r="1.3"/><circle cx="12.5" cy="12.5" r="1.3"/></svg>
+    </a>
     <a class="gh" href="https://github.com/poligle/Nihil-Shell" aria-label="Source code on GitHub">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
@@ -309,6 +312,10 @@ footer a:hover { color: var(--ink); }
         <a class="pill" href="android/">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.3h2"/></svg>
           Launcher for Android
+        </a>
+        <a class="pill" href="studio/">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3.5" r="1.3"/><circle cx="8" cy="3.5" r="1.3"/><circle cx="12.5" cy="3.5" r="1.3"/><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.9"/><circle cx="12.5" cy="8" r="1.3"/><circle cx="3.5" cy="12.5" r="1.3"/><circle cx="8" cy="12.5" r="1.3"/><circle cx="12.5" cy="12.5" r="1.3"/></svg>
+          Wallpaper studio
         </a>
       </div>
       <figure class="shot">
@@ -365,7 +372,7 @@ footer a:hover { color: var(--ink); }
         <div class="prose">
           <h2 id="nilo-title">Nilo, an assistant that lives here</h2>
           <p class="quiet">Two white eyes in the launcher, and a model that runs on this computer: Qwen&nbsp;3.5 on Ollama, with no account and no cloud. They sleep while the model is unloaded, wake up as you type, look up while it thinks and from side to side while it searches.</p>
-          <p class="quiet">It answers, searches the web if you let it and looks at this computer. In one repository of yours it can also change files and commit and push, once you have authorized it, and every change waits for your confirmation. After a few minutes without questions it falls asleep and the model leaves memory.</p>
+          <p class="quiet">It answers, searches the web if you let it, looks at this computer and opens apps: <code>abre spotify</code> opens it at once. Once you authorize it, it changes files, commits and pushes in one repository of yours and runs commands, and each of those waits for your confirmation. Close the launcher while it answers and it tells you when it's done, in a panel that comes out of the bar next to its eyes. Simple questions can go to a smaller, faster model, and after a few minutes without questions it falls asleep and the model leaves memory.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>I</kbd><span>the Copilot key, or <code>?</code> in the launcher</span></div>
         </div>
         <figure class="shot">
@@ -391,7 +398,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/nilo-access.png"><img src="assets/screens/nilo-access.png" width="900" height="730" loading="lazy" alt="Nilo's access switches. The one for files is outlined in red and explains what it allows, above cancel and a red authorize button."></a>
           <figcaption>
             <h3>Nothing without your say</h3>
-            <p>Files and git stay off until you authorize them, for one repository. Choosing another turns them off again.</p>
+            <p>Files, git and the terminal stay off until you authorize them. Commands that delete or change the system come in a red card, and anything with sudo opens in a terminal for your password.</p>
           </figcaption>
         </figure>
       </div>
@@ -516,6 +523,8 @@ nihil.language = "<span id="lang-value">en</span>";</code></pre>
             <tr><td><code>nilo.<wbr>enable</code></td><td><code>false</code></td><td>Nilo, the assistant, with Ollama running its model on <code>127.0.0.1</code>.</td></tr>
             <tr><td><code>nilo.<wbr>acceleration</code></td><td><code>"cpu"</code></td><td>What runs the model: <code>"cpu"</code>, or the GPU through <code>"vulkan"</code>, <code>"rocm"</code> or <code>"cuda"</code>.</td></tr>
             <tr><td><code>nilo.<wbr>contextLength</code></td><td><code>16384</code></td><td>Tokens of conversation Nilo keeps in view: more remembers more and takes more memory.</td></tr>
+            <tr><td><code>nilo.<wbr>loadedModels</code></td><td><code>1</code></td><td>Models Ollama keeps in memory at once. With <code>2</code>, the automatic choice of model switches without loading again.</td></tr>
+            <tr><td><code>nilo.<wbr>coauthor</code></td><td><a href="https://github.com/nilo-nihil">nilo-nihil</a></td><td>Who Nilo signs its commits as, so GitHub shows its face next to yours. <code>null</code> for none.</td></tr>
           </tbody>
         </table>
         <p class="note">Screenshots on this page are the shell rendered in a test harness with sample data: the networks, the track and the notifications are made up, and Nilo is its real agent answering a scripted model.</p>

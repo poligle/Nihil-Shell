@@ -51,9 +51,10 @@ home screen in the same language: the frame, an LED clock, the light on the edge
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
-  that wake up while you type, answer, search the web if you let them and, asking you
-  first, change files and commit and push in a repository of yours. It falls asleep and
-  frees the memory after a few minutes. See [Nilo](#nilo).
+  that wake up while you type, answer, search the web if you let them and open apps. Asking
+  you first, they change files, commit and push in a repository of yours and run commands.
+  Close the launcher mid-answer and they tell you when they're done, from the bar. It falls
+  asleep and frees the memory after a few minutes. See [Nilo](#nilo).
 - **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
   sends a segment of light around the frame; critical ones run twice, in red, like the
   battery warnings at 15, 10 and 5 %. Plugging in the charger sends two lights up both
@@ -236,9 +237,9 @@ a real one. The whole video is on [nihilshell.com](https://nihilshell.com/#nilo)
 
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
 on black: asleep while the model is unloaded, awake as soon as you type, looking up
-while they think and from side to side while they search. It is meant for questions,
-not for programming the config: it answers, searches the web, looks at this computer
-and, if you allow it, changes files and commits and pushes in a repository.
+while they think and from side to side while they search. It answers, searches the web,
+looks at this computer and opens apps, and, if you allow it, changes files, commits and
+pushes in a repository and runs commands, each step confirmed by you first.
 
 It is off by default. In the host:
 
