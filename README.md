@@ -116,34 +116,50 @@ its grey variant; the shell shows app icons desaturated.
 
 ## Install
 
-The repository is a NixOS flake with one host, `thinkpad`. To try it on another machine,
-follow [Cloning to a new machine](#cloning-to-a-new-machine): the only host-specific
-NIHIL settings are the outputs in `hosts/<name>/default.nix`.
+NIHIL installs from its own image. [Releases](https://github.com/poligle/Nihil-Shell/releases)
+has the ISO: `latest`, built from every push, or a tagged version. Write it to a USB stick,
+boot it (UEFI) and the installer starts on its own:
 
-```nix
-nihil =
-{
-    primaryOutput = "eDP-1";
-    wallpaper = "night";
-    language = "es";          # or "en"
-    outputs =
-    {
-        "eDP-1"    = { width = 1920; height = 1200; };
-        "HDMI-A-1" = { width = 2560; height = 1440; };
-        "DP-1"     = { width = 1080; height = 1920; bar = false; };   # vertical, no bar
-    };
-};
+1. Language, a network if there is no cable (`nmtui`), keyboard and time zone.
+2. Your name, user name, password and the computer's name.
+3. The disk, which is erased whole: a 1 GiB EFI partition and btrfs with subvolumes for
+   `/`, `/home`, `/nix` and `/var/log`, compressed, inside LUKS if you choose to encrypt.
+
+It finds the screens and the GPU on its own and installs over the network (almost all of
+NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
+
+**This machine's configuration** stays in `/etc/nixos`, separate from NIHIL:
+
+| File | What it holds |
+|------|---------------|
+| `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`), through `nihil.lib.mkSystem` |
+| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH |
+| `hardware-configuration.nix` | disks and drivers, from `nixos-generate-config` |
+| `local.nix` | anything else for this machine: drivers, services, packages |
+| `home.nix` | anything else for its user, through Home Manager |
+
+**Updates** come from the repository: `nihil update` moves the machine's flake to the
+latest NIHIL (and the NixOS it pins) and rebuilds. Nothing of yours is in the repository,
+so updating never touches it.
+
+```bash
+nihil update      # the latest NIHIL, then rebuild
+nihil rebuild     # apply changes to /etc/nixos
+nihil settings    # edit settings.json, then rebuild
+nihil version     # which NIHIL this machine runs
 ```
 
-Output sizes are logical (after rotation): the wallpaper renders are made at exactly
-that size. The first build downloads the Google Fonts source and renders every
-wallpaper (a few seconds each).
+**By hand**, on an existing NixOS: `nix flake init -t github:poligle/Nihil-Shell` in an
+empty `/etc/nixos`, `nixos-generate-config` for the hardware, fill in `settings.json`, then
+`sudo nixos-rebuild switch --flake /etc/nixos`.
 
 ---
 
 ## Options
 
-All of them live under `nihil.*` ([`modules/nihil.nix`](modules/nihil.nix)).
+All of them live under `nihil.*` ([`modules/nihil.nix`](modules/nihil.nix)). A machine sets
+them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), and its
+`local.nix` can set any of them too.
 
 | Option          | Default    | What it does                                                    |
 |-----------------|------------|-----------------------------------------------------------------|
@@ -151,6 +167,7 @@ All of them live under `nihil.*` ([`modules/nihil.nix`](modules/nihil.nix)).
 | `outputs`       | —          | Screens of the host: logical size, whether it has the bar, dot pitch |
 | `primaryOutput` | —          | Screen for the desktop widgets, lock and login backgrounds      |
 | `wallpaper`     | `"night"`  | Default wallpaper, a file name in `wallpapers/`                 |
+| `extraWallpapers` | none    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
 | `nilo.enable`   | `false`    | Nilo, the assistant, and Ollama to run its model ([Nilo](#nilo)) |
@@ -358,21 +375,23 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 ## Structure
 
 ```
-nixos-config/
-├── flake.nix, flake.lock, home.nix
+Nihil-Shell/
+├── flake.nix, flake.lock, home.nix   nihil.lib.mkSystem, the module, the ISO
 ├── theme/            Design system: tokens, i18n, fonts, wallpaper and boot renderers
 │   ├── nihil.nix     palette, base16, fonts, frame geometry, motion
 │   ├── i18n.nix      every string, per language
 │   ├── dotmatrix.py  photo → LED matrix (wallpapers.nix runs it per output)
 │   ├── plymouth.*    boot splash frames and theme
 │   └── art/          LED maps of the NixOS snowflake (19 for fastfetch, 29 for boot)
-├── hosts/thinkpad/   hardware, hostname, NIHIL outputs
-├── modules/          system modules (nihil.nix, nilo.nix, stylix, plymouth, regreet, …)
+├── modules/          system modules (default.nix gathers them; settings.nix reads settings.json)
+├── installer/        the ISO and nihil-install
+├── templates/        machine/: what the installer writes to /etc/nixos; example/: CI's machine
 ├── home/             Home Manager: shell/, nilo/ (Nilo's agent), lock/, hyprland, hyprlock, …
 ├── sounds/           interface sounds (nihil/ is the NIHIL pack)
 ├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
 ├── docs/             the website, served by GitHub Pages from this folder
+├── .github/          release.yml: the ISO in Releases
 └── wallpapers/       source photos, rendered as dots at build time
 ```
 
@@ -380,40 +399,18 @@ nixos-config/
 
 ## Daily usage
 
-Rebuild the system after editing the configuration:
-
 ```bash
-sudo nixos-rebuild switch --flake ~/nixos-config#<name> # or with the alias nrebuild
+nihil rebuild                  # apply /etc/nixos (alias nrebuild)
+nihil update                   # the latest NIHIL, then rebuild (alias nupdate)
+sudo nixos-rebuild build --flake /etc/nixos          # build without switching
+sudo nix-collect-garbage --delete-older-than 7d     # (alias ngc)
 ```
 
-`nh os switch` does the same and also prints the package diff between generations.
+`nh os switch` does the same as `nihil rebuild` and prints the package diff between
+generations. Garbage collection also runs weekly on its own (`modules/nix.nix`).
 
-Validate the configuration without building:
-
-```bash
-nix flake check # or with the alias ncheck
-```
-
-Build without activating (to test changes safely):
-
-```bash
-sudo nixos-rebuild build --flake ~/nixos-config#<name>
-```
-
-Update packages (equivalent to `pacman -Syu` from Arch):
-
-```bash
-nix flake update # or with the alias nupdate
-sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad
-```
-
-Manually clean up old generations:
-
-```bash
-sudo nix-collect-garbage --delete-older-than 7d # or with the alias ngc
-```
-
-> Garbage collection also runs automatically on a weekly basis (see `modules/nix.nix`).
+To work on NIHIL itself, clone the repository and point the machine's flake at the
+clone: `inputs.nihil.url = "path:/home/you/Nihil-Shell";`, then `nihil update`.
 
 ---
 
@@ -421,68 +418,9 @@ sudo nix-collect-garbage --delete-older-than 7d # or with the alias ngc
 
 - **System won't boot:** pick an earlier generation from the boot menu (systemd-boot).
   It's a system-level restore point.
-- **A configuration broke something:** roll the repository back to a previous commit
-  with Git (`git log`, `git revert`, `git checkout`), fix it, and rebuild. Git versions
-  the *code*; generations version the *system*.
-
----
-
-## Cloning to a new machine
-
-1. Install base NixOS and generate the new machine's hardware config:
-
-   ```bash
-   sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix
-   ```
-
-2. Clone this repository:
-
-   ```bash
-   git clone git@github.com:poligle/nixos-config
-   cd nixos-config
-   ```
-
-3. Create the new host:
-
-   ```bash
-   mkdir -p hosts/<name>
-   cp /tmp/hardware-configuration.nix hosts/<name>/
-   cp hosts/thinkpad/default.nix hosts/<name>/default.nix
-   # edit hosts/<name>/default.nix: adjust networking.hostName
-   ```
-
-4. Add the new configuration to `flake.nix`:
-
-   ```nix
-    nixosConfigurations.thinkpad = nixpkgs.lib.nixosSystem 
-		{
-			system = "x86_64-linux";
-			modules = [
-				./hosts/thinkpad/default.nix
-                stylix.nixosModules.stylix
-
-				home-manager.nixosModules.home-manager
-				{
-					home-manager.useGlobalPkgs = true;
-					home-manager.useUserPackages = true;
-
-          home-manager.extraSpecialArgs = { inherit inputs; };
-					home-manager.users.poligle = ./home.nix;
-				}
-			];
-		};
-   ```
-
-5. Build:
-
-   ```bash
-   git add .
-   sudo nixos-rebuild switch --flake .#<name>
-   ```
-
-Local state is not part of the repository and has to be set up again on each machine:
-user password (`passwd`), SSH keys, fingerprint enrollment (`fprintd-enroll`) and the
-engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
+- **An update broke something:** boot the previous generation, then go back to the NIHIL
+  you had: `/etc/nixos/flake.lock` holds the revision, so `git` on `/etc/nixos` (or a copy
+  of the old lock) and `nihil rebuild` return to it.
 
 ---
 
@@ -525,12 +463,6 @@ engineering installs (`~/eda`, `~/.config/eda/licenses.env`).
 - **Own scripts:** packaged with `writeShellScriptBin` and explicit dependencies:
   `osd-volume`, `osd-brightness`, `osd-mic`, `mic-led-sync`, `lock-screen`, `power-off`,
   `nihil-wallpaper`, `nihil-ipc`.
-- **Engineering software:** GNU Octave and Python (numpy, scipy, matplotlib, scikit-rf)
-  are declarative. MATLAB, Altair FEKO and Keysight ADS can't be packaged, so
-  `home/engineering.nix` provides `eda-fhs`, an FHS sandbox with the libraries they
-  expect, plus `matlab`, `feko` and `ads` launchers. Each one is installed from inside
-  `eda-fhs` into `~/eda/{matlab,altair,keysight/ads}`; licence servers go in
-  `~/.config/eda/licenses.env`, which stays out of the repo.
 
 ---
 

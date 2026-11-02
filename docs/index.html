@@ -403,7 +403,7 @@ footer a:hover { color: var(--ink); }
         </figure>
       </div>
       <div class="code nilo-code">
-        <pre><code><span class="c"># hosts/&lt;name&gt;/default.nix: off by default</span>
+        <pre><code><span class="c"># /etc/nixos/local.nix, or "nilo" in settings.json: off by default</span>
 nihil.nilo =
 {
     enable = true;
@@ -471,40 +471,30 @@ nihil.nilo =
         <img class="shot" data-lang="es" src="assets/screens/actions-es.png" width="864" height="480" loading="lazy" alt="Launcher actions in Spanish: Bloquear, Suspender, Reiniciar, Apagar, Cerrar sesión, Siguiente fondo." hidden>
       </div>
       <div class="code" style="max-width:864px">
-        <pre><code><span class="c"># hosts/&lt;name&gt;/default.nix</span>
-nihil.language = "<span id="lang-value">en</span>";</code></pre>
+        <pre><code><span class="c">/etc/nixos/settings.json</span>
+"language": "<span id="lang-value">en</span>"</code></pre>
       </div>
     </section>
 
     <section id="install" aria-labelledby="install-title">
       <div class="prose">
         <h2 id="install-title">Install</h2>
-        <p class="quiet">This is a personal configuration for one ThinkPad, written as a flake. Read <code>hosts/</code> and <code>modules/</code> before you switch a machine you care about; the README covers every step in detail.</p>
+        <p class="quiet">NIHIL installs from its own image, and each machine keeps what is its own in <code>/etc/nixos</code>: who uses it, its language, keyboard and screens. Updates come from this repository and never touch it.</p>
       </div>
       <ol class="steps">
         <li>
-          <h3>Clone the repository</h3>
-          <div class="code"><pre><code>git clone https://github.com/poligle/Nihil-Shell ~/nixos-config</code></pre></div>
+          <h3>Download the installer</h3>
+          <p>The ISO is in <a href="https://github.com/poligle/Nihil-Shell/releases">Releases</a>: <code>latest</code>, built from every push, or a tagged version. Write it to a USB stick and boot it (UEFI).</p>
         </li>
         <li>
-          <h3>Describe your screens</h3>
-          <p>Copy <code>hosts/thinkpad</code> to a new host with your hardware configuration, then list its outputs. Sizes are logical, after rotation.</p>
-          <div class="code"><pre><code>nihil =
-{
-    primaryOutput = "eDP-1";
-    wallpaper = "night";
-    language = "en";
-    outputs =
-    {
-        "eDP-1" = { width = 1920; height = 1200; };
-        "DP-1"  = { width = 1080; height = 1920; bar = false; };
-    };
-};</code></pre></div>
+          <h3>Answer a few questions</h3>
+          <p>Language, network, keyboard, time zone, your name and password, and the disk, which is erased whole: btrfs, compressed, encrypted if you want. It finds your screens and GPU on its own.</p>
         </li>
         <li>
-          <h3>Build and switch</h3>
-          <p>The first build renders every wallpaper and the boot splash.</p>
-          <div class="code"><pre><code>sudo nixos-rebuild switch --flake ~/nixos-config#&lt;name&gt;</code></pre></div>
+          <h3>Keep it up to date</h3>
+          <p>One command brings the latest NIHIL and rebuilds; another applies your own changes.</p>
+          <div class="code"><pre><code>nihil update
+nihil rebuild</code></pre></div>
         </li>
       </ol>
 
