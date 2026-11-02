@@ -18,14 +18,18 @@ Singleton {
         .sort((a, b) => (b.connected - a.connected) || (b.paired - a.paired) || a.name.localeCompare(b.name))
     readonly property var connected: all.filter(d => d.connected)
 
-    // The adapter may be soft-blocked at boot (see bluetooth-off-at-boot),
-    // so unblock it before powering it on.
+    // The adapter may be soft-blocked at boot (see bluetooth-off-at-boot), and
+    // then it may not even be listed yet: unblock it, and keep asking BlueZ
+    // to power it on until it is (a few seconds at most).
+    property int powerTries: 0
+
     function setEnabled(on: bool): void {
-        if (!adapter) return;
         if (on) {
             Quickshell.execDetached([Config.cmd.rfkill, "unblock", "bluetooth"]);
+            powerTries = 10;
             power.restart();
-        } else {
+        } else if (adapter) {
+            power.stop();
             adapter.enabled = false;
         }
     }
@@ -43,6 +47,10 @@ Singleton {
     Timer {
         id: power
         interval: 400
-        onTriggered: if (root.adapter) root.adapter.enabled = true
+        repeat: true
+        onTriggered: {
+            if (root.adapter && !root.adapter.enabled) root.adapter.enabled = true;
+            if ((root.adapter?.enabled ?? false) || --root.powerTries <= 0) stop();
+        }
     }
 }
