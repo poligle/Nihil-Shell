@@ -1068,7 +1068,8 @@ class UnitTest(unittest.TestCase):
         self.assertIn("web_search", text)
         self.assertIn("git_commit", text)
         self.assertIn("SUPER+I y la tecla Copilot", text)
-        self.assertIn("--flake ~/nixos-config#thinkpad", text)
+        self.assertIn("~/nixos-config (settings.json, local.nix, home.nix)", text)
+        self.assertIn("`nihil rebuild`", text)
         english = agent.build_prompt({"language": "en"}, dict(settings, web=False),
                                      now=datetime.datetime(2026, 10, 29, 21, 30))
         self.assertIn("Thursday, October 29, 2026, 21:30", english)

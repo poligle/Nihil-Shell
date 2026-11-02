@@ -41,10 +41,9 @@ in
             ll = "ls -lah";
             la = "ls -A";
 
-            # NixOS
-            nrebuild = "sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad";
-            nupdate = "cd ~/nixos-config && nix flake update && sudo nixos-rebuild switch --flake ~/nixos-config#thinkpad";
-            ncheck = "cd ~/nixos-config && nix flake check";
+            # NixOS: the machine's flake, through the nihil command
+            nrebuild = "nihil rebuild";
+            nupdate = "nihil update";
             ngc = "sudo nix-collect-garbage --delete-older-than 7d";
             
             gs = "git status";

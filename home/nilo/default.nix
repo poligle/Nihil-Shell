@@ -22,7 +22,7 @@ let
         bash = "${pkgs.bash}/bin/bash";
         inherit terminal;
         host = osConfig.networking.hostName;
-        flake = "~/nixos-config";
+        flake = osConfig.nihil.flake;
         # What Nilo knows about the system and its rules (the user's notes
         # and the repository's NILO.md are read where they are).
         context = "${./nilo.md}";

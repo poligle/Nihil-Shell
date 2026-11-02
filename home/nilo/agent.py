@@ -1187,8 +1187,9 @@ PROMPT = {
         "limitsShell": "Ejecuta solo lo que haga falta para lo que te piden, y nunca algo destructivo que no te hayan "
                        "pedido claramente.",
         "about": "NIHIL: SUPER+Espacio abre el launcher (> acciones, = calculadora, ? tú); SUPER+D el dashboard; "
-                 "SUPER+P los ajustes; {summon} te abren a ti. La configuración está en {flake} y se aplica con "
-                 "`sudo nixos-rebuild switch --flake {flake}#{host}`.",
+                 "SUPER+P los ajustes; {summon} te abren a ti. La configuración de esta máquina está en {flake} "
+                 "(settings.json, local.nix, home.nix) y se aplica con `nihil rebuild`; `nihil update` trae la "
+                 "última versión de NIHIL.",
         "summon": "SUPER+I y la tecla Copilot",
     },
     "en": {
@@ -1221,8 +1222,9 @@ PROMPT = {
         "limitsWrite": "You cannot run commands or touch anything outside {repo}: if asked to, explain how to do it.",
         "limitsShell": "Run only what the request needs, and never anything destructive you weren't clearly asked for.",
         "about": "NIHIL: SUPER+Space opens the launcher (> actions, = calculator, ? you); SUPER+D the dashboard; "
-                 "SUPER+P the settings; {summon} open you. The configuration lives in {flake} and is applied with "
-                 "`sudo nixos-rebuild switch --flake {flake}#{host}`.",
+                 "SUPER+P the settings; {summon} open you. This machine's configuration is in {flake} "
+                 "(settings.json, local.nix, home.nix) and is applied with `nihil rebuild`; `nihil update` brings "
+                 "the latest NIHIL.",
         "summon": "SUPER+I and the Copilot key",
     },
 }

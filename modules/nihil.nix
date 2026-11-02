@@ -2,7 +2,8 @@
 #
 # NIHIL options shared by the system (Stylix, fonts) and Home Manager
 # (shell, wallpapers, hyprlock), which reads them through osConfig.
-# Each host describes its outputs; everything else comes from theme/.
+# Each machine describes its outputs (settings.json, settings.nix);
+# everything else comes from theme/.
 
 { config, lib, pkgs, ... }:
 let
@@ -34,11 +35,35 @@ let
                 default = 9;
                 description = "Distance between wallpaper dots in px.";
             };
+            mode = lib.mkOption
+            {
+                type = lib.types.str;
+                default = "preferred";
+                description = "Hyprland's mode for it: preferred, or one like 2560x1440@144.";
+            };
+            position = lib.mkOption
+            {
+                type = lib.types.str;
+                default = "auto";
+                description = "Where it sits among the others: auto, or a position like 2560x0.";
+            };
+            scale = lib.mkOption
+            {
+                type = lib.types.number;
+                default = 1;
+                description = "Hyprland's scale for it.";
+            };
+            transform = lib.mkOption
+            {
+                type = lib.types.ints.between 0 7;
+                default = 0;
+                description = "Rotation: 0 none, 1 90°, 2 180°, 3 270°; 4 to 7 the same, flipped.";
+            };
         };
     };
 in
 {
-    imports = [ ./nilo.nix ];
+    imports = [ ./nilo.nix ./settings.nix ];
 
     options.nihil =
     {
@@ -84,6 +109,14 @@ in
             defaultText = lib.literalExpression "(import ../theme/i18n.nix).\${config.nihil.language}";
             readOnly = true;
             description = "Strings of the selected language.";
+        };
+
+        extraWallpapers = lib.mkOption
+        {
+            type = lib.types.listOf lib.types.path;
+            default = [ ];
+            example = lib.literalExpression "[ ./wallpapers ]";
+            description = "More folders of pictures, drawn as dots like NIHIL's own (a name repeated replaces NIHIL's).";
         };
 
         trayHidden = lib.mkOption
@@ -147,7 +180,12 @@ in
             }
         ];
 
-        nihil.wallpapers = import ../theme/wallpapers.nix { inherit pkgs lib; outputs = cfg.outputs; };
+        nihil.wallpapers = import ../theme/wallpapers.nix
+        {
+            inherit pkgs lib;
+            outputs = cfg.outputs;
+            dirs = [ ../wallpapers ] ++ cfg.extraWallpapers;
+        };
         nihil.fonts = import ../theme/fonts.nix { inherit pkgs; };
 
         nihil.sounds =

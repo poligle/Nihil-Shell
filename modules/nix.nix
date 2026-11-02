@@ -18,6 +18,6 @@
     programs.nh =
     {
         enable = true;
-        flake = "/home/poligle/nixos-config";
+        flake = config.nihil.flake;
     };
 }

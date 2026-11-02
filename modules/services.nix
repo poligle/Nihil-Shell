@@ -2,5 +2,5 @@
 
 { config, lib, pkgs, ... }:
 {
-    services.openssh.enable = true;
+    # SSH: settings.json's "ssh" (settings.nix), off unless asked for.
 }
