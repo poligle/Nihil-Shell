@@ -56,18 +56,28 @@ Singleton {
     }
 
     // The CPU's own sensor first (AMD, Intel, ARM), then the laptop's, then
-    // any thermal zone; each only if it reads a sane value. hwmon numbers
-    // change between boots and kernels, and a ThinkPad's sensor can come
-    // first and read nothing.
+    // a thermal zone, then any sensor: every temp*_input of each, only one
+    // that reads a sane value. It is looked for again when the dashboard
+    // opens without one and when the one it has stops reading; the journal
+    // says which (journalctl --user -u nihil-shell | grep temperature).
     Process {
+        id: findTemp
         command: [Config.cmd.sh, "-c",
             "sane() { v=$(cat \"$1\" 2>/dev/null) && [ \"${v:-0}\" -gt 0 ] 2>/dev/null && [ \"$v\" -lt 150000 ]; }; " +
             "for want in k10temp zenpower coretemp cpu_thermal thinkpad acpitz; do " +
-            "for d in /sys/class/hwmon/hwmon*; do [ \"$(cat \"$d/name\" 2>/dev/null)\" = \"$want\" ] && sane \"$d/temp1_input\" && { echo \"$d/temp1_input\"; exit; }; done; done; " +
-            "for z in /sys/class/thermal/thermal_zone*; do sane \"$z/temp\" && { echo \"$z/temp\"; exit; }; done"]
+            "for d in /sys/class/hwmon/hwmon*; do [ \"$(cat \"$d/name\" 2>/dev/null)\" = \"$want\" ] || continue; " +
+            "for f in \"$d\"/temp*_input; do sane \"$f\" && { echo \"$f\"; exit; }; done; done; done; " +
+            "for f in /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input; do sane \"$f\" && { echo \"$f\"; exit; }; done"]
         running: true
-        stdout: StdioCollector { onStreamFinished: root.tempPath = text.trim() }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.tempPath = text.trim();
+                console.info("nihil: temperature from", root.tempPath || "nowhere");
+            }
+        }
     }
+
+    onActiveChanged: if (active && !tempPath && !findTemp.running) findTemp.running = true
 
     function tick(): void {
         if (root.iface) {
@@ -110,7 +120,12 @@ Singleton {
         if (root.tempPath) {
             tempFile.reload();
             const v = parseInt(tempFile.text());
-            if (!isNaN(v)) root.temp = v / 1000;
+            if (!isNaN(v) && v > 0) {
+                root.temp = v / 1000;
+            } else {
+                root.tempPath = "";
+                findTemp.running = true;
+            }
         }
     }
 
