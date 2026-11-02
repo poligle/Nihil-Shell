@@ -45,7 +45,7 @@
 		actLogout = "Cerrar sesión";
 		actNextWallpaper = "Siguiente fondo";
 		actPrevWallpaper = "Fondo anterior";
-		actWallpaper = "Fondo · %1";
+		actWallpaper = "Fondo: %1";
 		actDnd = "No molestar";
 		actNight = "Luz nocturna";
 		actCaffeine = "Cafeína";
@@ -71,7 +71,7 @@
 		newDevice = "nuevo";
 		noDevices = "sin dispositivos";
 		audioOutput = "salida de audio";
-		notifications = "avisos · %1";
+		notifications = "avisos (%1)";
 		clear = "limpiar";
 		dndOn = "no molestar activo";
 		nothingNew = "nada nuevo";
@@ -87,7 +87,7 @@
 		batteryLow = "Batería al %1 %";
 		batteryLowPlug = "Conecta el cargador.";
 		batteryLowLast = "Conecta el cargador ya: queda muy poco.";
-		network = "red · %1";
+		network = "red: %1";
 		noConnection = "sin conexión";
 		media = "multimedia";
 		nothingPlaying = "Nada sonando";
@@ -111,7 +111,7 @@
 		nilo = "nilo";
 		niloAsk = "pregúntame lo que quieras";
 		niloHint = "enter pregunta · ctrl+n nueva conversación · esc cierra";
-		niloHintBusy = "ctrl+c para la respuesta · esc cierra y te aviso al acabar";
+		niloHintBusy = "ctrl+c para · esc cierra y te aviso al acabar";
 		niloHintOff = "borra el ? para volver · esc cierra";
 		niloHintConfirm = "enter dos veces confirma · esc cancela";
 		niloHintIntro = "enter sigue · ↑↓ elige · espacio marca · esc cierra";
@@ -121,7 +121,7 @@
 		niloOffHow = "Actívalo con nihil.nilo.enable = true en tu host y haz rebuild.";
 		niloAsleep = "dormido";
 		niloWaking = "despertando";
-		niloAwake = "despierto · %1 GB";
+		niloAwake = "despierto, %1 GB";
 		niloThinking = "pensando";
 		niloWriting = "escribiendo";
 		niloWorking = "trabajando";
@@ -132,8 +132,8 @@
 		niloOllamaStarting = "Arrancando Ollama…";
 		niloStartOllama = "arrancar ollama";
 		niloOllamaHelp = "más en: journalctl -u ollama -b";
-		niloDownloading = "descargando · %1%";
-		niloDownloadingModel = "Descargando %1 · %2%";
+		niloDownloading = "descargando %1%";
+		niloDownloadingModel = "Descargando %1 (%2%)";
 		niloEmpty = "Pregúntame algo. Si hace falta, busco en internet.";
 		niloEmptyOffline = "Pregúntame algo.";
 		niloTryFlake = "¿Qué es un flake de Nix?";
@@ -157,28 +157,28 @@
 		toolSearching = "buscando «%1»";
 		toolSearched = "%1 resultados de «%2»";
 		toolReading = "leyendo %1";
-		toolRead = "leído · %1";
+		toolRead = "leído %1";
 		toolSystem = "mirando este ordenador";
 		toolSystemDone = "visto este ordenador";
 		toolGitStatus = "mirando el repositorio";
 		toolGitStatusDone = "%1 cambios en %2";
 		toolGitCommit = "preparando el commit";
 		toolGitCommitted = "commit %1";
-		toolGitPushed = "commit %1 · subido";
+		toolGitPushed = "commit %1 subido";
 		toolGitPushedOnly = "subido";
 		toolDeclined = "cancelado";
-		toolFailed = "falló · %1";
+		toolFailed = "falló: %1";
 		toolListing = "mirando los archivos";
 		toolListed = "%1 archivos";
 		toolOpening = "abriendo %1";
-		toolOpened = "leído %1 · %2 líneas";
+		toolOpened = "leído %1 (%2 líneas)";
 		toolChanging = "preparando %1";
-		toolChanged = "cambiado %1 · +%2 −%3";
-		toolCreated = "creado %1 · %2 líneas";
+		toolChanged = "cambiado %1 (+%2 −%3)";
+		toolCreated = "creado %1 (%2 líneas)";
 		toolRunning = "ejecutando %1";
-		toolRanOk = "%1 · hecho";
-		toolRanFail = "%1 · salió con %2";
-		toolInTerminal = "%1 · en una terminal";
+		toolRanOk = "ejecutado %1";
+		toolRanFail = "%1 terminó con código %2";
+		toolInTerminal = "%1, en una terminal";
 		toolLaunching = "abriendo %1";
 		toolLaunched = "abierto %1";
 
@@ -191,7 +191,6 @@
 		confirmEdit = "cambiar";
 		confirmCreate = "crear";
 		confirmMoreLines = "y %1 líneas más";
-		confirmShell = "terminal";
 		confirmRun = "ejecutar";
 		confirmTerminal = "en una terminal";
 		dangerRoot = "como root";
@@ -213,7 +212,7 @@
 		niloErrMemory = "No hay memoria para %1: prueba uno más pequeño.";
 		niloErrNoModel = "Elige un modelo en el engranaje.";
 		niloErrRepo = "%1 no es un repositorio git.";
-		niloErrOther = "Algo ha fallado · %1";
+		niloErrOther = "Algo ha fallado: %1";
 		niloDownload = "descargar";
 		niloDelete = "borrar";
 
@@ -242,11 +241,11 @@
 		modelSize = "%1 GB";
 		modelRam = "≈ %1 GB de RAM";
 		modelTight = "justo para tu RAM";
-		modelFailed = "no se ha podido descargar · %1";
+		modelFailed = "no se ha podido descargar: %1";
 		modelFailedOllama = "ollama no está en marcha";
-		modelRetrying = "se ha cortado · reintentando (%1 de %2)";
-		modelFailedNetwork = "se ha cortado varias veces · revisa la conexión y vuelve a probar";
-		modelFailedRate = "el registro de Ollama limita las descargas · prueba en unos minutos";
+		modelRetrying = "se ha cortado, reintentando (%1 de %2)";
+		modelFailedNetwork = "se ha cortado varias veces: revisa la conexión y vuelve a probar";
+		modelFailedRate = "el registro de Ollama está limitando las descargas, prueba en unos minutos";
 		modelFailedSpace = "no queda espacio en el disco";
 		modelFailedMissing = "el registro de Ollama no lo tiene";
 
@@ -279,8 +278,8 @@
 		setSleepAfter = "dormir tras";
 		setMinutes = "%1 min";
 		setSleepNow = "dormir ahora";
-		setAwakeUntil = "despierto · %1 GB · %2% en la GPU · hasta las %3";
-		setAsleep = "dormido · no ocupa memoria";
+		setAwakeUntil = "despierto hasta las %3, %1 GB (%2% en la GPU)";
+		setAsleep = "dormido, sin ocupar memoria";
 		setThink = "Pensar antes de responder";
 		setThinkSub = "más lento; mejor para problemas difíciles";
 		setAuto = "Elegir el modelo en cada pregunta";
@@ -322,7 +321,7 @@
 		actLogout = "Log out";
 		actNextWallpaper = "Next wallpaper";
 		actPrevWallpaper = "Previous wallpaper";
-		actWallpaper = "Wallpaper · %1";
+		actWallpaper = "Wallpaper: %1";
 		actDnd = "Do not disturb";
 		actNight = "Night light";
 		actCaffeine = "Caffeine";
@@ -347,7 +346,7 @@
 		newDevice = "new";
 		noDevices = "no devices";
 		audioOutput = "audio output";
-		notifications = "notifications · %1";
+		notifications = "notifications (%1)";
 		clear = "clear";
 		dndOn = "do not disturb is on";
 		nothingNew = "nothing new";
@@ -362,7 +361,7 @@
 		batteryLowPlug = "Plug in the charger.";
 		batteryLowLast = "Plug in the charger now: very little is left.";
 		charging = "charging";
-		network = "network · %1";
+		network = "network: %1";
 		noConnection = "no connection";
 		media = "media";
 		nothingPlaying = "Nothing playing";
@@ -384,7 +383,7 @@
 		nilo = "nilo";
 		niloAsk = "ask me anything";
 		niloHint = "enter asks · ctrl+n new conversation · esc closes";
-		niloHintBusy = "ctrl+c stops the answer · esc closes, I'll tell you when I'm done";
+		niloHintBusy = "ctrl+c stops · esc closes, I'll tell you when I'm done";
 		niloHintOff = "delete the ? to go back · esc closes";
 		niloHintConfirm = "enter twice confirms · esc cancels";
 		niloHintIntro = "enter next · ↑↓ choose · space toggles · esc closes";
@@ -394,7 +393,7 @@
 		niloOffHow = "Turn it on with nihil.nilo.enable = true in your host and rebuild.";
 		niloAsleep = "asleep";
 		niloWaking = "waking up";
-		niloAwake = "awake · %1 GB";
+		niloAwake = "awake, %1 GB";
 		niloThinking = "thinking";
 		niloWriting = "writing";
 		niloWorking = "working";
@@ -405,8 +404,8 @@
 		niloOllamaStarting = "Starting Ollama…";
 		niloStartOllama = "start ollama";
 		niloOllamaHelp = "more in: journalctl -u ollama -b";
-		niloDownloading = "downloading · %1%";
-		niloDownloadingModel = "Downloading %1 · %2%";
+		niloDownloading = "downloading %1%";
+		niloDownloadingModel = "Downloading %1 (%2%)";
 		niloEmpty = "Ask me something. I'll search the web if I need to.";
 		niloEmptyOffline = "Ask me something.";
 		niloTryFlake = "What is a Nix flake?";
@@ -430,28 +429,28 @@
 		toolSearching = "searching “%1”";
 		toolSearched = "%1 results for “%2”";
 		toolReading = "reading %1";
-		toolRead = "read · %1";
+		toolRead = "read %1";
 		toolSystem = "looking at this computer";
 		toolSystemDone = "looked at this computer";
 		toolGitStatus = "looking at the repository";
 		toolGitStatusDone = "%1 changes on %2";
 		toolGitCommit = "preparing the commit";
 		toolGitCommitted = "commit %1";
-		toolGitPushed = "commit %1 · pushed";
+		toolGitPushed = "commit %1 pushed";
 		toolGitPushedOnly = "pushed";
 		toolDeclined = "cancelled";
-		toolFailed = "failed · %1";
+		toolFailed = "failed: %1";
 		toolListing = "looking at the files";
 		toolListed = "%1 files";
 		toolOpening = "opening %1";
-		toolOpened = "read %1 · %2 lines";
+		toolOpened = "read %1 (%2 lines)";
 		toolChanging = "preparing %1";
-		toolChanged = "changed %1 · +%2 −%3";
-		toolCreated = "created %1 · %2 lines";
+		toolChanged = "changed %1 (+%2 −%3)";
+		toolCreated = "created %1 (%2 lines)";
 		toolRunning = "running %1";
-		toolRanOk = "%1 · done";
-		toolRanFail = "%1 · exited with %2";
-		toolInTerminal = "%1 · in a terminal";
+		toolRanOk = "ran %1";
+		toolRanFail = "%1 exited with code %2";
+		toolInTerminal = "%1, in a terminal";
 		toolLaunching = "opening %1";
 		toolLaunched = "opened %1";
 
@@ -464,7 +463,6 @@
 		confirmEdit = "change";
 		confirmCreate = "create";
 		confirmMoreLines = "and %1 more lines";
-		confirmShell = "terminal";
 		confirmRun = "run";
 		confirmTerminal = "in a terminal";
 		dangerRoot = "as root";
@@ -486,7 +484,7 @@
 		niloErrMemory = "Not enough memory for %1: try a smaller one.";
 		niloErrNoModel = "Choose a model in the settings.";
 		niloErrRepo = "%1 is not a git repository.";
-		niloErrOther = "Something went wrong · %1";
+		niloErrOther = "Something went wrong: %1";
 		niloDownload = "download";
 		niloDelete = "delete";
 
@@ -515,11 +513,11 @@
 		modelSize = "%1 GB";
 		modelRam = "≈ %1 GB of RAM";
 		modelTight = "tight for your RAM";
-		modelFailed = "download failed · %1";
+		modelFailed = "download failed: %1";
 		modelFailedOllama = "ollama isn't running";
-		modelRetrying = "it broke off · trying again (%1 of %2)";
-		modelFailedNetwork = "it kept breaking off · check the connection and try again";
-		modelFailedRate = "Ollama's registry is limiting downloads · try again in a few minutes";
+		modelRetrying = "it broke off, trying again (%1 of %2)";
+		modelFailedNetwork = "it kept breaking off: check the connection and try again";
+		modelFailedRate = "Ollama's registry is limiting downloads, try again in a few minutes";
 		modelFailedSpace = "the disk is full";
 		modelFailedMissing = "Ollama's registry doesn't have it";
 
@@ -552,8 +550,8 @@
 		setSleepAfter = "sleep after";
 		setMinutes = "%1 min";
 		setSleepNow = "sleep now";
-		setAwakeUntil = "awake · %1 GB · %2% on the GPU · until %3";
-		setAsleep = "asleep · takes no memory";
+		setAwakeUntil = "awake until %3, %1 GB (%2% on the GPU)";
+		setAsleep = "asleep, taking no memory";
 		setThink = "Think before answering";
 		setThinkSub = "slower; better for hard problems";
 		setAuto = "Choose the model for each question";

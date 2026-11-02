@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NIHIL Studio · your picture as LEDs</title>
+<title>NIHIL Studio: your picture as LEDs</title>
 <meta name="description" content="Drop a wallpaper and see it the way NIHIL draws its own: every cell of the screen an LED, lit by the picture underneath. It all happens in your browser.">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
@@ -315,7 +315,7 @@ footer a:hover { color: var(--ink); }
           <canvas id="leds" aria-label="The picture as an LED matrix" role="img"></canvas>
           <canvas id="original" aria-hidden="true"></canvas>
           <svg id="frame" aria-hidden="true" preserveAspectRatio="none"><path fill="#000" fill-rule="evenodd" d=""/></svg>
-          <div class="handle" aria-hidden="true"><span>photo · leds</span></div>
+          <div class="handle" aria-hidden="true"><span>photo / LEDs</span></div>
           <div class="empty" id="empty">
             <p class="big">Drop a picture</p>
             <p class="meta">or paste one (ctrl&nbsp;+&nbsp;v), choose a file, give its address below, or <a href="#" id="sample">try a night sky</a></p>
@@ -528,14 +528,14 @@ nihil-wallpaper set night</code></pre></div>
   const dpr = devicePixelRatio || 1;
   const own = [Math.round(screen.width * dpr), Math.round(screen.height * dpr)];
   const sizes = [
-    { label: `This screen · ${own[0]} × ${own[1]}`, w: own[0], h: own[1] },
-    { label: "Full HD · 1920 × 1080", w: 1920, h: 1080 },
+    { label: `This screen (${own[0]} × ${own[1]})`, w: own[0], h: own[1] },
+    { label: "Full HD, 1920 × 1080", w: 1920, h: 1080 },
     { label: "1920 × 1200", w: 1920, h: 1200 },
-    { label: "QHD · 2560 × 1440", w: 2560, h: 1440 },
+    { label: "QHD, 2560 × 1440", w: 2560, h: 1440 },
     { label: "2560 × 1600", w: 2560, h: 1600 },
-    { label: "4K · 3840 × 2160", w: 3840, h: 2160 },
-    { label: "Portrait · 1080 × 1920", w: 1080, h: 1920 },
-    { label: "Phone · 1080 × 2400", w: 1080, h: 2400 }
+    { label: "4K, 3840 × 2160", w: 3840, h: 2160 },
+    { label: "Portrait, 1080 × 1920", w: 1080, h: 1920 },
+    { label: "Phone, 1080 × 2400", w: 1080, h: 2400 }
   ];
   const sizeSelect = $("size");
   sizes.forEach((s, i) => sizeSelect.add(new Option(s.label, String(i))));
@@ -596,7 +596,7 @@ nihil-wallpaper set night</code></pre></div>
       empty.hidden = true;
       download.disabled = false;
       const ms = Math.round(performance.now() - began);
-      say(`${name} · ${width} × ${height} · ${d.cols} × ${d.rows} LEDs · ${ms} ms`);
+      say(`${name}, ${width} × ${height}: ${d.cols} × ${d.rows} LEDs in ${ms} ms`);
       if (ticket === 1) glyph();
     }, 0));
   }

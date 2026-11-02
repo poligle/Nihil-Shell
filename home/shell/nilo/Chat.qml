@@ -97,11 +97,12 @@ Item {
         return code;
     }
 
-    // What systemd says about Ollama, in one line: "ollama.service · failed · exit-code".
+    // What systemd says about Ollama, in one line: "ollama.service: failed (exit-code)".
     function unitLine(): string {
         const s = Nilo.service;
         if (!s.activeState) return "";
-        return [s.unit, s.activeState, s.result && s.result !== "success" ? s.result : s.subState].filter(x => x).join(" · ");
+        const why = s.result && s.result !== "success" ? s.result : s.subState;
+        return (s.unit ? s.unit + ": " : "") + (s.activeState ?? "") + (why ? " (" + why + ")" : "");
     }
 
     function errorText(code: string, detail: string): string {
@@ -507,9 +508,9 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: card.file ? Lang.confirmFile + " · " + (card.facts.action === "create" ? Lang.confirmCreate : Lang.confirmEdit)
-                                : card.command ? Lang.confirmShell + " · " + (card.facts.action === "terminal" ? Lang.confirmTerminal : Lang.confirmRun)
-                                : "git · " + (card.facts.action === "commit-push" ? Lang.confirmCommitPush
+                            text: card.file ? (card.facts.action === "create" ? Lang.confirmCreate : Lang.confirmEdit) + " " + Lang.confirmFile
+                                : card.command ? Lang.confirmRun + (card.facts.action === "terminal" ? " " + Lang.confirmTerminal : "")
+                                : "git " + (card.facts.action === "commit-push" ? Lang.confirmCommitPush
                                     : card.facts.action === "push" ? Lang.confirmPush : Lang.confirmCommit)
                             color: Tokens.ink
                         }
@@ -517,10 +518,10 @@ Item {
                         Txt {
                             width: parent.width
                             text: card.file
-                                ? (card.facts.repo ?? "") + " · " + (card.facts.path ?? "") + "   +" + (card.facts.added ?? 0)
+                                ? (card.facts.repo ?? "") + "/" + (card.facts.path ?? "") + "   +" + (card.facts.added ?? 0)
                                     + ((card.facts.removed ?? 0) > 0 ? " −" + card.facts.removed : "")
                                 : card.command ? (card.facts.cwd ?? "")
-                                : (card.facts.repo ?? "") + " · " + (card.facts.branch ?? "") + (card.facts.remote ? "  →  " + card.facts.remote : "")
+                                : (card.facts.repo ?? "") + " (" + (card.facts.branch ?? "") + ")" + (card.facts.remote ? "  →  " + card.facts.remote : "")
                             color: Tokens.dim
                             font.family: Tokens.fontMono
                             font.pixelSize: 12
@@ -577,7 +578,7 @@ Item {
                             }
 
                             Label {
-                                text: (card.facts.danger ?? []).map(code => root.dangerText(code)).join(" · ")
+                                text: (card.facts.danger ?? []).map(code => root.dangerText(code)).join(", ")
                                 color: Tokens.dim
                             }
                         }

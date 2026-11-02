@@ -127,7 +127,7 @@ Item {
 
                 Label {
                     text: Battery.present
-                        ? Lang.battery.arg(Math.round(Battery.level * 100)) + (Battery.charging ? " · " + Lang.charging : "")
+                        ? Lang.battery.arg(Math.round(Battery.level * 100)) + (Battery.charging ? ", " + Lang.charging : "")
                         : Lang.network.arg(Network.ssid || Network.ethernet || Lang.noConnection)
                 }
             }

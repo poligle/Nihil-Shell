@@ -84,11 +84,11 @@ in
             # memory is an estimate with Nilo's context.
             default =
             [
-                { tag = "qwen3.5:0.8b"; label = "Qwen 3.5 · 0.8B"; size = 1.3; ram = 2; }
-                { tag = "qwen3.5:2b"; label = "Qwen 3.5 · 2B"; size = 2.7; ram = 3.5; }
-                { tag = "qwen3.5:4b"; label = "Qwen 3.5 · 4B"; size = 3.4; ram = 5; }
-                { tag = "qwen3.5:9b"; label = "Qwen 3.5 · 9B"; size = 6.6; ram = 8.5; }
-                { tag = "qwen3.5:35b-a3b"; label = "Qwen 3.5 · 35B-A3B"; size = 22; ram = 25; }
+                { tag = "qwen3.5:0.8b"; label = "Qwen 3.5 0.8B"; size = 1.3; ram = 2; }
+                { tag = "qwen3.5:2b"; label = "Qwen 3.5 2B"; size = 2.7; ram = 3.5; }
+                { tag = "qwen3.5:4b"; label = "Qwen 3.5 4B"; size = 3.4; ram = 5; }
+                { tag = "qwen3.5:9b"; label = "Qwen 3.5 9B"; size = 6.6; ram = 8.5; }
+                { tag = "qwen3.5:35b-a3b"; label = "Qwen 3.5 35B-A3B"; size = 22; ram = 25; }
             ];
             description = ''
                 Models offered in Nilo's settings. Any model on ollama.com/library
