@@ -62,9 +62,16 @@
 			modules = [ self.nixosModules.default { nihil = { inherit settings home; }; } ] ++ modules;
 		};
 
-		# A machine as the installer leaves one, for CI.
+		# The installer (installer/), and a machine as it leaves one, for CI.
 		nixosConfigurations =
 		{
+			installer = nixpkgs.lib.nixosSystem
+			{
+				inherit system;
+				specialArgs = { nihil = self; };
+				modules = [ ./installer/iso.nix ];
+			};
+
 			example = self.lib.mkSystem
 			{
 				settings = builtins.fromJSON (builtins.readFile ./templates/machine/settings.json);
@@ -72,6 +79,8 @@
 				home = [ ./templates/machine/home.nix ];
 			};
 		};
+
+		packages.${system}.iso = self.nixosConfigurations.installer.config.system.build.isoImage;
 
 		templates.default =
 		{
