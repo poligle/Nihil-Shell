@@ -30,6 +30,10 @@
     # Host-specific
     networking.hostName = "thinkpad";
 
+    # The Radeon's driver in the initrd: Plymouth only draws on a real GPU,
+    # so without it the splash came up late in the boot, already cut short.
+    hardware.amdgpu.initrd.enable = true;
+
     # NIHIL: outputs at their logical size (after rotation), so the
     # dot-matrix wallpapers land on exact pixels. DP-1 is the vertical panel.
     nihil =
