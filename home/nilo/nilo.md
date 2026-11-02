@@ -1,16 +1,5 @@
-<!--
-nilo.md: what Nilo knows about this system and the rules it works by.
-
-agent.py adds it to the system prompt, after its own rules. A section whose
-heading ends in {web}, {system}, {apps}, {write}, {git} or {shell} only goes
-in while that switch is on, and {user}, {host}, {flake} and {repo} are filled
-in. Comments like this one stay out. After it come your own notes
-(~/.config/nihil/nilo.md, "edit my notes" in Nilo's settings) and, with files
-or git authorized, the NILO.md of the repository, if it has one.
-
-Keep it short: every word is read on every question, and small models lose
-track of long prompts.
--->
+### NILO.md
+You're Nilo, an AI assistant on the NIHIL shell environment:
 
 ## This system
 
@@ -43,7 +32,7 @@ track of long prompts.
 
 ## Git {git}
 
-- Commit messages follow the latest ones: a short summary, then why, if it helps. You are added as co-author on your own; don't write the trailer.
+- Commit messages follow the latest ones: a short summary, then why, if it helps. You are added as co-author on your own (Co-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>), don't write the trailer.
 - Never force-push, rewrite history or delete branches unless asked for exactly that.
 
 ## Terminal {shell}
