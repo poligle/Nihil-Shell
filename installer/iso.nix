@@ -20,7 +20,11 @@ let
     };
 in
 {
-    imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix" ];
+    # The newest kernel (without ZFS, which lags behind it), and every
+    # firmware: recent Wi-Fi cards need both to show up at all.
+    imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-minimal-new-kernel-no-zfs.nix" ];
+    hardware.enableAllFirmware = true;
+    nixpkgs.config.allowUnfree = true;
 
     networking.hostName = "nihil-installer";
     networking.wireless.enable = lib.mkForce false;
