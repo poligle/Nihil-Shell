@@ -29,7 +29,7 @@ in
         HandleLidSwitchExternalPower = "ignore";
         HandleLidSwitchDocked = "ignore";
     };
-    services.fprintd.enable = true;
+    services.fprintd.enable = config.nihil.fingerprint;
     security.pam.services = lib.genAttrs [ "sudo" "su" "login" "polkit-1" "greetd" ] skipFingerprintWhenLidClosed //
     {
         hyprlock.fprintAuth = false;

@@ -13,7 +13,8 @@ in
 
         settings =
         {
-            appearance.greeting_msg = "${config.nihil.strings.welcome}, Pol";
+            appearance.greeting_msg = config.nihil.strings.welcome
+                + lib.optionalString (config.nihil.user.greeting != "") ", ${config.nihil.user.greeting}";
 
             widget.clock =
             {

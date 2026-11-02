@@ -1,7 +1,7 @@
 # flake.nix by poligle
 
 {
-	description = "NixOS Config for poligle@thinkpad";
+	description = "NIHIL: a monochrome, dot-matrix desktop for NixOS";
 
 	inputs = 
 	{
@@ -26,25 +26,57 @@
             };
         };
 	};
-	outputs = inputs@{ self, nixpkgs, home-manager, stylix, zen-browser , ... }:
+	outputs = inputs@{ self, nixpkgs, home-manager, stylix, zen-browser, ... }:
+	let
+		system = "x86_64-linux";
+	in
 	{
-		nixosConfigurations.thinkpad = nixpkgs.lib.nixosSystem 
+		# NIHIL on any machine: its NixOS module, Home Manager for its user
+		# included. A machine's own flake (templates/machine, in /etc/nixos)
+		# goes through lib.mkSystem.
+		nixosModules.default = { config, ... }:
 		{
-			system = "x86_64-linux";
-			modules = [
-				./hosts/thinkpad/default.nix
-                stylix.nixosModules.stylix
-
+			imports =
+			[
+				stylix.nixosModules.stylix
 				home-manager.nixosModules.home-manager
-				{
-					home-manager.useGlobalPkgs = true;
-					home-manager.useUserPackages = true;
-					home-manager.backupFileExtension = "hm-backup";
-
-                    home-manager.extraSpecialArgs = { inherit inputs; };
-					home-manager.users.poligle = ./home.nix;
-				}
+				./modules
 			];
+
+			home-manager =
+			{
+				useGlobalPkgs = true;
+				useUserPackages = true;
+				backupFileExtension = "hm-backup";
+				extraSpecialArgs = { inherit inputs; };
+				users.${config.nihil.user.name}.imports = [ ./home.nix ] ++ config.nihil.home;
+			};
+		};
+
+		# settings: the machine's settings.json (modules/settings.nix).
+		# modules: its hardware-configuration.nix and local.nix.
+		# home: its Home Manager additions (home.nix).
+		lib.mkSystem = { settings ? { }, modules ? [ ], home ? [ ] }: nixpkgs.lib.nixosSystem
+		{
+			inherit system;
+			modules = [ self.nixosModules.default { nihil = { inherit settings home; }; } ] ++ modules;
+		};
+
+		# A machine as the installer leaves one, for CI.
+		nixosConfigurations =
+		{
+			example = self.lib.mkSystem
+			{
+				settings = builtins.fromJSON (builtins.readFile ./templates/machine/settings.json);
+				modules = [ ./templates/example/hardware-configuration.nix ./templates/machine/local.nix ];
+				home = [ ./templates/machine/home.nix ];
+			};
+		};
+
+		templates.default =
+		{
+			path = ./templates/machine;
+			description = "A machine running NIHIL: settings.json, local.nix and home.nix";
 		};
 	};
 }

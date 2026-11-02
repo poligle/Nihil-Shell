@@ -7,8 +7,14 @@ let
 	sound = osConfig.nihil.sounds;
 	rgb = hex: "rgb(${hex})";
 
-	internalPanel = "eDP-1";
-	verticalPanel = "DP-1";
+	# Screens come from the machine's settings (nihil.outputs): a laptop's
+	# own panel is the one called eDP, and the ones turned on their side
+	# stack their windows from the top.
+	outputs = osConfig.nihil.outputs;
+	panels = lib.filter (lib.hasPrefix "eDP") (builtins.attrNames outputs);
+	internalPanel = if panels != [ ] then lib.head panels else "eDP-1";
+	verticalOutputs = builtins.attrNames (lib.filterAttrs (_: output: lib.elem output.transform [ 1 3 5 7 ]) outputs);
+	xkb = osConfig.services.xserver.xkb;
 	playSound = file: "${pkgs.pipewire}/bin/pw-play --volume 0.4 ${file}";
 
 	bind = key: action: { _args = [ key (lua action) ]; };
@@ -135,17 +141,14 @@ in
 			# Shared with the shell, for the apps opened from the launcher.
 			env = lib.mapAttrsToList envVar (import ./session-env.nix);
 
-			monitor =
-			[
-				{ output = "HDMI-A-1"; mode = "preferred"; position = "0x0"; scale = 1; transform = 0; }
-				{ output = verticalPanel; mode = "1920x1080@165"; position = "2560x-240"; scale = 1; transform = 3; }
-				{ output = internalPanel; mode = "preferred"; position = "auto"; scale = 1; transform = 0; disabled = false; }
-			];
+			# Screens not in the settings get Hyprland's own: preferred, auto, 1.
+			monitor = lib.mapAttrsToList (name: output:
+			{
+				inherit (output) mode position scale transform;
+				output = name;
+			} // lib.optionalAttrs (name == internalPanel) { disabled = false; }) outputs;
 
-			workspace_rule =
-			[
-				{ workspace = "m[${verticalPanel}]"; layout_opts.orientation = "top"; }
-			];
+			workspace_rule = map (name: { workspace = "m[${name}]"; layout_opts.orientation = "top"; }) verticalOutputs;
 
 			config =
 			{
@@ -198,20 +201,17 @@ in
 
 				input =
 				{
-					kb_layout = "es";
-					kb_variant = "";
-					kb_model = "thinkpad";
+					kb_layout = xkb.layout;
+					kb_variant = xkb.variant;
+					kb_model = xkb.model;
 					follow_mouse = 1;
 					sensitivity = 0;
 					touchpad.natural_scroll = false;
 				};
 			};
 
-			device =
-			[
-				{ name = "tpps/2-synaptics-trackpoint"; sensitivity = -0.4; scroll_method = "no_scroll"; }
-				{ name = "logitech-pro-x-1"; sensitivity = -0.2; }
-			];
+			# Per-device input settings belong to the machine, in its home.nix:
+			# wayland.windowManager.hyprland.settings.device = [ … ];
 
 			# NIHIL motion: decisive deceleration, never a bounce.
 			curve =

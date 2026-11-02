@@ -1,6 +1,6 @@
 # home.nix by poligle
 
-{ config, pkgs, lib, inputs, ... }:
+{ config, osConfig, pkgs, lib, inputs, ... }:
 {
 	imports = 
 	[
@@ -19,15 +19,14 @@
         ./home/zen.nix
         ./home/vscode.nix
 		./home/bluetooth.nix
-		./home/engineering.nix
 		./home/cli.nix
 		./home/refresh.nix
 		./home/shell.nix
 		./home/fastfetch.nix
 	];
 
-	home.username = "poligle";
-	home.homeDirectory = "/home/poligle";
+	home.username = osConfig.nihil.user.name;
+	home.homeDirectory = "/home/${osConfig.nihil.user.name}";
 	home.stateVersion = "26.05";
 	programs.home-manager.enable = true;
 
