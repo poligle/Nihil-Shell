@@ -122,8 +122,13 @@ boot it (UEFI) and the installer starts on its own:
 
 1. Language, a network if there is no cable (`nmtui`), keyboard and time zone.
 2. Your name, user name, password and the computer's name.
-3. The disk, which is erased whole: a 1 GiB EFI partition and btrfs with subvolumes for
-   `/`, `/home`, `/nix` and `/var/log`, compressed, inside LUKS if you choose to encrypt.
+3. The disk, and its partitions: make or delete them right there (cfdisk), then install
+   on one of them (20 GB or more), or erase the whole disk. On a partition the rest of
+   the disk stays as it is, and the boot menu goes on the disk's EFI partition, offering
+   Windows or the other system too; if there is none, or it is small (Windows' is
+   100 MB), you also pick a partition of 1 GB for the kernels (XBOOTLDR). NIHIL is btrfs
+   with subvolumes for `/`, `/home`, `/nix` and `/var/log`, compressed, inside LUKS if
+   you choose to encrypt.
 
 It finds the screens and the GPU on its own and installs over the network (almost all of
 NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
