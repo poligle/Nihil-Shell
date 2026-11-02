@@ -108,8 +108,74 @@ disks=()
 for candidate in "${found[@]}"; do
     disks+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")
 done
-disk=$(gum choose --header "$(t "Install on (everything on it will be erased)" "Instalar en (se borrará todo lo que contiene)")" "${disks[@]}")
+disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disks[@]}")
 disk=${disk%% *}
+
+# The disk, all of it, or one of its partitions, which can be made right
+# here with cfdisk (in free space, or by deleting one). A partition keeps
+# the rest of the disk as it is, and the boot menu goes on the disk's EFI
+# partition, next to Windows' if there is one. If there is none, or it is
+# small (Windows' is 100 MB), a second partition of 1 GB holds the kernels.
+partitions() {
+    lsblk -pbnro NAME,SIZE,TYPE "$disk" | awk -v least="$1" -v skip="$2" '$3 == "part" && $2 >= least && index(" " skip " ", " " $1 " ") == 0 { print $1 }'
+}
+describe() {
+    local part
+    for part in "$@"; do
+        printf '%s   %s   %s\n' "$part" "$(lsblk -no SIZE "$part" | tr -d ' ')" "$(lsblk -no FSTYPE,LABEL "$part" | xargs)"
+    done
+}
+mode=whole
+efi=""
+windows=no
+edit=$(t "Make or delete partitions (cfdisk)" "Crear o borrar particiones (cfdisk)")
+pick=$(t "Install on one of its partitions" "Instalar en una de sus particiones")
+all=$(t "Erase the whole disk and install" "Borrar el disco entero e instalar")
+while true; do
+    lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
+    choice=$(gum choose --header "$(t "Partitions" "Particiones")" "$edit" "$pick" "$all")
+    if [ "$choice" = "$edit" ]; then
+        cfdisk "$disk" || true
+        partprobe "$disk" || true
+        udevadm settle
+        continue
+    fi
+    [ "$choice" = "$pick" ] || break
+    if [ "$(blkid -o value -s PTTYPE "$disk" 2>/dev/null)" != gpt ]; then
+        dim "$(t "$disk has no GPT partition table: make one in cfdisk, or erase the whole disk." "$disk no tiene tabla de particiones GPT: créala en cfdisk o borra el disco entero.")"
+        continue
+    fi
+    esp=$(lsblk -pnro NAME,PARTTYPE "$disk" | awk 'tolower($2) == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b" { print $1; exit }')
+    mapfile -t roots < <(partitions 20000000000 "$esp")
+    if [ "${#roots[@]}" -eq 0 ]; then
+        dim "$(t "No partition of 20 GB or more: make one in cfdisk." "No hay ninguna partición de 20 GB o más: créala en cfdisk.")"
+        continue
+    fi
+    mapfile -t choices < <(describe "${roots[@]}")
+    root=$(gum choose --header "$(t "NIHIL goes on (it will be formatted)" "NIHIL va en (se formateará)")" "${choices[@]}")
+    root=${root%% *}
+    boot=$esp
+    if [ -z "$esp" ] || [ "$(blockdev --getsize64 "$esp")" -lt 500000000 ]; then
+        mapfile -t boots < <(partitions 500000000 "$esp $root")
+        if [ "${#boots[@]}" -eq 0 ]; then
+            dim "$(t "NIHIL also needs a partition of 1 GB for booting: make one in cfdisk." "NIHIL necesita también una partición de 1 GB para arrancar: créala en cfdisk.")"
+            continue
+        fi
+        mapfile -t choices < <(describe "${boots[@]}")
+        boot=$(gum choose --header "$(t "Boot partition (it will be formatted)" "Partición de arranque (se formateará)")" "${choices[@]}")
+        boot=${boot%% *}
+        efi=$esp
+    fi
+    if [ -n "$esp" ]; then
+        mkdir -p /tmp/esp
+        if mount -o ro "$esp" /tmp/esp 2>/dev/null; then
+            [ ! -d /tmp/esp/EFI/Microsoft ] || windows=yes
+            umount /tmp/esp
+        fi
+    fi
+    mode=part
+    break
+done
 
 encrypt=no
 if gum confirm "$(t "Encrypt the disk? It asks for a passphrase at every boot." "¿Cifrar el disco? Pedirá una contraseña en cada arranque.")" \
@@ -125,7 +191,12 @@ if gum confirm "$(t "Encrypt the disk? It asks for a passphrase at every boot." 
     done
 fi
 
-gum style --foreground 1 --margin "1 0" "$(t "Everything on $disk will be erased." "Se borrará todo lo que hay en $disk.")"
+if [ "$mode" = whole ]; then
+    gum style --foreground 1 --margin "1 0" "$(t "Everything on $disk will be erased." "Se borrará todo lo que hay en $disk.")"
+else
+    gum style --foreground 1 --margin "1 0" "$(t "$root will be formatted" "Se formateará $root")$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")$(t "; the rest of $disk stays as it is." "; el resto de $disk se queda como está.")" \
+        "$( [ "$windows" = no ] || t "The boot menu will offer Windows too." "El menú de arranque ofrecerá también Windows.")"
+fi
 gum confirm "$(t "Install NIHIL?" "¿Instalar NIHIL?")" --affirmative "$(t "Install" "Instalar")" --negative "$(t "Cancel" "Cancelar")" \
     --default=false || exit 1
 
@@ -138,15 +209,28 @@ part() {
 say "$(t "Preparing the disk…" "Preparando el disco…")"
 umount -R /mnt 2>/dev/null || true
 cryptsetup close cryptroot 2>/dev/null || true
-wipefs -af "$disk" >/dev/null
-sgdisk --zap-all "$disk" >/dev/null
-sgdisk -n1:0:+1G -t1:ef00 -c1:BOOT -n2:0:0 -t2:8300 -c2:nixos "$disk" >/dev/null
-partprobe "$disk"
-udevadm settle
-
-boot=$(part 1)
-root=$(part 2)
-mkfs.fat -F 32 -n BOOT "$boot" >/dev/null
+if [ "$mode" = whole ]; then
+    wipefs -af "$disk" >/dev/null
+    sgdisk --zap-all "$disk" >/dev/null
+    sgdisk -n1:0:+1G -t1:ef00 -c1:BOOT -n2:0:0 -t2:8300 -c2:nixos "$disk" >/dev/null
+    partprobe "$disk"
+    udevadm settle
+    boot=$(part 1)
+    root=$(part 2)
+    mkfs.fat -F 32 -n BOOT "$boot" >/dev/null
+else
+    # The partitions chosen, typed for what they hold: Linux for the root,
+    # EFI or XBOOTLDR (next to a small EFI partition) for the boot one.
+    sgdisk -t "$(lsblk -no PARTN "$root" | tr -d ' '):8300" "$disk" >/dev/null
+    if [ "$boot" != "$esp" ]; then
+        if [ -n "$esp" ]; then type=ea00; else type=ef00; fi
+        sgdisk -t "$(lsblk -no PARTN "$boot" | tr -d ' '):$type" "$disk" >/dev/null
+        mkfs.fat -F 32 -n NIHIL "$boot" >/dev/null
+    fi
+    partprobe "$disk" || true
+    udevadm settle
+    wipefs -af "$root" >/dev/null
+fi
 if [ "$encrypt" = yes ]; then
     printf '%s' "$passphrase" | cryptsetup luksFormat --type luks2 --batch-mode --key-file=- "$root"
     printf '%s' "$passphrase" | cryptsetup open --key-file=- "$root" cryptroot
@@ -167,6 +251,10 @@ mount -o "subvol=@home,$options" "$root" /mnt/home
 mount -o "subvol=@nix,$options" "$root" /mnt/nix
 mount -o "subvol=@log,$options" "$root" /mnt/var/log
 mount -o umask=0077 "$boot" /mnt/boot
+if [ -n "$efi" ]; then
+    mkdir -p /mnt/efi
+    mount -o umask=0077 "$efi" /mnt/efi
+fi
 
 # --- The machine's flake ------------------------------------------------------------------
 
@@ -228,6 +316,19 @@ elif lspci -nn | grep -Ei 'vga|3d|display' | grep -qi intel; then
     gpu="boot.initrd.kernelModules = [ \"i915\" ];"
 fi
 
+# Next to another system: where systemd-boot and the kernels go, and
+# Windows' clock, which it keeps in local time.
+loader=""
+if [ -n "$efi" ]; then
+    loader+=$'\n\t# The EFI partition is small: systemd-boot there, the kernels on /boot (XBOOTLDR).'
+    loader+=$'\n\tboot.loader.efi.efiSysMountPoint = lib.mkForce "/efi";'
+    loader+=$'\n\tboot.loader.systemd-boot.xbootldrMountPoint = "/boot";\n'
+fi
+if [ "$windows" = yes ]; then
+    loader+=$'\n\t# Windows keeps the hardware clock in local time.'
+    loader+=$'\n\ttime.hardwareClockInLocalTime = true;\n'
+fi
+
 release=$(nixos-version | cut -d . -f 1,2)
 cat > "$etc/local.nix" << EOF
 # local.nix: NixOS settings of this machine only (drivers, services,
@@ -246,6 +347,7 @@ cat > "$etc/local.nix" << EOF
 	services.btrfs.autoScrub = { enable = true; fileSystems = [ "/" ]; };
 
 	${gpu}
+${loader}
 }
 EOF
 
