@@ -59,7 +59,9 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   battery warnings at 15, 10 and 5 %. Plugging in the charger sends two lights up both
   sides from the bottom, which meet at the top, like the launcher on the phone.
 - **Wallpapers as LED matrices.** Every image in `wallpapers/` is rendered at build time
-  as dots, once per output at its native size, so each dot lands on exact pixels.
+  as dots, once per output at its native size, so each dot lands on exact pixels. The
+  [studio](https://nihilshell.com/studio/) does the same in the browser with any picture
+  (`docs/studio/`, the same numbers as `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once, even when the boot is faster than it), a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
