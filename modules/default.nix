@@ -26,5 +26,6 @@
         ./direnv.nix
         ./nihil.nix
         ./nihil-cli.nix
+        ./binds.nix
     ];
 }

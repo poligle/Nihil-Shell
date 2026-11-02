@@ -30,9 +30,43 @@ let
 	# by the keycode wev shows: 201. One bind only, or a press would toggle twice.
 	niloBinds = lib.optionals osConfig.nihil.nilo.enable
 	[
-		(bind "SUPER + I" (exec "nihil-ipc nilo toggle"))
 		(bind "SUPER + SHIFT + code:201" (exec "nihil-ipc nilo toggle"))
 	];
+
+	# NIHIL's actions, on the keys the machine gives them (nihil.binds,
+	# modules/binds.nix): an action with null has no bind.
+	keys = osConfig.nihil.binds;
+	actions =
+	{
+		terminal = exec "kitty";
+		launcher = exec "nihil-ipc drawers toggle launcher";
+		dashboard = exec "nihil-ipc drawers toggle dashboard";
+		panel = exec "nihil-ipc drawers toggle panel";
+		files = exec "thunar";
+		browser = exec "zen-beta";
+		notes = exec "obsidian";
+		code = exec "code";
+		music = exec "spotify";
+		pixels = exec "aseprite";
+		colourPicker = exec "hyprpicker -a";
+		lock = exec "lock-screen";
+		close = "hl.dsp.window.close()";
+		float = ''hl.dsp.window.float({ action = "toggle" })'';
+		maximize = withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "maximized" })'';
+		fullscreen = withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "fullscreen" })'';
+		special = withSound sound.special "hl.dsp.workspace.toggle_special()";
+		toSpecial = ''hl.dsp.window.move({ workspace = "special" })'';
+		nextWorkspace = ''hl.dsp.focus({ workspace = "e+1" })'';
+	} // lib.optionalAttrs osConfig.nihil.nilo.enable
+	{
+		nilo = exec "nihil-ipc nilo toggle";
+	};
+	actionBinds = lib.mapAttrsToList (name: action: bind keys.${name} action)
+		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
+		++ lib.optional (keys.screenshot != null)
+			(bindWith keys.screenshot (exec "hyprshot -m region --clipboard-only") { locked = true; });
+
+	fingers = osConfig.nihil.gestures;
 
 	workspaceBinds = lib.concatMap
 	(
@@ -230,12 +264,13 @@ in
 				{ leaf = "workspaces"; enabled = true; speed = 3; bezier = "nihilInOut"; style = "slide"; }
 			];
 
-			gesture =
+			# Each gesture with the fingers the machine gives it (nihil.gestures).
+			gesture = lib.filter (gesture: gesture.fingers != null)
 			[
-				{ fingers = 3; direction = "horizontal"; action = "workspace"; }
-				{ fingers = 3; direction = "down"; action = "close"; }
-				{ fingers = 3; direction = "up"; action = lua ''function() hl.exec_cmd("nihil-ipc drawers toggle launcher") end''; }
-				{ fingers = 4; direction = "vertical"; action = lua (withSound sound.special "hl.dsp.workspace.toggle_special()"); }
+				{ fingers = fingers.workspaces; direction = "horizontal"; action = "workspace"; }
+				{ fingers = fingers.close; direction = "down"; action = "close"; }
+				{ fingers = fingers.launcher; direction = "up"; action = lua ''function() hl.exec_cmd("nihil-ipc drawers toggle launcher") end''; }
+				{ fingers = fingers.special; direction = "vertical"; action = lua (withSound sound.special "hl.dsp.workspace.toggle_special()"); }
 			];
 
 			window_rule =
@@ -259,32 +294,10 @@ in
 
 			bind =
 			[
-				(bind "SUPER + Super_L" (exec "kitty"))
-				(bind "SUPER + Space" (exec "nihil-ipc drawers toggle launcher"))
-				(bind "SUPER + D" (exec "nihil-ipc drawers toggle dashboard"))
-				(bind "SUPER + P" (exec "nihil-ipc drawers toggle panel"))
-				(bind "SUPER + E" (exec "thunar"))
-				(bind "SUPER + X" (exec "zen-beta"))
-				(bind "SUPER + N" (exec "obsidian"))
-				(bind "SUPER + C" (exec "code"))
-				(bind "SUPER + S" (exec "spotify"))
-				(bind "SUPER + A" (exec "aseprite"))
-				(bind "SUPER + H" (exec "hyprpicker -a"))
-				(bind "SUPER + K" (exec "lock-screen"))
-
-				(bind "SUPER + Q" "hl.dsp.window.close()")
-				(bind "SUPER + V" ''hl.dsp.window.float({ action = "toggle" })'')
-				(bind "SUPER + F" (withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "maximized" })''))
-				(bind "SUPER + SHIFT + F" (withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "fullscreen" })''))
-
 				(bind "SUPER + left" ''hl.dsp.focus({ direction = "left" })'')
 				(bind "SUPER + right" ''hl.dsp.focus({ direction = "right" })'')
 				(bind "SUPER + up" ''hl.dsp.focus({ direction = "up" })'')
 				(bind "SUPER + down" ''hl.dsp.focus({ direction = "down" })'')
-
-				(bind "SUPER + Escape" (withSound sound.special "hl.dsp.workspace.toggle_special()"))
-				(bind "SUPER + Control_L" ''hl.dsp.window.move({ workspace = "special" })'')
-				(bind "SUPER + Tab" ''hl.dsp.focus({ workspace = "e+1" })'')
 
 				(bindWith "XF86AudioRaiseVolume" (exec "osd-volume up") { locked = true; repeating = true; })
 				(bindWith "XF86AudioLowerVolume" (exec "osd-volume down") { locked = true; repeating = true; })
@@ -293,7 +306,6 @@ in
 				(bindWith "XF86MonBrightnessUp" (exec "osd-brightness up") { locked = true; repeating = true; })
 				(bindWith "XF86MonBrightnessDown" (exec "osd-brightness down") { locked = true; repeating = true; })
 
-				(bindWith "PRINT" (exec "hyprshot -m region --clipboard-only") { locked = true; })
 				(bindWith "XF86SelectiveScreenshot" (exec "hyprshot -m region --clipboard-only") { locked = true; })
 				(bindWith "XF86AudioNext" (exec "playerctl next") { locked = true; })
 				(bindWith "XF86AudioPause" (exec "playerctl play-pause") { locked = true; })
@@ -308,6 +320,7 @@ in
 				(bindWith "switch:on:Lid Switch" lidClose { locked = true; })
 				(bindWith "switch:off:Lid Switch" lidOpen { locked = true; })
 			]
+			++ actionBinds
 			++ niloBinds
 			++ workspaceBinds;
 

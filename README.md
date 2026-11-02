@@ -168,6 +168,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `primaryOutput` | —          | Screen for the desktop widgets, lock and login backgrounds      |
 | `wallpaper`     | `"night"`  | Default wallpaper, a file name in `wallpapers/`                 |
 | `extraWallpapers` | none    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
+| `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
 | `nilo.enable`   | `false`    | Nilo, the assistant, and Ollama to run its model ([Nilo](#nilo)) |
@@ -209,6 +210,21 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 
 Scrolling over the bar switches workspaces (on the LEDs) or changes the volume (on the
 status icons).
+
+These are the defaults. A machine changes them in its `settings.json`, by the names in
+[`modules/binds.nix`](modules/binds.nix): a new key combination, or `null` for none, and
+the fingers of each gesture the same way.
+
+```json
+"binds": { "terminal": "SUPER + Return", "pixels": null },
+"gestures": { "close": null, "special": 3 }
+```
+
+The actions: `terminal`, `launcher`, `dashboard`, `panel`, `files`, `browser`, `notes`,
+`code`, `music`, `pixels`, `colourPicker`, `lock`, `nilo`, `close`, `float`, `maximize`,
+`fullscreen`, `special`, `toSpecial`, `nextWorkspace`, `screenshot`. The gestures:
+`workspaces`, `close`, `launcher`, `special`. Workspaces, focus, media keys and the mouse
+stay as they are.
 
 ---
 

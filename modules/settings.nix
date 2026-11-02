@@ -87,6 +87,9 @@ in
 
         services.openssh.enable = lib.mkDefault (get [ "ssh" ] false);
 
+        nihil.binds = get [ "binds" ] { };
+        nihil.gestures = get [ "gestures" ] { };
+
         nihil =
         {
             language = lib.mkDefault (get [ "language" ] "en");
