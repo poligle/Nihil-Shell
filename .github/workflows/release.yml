@@ -1,0 +1,69 @@
+# release.yml by poligle
+#
+# The installer ISO, built on every push and published as a release: a tag
+# like v1.0 makes its own, a push to the branch replaces the "latest"
+# pre-release. First it checks that a machine as the installer leaves it
+# (nixosConfigurations.example) still evaluates. Installed machines don't
+# need any of this to update: nihil update pulls the repository itself.
+
+name: ISO
+
+on:
+  push:
+    branches: [ nihil ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: iso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  iso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      # The runner has about 14 GB free; the build needs more.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: A machine evaluates
+        run: nix eval --raw .#nixosConfigurations.example.config.system.build.toplevel.drvPath
+
+      - name: Build the ISO
+        run: nix build .#iso --print-build-logs
+
+      - name: Name it
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then version=$GITHUB_REF_NAME; else version=latest-${GITHUB_SHA::7}; fi
+          mkdir out
+          cp result/iso/*.iso "out/nihil-$version-x86_64-linux.iso"
+          (cd out && sha256sum ./*.iso > SHA256SUMS)
+          ls -lh out
+
+      - name: Release for the tag
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" out/* --title "NIHIL $GITHUB_REF_NAME" --generate-notes
+
+      - name: Latest from the branch
+        if: github.ref_type == 'branch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest out/* --prerelease --target "$GITHUB_SHA" --title "NIHIL (latest)" \
+            --notes "Built from ${GITHUB_SHA::7}. An installed machine updates itself with: nihil update"
