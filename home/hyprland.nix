@@ -58,7 +58,7 @@ let
 	};
 	# Programs: a command each, quoted for Lua.
 	programBinds = map (program: bind program.keys (exec (lib.escape [ "\\" "\"" ] program.exec)))
-		(builtins.filter (program: program.keys != null) nihil.programs);
+		(builtins.filter (program: program.keys != null) osConfig.nihil.programs);
 
 	actionBinds = lib.mapAttrsToList (name: action: bind keys.${name} action)
 		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
