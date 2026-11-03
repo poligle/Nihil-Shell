@@ -1,10 +1,11 @@
 # iso.nix by poligle (installer)
 #
-# The installer: NixOS's minimal live image with NetworkManager, the NIHIL
-# machine template and nihil-install, which starts by itself on the first
-# console. It installs over the network: cache.nixos.org has almost all of
-# NIHIL, and its own pieces (wallpapers, splash, fonts) are built there.
-# Built by .github/workflows/release.yml.
+# The installer: NixOS's minimal live image, which brings NetworkManager and
+# linux-firmware, with the newest kernel, the NIHIL machine template and
+# nihil-install, which starts by itself on the first console. It installs
+# over the network: cache.nixos.org has almost all of NIHIL, and its own
+# pieces (wallpapers, splash, fonts) are built there. Built by
+# .github/workflows/release.yml.
 
 { config, lib, pkgs, modulesPath, nihil, ... }:
 let
@@ -20,15 +21,14 @@ let
     };
 in
 {
-    # The newest kernel (without ZFS, which lags behind it), and every
-    # firmware: recent Wi-Fi cards need both to show up at all.
+    # The newest kernel (without ZFS, which lags behind it): the newest Wi-Fi
+    # cards and GPUs need it.
     imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-minimal-new-kernel-no-zfs.nix" ];
-    hardware.enableAllFirmware = true;
-    nixpkgs.config.allowUnfree = true;
 
+    # NetworkManager drives Wi-Fi through networking.wireless (wpa_supplicant
+    # over D-Bus) and turns it on itself: switching it off left nmtui with
+    # cables only.
     networking.hostName = "nihil-installer";
-    networking.wireless.enable = lib.mkForce false;
-    networking.networkmanager.enable = true;
 
     nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
