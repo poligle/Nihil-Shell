@@ -8,16 +8,10 @@
     services.blueman.enable = true;
     networking.networkmanager.wifi.powersave = false;
 
-    # The panel unblocks Bluetooth as the user if a key blocked it: the active
-    # session gets /dev/rfkill, as it gets the GPU. uaccess has to be tagged
-    # before 73-seat-late.rules applies it, so not in extraRules (99-local).
-    services.udev.packages =
-    [
-        (pkgs.writeTextDir "lib/udev/rules.d/70-nihil-rfkill.rules" ''
-            KERNEL=="rfkill", SUBSYSTEM=="misc", TAG+="uaccess"
-        '')
-    ];
-
+    # Bluetooth stays off after booting, and blocked if it went down blocked:
+    # the panel unblocks it and powers it on (home/shell/services/Bt.qml;
+    # systemd's own uaccess rule hands the session /dev/rfkill). Not
+    # unblocked here: bluetoothd powers an adapter on as soon as it is.
     systemd.services.bluetooth-off-at-boot = 
     {
         description = "Power off Bluetooth adapter at boot";
@@ -27,9 +21,9 @@
         serviceConfig = 
         {
             Type = "oneshot";
-            # Off, but not blocked: the panel only has to power it on.
-            ExecStartPre = [ "${pkgs.coreutils}/bin/sleep 3" "${pkgs.util-linux}/bin/rfkill unblock bluetooth" ];
-            ExecStart = "${pkgs.bluez}/bin/bluetoothctl power off";
+            ExecStartPre = "${pkgs.coreutils}/bin/sleep 3";
+            # No adapter yet (its firmware still loading) is no failure.
+            ExecStart = "-${pkgs.bluez}/bin/bluetoothctl power off";
         };
     };
 }
