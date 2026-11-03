@@ -154,6 +154,7 @@ nihil update      # the latest NIHIL, then rebuild
 nihil rebuild     # apply changes to /etc/nixos
 nihil settings    # edit settings.json, then rebuild
 nihil version     # which NIHIL this machine runs
+nihil dev [path]  # with a local NIHIL checkout instead, to try changes unpushed
 ```
 
 **By hand**, on an existing NixOS: `nix flake init -t github:poligle/Nihil-Shell` in an

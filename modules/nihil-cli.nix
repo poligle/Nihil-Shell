@@ -6,6 +6,8 @@
 #   nihil update      bring the latest NIHIL (and what it pins), then rebuild
 #   nihil settings    edit settings.json, then rebuild
 #   nihil version     the NIHIL revision this machine runs
+#   nihil dev [path]  rebuild with a local NIHIL checkout (here by default)
+#                     instead of the one pinned, to try changes unpushed
 
 { config, lib, pkgs, ... }:
 let
@@ -46,11 +48,24 @@ let
                     jq empty "$flake/settings.json" || { echo "settings.json is not valid JSON: nothing applied."; exit 1; }
                     rebuild
                     ;;
+                dev)
+                    shift
+                    source=$(realpath "''${1:-.}")
+                    if [ "$#" -gt 0 ]; then
+                        shift
+                    fi
+                    if [ ! -f "$source/flake.nix" ]; then
+                        echo "There is no NIHIL checkout in $source."
+                        exit 1
+                    fi
+                    echo "NIHIL from $source, not the one pinned in $flake/flake.lock."
+                    rebuild --override-input nihil "path:$source" --no-write-lock-file "$@"
+                    ;;
                 version)
                     jq -r '.nodes.nihil.locked | "NIHIL \(.rev[0:7] // "local") (\(.lastModified // 0 | todate))"' "$flake/flake.lock"
                     ;;
                 *)
-                    echo "usage: nihil rebuild | update | settings | version"
+                    echo "usage: nihil rebuild | update | settings | version | dev [path]"
                     echo "the machine's flake: $flake"
                     ;;
             esac
