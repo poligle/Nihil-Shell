@@ -24,6 +24,8 @@ Singleton {
     property real lastRx: -1
     property real lastTx: -1
     property string tempPath: ""
+    property string tempSkip: ""
+    property int tempMisses: 0
 
     function human(bytes: real): string {
         if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB/s";
@@ -58,16 +60,18 @@ Singleton {
     // The CPU's own sensor first (AMD, Intel, ARM), then the laptop's, then
     // a thermal zone, then any sensor: every temp*_input of each, only one
     // that reads a sane value. It is looked for again when the dashboard
-    // opens without one and when the one it has stops reading; the journal
-    // says which (journalctl --user -u nihil-shell | grep temperature).
+    // opens without one, and after five readings in a row fail, then without
+    // the one that failed; the journal says which
+    // (journalctl --user -u nihil-shell | grep temperature).
     Process {
         id: findTemp
         command: [Config.cmd.sh, "-c",
-            "sane() { v=$(cat \"$1\" 2>/dev/null) && [ \"${v:-0}\" -gt 0 ] 2>/dev/null && [ \"$v\" -lt 150000 ]; }; " +
+            "skip=$1; sane() { [ \"$1\" != \"$skip\" ] && v=$(cat \"$1\" 2>/dev/null) && [ \"${v:-0}\" -gt 0 ] 2>/dev/null && [ \"$v\" -lt 150000 ]; }; " +
             "for want in k10temp zenpower coretemp cpu_thermal thinkpad acpitz; do " +
             "for d in /sys/class/hwmon/hwmon*; do [ \"$(cat \"$d/name\" 2>/dev/null)\" = \"$want\" ] || continue; " +
             "for f in \"$d\"/temp*_input; do sane \"$f\" && { echo \"$f\"; exit; }; done; done; done; " +
-            "for f in /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input; do sane \"$f\" && { echo \"$f\"; exit; }; done"]
+            "for f in /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input; do sane \"$f\" && { echo \"$f\"; exit; }; done",
+            "sh", root.tempSkip]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
@@ -120,9 +124,13 @@ Singleton {
         if (root.tempPath) {
             tempFile.reload();
             const v = parseInt(tempFile.text());
-            if (!isNaN(v) && v > 0) {
+            if (!isNaN(v) && v > 0 && v < 150000) {
                 root.temp = v / 1000;
-            } else {
+                root.tempMisses = 0;
+            } else if (++root.tempMisses >= 5) {
+                console.warn("nihil: temperature: no reading from", root.tempPath + ", looking for another sensor");
+                root.tempSkip = root.tempPath;
+                root.tempMisses = 0;
                 root.tempPath = "";
                 findTemp.running = true;
             }
