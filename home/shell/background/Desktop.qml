@@ -20,7 +20,7 @@ Scope {
     }
 
     function enabled(name: string): bool {
-        return Config.widgets.indexOf(name) >= 0;
+        return Machine.widgets.indexOf(name) >= 0;
     }
 
     component Card: Rectangle {
@@ -47,7 +47,7 @@ Scope {
 
     PanelWindow {
         screen: root.target
-        visible: root.target !== null && Config.widgets.length > 0
+        visible: root.target !== null && Machine.widgets.length > 0
         color: "transparent"
 
         WlrLayershell.layer: WlrLayer.Bottom

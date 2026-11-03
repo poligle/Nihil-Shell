@@ -19,7 +19,7 @@ Item {
 
     signal suggest(string text)
 
-    readonly property var voices: ({ ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6",
+    readonly property var voices: ({ copy: Lang.niloCopy, ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6",
                                      surface: String(Tokens.surface), mono: Tokens.fontMono })
 
     function scroll(step: real): void {
@@ -361,6 +361,12 @@ Item {
                         font.pixelSize: 15
                         lineHeight: 1.3
                         onLinkActivated: link => {
+                            if (link.startsWith("copy:")) {
+                                const code = Markdown.blocks(entry.text)[Number(link.slice(5))];
+                                if (code !== undefined)
+                                    Quickshell.execDetached([Config.cmd.wlCopy, code]);
+                                return;
+                            }
                             Drawers.close();
                             Qt.openUrlExternally(link);
                         }
