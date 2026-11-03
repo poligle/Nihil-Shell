@@ -12,16 +12,9 @@
 let
     keys =
     {
-        terminal = "SUPER + Super_L";
         launcher = "SUPER + Space";
         dashboard = "SUPER + D";
         panel = "SUPER + P";
-        files = "SUPER + E";
-        browser = "SUPER + X";
-        notes = null;
-        code = null;
-        music = null;
-        pixels = null;
         colourPicker = "SUPER + H";
         lock = "SUPER + K";
         nilo = "SUPER + I";
@@ -38,6 +31,18 @@ let
     };
 
     # Fingers on the touchpad for each gesture.
+    # Programs with a key; a machine's settings.json "programs" replaces them.
+    programs =
+    [
+        { name = "Terminal"; exec = "kitty"; keys = "SUPER + Super_L"; }
+        { name = config.nihil.strings.bindFiles; exec = "thunar"; keys = "SUPER + E"; }
+        { name = "Zen"; exec = "zen-beta"; keys = "SUPER + X"; }
+    ];
+
+    # Actions that became programs: a settings.json that still names them is
+    # read without them.
+    former = [ "terminal" "files" "browser" "notes" "code" "music" "pixels" ];
+
     gestures =
     {
         workspaces = 3;     # sideways: the next or previous workspace
@@ -53,17 +58,32 @@ in
         {
             type = lib.types.attrsOf (lib.types.nullOr lib.types.str);
             default = { };
-            apply = changed: keys // changed;
-            example = { terminal = "SUPER + Return"; pixels = null; };
+            apply = changed: keys // removeAttrs changed former;
+            example = { launcher = "SUPER + R"; screenshot = null; };
             description = "Keys for NIHIL's actions, over the defaults in modules/binds.nix; null for none.";
         };
 
         bindDefaults = lib.mkOption
         {
             type = lib.types.attrs;
-            default = { inherit keys gestures; };
+            default = { inherit keys gestures programs; };
             readOnly = true;
             description = "NIHIL's own keys and fingers, before a machine changes them (Preferences shows both).";
+        };
+
+        programs = lib.mkOption
+        {
+            type = lib.types.listOf (lib.types.submodule
+            {
+                options =
+                {
+                    name = lib.mkOption { type = lib.types.str; };
+                    exec = lib.mkOption { type = lib.types.str; };
+                    keys = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+                };
+            });
+            default = programs;
+            description = "Programs with a key: a name, the command that opens it and its keys (Preferences, Shortcuts).";
         };
 
         gestures = lib.mkOption

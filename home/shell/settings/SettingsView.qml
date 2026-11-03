@@ -14,7 +14,6 @@ Item {
         { name: "region", title: Lang.cfgRegion, file: "PageRegion.qml" },
         { name: "look", title: Lang.cfgLook, file: "PageLook.qml" },
         { name: "keys", title: Lang.cfgKeys, file: "PageKeys.qml" },
-        { name: "gestures", title: Lang.cfgGestures, file: "PageGestures.qml" },
         { name: "system", title: Lang.cfgSystem, file: "PageSystem.qml" }
     ]
     readonly property var current: pages.find(page => page.name === Machine.page) ?? pages[0]
