@@ -11,8 +11,14 @@ import qs.components
 Item {
     id: root
 
-    readonly property var steps: ["hello", "frame", "basics", "you", "region", "look", "system", "done"]
-    readonly property var files: ({ you: "PageYou.qml", region: "PageRegion.qml", look: "PageLook.qml", system: "PageSystem.qml" })
+    // A network right after the hello, when there is none.
+    property var steps: ["hello", "frame", "basics", "you", "region", "look", "system", "done"]
+    readonly property var files: ({ network: "PageNetwork.qml", you: "PageYou.qml", region: "PageRegion.qml", look: "PageLook.qml", system: "PageSystem.qml" })
+
+    Component.onCompleted: {
+        if (!Network.connected)
+            steps = ["hello", "network"].concat(steps.slice(1));
+    }
     property int step: 0
     readonly property string current: steps[step]
     readonly property bool last: step === steps.length - 1
@@ -58,10 +64,9 @@ Item {
             width: Math.min(600, parent.width)
             spacing: 12
 
-            DotText {
+            Logo {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "NIHIL"
-                font.pixelSize: 84
+                size: 84
             }
 
             Label {

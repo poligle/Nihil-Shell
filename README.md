@@ -148,7 +148,7 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: th
    inside LUKS if you choose to encrypt.
 4. The first login opens the welcome: what NIHIL is and how its frame works, then your
    name, language, keyboard, time zone, wallpaper and system. **Preferences** changes
-   all of it later, shortcuts and gestures too: `SUPER + comma`, the cog in quick
+   all of it later, shortcuts and gestures too: `SUPER + O`, the cog in quick
    settings or the launcher. Changes wait until applied; applying asks for your
    password (or a finger) and rebuilds the system on its own (`nihil apply`), which
    keeps going if the shell restarts and puts the old settings back if the build fails.

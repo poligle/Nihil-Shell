@@ -41,6 +41,7 @@ Singleton {
     property string passwordState: ""
 
     property string wallpaper: ""
+    property bool picking: false
     property var timeZones: []
 
     // How applying goes, in words, for Preferences and the welcome.
@@ -147,6 +148,14 @@ Singleton {
         markWelcomed();
         root.welcoming = false;
         root.shown = false;
+    }
+
+    // The desktop's only, at once (the quick picker, settings/Wallpapers.qml).
+    function liveWallpaper(name: string): void {
+        if (name === "")
+            return;
+        root.wallpaper = name;
+        Quickshell.execDetached([Config.cmd.wallpaper, "set", name]);
     }
 
     // At once, and for the lock screen and the login once applied.
@@ -347,5 +356,9 @@ Singleton {
         function toggle(): void { if (root.shown) root.hide(); else root.show("", false); }
         function close(): void { root.hide(); }
         function welcome(): void { root.show("hello", true); }
+        function wallpapers(): void {
+            root.screen = Hyprland.focusedMonitor?.name ?? "";
+            root.picking = !root.picking;
+        }
     }
 }

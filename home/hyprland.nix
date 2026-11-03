@@ -51,6 +51,7 @@ let
 		colourPicker = exec "hyprpicker -a";
 		lock = exec "lock-screen";
 		settings = exec "nihil-ipc settings toggle";
+		wallpapers = exec "nihil-ipc settings wallpapers";
 		close = "hl.dsp.window.close()";
 		float = ''hl.dsp.window.float({ action = "toggle" })'';
 		maximize = withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "maximized" })'';

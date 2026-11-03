@@ -25,7 +25,8 @@ let
         colourPicker = "SUPER + H";
         lock = "SUPER + K";
         nilo = "SUPER + I";
-        settings = "SUPER + comma";
+        settings = "SUPER + O";
+        wallpapers = "SUPER + W";
         close = "SUPER + Q";
         float = "SUPER + V";
         maximize = "SUPER + F";
