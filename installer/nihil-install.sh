@@ -225,7 +225,11 @@ smallest() {
             sed -n 's/.*resize at \([0-9][0-9]*\) bytes.*/\1/p' <<< "$report"
             ;;
         ext4)
-            report=$(resize2fs -P "$1" 2>/dev/null) || return 1
+            if ! report=$(resize2fs -P "$1" 2>/dev/null); then
+                dim "$(t "$1: its ext4 needs a check first (it was not shut down cleanly). Start its system and shut it down, or run sudo e2fsck -f $1 in another console (Alt+F2), and start the installer again." \
+                         "$1: su ext4 necesita una revisión antes (no se apagó bien). Arranca su sistema y apágalo, o ejecuta sudo e2fsck -f $1 en otra consola (Alt+F2), y vuelve a empezar el instalador.")" >&2
+                return 1
+            fi
             blocks=$(sed -n 's/^Estimated minimum size of the filesystem: \([0-9][0-9]*\)$/\1/p' <<< "$report")
             block=$(dumpe2fs -h "$1" 2>/dev/null | awk -F: '/^Block size:/ { print $2 + 0 }')
             if [ -z "$blocks" ] || [ -z "$block" ]; then
@@ -235,7 +239,10 @@ smallest() {
             ;;
         btrfs)
             mkdir -p /tmp/shrink
-            mount -o ro "$1" /tmp/shrink 2>/dev/null || return 1
+            if ! mount -o ro "$1" /tmp/shrink 2>/dev/null; then
+                dim "$(t "$1: its btrfs could not be mounted to measure it." "$1: su btrfs no se ha podido montar para medirlo.")" >&2
+                return 1
+            fi
             report=$(btrfs inspect-internal min-dev-size /tmp/shrink 2>/dev/null) || report=""
             if [ "$(btrfs filesystem show /tmp/shrink 2>/dev/null | grep -c devid)" != 1 ]; then
                 report=""
@@ -258,16 +265,27 @@ givers() {
     local part bytes fstype small give
     while read -r part bytes; do
         fstype=$(fstype_of "$part")
+        [ "$bytes" -gt $(( $1 + headroom )) ] || continue
         case $fstype in
             ntfs|ext4|btrfs) ;;
+            crypto_LUKS|LVM2_member)
+                dim "$(t "$part: encrypted or in LVM; shrink it from its own system, and its free space shows up here." \
+                         "$part: está cifrada o en LVM; encógela desde su propio sistema y su espacio libre aparecerá aquí.")" >&2
+                continue
+                ;;
+            xfs|zfs_member|f2fs)
+                dim "$(t "$part: $fstype cannot be shrunk." "$part: $fstype no se puede encoger.")" >&2
+                continue
+                ;;
             *) continue ;;
         esac
-        [ "$bytes" -gt $(( $1 + headroom )) ] || continue
         small=$(smallest "$part" "$fstype") || continue
         [ -n "$small" ] || continue
         give=$(( (bytes - small - headroom) / 1048576 * 1048576 ))
         if [ "$give" -ge "$1" ]; then
             printf '%s %s %s\n' "$part" "$fstype" "$give"
+        else
+            dim "$(t "$part: too full to give $(size "$1") and keep 10 GB free." "$part: está demasiado llena para dar $(size "$1") y quedarse con 10 GB libres.")" >&2
         fi
     done < <(lsblk -pbnro NAME,SIZE,TYPE "$disk" | awk '$3 == "part" { print $1, $2 }')
 }
@@ -336,6 +354,21 @@ plan_room() {
         entries+=("free $first $last")
         labels+=("$(t "Its free space" "Su espacio libre"): $(size $(( (last - first + 1) * sector )))")
     done < <(free_stretches "$need")
+    # An ext4 not shut down cleanly cannot be measured: offer to check it
+    # (e2fsck in preen mode, what a boot would do).
+    local unchecked=()
+    mapfile -t unchecked < <(partitions $(( need + headroom )) "")
+    for part in "${unchecked[@]}"; do
+        if [ "$(fstype_of "$part")" = ext4 ] && ! resize2fs -P "$part" > /dev/null 2>&1; then
+            if gum confirm "$(t "$part (ext4) was not shut down cleanly and needs a check before it can be measured. Check it now (e2fsck)?" \
+                    "$part (ext4) no se apagó bien y necesita una revisión antes de poder medirla. ¿Revisarla ahora (e2fsck)?")" \
+                    --affirmative "$(t "Check it" "Revisarla")" --negative "$(t "Leave it" "Dejarla")"; then
+                say "$(t "Checking $part…" "Revisando $part…")"
+                e2fsck -f -p "$part" > /dev/null 2>&1 || true
+            fi
+        fi
+    done
+
     say "$(t "Looking at what its partitions hold…" "Mirando lo que guardan sus particiones…")"
     while read -r part fstype give; do
         label=$(label_of "$part")
@@ -503,10 +536,13 @@ bootType=""
 nextTo=$(t "Next to what is on it (make room)" "Junto a lo que hay (hacer sitio)")
 all=$(t "Erase the whole disk" "Borrar el disco entero")
 pick=$(t "On one of its partitions (formatting it)" "En una de sus particiones (formateándola)")
-edit=$(t "Edit its partitions by hand (cfdisk)" "Editar sus particiones a mano (cfdisk)")
+# No partition editor here: shrinking a partition in one (cfdisk) breaks
+# what it holds, and it broke a Linux Mint. By hand is in another console.
 while true; do
     lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
-    choice=$(gum choose --header "$(t "Where on $disk" "Dónde en $disk")" "$nextTo" "$all" "$pick" "$edit")
+    dim "$(t "To partition it by hand: another console (Alt+F2) has cfdisk and parted; then «On one of its partitions»." \
+             "Para particionarlo a mano: otra consola (Alt+F2) tiene cfdisk y parted; luego «En una de sus particiones».")"
+    choice=$(gum choose --header "$(t "Where on $disk" "Dónde en $disk")" "$nextTo" "$all" "$pick")
     case $choice in
         "$nextTo")
             if plan_room; then
@@ -522,15 +558,6 @@ while true; do
             if plan_partition; then
                 mode=part
                 break
-            fi
-            ;;
-        "$edit")
-            if gum confirm "$(t "cfdisk only edits the partition table: shrinking a partition there breaks what it holds, Windows too. To make room, use the first option. Open it anyway?" \
-                    "cfdisk solo edita la tabla de particiones: encoger ahí una partición rompe lo que guarda, Windows también. Para hacer sitio, usa la primera opción. ¿Abrirlo igualmente?")" \
-                    --affirmative "$(t "Open cfdisk" "Abrir cfdisk")" --negative "$(t "Back" "Volver")" --default=false; then
-                cfdisk "$disk" || true
-                partprobe "$disk" || true
-                udevadm settle
             fi
             ;;
     esac
@@ -716,6 +743,27 @@ if [ "$windows" = yes ]; then
     loader+=$'\n\ttime.hardwareClockInLocalTime = true;\n'
 fi
 
+# systemd-boot finds Windows by itself, not a Linux booted by GRUB: each
+# other loader on the EFI partition gets an entry (when the entries live
+# there, that is, without XBOOTLDR).
+if [ "$mode" != whole ] && [ -n "$esp" ] && [ "$boot" = "$esp" ]; then
+    for dir in /mnt/boot/EFI/*/; do
+        [ -d "$dir" ] || continue
+        name=$(basename "$dir")
+        case ${name,,} in
+            boot|microsoft|systemd|linux|nixos) continue ;;
+        esac
+        for file in shimx64.efi grubx64.efi; do
+            if [ -f "$dir$file" ]; then
+                loader+=$(printf "\n\t# %s, on the EFI partition before NIHIL.\n\tboot.loader.systemd-boot.extraEntries.\"%s.conf\" = ''\n\t\ttitle %s\n\t\tefi /EFI/%s/%s\n\t'';" \
+                    "${name^}" "${name,,}" "${name^}" "$name" "$file")
+                loader+=$'\n'
+                break
+            fi
+        done
+    done
+fi
+
 release=$(nixos-version | cut -d . -f 1,2)
 cat > "$etc/local.nix" << EOF
 # local.nix: NixOS settings of this machine only (drivers, services,
@@ -748,7 +796,12 @@ fi
 # --- Install ------------------------------------------------------------------------------
 
 say "$(t "Installing. This takes a while: most of it is downloaded." "Instalando. Tarda un rato: casi todo se descarga.")"
-nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy
+# Once more if it fails: what was downloaded stays, and what failed is mostly a
+# server that did not answer.
+if ! nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy; then
+    say "$(t "Something could not be downloaded; trying once more…" "Algo no se ha podido descargar; se intenta otra vez…")"
+    nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy
+fi
 
 printf '%s:%s\n' "$username" "$password" | nixos-enter --root /mnt -c chpasswd
 

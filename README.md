@@ -141,7 +141,9 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: th
    formatted; or the whole disk, erased. Next to another system the rest of the disk
    stays as it is, and the boot menu goes on the disk's EFI partition, offering Windows
    or the other system too; if there is none, or it is small (Windows' is 100 MB),
-   NIHIL adds 1 GB for the kernels (XBOOTLDR). cfdisk is there for doing it by hand.
+   NIHIL adds 1 GB for the kernels (XBOOTLDR). A Linux booted by GRUB gets its own entry
+   (systemd-boot finds Windows by itself). To partition by hand, another console
+   (`Alt+F2`) has cfdisk and parted; then "On one of its partitions".
    NIHIL is btrfs with subvolumes for `/`, `/home`, `/nix` and `/var/log`, compressed,
    inside LUKS if you choose to encrypt.
 4. The first login opens the welcome: what NIHIL is and how its frame works, then your
