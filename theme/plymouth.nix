@@ -1,9 +1,10 @@
 # plymouth.nix by poligle
 #
 # NIHIL boot splash: the NixOS snowflake as an LED matrix that switches on
-# from the centre, then a band of light sweeps it while the system boots.
-# Frames are rendered at build time (theme/plymouth.py). The prompt, question
-# and message handlers are the ones from Stylix's Plymouth theme.
+# from the centre, then a band of light sweeps it while the system boots,
+# in the middle of every screen. Frames are rendered at build time
+# (theme/plymouth.py). The prompt, question and message handlers are the
+# ones from Stylix's Plymouth theme.
 
 { pkgs }:
 let
@@ -15,10 +16,35 @@ let
   loop = 60;
 
   script = pkgs.writeText "nihil.script" ''
-    center_x = Window.GetWidth() / 2;
-    center_y = Window.GetHeight() / 2;
-    baseline_y = Window.GetHeight() * 0.9;
-    message_y = Window.GetHeight() * 0.75;
+    ### SCREENS ###
+
+    # (0, 0) is the middle of every screen. Plymouth lays the screens over
+    # the largest one but Window.GetWidth() answers with the smallest, and a
+    # screen can come up after the script has started: every frame sets it.
+    baseline_y = 0;
+    message_y = 0;
+
+    fun layout () {
+      screen = 0;
+      shortest = 0;
+      while (Window.GetWidth(screen)) {
+        Window.SetX(screen, Math.Int(0 - Window.GetWidth(screen) / 2));
+        Window.SetY(screen, Math.Int(0 - Window.GetHeight(screen) / 2));
+        if (shortest == 0) {
+          shortest = Window.GetHeight(screen);
+        }
+        if (Window.GetHeight(screen) < shortest) {
+          shortest = Window.GetHeight(screen);
+        }
+        screen++;
+      }
+      baseline_y = shortest * 0.4;
+      message_y = shortest * 0.25;
+    }
+
+    layout();
+    center_x = 0;
+    center_y = 0;
 
     ### BACKGROUND ###
 
@@ -43,6 +69,7 @@ let
     logo.tick = 0;
 
     fun refresh_callback () {
+      layout();
       if (logo.animated) {
         step = Math.Int(logo.tick / 2);
         if (step < ${toString intro}) {
