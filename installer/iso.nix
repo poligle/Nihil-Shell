@@ -14,7 +14,7 @@ let
         name = "nihil-install";
         runtimeInputs = with pkgs;
         [
-            gum jq curl parted gptfdisk dosfstools btrfs-progs cryptsetup
+            gum jq curl parted gptfdisk dosfstools btrfs-progs cryptsetup ntfs3g e2fsprogs
             util-linux pciutils usbutils kbd gnugrep gawk coreutils networkmanager
         ];
         text = builtins.readFile ./nihil-install.sh;
