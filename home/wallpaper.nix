@@ -30,8 +30,16 @@ let
 			[ -d "$dir/$name" ] || { echo "nihil-wallpaper: unknown wallpaper '$name'" >&2; exit 1; }
 			mkdir -p "$(dirname "$state")"
 			echo "$name" > "$state"
+			# The lock screen follows it (home/hyprlock.nix), and the login too
+			# when the greeter's link can be written (modules/regreet.nix).
+			ln -sfn "$dir/$name" "$state-current"
+			if [ -w /var/lib/nihil/greeter ]; then
+				ln -sfn "$dir/$name/${nihil.primaryOutput}.png" /var/lib/nihil/greeter/wallpaper.png
+			fi
 			for output in $(${hyprctl} -j monitors | jq -r '.[].name'); do
-				file="$dir/$name/$output.png"
+				# An animated one (GIF) moves on the desktop; its first frame is the still.
+				file="$dir/$name/$output.gif"
+				[ -r "$file" ] || file="$dir/$name/$output.png"
 				[ -r "$file" ] || file="$dir/$name/${nihil.primaryOutput}.png"
 				awww img --outputs "$output" "$file"
 			done

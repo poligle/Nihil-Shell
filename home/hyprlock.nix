@@ -10,7 +10,8 @@ let
 	backgrounds = lib.mapAttrsToList (output: _:
 	{
 		monitor = output;
-		path = "${nihil.wallpapers}/${nihil.wallpaper}/${output}.png";
+		# The wallpaper the desktop has now (home/wallpaper.nix keeps the link).
+		path = "${config.xdg.stateHome}/nihil/wallpaper-current/${output}.png";
 		color = rgb t.palette.void;
 		brightness = 0.55;
 	}) nihil.outputs;

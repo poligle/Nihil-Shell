@@ -8,8 +8,8 @@ import qs.services
 import qs.components
 
 // The wallpaper, quickly (SUPER + W): the arrows show each at once, Enter
-// or a click keeps it, Escape goes back to the one there was. The desktop's
-// only: the lock screen's and the login's are in Preferences.
+// or a click keeps it, Escape goes back to the one there was. The lock
+// screen and the login follow it (nihil-wallpaper).
 Scope {
     PanelWindow {
         id: win

@@ -158,11 +158,9 @@ Singleton {
         Quickshell.execDetached([Config.cmd.wallpaper, "set", name]);
     }
 
-    // At once, and for the lock screen and the login once applied.
+    // At once; the lock screen and the login follow it (nihil-wallpaper).
     function setWallpaper(name: string): void {
-        root.wallpaper = name;
-        Quickshell.execDetached([Config.cmd.wallpaper, "set", name]);
-        set("wallpaper", name);
+        liveWallpaper(name);
     }
 
     function apply(password: string): void {

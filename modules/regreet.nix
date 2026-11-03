@@ -13,6 +13,9 @@ in
 
         settings =
         {
+            # The wallpaper the user has now (home/wallpaper.nix keeps the link);
+            # NIHIL's own until someone has logged in.
+            background.path = lib.mkForce "/var/lib/nihil/greeter/wallpaper.png";
             appearance.greeting_msg = config.nihil.strings.welcome
                 + lib.optionalString (config.nihil.user.greeting != "") ", ${config.nihil.user.greeting}";
 
@@ -80,4 +83,10 @@ in
     '';
 
     environment.sessionVariables.XKB_DEFAULT_LAYOUT = config.services.xserver.xkb.layout;
+
+    systemd.tmpfiles.rules =
+    [
+        "d /var/lib/nihil/greeter 0755 ${config.nihil.user.name} users -"
+        "L /var/lib/nihil/greeter/wallpaper.png - - - - ${config.nihil.wallpapers}/${config.nihil.wallpaper}/${config.nihil.primaryOutput}.png"
+    ];
 }
