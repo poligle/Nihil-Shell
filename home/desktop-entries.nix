@@ -1,6 +1,6 @@
 # desktop-entries.nix by poligle
 
-{ config, pkgs, lib, ... }:
+{ config, osConfig, pkgs, lib, ... }:
 let
     hidden = name:
     {
@@ -13,6 +13,17 @@ let
     };
 in
 {
+    # Preferences in the launcher (home/shell/settings).
+    xdg.desktopEntries.nihil-settings =
+    {
+        name = osConfig.nihil.strings.cfgTitle;
+        comment = osConfig.nihil.strings.cfgComment;
+        exec = "nihil-ipc settings open";
+        icon = "preferences-system";
+        terminal = false;
+        categories = [ "Settings" ];
+    };
+
     # Hide unwanted launcher entries by overriding them in the user's
     # applications dir (~/.local/share/applications), which takes precedence.
 

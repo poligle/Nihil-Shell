@@ -11,6 +11,7 @@
 #   nihil-ipc drawers toggle launcher|dashboard|panel
 #   nihil-ipc osd volume 40 false        nihil-ipc glyph test true
 #   nihil-ipc nilo toggle                (Nilo, modules/nilo.nix)
+#   nihil-ipc settings open|toggle|welcome (Preferences, settings/)
 #   journalctl --user -u nihil-shell -f  (logs)
 
 { config, osConfig, pkgs, lib, ... }:
@@ -105,6 +106,10 @@ let
 		powerOff = "${profile}/power-off";
 		micLedSync = "${profile}/mic-led-sync";
 		wallpaper = "${profile}/nihil-wallpaper";
+		# Preferences applies through sudo and nihil apply (modules/nihil-cli.nix).
+		sudo = "/run/wrappers/bin/sudo";
+		nihil = "/run/current-system/sw/bin/nihil";
+		timedatectl = "${pkgs.systemd}/bin/timedatectl";
 	};
 
 	sounds =
@@ -132,6 +137,15 @@ let
 		    readonly property var sounds: (${builtins.toJSON sounds})
 		    readonly property var cmd: (${builtins.toJSON commands})
 		    readonly property var nilo: (${builtins.toJSON nilo})
+
+		    // Preferences (settings/): the machine's settings.json, the wallpaper
+		    // renders, and the keys and fingers as built and as NIHIL has them.
+		    readonly property string settingsFile: "${nihil.flake}/settings.json"
+		    readonly property string wallpaperDir: "${nihil.wallpapers}"
+		    readonly property string user: "${nihil.user.name}"
+		    readonly property var binds: (${builtins.toJSON nihil.binds})
+		    readonly property var bindDefaults: (${builtins.toJSON nihil.bindDefaults.keys})
+		    readonly property var gestureDefaults: (${builtins.toJSON nihil.bindDefaults.gestures})
 		}
 	'';
 

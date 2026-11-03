@@ -160,6 +160,25 @@ Item {
                 Label { text: Lang.panel }
                 Item { Layout.fillWidth: true }
                 Label { text: Network.ssid || Network.ethernet || Lang.offline }
+
+                // Preferences (settings/Preferences.qml).
+                Ico {
+                    glyph: Icons.cog
+                    font.pixelSize: 13
+                    color: prefsArea.containsMouse ? Tokens.ink : Tokens.muted
+
+                    MouseArea {
+                        id: prefsArea
+                        anchors.fill: parent
+                        anchors.margins: -8
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            Drawers.close();
+                            Machine.show("", false);
+                        }
+                    }
+                }
             }
 
             GridLayout {
