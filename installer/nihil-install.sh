@@ -1,11 +1,14 @@
 # nihil-install by poligle (installer/iso.nix)
 #
-# NIHIL on a whole disk: GPT, a 1 GiB EFI partition and the rest btrfs
-# (inside LUKS if asked) with subvolumes for /, /home, /nix and /var/log.
-# Then the machine's flake goes to /etc/nixos: the template, settings.json
-# with the answers and the screens found, and local.nix with the disk
-# layout and the GPU's driver for the boot splash. NIHIL is pinned to the
-# revision this image was built from; nihil update moves it on later.
+# NIHIL on a whole disk, or next to another system: GPT, a 1 GiB EFI
+# partition (or the disk's own) and btrfs (inside LUKS if asked) with
+# subvolumes for /, /home, /nix and /var/log. Next to another system it
+# takes free space, or room a partition gives up: Windows' NTFS, an ext4 or
+# a btrfs, shrunk keeping what they hold. Then the machine's flake goes to
+# /etc/nixos: the template, settings.json with the answers and the screens
+# found, and local.nix with the disk layout and the GPU's driver for the
+# boot splash. NIHIL is pinned to the revision this image was built from;
+# nihil update moves it on later.
 
 template=/etc/nihil/template
 source=$(cat /etc/nihil/source)
@@ -111,70 +114,411 @@ done
 disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disks[@]}")
 disk=${disk%% *}
 
-# The disk, all of it, or one of its partitions, which can be made right
-# here with cfdisk (in free space, or by deleting one). A partition keeps
-# the rest of the disk as it is, and the boot menu goes on the disk's EFI
-# partition, next to Windows' if there is one. If there is none, or it is
-# small (Windows' is 100 MB), a second partition of 1 GB holds the kernels.
+# --- Where on the disk ---------------------------------------------------------------
+
+# The whole disk, or next to what is on it: free space, or room a partition
+# gives up, shrunk keeping what it holds (Windows' NTFS, an ext4 or a
+# btrfs). cfdisk stays for doing it by hand, but it only edits the
+# partition table: shrinking a partition there breaks what is inside. The
+# boot menu goes on the disk's EFI partition, next to Windows' if there is
+# one; if there is none, or it is small (Windows' is 100 MB), NIHIL adds
+# 1 GB for the kernels (XBOOTLDR, with the EFI partition on /efi).
+least=20000000000
+bootBytes=1073741824
+headroom=10000000000
+sector=$(blockdev --getss "$disk")
+align=$(( 1048576 / sector ))
+
+size() { numfmt --to=si --suffix=B "$1"; }
+
+part() {
+    if [[ $disk =~ [0-9]$ ]]; then echo "${disk}p$1"; else echo "${disk}$1"; fi
+}
+
+gpt() { [ "$(blkid -o value -s PTTYPE "$disk" 2>/dev/null)" = gpt ]; }
+
+# The number of partition $1 on the disk, as the kernel has it; its
+# filesystem and label, read from the partition itself (udev may lag behind
+# a partition table just changed).
+number_of() { cat "/sys/class/block/${1##*/}/partition"; }
+fstype_of() { blkid -p -o value -s TYPE "$1" 2>/dev/null || true; }
+label_of() { blkid -p -o value -s LABEL "$1" 2>/dev/null || true; }
+
 partitions() {
     lsblk -pbnro NAME,SIZE,TYPE "$disk" | awk -v least="$1" -v skip="$2" '$3 == "part" && $2 >= least && index(" " skip " ", " " $1 " ") == 0 { print $1 }'
 }
+
 describe() {
     local part
     for part in "$@"; do
         printf '%s   %s   %s\n' "$part" "$(lsblk -no SIZE "$part" | tr -d ' ')" "$(lsblk -no FSTYPE,LABEL "$part" | xargs)"
     done
 }
-mode=whole
-efi=""
-windows=no
-edit=$(t "Make or delete partitions (cfdisk)" "Crear o borrar particiones (cfdisk)")
-pick=$(t "Install on one of its partitions" "Instalar en una de sus particiones")
-all=$(t "Erase the whole disk and install" "Borrar el disco entero e instalar")
-while true; do
-    lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
-    choice=$(gum choose --header "$(t "Partitions" "Particiones")" "$edit" "$pick" "$all")
-    if [ "$choice" = "$edit" ]; then
-        cfdisk "$disk" || true
-        partprobe "$disk" || true
-        udevadm settle
-        continue
+
+# The disk's EFI partition, if it has one.
+esp_of() {
+    local part
+    while read -r part; do
+        if [ "$(blkid -p -o value -s PART_ENTRY_TYPE "$part" 2>/dev/null | tr '[:upper:]' '[:lower:]')" = c12a7328-f81f-11d2-ba4b-00a0c93ec93b ]; then
+            echo "$part"
+            return
+        fi
+    done < <(partitions 0 "")
+}
+
+# Whether Windows' boot manager is on the EFI partition $1.
+has_windows() {
+    local present=1
+    [ -n "$1" ] || return 1
+    mkdir -p /tmp/esp
+    mount -o ro "$1" /tmp/esp 2>/dev/null || return 1
+    if [ -d /tmp/esp/EFI/Microsoft ]; then
+        present=0
     fi
-    [ "$choice" = "$pick" ] || break
-    if [ "$(blkid -o value -s PTTYPE "$disk" 2>/dev/null)" != gpt ]; then
+    umount /tmp/esp
+    return "$present"
+}
+
+# The first and last sector of each stretch of free space of at least $1
+# bytes, aligned to 1 MiB.
+free_stretches() {
+    parted -m -s "$disk" unit s print free 2>/dev/null | awk -F: -v least="$1" -v align="$align" -v sector="$sector" '
+        $5 == "free;" {
+            first = int(($2 + align - 1) / align) * align
+            last = int(($3 + 1) / align) * align - 1
+            if (last > first && (last - first + 1) * sector >= least) print first, last
+        }'
+}
+
+# How small the filesystem on $1 ($2) can get keeping what it holds, in
+# bytes; or, if it cannot be shrunk now, why.
+smallest() {
+    local report magic blocks block
+    case $2 in
+        ntfs)
+            magic=$( { ntfscat "$1" hiberfil.sys 2>/dev/null || true; } | head -c 4 | tr '[:upper:]' '[:lower:]')
+            if [ "$magic" = hibr ]; then
+                dim "$(t "$1: Windows is hibernated, or was shut down with fast startup. Turn fast startup off in Windows, shut it down, and start the installer again." \
+                         "$1: Windows está hibernado, o se apagó con el inicio rápido. Desactívalo en Windows, apágalo y vuelve a empezar el instalador.")" >&2
+                return 1
+            fi
+            if ! report=$(ntfsresize --info --no-progress-bar "$1" 2>&1); then
+                dim "$(t "$1: its NTFS has to be checked first. Start Windows, restart it once, and start the installer again." \
+                         "$1: su NTFS tiene que revisarse antes. Arranca Windows, reinícialo una vez y vuelve a empezar el instalador.")" >&2
+                return 1
+            fi
+            sed -n 's/.*resize at \([0-9][0-9]*\) bytes.*/\1/p' <<< "$report"
+            ;;
+        ext4)
+            report=$(resize2fs -P "$1" 2>/dev/null) || return 1
+            blocks=$(sed -n 's/^Estimated minimum size of the filesystem: \([0-9][0-9]*\)$/\1/p' <<< "$report")
+            block=$(dumpe2fs -h "$1" 2>/dev/null | awk -F: '/^Block size:/ { print $2 + 0 }')
+            if [ -z "$blocks" ] || [ -z "$block" ]; then
+                return 1
+            fi
+            echo $(( blocks * block ))
+            ;;
+        btrfs)
+            mkdir -p /tmp/shrink
+            mount -o ro "$1" /tmp/shrink 2>/dev/null || return 1
+            report=$(btrfs inspect-internal min-dev-size /tmp/shrink 2>/dev/null) || report=""
+            if [ "$(btrfs filesystem show /tmp/shrink 2>/dev/null | grep -c devid)" != 1 ]; then
+                report=""
+            fi
+            umount /tmp/shrink
+            if [ -z "$report" ]; then
+                return 1
+            fi
+            echo "${report%% *}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Partitions that can give NIHIL $1 bytes or more, as "partition filesystem
+# bytes": what each can give keeping what it holds and 10 GB free.
+givers() {
+    local part bytes fstype small give
+    while read -r part bytes; do
+        fstype=$(fstype_of "$part")
+        case $fstype in
+            ntfs|ext4|btrfs) ;;
+            *) continue ;;
+        esac
+        [ "$bytes" -gt $(( $1 + headroom )) ] || continue
+        small=$(smallest "$part" "$fstype") || continue
+        [ -n "$small" ] || continue
+        give=$(( (bytes - small - headroom) / 1048576 * 1048576 ))
+        if [ "$give" -ge "$1" ]; then
+            printf '%s %s %s\n' "$part" "$fstype" "$give"
+        fi
+    done < <(lsblk -pbnro NAME,SIZE,TYPE "$disk" | awk '$3 == "part" { print $1, $2 }')
+}
+
+# How much room NIHIL takes, from $1 to $2 bytes.
+how_much() {
+    local fewest=$1 most=$2 amount typed choice labels=() all other
+    all="$(t "All of it" "Todo"): $(size "$most")"
+    other=$(t "Another amount" "Otra cantidad")
+    for amount in 30 50 100 200 500; do
+        if [ $(( amount * 1000000000 )) -ge "$fewest" ] && [ $(( amount * 1000000000 )) -lt "$most" ]; then
+            labels+=("$amount GB")
+        fi
+    done
+    choice=$(gum choose --header "$(t "Room for NIHIL" "Espacio para NIHIL")" "${labels[@]}" "$all" "$other") || return 1
+    case $choice in
+        "")
+            return 1
+            ;;
+        "$all")
+            echo "$most"
+            ;;
+        "$other")
+            typed=""
+            until [[ $typed =~ ^[1-9][0-9]*$ ]] && [ $(( typed * 1000000000 )) -ge "$fewest" ] && [ $(( typed * 1000000000 )) -le "$most" ]; do
+                typed=$(gum input --placeholder 60 --header "$(t "GB for NIHIL, from $(( (fewest + 999999999) / 1000000000 )) to $(( most / 1000000000 ))" \
+                    "GB para NIHIL, de $(( (fewest + 999999999) / 1000000000 )) a $(( most / 1000000000 ))")") || return 1
+            done
+            echo $(( typed * 1000000000 ))
+            ;;
+        *)
+            echo $(( ${choice%% *} * 1000000000 ))
+            ;;
+    esac
+}
+
+# Next to what is on the disk: free space, or room a partition gives up.
+# Fails, saying why, if there is none.
+plan_room() {
+    local entries=() labels=() index choice back need first last part fstype give label fstypes=""
+    if ! gpt; then
+        dim "$(t "$disk has no GPT partition table (an old Windows on MBR, or nothing yet): NIHIL can only go next to another system on GPT. Erase the whole disk, or convert it from Windows (mbr2gpt)." \
+                 "$disk no tiene tabla de particiones GPT (un Windows antiguo en MBR, o nada aún): NIHIL solo puede ir junto a otro sistema en GPT. Borra el disco entero, o conviértelo desde Windows (mbr2gpt).")"
+        return 1
+    fi
+    esp=$(esp_of)
+    boot=$esp
+    efi=""
+    bootType=""
+    if [ -z "$esp" ]; then
+        bootType=ef00
+    elif [ "$(blockdev --getsize64 "$esp")" -lt 500000000 ]; then
+        bootType=ea00
+        efi=$esp
+    fi
+    need=$least
+    if [ -n "$bootType" ]; then
+        need=$(( least + bootBytes ))
+    fi
+    windows=no
+    if has_windows "$esp"; then
+        windows=yes
+    fi
+
+    while read -r first last; do
+        entries+=("free $first $last")
+        labels+=("$(t "Its free space" "Su espacio libre"): $(size $(( (last - first + 1) * sector )))")
+    done < <(free_stretches "$need")
+    say "$(t "Looking at what its partitions hold…" "Mirando lo que guardan sus particiones…")"
+    while read -r part fstype give; do
+        label=$(label_of "$part")
+        entries+=("shrink $part $fstype $give")
+        labels+=("$(t "Room in" "Sitio en") $part ($fstype${label:+, $label}, $(size "$(blockdev --getsize64 "$part")")): $(t "up to" "hasta") $(size "$give")")
+    done < <(givers "$need")
+    while read -r part; do
+        fstypes+="$(fstype_of "$part") "
+    done < <(partitions 0 "")
+    if [[ " $fstypes " == *" BitLocker "* ]]; then
+        dim "$(t "Windows is encrypted with BitLocker, so it can only be shrunk from Windows (Disk Management, Shrink Volume); its free space then shows up here. Keep its recovery key at hand: Windows may ask for it." \
+                 "Windows está cifrado con BitLocker, así que solo se puede encoger desde Windows (Administración de discos, Reducir volumen); su espacio libre aparece luego aquí. Ten a mano su clave de recuperación: Windows puede pedirla.")"
+    fi
+    if [ "${#entries[@]}" -eq 0 ]; then
+        dim "$(t "There is no room for NIHIL next to what is on $disk: it needs $(size "$need")." \
+                 "No hay sitio para NIHIL junto a lo que hay en $disk: necesita $(size "$need").")"
+        return 1
+    fi
+
+    back=$(t "Back" "Volver")
+    choice=$(gum choose --header "$(t "Where NIHIL goes" "Dónde va NIHIL")" "${labels[@]}" "$back") || return 1
+    if [ -z "$choice" ] || [ "$choice" = "$back" ]; then
+        return 1
+    fi
+    for index in "${!labels[@]}"; do
+        if [ "${labels[$index]}" = "$choice" ]; then
+            break
+        fi
+    done
+    read -r room _ <<< "${entries[$index]}"
+    if [ "$room" = free ]; then
+        read -r room first last <<< "${entries[$index]}"
+        roomBytes=$(how_much "$need" $(( (last - first + 1) * sector ))) || return 1
+        roomBytes=$(( roomBytes / 1048576 * 1048576 ))
+        roomFirst=$first
+        roomLast=$(( first + roomBytes / sector - 1 ))
+    else
+        read -r room roomPart roomFs give <<< "${entries[$index]}"
+        roomBytes=$(how_much "$need" "$give") || return 1
+        roomBytes=$(( roomBytes / 1048576 * 1048576 ))
+    fi
+}
+
+# On one of the disk's partitions, formatted (and one for booting, if the
+# disk's EFI partition is missing or small).
+plan_partition() {
+    local roots=() boots=() choices=()
+    if ! gpt; then
         dim "$(t "$disk has no GPT partition table: make one in cfdisk, or erase the whole disk." "$disk no tiene tabla de particiones GPT: créala en cfdisk o borra el disco entero.")"
-        continue
+        return 1
     fi
-    esp=$(lsblk -pnro NAME,PARTTYPE "$disk" | awk 'tolower($2) == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b" { print $1; exit }')
-    mapfile -t roots < <(partitions 20000000000 "$esp")
+    esp=$(esp_of)
+    mapfile -t roots < <(partitions "$least" "$esp")
     if [ "${#roots[@]}" -eq 0 ]; then
-        dim "$(t "No partition of 20 GB or more: make one in cfdisk." "No hay ninguna partición de 20 GB o más: créala en cfdisk.")"
-        continue
+        dim "$(t "No partition of 20 GB or more: make room for NIHIL instead." "No hay ninguna partición de 20 GB o más: haz sitio para NIHIL.")"
+        return 1
     fi
     mapfile -t choices < <(describe "${roots[@]}")
-    root=$(gum choose --header "$(t "NIHIL goes on (it will be formatted)" "NIHIL va en (se formateará)")" "${choices[@]}")
+    root=$(gum choose --header "$(t "NIHIL goes on (it will be formatted)" "NIHIL va en (se formateará)")" "${choices[@]}") || return 1
     root=${root%% *}
     boot=$esp
+    efi=""
     if [ -z "$esp" ] || [ "$(blockdev --getsize64 "$esp")" -lt 500000000 ]; then
         mapfile -t boots < <(partitions 500000000 "$esp $root")
         if [ "${#boots[@]}" -eq 0 ]; then
-            dim "$(t "NIHIL also needs a partition of 1 GB for booting: make one in cfdisk." "NIHIL necesita también una partición de 1 GB para arrancar: créala en cfdisk.")"
-            continue
+            dim "$(t "NIHIL also needs a partition of 1 GB for booting: make room for NIHIL instead." "NIHIL necesita también una partición de 1 GB para arrancar: haz sitio para NIHIL.")"
+            return 1
         fi
         mapfile -t choices < <(describe "${boots[@]}")
-        boot=$(gum choose --header "$(t "Boot partition (it will be formatted)" "Partición de arranque (se formateará)")" "${choices[@]}")
+        boot=$(gum choose --header "$(t "Boot partition (it will be formatted)" "Partición de arranque (se formateará)")" "${choices[@]}") || return 1
         boot=${boot%% *}
         efi=$esp
     fi
-    if [ -n "$esp" ]; then
-        mkdir -p /tmp/esp
-        if mount -o ro "$esp" /tmp/esp 2>/dev/null; then
-            [ ! -d /tmp/esp/EFI/Microsoft ] || windows=yes
-            umount /tmp/esp
-        fi
+    windows=no
+    if has_windows "$esp"; then
+        windows=yes
     fi
-    mode=part
-    break
+}
+
+# The filesystem on $1 ($2) made $3 bytes long, keeping what it holds.
+shrink_filesystem() {
+    local status=0
+    case $2 in
+        ntfs)
+            printf 'y\n' | ntfsresize --no-progress-bar --size "$3" "$1" >/dev/null
+            ;;
+        ext4)
+            e2fsck -f -p "$1" >/dev/null || status=$?
+            [ "$status" -lt 4 ] || return 1
+            resize2fs "$1" "$(( $3 / 1024 ))K" >/dev/null 2>&1
+            ;;
+        btrfs)
+            mkdir -p /tmp/shrink
+            mount "$1" /tmp/shrink
+            btrfs filesystem resize "1:$3" /tmp/shrink >/dev/null
+            umount /tmp/shrink
+            ;;
+    esac
+}
+
+# The entry of partition $1 made $2 bytes long, in place: same start, type,
+# GUID, name and attributes. Prints the stretch it freed, first and last
+# sector.
+shrink_partition() {
+    local number info code guid first last name attributes bit end flags=()
+    number=$(number_of "$1")
+    info=$(sgdisk -i "$number" "$disk")
+    code=$(awk '/^Partition GUID code:/ { print $4 }' <<< "$info")
+    guid=$(awk '/^Partition unique GUID:/ { print $4 }' <<< "$info")
+    first=$(awk '/^First sector:/ { print $3 }' <<< "$info")
+    last=$(awk '/^Last sector:/ { print $3 }' <<< "$info")
+    attributes=$(awk '/^Attribute flags:/ { print $3 }' <<< "$info")
+    name=$(sed -n "s/^Partition name: '\(.*\)'$/\1/p" <<< "$info")
+    # Nothing is deleted unless all of the entry was read back.
+    if [ -z "$code" ] || [ -z "$guid" ] || [ -z "$first" ] || [ -z "$last" ] || [[ ! $attributes =~ ^[0-9A-Fa-f]{16}$ ]]; then
+        fail "$(t "Could not read the entry of $1; nothing was changed in the partition table." "No se pudo leer la entrada de $1; no se ha cambiado nada en la tabla de particiones.")"
+    fi
+    end=$(( first + $2 / sector - 1 ))
+    for (( bit = 0; bit < 64; bit++ )); do
+        if (( (16#$attributes >> bit) & 1 )); then
+            flags+=(-A "$number:set:$bit")
+        fi
+    done
+    sgdisk -a 1 -d "$number" -n "$number:$first:$end" -t "$number:$code" -u "$number:$guid" -c "$number:$name" "${flags[@]}" "$disk" >/dev/null
+    partprobe "$disk" || true
+    udevadm settle
+    echo "$(( (end + align) / align * align )) $last"
+}
+
+# The lowest partition number the disk does not use yet.
+free_number() {
+    sgdisk -p "$disk" | awk '$1 ~ /^[0-9]+$/ { used[$1] = 1 } END { n = 1; while (n in used) n++; print n }'
+}
+
+# NIHIL's partitions from sector $1 to $2: first 1 GB for booting if the
+# disk needs it, then the root.
+make_partitions() {
+    local first=$1 number
+    if [ -n "$bootType" ]; then
+        number=$(free_number)
+        sgdisk -n "$number:$first:$(( first + bootBytes / sector - 1 ))" -t "$number:$bootType" -c "$number:NIHIL" "$disk" >/dev/null
+        boot=$(part "$number")
+        first=$(( first + bootBytes / sector ))
+    fi
+    number=$(free_number)
+    sgdisk -n "$number:$first:$2" -t "$number:8300" -c "$number:nixos" "$disk" >/dev/null
+    root=$(part "$number")
+    partprobe "$disk" || true
+    udevadm settle
+}
+
+mode=whole
+esp=""
+efi=""
+boot=""
+root=""
+windows=no
+room=""
+roomPart=""
+roomFs=""
+roomBytes=0
+roomFirst=0
+roomLast=0
+bootType=""
+nextTo=$(t "Next to what is on it (make room)" "Junto a lo que hay (hacer sitio)")
+all=$(t "Erase the whole disk" "Borrar el disco entero")
+pick=$(t "On one of its partitions (formatting it)" "En una de sus particiones (formateándola)")
+edit=$(t "Edit its partitions by hand (cfdisk)" "Editar sus particiones a mano (cfdisk)")
+while true; do
+    lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
+    choice=$(gum choose --header "$(t "Where on $disk" "Dónde en $disk")" "$nextTo" "$all" "$pick" "$edit")
+    case $choice in
+        "$nextTo")
+            if plan_room; then
+                mode=room
+                break
+            fi
+            ;;
+        "$all")
+            mode=whole
+            break
+            ;;
+        "$pick")
+            if plan_partition; then
+                mode=part
+                break
+            fi
+            ;;
+        "$edit")
+            if gum confirm "$(t "cfdisk only edits the partition table: shrinking a partition there breaks what it holds, Windows too. To make room, use the first option. Open it anyway?" \
+                    "cfdisk solo edita la tabla de particiones: encoger ahí una partición rompe lo que guarda, Windows también. Para hacer sitio, usa la primera opción. ¿Abrirlo igualmente?")" \
+                    --affirmative "$(t "Open cfdisk" "Abrir cfdisk")" --negative "$(t "Back" "Volver")" --default=false; then
+                cfdisk "$disk" || true
+                partprobe "$disk" || true
+                udevadm settle
+            fi
+            ;;
+    esac
 done
 
 encrypt=no
@@ -193,18 +537,28 @@ fi
 
 if [ "$mode" = whole ]; then
     gum style --foreground 1 --margin "1 0" "$(t "Everything on $disk will be erased." "Se borrará todo lo que hay en $disk.")"
+elif [ "$mode" = room ] && [ "$room" = shrink ]; then
+    gum style --foreground 1 --margin "1 0" \
+        "$(t "$roomPart will give $(size "$roomBytes") to NIHIL, keeping what it holds; the rest of $disk stays as it is." \
+             "$roomPart cederá $(size "$roomBytes") a NIHIL, conservando lo que guarda; el resto de $disk se queda como está.")" \
+        "$(t "Shrinking is safe, but a power cut halfway is not: keep a copy of what matters on it." \
+             "Encoger es seguro, pero un corte de luz a medias no: ten copia de lo importante.")"
+    if [ "$roomFs" = ntfs ]; then
+        dim "$(t "Windows will check its disk the first time it starts: let it finish." "Windows revisará su disco la primera vez que arranque: déjale terminar.")"
+    fi
+elif [ "$mode" = room ]; then
+    gum style --foreground 1 --margin "1 0" "$(t "NIHIL goes in $(size "$roomBytes") of free space on $disk; the rest stays as it is." \
+        "NIHIL va en $(size "$roomBytes") de espacio libre de $disk; el resto se queda como está.")"
 else
-    gum style --foreground 1 --margin "1 0" "$(t "$root will be formatted" "Se formateará $root")$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")$(t "; the rest of $disk stays as it is." "; el resto de $disk se queda como está.")" \
-        "$( [ "$windows" = no ] || t "The boot menu will offer Windows too." "El menú de arranque ofrecerá también Windows.")"
+    gum style --foreground 1 --margin "1 0" "$(t "$root will be formatted" "Se formateará $root")$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")$(t "; the rest of $disk stays as it is." "; el resto de $disk se queda como está.")"
+fi
+if [ "$mode" != whole ] && [ "$windows" = yes ]; then
+    dim "$(t "The boot menu will offer Windows too." "El menú de arranque ofrecerá también Windows.")"
 fi
 gum confirm "$(t "Install NIHIL?" "¿Instalar NIHIL?")" --affirmative "$(t "Install" "Instalar")" --negative "$(t "Cancel" "Cancelar")" \
     --default=false || exit 1
 
 # --- Partitions, btrfs, subvolumes ------------------------------------------------------
-
-part() {
-    if [[ $disk =~ [0-9]$ ]]; then echo "${disk}p$1"; else echo "${disk}$1"; fi
-}
 
 say "$(t "Preparing the disk…" "Preparando el disco…")"
 umount -R /mnt 2>/dev/null || true
@@ -219,16 +573,34 @@ if [ "$mode" = whole ]; then
     root=$(part 2)
     mkfs.fat -F 32 -n BOOT "$boot" >/dev/null
 else
+    # Next to another system, the room first: free space, or what a
+    # partition gives up, shrunk keeping what it holds.
+    if [ "$mode" = room ]; then
+        if [ "$room" = shrink ]; then
+            say "$(t "Shrinking $roomPart: it can take a few minutes…" "Encogiendo $roomPart: puede tardar unos minutos…")"
+            partBytes=$(blockdev --getsize64 "$roomPart")
+            keep=$(( (partBytes - roomBytes) / 1048576 * 1048576 ))
+            shrink_filesystem "$roomPart" "$roomFs" "$keep"
+            stretch=$(shrink_partition "$roomPart" "$keep")
+            read -r roomFirst roomLast <<< "$stretch"
+        fi
+        make_partitions "$roomFirst" "$roomLast"
+    fi
     # The partitions chosen, typed for what they hold: Linux for the root,
-    # EFI or XBOOTLDR (next to a small EFI partition) for the boot one.
-    sgdisk -t "$(lsblk -no PARTN "$root" | tr -d ' '):8300" "$disk" >/dev/null
+    # EFI or XBOOTLDR (next to a small EFI partition) for the boot one. One
+    # sgdisk for both: each run makes the kernel read the table again, and
+    # the partitions are gone for a moment.
+    types=(-t "$(number_of "$root"):8300")
     if [ "$boot" != "$esp" ]; then
         if [ -n "$esp" ]; then type=ea00; else type=ef00; fi
-        sgdisk -t "$(lsblk -no PARTN "$boot" | tr -d ' '):$type" "$disk" >/dev/null
-        mkfs.fat -F 32 -n NIHIL "$boot" >/dev/null
+        types+=(-t "$(number_of "$boot"):$type")
     fi
+    sgdisk "${types[@]}" "$disk" >/dev/null
     partprobe "$disk" || true
     udevadm settle
+    if [ "$boot" != "$esp" ]; then
+        mkfs.fat -F 32 -n NIHIL "$boot" >/dev/null
+    fi
     wipefs -af "$root" >/dev/null
 fi
 if [ "$encrypt" = yes ]; then
