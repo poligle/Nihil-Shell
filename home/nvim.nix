@@ -3,6 +3,21 @@
 { config, osConfig, pkgs, ... }:
 let
     t = osConfig.nihil.tokens;
+
+    # From its GitHub mirror: nixpkgs fetches it from GitLab and, marking it
+    # unfree, never caches it, so every install pulled it from gitlab.com and
+    # one failed when GitLab did not answer. The mirror's tarball leaves out
+    # its test submodules, hence its own hash.
+    rainbowDelimiters = pkgs.vimPlugins.rainbow-delimiters-nvim.overrideAttrs
+    {
+        src = pkgs.fetchFromGitHub
+        {
+            owner = "HiPhish";
+            repo = "rainbow-delimiters.nvim";
+            rev = "v0.12.0";
+            hash = "sha256-q4cBvF8d5h+BM1LTm5aq02OBVmwSUb9rC1smHlxbRzg=";
+        };
+    };
 in
 {
     programs.neovim = 
@@ -60,7 +75,7 @@ in
             comment-nvim
             nvim-autopairs
             indent-blankline-nvim
-            rainbow-delimiters-nvim
+            rainbowDelimiters
             which-key-nvim
             lualine-nvim
             oil-nvim
