@@ -160,25 +160,6 @@ Item {
                 Label { text: Lang.panel }
                 Item { Layout.fillWidth: true }
                 Label { text: Network.ssid || Network.ethernet || Lang.offline }
-
-                // Preferences (settings/Preferences.qml).
-                Ico {
-                    glyph: Icons.cog
-                    font.pixelSize: 13
-                    color: prefsArea.containsMouse ? Tokens.ink : Tokens.muted
-
-                    MouseArea {
-                        id: prefsArea
-                        anchors.fill: parent
-                        anchors.margins: -8
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            Drawers.close();
-                            Machine.show("", false);
-                        }
-                    }
-                }
             }
 
             GridLayout {
@@ -465,11 +446,24 @@ Item {
 
                     Item { Layout.fillWidth: true }
 
-                    Label {
-                        visible: root.armed !== ""
-                        text: Lang.confirmAgain
-                        color: Tokens.interrupt
+                    // Preferences (settings/Preferences.qml).
+                    CircleButton {
+                        glyph: Icons.cog
+                        onClicked: {
+                            Drawers.close();
+                            Machine.show("", false);
+                        }
                     }
+                }
+
+                // The second click a power action asks for, said on a line of
+                // its own that is always there: the row of buttons never grows,
+                // which pushed the panel past the edge of the screen.
+                Label {
+                    Layout.fillWidth: true
+                    text: Lang.confirmAgain
+                    color: Tokens.interrupt
+                    opacity: root.armed !== "" ? 1 : 0
                 }
             }
         }
