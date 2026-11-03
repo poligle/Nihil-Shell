@@ -88,12 +88,27 @@ def main():
 
     source = Image.open(args.source)
     source.load()
+    frames = getattr(source, "n_frames", 1)
     os.makedirs(args.outdir, exist_ok=True)
 
     for spec in args.output:
         name, width, height, pitch = parse_output(spec, args.pitch)
-        image = render(source, width, height, pitch).convert("RGB")
-        image.save(os.path.join(args.outdir, f"{name}.png"), optimize=True)
+        if frames == 1:
+            image = render(source, width, height, pitch).convert("RGB")
+            image.save(os.path.join(args.outdir, f"{name}.png"), optimize=True)
+            continue
+        # Animated (a GIF): every frame in dots, for awww, and the first one as
+        # the still the lock screen, the login and the previews show.
+        rendered, durations = [], []
+        for k in range(frames):
+            source.seek(k)
+            frame = render(source.convert("RGB"), width, height, pitch).convert("RGB")
+            rendered.append(frame.convert("P", palette=Image.ADAPTIVE, colors=64))
+            durations.append(source.info.get("duration", 100))
+            if k == 0:
+                frame.save(os.path.join(args.outdir, f"{name}.png"), optimize=True)
+        rendered[0].save(os.path.join(args.outdir, f"{name}.gif"), save_all=True,
+                         append_images=rendered[1:], duration=durations, loop=0)
 
 
 if __name__ == "__main__":

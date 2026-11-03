@@ -10,7 +10,7 @@
 let
 	python = pkgs.python3.withPackages (ps: [ ps.numpy ps.pillow ]);
 
-	isImage = name: type: type == "regular" && builtins.match ".*\\.(png|jpg|jpeg)" name != null;
+	isImage = name: type: type == "regular" && builtins.match ".*\\.(png|jpg|jpeg|gif)" name != null;
 	stem = file: lib.head (builtins.match "(.*)\\.[^.]+" file);
 
 	# Every picture by name; with the same name in two folders, the later one.

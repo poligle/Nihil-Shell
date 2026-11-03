@@ -318,7 +318,7 @@
 		cfgTimeZoneSub = "busca tu ciudad";
 		cfgLook = "Escritorio";
 		cfgWallpaper = "Fondo";
-		cfgLookSub = "Cambia al momento; al aplicar, también el de la pantalla de bloqueo y el del inicio de sesión.";
+		cfgLookSub = "Cambia al momento, también en la pantalla de bloqueo y en el inicio de sesión.";
 		cfgKeys = "Atajos";
 		cfgKeysSub = "Toca una acción para cambiar su tecla. SUPER + un número (también con SHIFT) y las teclas multimedia no cambian.";
 		cfgKeyNone = "sin tecla";
@@ -731,7 +731,7 @@
 		cfgTimeZoneSub = "look for your city";
 		cfgLook = "Desktop";
 		cfgWallpaper = "Wallpaper";
-		cfgLookSub = "It changes at once; once applied, the lock screen's and the login's too.";
+		cfgLookSub = "It changes at once, on the lock screen and the login too.";
 		cfgKeys = "Shortcuts";
 		cfgKeysSub = "Touch an action to change its key. SUPER + a digit (with SHIFT too) and the media keys stay as they are.";
 		cfgKeyNone = "no key";
