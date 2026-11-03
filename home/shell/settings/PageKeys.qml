@@ -12,7 +12,7 @@ import qs.components
 Flickable {
     id: page
 
-    readonly property var order: ["terminal", "launcher", "dashboard", "panel", "settings", "files", "browser", "notes",
+    readonly property var order: ["terminal", "launcher", "dashboard", "panel", "settings", "wallpapers", "files", "browser", "notes",
         "code", "music", "pixels", "colourPicker", "lock", "nilo", "close", "float", "maximize", "fullscreen", "special",
         "toSpecial", "nextWorkspace", "screenshot"]
     readonly property var actions: order.filter(name => name in Config.bindDefaults && (name !== "nilo" || Config.nilo.enabled))

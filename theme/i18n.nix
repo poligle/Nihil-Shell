@@ -422,6 +422,12 @@
 		welClose = "cerrar";
 		cfgShowLog = "registro";
 		cfgHideLog = "ocultar";
+		bindWallpapers = "Elegir fondo";
+		welNetTitle = "Una red";
+		welNetBody = "NIHIL se actualiza y aplica cambios por internet: conéctate a una red.";
+		welNetDone = "Conectado a %1.";
+		welNetPassword = "contraseña de la red";
+		wpHint = "← → elegir · Enter quedárselo · Esc volver";
 	};
 
 	en =
@@ -829,5 +835,11 @@
 		welClose = "close";
 		cfgShowLog = "log";
 		cfgHideLog = "hide";
+		bindWallpapers = "Choose wallpaper";
+		welNetTitle = "A network";
+		welNetBody = "NIHIL updates and applies changes over the internet: connect to a network.";
+		welNetDone = "Connected to %1.";
+		welNetPassword = "network password";
+		wpHint = "← → choose · Enter keep · Esc back";
 	};
 }

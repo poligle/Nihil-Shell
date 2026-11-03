@@ -27,9 +27,8 @@ Item {
         width: 196
         spacing: 4
 
-        DotText {
-            text: "NIHIL"
-            font.pixelSize: 30
+        Logo {
+            size: 30
         }
 
         Label {
