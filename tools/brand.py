@@ -2,7 +2,8 @@
 # brand.py by poligle
 #
 # NIHIL brand assets, all drawn with LED dots:
-#   mark     a ring of 16 LEDs (nihil, the void) around one red LED (ex nihilo)
+#   mark     the NixOS snowflake in LEDs (theme/art/snowflake-19.txt), as the
+#            boot splash draws it
 #   logo     the mark plus "NIHIL" in a 5x7 dot-matrix face defined below
 #   nilo     Nilo's face for its account (its commits' co-author): the two
 #            eyes of home/shell/nilo/Eyes.qml, open, on black
@@ -51,10 +52,29 @@ def ring(cx, cy, size, leds=16, dot=0.055, centre=0.075, radius=0.36):
     return out
 
 
+def snowflake(cx, cy, size, unlit=False):
+    """(x, y, r, colour_key) circles of the mark, in a size x size box: the
+    snowflake's grid, bright cells lit, faint ones dim."""
+    path = os.path.join(ROOT, "theme", "art", "snowflake-19.txt")
+    rows = [line.strip() for line in open(path) if line.strip()]
+    pitch = size / len(rows)
+    out = []
+    for j, row in enumerate(rows):
+        for i, cell in enumerate(row):
+            x, y = cx - size / 2 + (i + 0.5) * pitch, cy - size / 2 + (j + 0.5) * pitch
+            if int(cell) >= 5:
+                out.append((x, y, 0.42 * pitch, "ink"))
+            elif int(cell) > 0:
+                out.append((x, y, 0.42 * pitch, "dim"))
+            elif unlit:
+                out.append((x, y, 0.12 * pitch, "unlit"))
+    return out
+
+
 def logo_circles(pitch=10.0, unlit=True):
     """Circles of the full logo and its width/height in units of `pitch`."""
     mark = 9 * pitch
-    circles = ring(mark / 2, mark / 2, mark)
+    circles = snowflake(mark / 2, mark / 2, mark)
     x0, y0 = mark + 2 * pitch, pitch
     for i, col in enumerate(word_columns("NIHIL")):
         for j, on in enumerate(col):
@@ -71,7 +91,7 @@ def svg(circles, width, height, colours, background=None, radius=0):
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:g} {height:g}" width="{width:g}" height="{height:g}">']
     if background:
         parts.append(f'<rect width="{width:g}" height="{height:g}" rx="{radius:g}" fill="{background}"/>')
-    for key in ("unlit", "ink", "signal"):
+    for key in ("unlit", "dim", "ink", "signal"):
         group = [c for c in circles if c[3] == key]
         if not group:
             continue
@@ -88,7 +108,7 @@ def raster(circles, width, height, colours, scale, background=None, radius=0, su
     draw = ImageDraw.Draw(img)
     if background:
         draw.rounded_rectangle((0, 0, img.width - 1, img.height - 1), radius=radius * s, fill=background)
-    for key in ("unlit", "ink", "signal"):
+    for key in ("unlit", "dim", "ink", "signal"):
         for x, y, r, k in circles:
             if k == key:
                 draw.ellipse(((x - r) * s, (y - r) * s, (x + r) * s, (y + r) * s), fill=colours[key])
@@ -115,8 +135,7 @@ def nilo_avatar(size=512):
 
 
 def favicon_circles():
-    # 12 LEDs read better than 16 at 16-32 px.
-    return ring(16, 16, 32, leds=12, dot=0.068, centre=0.09, radius=0.33)
+    return snowflake(16, 16, 30)
 
 
 def social(path, wallpaper, mono_font):
@@ -173,8 +192,8 @@ def main():
     for d in (brand, site):
         os.makedirs(d, exist_ok=True)
 
-    dark = {"ink": INK, "signal": SIGNAL, "unlit": UNLIT_DARK}
-    light = {"ink": DARK_INK, "signal": SIGNAL, "unlit": UNLIT_LIGHT}
+    dark = {"ink": INK, "dim": "#8A8A8A", "signal": SIGNAL, "unlit": UNLIT_DARK}
+    light = {"ink": DARK_INK, "dim": "#7A7A7A", "signal": SIGNAL, "unlit": UNLIT_LIGHT}
 
     circles, width, height = logo_circles()
     for name, colours in (("nihil-logo-dark", dark), ("nihil-logo-light", light)):
@@ -182,7 +201,7 @@ def main():
         for d in (brand, site):
             open(os.path.join(d, f"{name}.svg"), "w").write(text)
 
-    mark = ring(45, 45, 90)
+    mark = snowflake(45, 45, 90)
     open(os.path.join(brand, "nihil-mark.svg"), "w").write(svg(mark, 90, 90, dark))
 
     face, picture = nilo_avatar()
