@@ -28,6 +28,7 @@ function inline(text, s) {
 }
 
 function html(text, s) {
+    let blocks = 0;
     const lines = escape(String(text ?? "")).split("\n");
     const out = [];
     let para = [];
@@ -49,7 +50,7 @@ function html(text, s) {
     }
     function flushCode() {
         out.push(`<table width="100%" cellpadding="12" cellspacing="0" style="margin-bottom:10px;" bgcolor="${s.surface}">`
-            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:12px; color:${s.code};">${code.join("\n")}</pre></td></tr></table>`);
+            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:12px; color:${s.code};">${code.join("\n")}</pre></td></tr><tr><td align="right"><a href="copy:${blocks++}" style="color:${s.dim}; text-decoration:none;">${s.copy}</a></td></tr></table>`);
         code = null;
     }
 
@@ -101,4 +102,14 @@ function html(text, s) {
     flushPara();
     flushList();
     return out.join("");
+}
+
+// The blocks of code, as written, for their copy links (copy:N).
+function blocks(text) {
+    const found = [];
+    const fence = /^```[^\n]*\n([\s\S]*?)^```/gm;
+    let match;
+    while ((match = fence.exec(text)) !== null)
+        found.push(match[1].replace(/\n$/, ""));
+    return found;
 }

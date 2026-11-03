@@ -42,6 +42,11 @@ Singleton {
 
     property string wallpaper: ""
     property bool picking: false
+
+    // The desktop widgets that show (background/Desktop.qml): the user's
+    // choice, kept in their state, or all of them.
+    property var widgets: Config.widgets
+    readonly property string widgetsFile: stateDir + "/widgets.json"
     property var timeZones: []
 
     // How applying goes, in words, for Preferences and the welcome.
@@ -148,6 +153,14 @@ Singleton {
         markWelcomed();
         root.welcoming = false;
         root.shown = false;
+    }
+
+    function setWidget(name: string, on: bool): void {
+        const next = root.widgets.filter(widget => widget !== name);
+        if (on)
+            next.push(name);
+        root.widgets = next;
+        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile, JSON.stringify(next)]);
     }
 
     // The desktop's only, at once (the quick picker, settings/Wallpapers.qml).
@@ -261,6 +274,21 @@ Singleton {
         command: [Config.cmd.timedatectl, "list-timezones", "--no-pager"]
         stdout: StdioCollector {
             onStreamFinished: root.timeZones = text.split("\n").filter(zone => zone !== "")
+        }
+    }
+
+    Process {
+        command: [Config.cmd.sh, "-c", "cat \"$1\" 2>/dev/null", "sh", root.widgetsFile]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const chosen = JSON.parse(text);
+                    if (Array.isArray(chosen))
+                        root.widgets = chosen;
+                } catch (error) {
+                }
+            }
         }
     }
 

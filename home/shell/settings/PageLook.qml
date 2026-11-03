@@ -83,5 +83,26 @@ Flickable {
                 }
             }
         }
+    
+        Heading {
+            Layout.topMargin: 18
+            title: Lang.cfgWidgets
+            sub: Lang.cfgWidgetsSub
+        }
+
+        Repeater {
+            model: Config.widgets
+
+            Setting {
+                required property string modelData
+
+                title: Lang["cfgWidget" + modelData.charAt(0).toUpperCase() + modelData.slice(1)] ?? modelData
+
+                Toggle {
+                    on: Machine.widgets.indexOf(modelData) >= 0
+                    onToggled: Machine.setWidget(modelData, !on)
+                }
+            }
+        }
     }
 }
