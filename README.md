@@ -266,7 +266,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + O`                       | Preferences (also the cog in quick settings)  |
 | `SUPER + W`                       | Wallpapers: arrows to look, Enter to keep     |
 | `SUPER` (alone)                   | kitty                                         |
-| `SUPER + E / X`                   | Thunar, Zen (more apps' keys, in Preferences) |
+| `SUPER + E / X`                   | Thunar, Zen (add programs and their keys in Preferences) |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
 | `SUPER + V`                       | Toggle floating                               |
 | `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |

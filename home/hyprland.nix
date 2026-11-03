@@ -38,16 +38,9 @@ let
 	keys = osConfig.nihil.binds;
 	actions =
 	{
-		terminal = exec "kitty";
 		launcher = exec "nihil-ipc drawers toggle launcher";
 		dashboard = exec "nihil-ipc drawers toggle dashboard";
 		panel = exec "nihil-ipc drawers toggle panel";
-		files = exec "thunar";
-		browser = exec "zen-beta";
-		notes = exec "obsidian";
-		code = exec "code";
-		music = exec "spotify";
-		pixels = exec "aseprite";
 		colourPicker = exec "hyprpicker -a";
 		lock = exec "lock-screen";
 		settings = exec "nihil-ipc settings toggle";
@@ -63,6 +56,10 @@ let
 	{
 		nilo = exec "nihil-ipc nilo toggle";
 	};
+	# Programs: a command each, quoted for Lua.
+	programBinds = map (program: bind program.keys (exec (lib.escape [ "\\" "\"" ] program.exec)))
+		(builtins.filter (program: program.keys != null) nihil.programs);
+
 	actionBinds = lib.mapAttrsToList (name: action: bind keys.${name} action)
 		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
 		++ lib.optional (keys.screenshot != null)
@@ -323,6 +320,7 @@ in
 				(bindWith "switch:off:Lid Switch" lidOpen { locked = true; })
 			]
 			++ actionBinds
+			++ programBinds
 			++ niloBinds
 			++ workspaceBinds;
 

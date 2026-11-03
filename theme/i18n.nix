@@ -92,7 +92,7 @@
 		media = "multimedia";
 		nothingPlaying = "Nada sonando";
 		caffeine = "Cafeína";
-		caffeineOff = "que la pantalla no se apague";
+		caffeineOff = "la pantalla no se apaga";
 		caffeineOn = "pantalla encendida desde las %1";
 		tasks = "tareas";
 		tasksTodo = "por hacer";
@@ -330,17 +330,7 @@
 		cfgKeyNeedsMod = "añade SUPER u otro modificador";
 		cfgKeyReserved = "esa es de los escritorios";
 		cfgKeyTaken = "ya la usa: %1";
-		cfgGestures = "Gestos";
-		cfgGesturesSub = "Cuántos dedos en el touchpad para cada gesto.";
 		cfgOff = "no";
-		cfgGestureWorkspaces = "Cambiar de escritorio";
-		cfgGestureWorkspacesSub = "deslizando a los lados";
-		cfgGestureClose = "Cerrar la ventana";
-		cfgGestureCloseSub = "deslizando hacia abajo";
-		cfgGestureLauncher = "Abrir el lanzador";
-		cfgGestureLauncherSub = "deslizando hacia arriba";
-		cfgGestureSpecial = "Escritorio especial";
-		cfgGestureSpecialSub = "hacia arriba o hacia abajo";
 		cfgSystem = "Sistema";
 		cfgSystemSub = "El nombre del equipo y lo que corre en él.";
 		cfgHost = "Nombre del equipo";
@@ -380,10 +370,6 @@
 		bindSettings = "Preferencias";
 		bindFiles = "Archivos";
 		bindBrowser = "Navegador";
-		bindNotes = "Notas";
-		bindCode = "Código";
-		bindMusic = "Música";
-		bindPixels = "Píxeles (Aseprite)";
 		bindColourPicker = "Cuentagotas";
 		bindLock = "Bloquear";
 		bindNilo = "Nilo";
@@ -428,6 +414,18 @@
 		welNetDone = "Conectado a %1.";
 		welNetPassword = "contraseña de la red";
 		wpHint = "← → elegir · Enter quedárselo · Esc volver";
+		cfgSystemKeys = "Sistema";
+		cfgPrograms = "Programas";
+		cfgProgramsSub = "Un nombre, el comando que lo abre y su tecla. Añade los que quieras.";
+		cfgProgramName = "nombre";
+		cfgProgramExec = "comando, como kitty o zen-beta";
+		cfgProgramAdd = "añadir un programa";
+		cfgProgramMissing = "falta el nombre o el comando";
+		cfgWidgets = "Widgets";
+		cfgWidgetsSub = "En el escritorio; cambian al momento.";
+		cfgWidgetClock = "Reloj";
+		cfgWidgetNetwork = "Red";
+		cfgWidgetMedia = "Música";
 	};
 
 	en =
@@ -507,7 +505,7 @@
 		media = "media";
 		nothingPlaying = "Nothing playing";
 		caffeine = "Caffeine";
-		caffeineOff = "keep the screen on";
+		caffeineOff = "the screen stays on";
 		caffeineOn = "screen on since %1";
 		tasks = "tasks";
 		tasksTodo = "to do";
@@ -743,17 +741,7 @@
 		cfgKeyNeedsMod = "add SUPER or another modifier";
 		cfgKeyReserved = "that one belongs to the workspaces";
 		cfgKeyTaken = "already used by: %1";
-		cfgGestures = "Gestures";
-		cfgGesturesSub = "How many fingers on the touchpad for each gesture.";
 		cfgOff = "off";
-		cfgGestureWorkspaces = "Switch workspace";
-		cfgGestureWorkspacesSub = "swiping sideways";
-		cfgGestureClose = "Close the window";
-		cfgGestureCloseSub = "swiping down";
-		cfgGestureLauncher = "Open the launcher";
-		cfgGestureLauncherSub = "swiping up";
-		cfgGestureSpecial = "Special workspace";
-		cfgGestureSpecialSub = "up or down";
 		cfgSystem = "System";
 		cfgSystemSub = "The computer's name and what runs on it.";
 		cfgHost = "Computer name";
@@ -793,10 +781,6 @@
 		bindSettings = "Preferences";
 		bindFiles = "Files";
 		bindBrowser = "Browser";
-		bindNotes = "Notes";
-		bindCode = "Code";
-		bindMusic = "Music";
-		bindPixels = "Pixels (Aseprite)";
 		bindColourPicker = "Colour picker";
 		bindLock = "Lock";
 		bindNilo = "Nilo";
@@ -841,5 +825,17 @@
 		welNetDone = "Connected to %1.";
 		welNetPassword = "network password";
 		wpHint = "← → choose · Enter keep · Esc back";
+		cfgSystemKeys = "System";
+		cfgPrograms = "Programs";
+		cfgProgramsSub = "A name, the command that opens it and its key. Add any you like.";
+		cfgProgramName = "name";
+		cfgProgramExec = "command, like kitty or zen-beta";
+		cfgProgramAdd = "add a program";
+		cfgProgramMissing = "the name or the command is missing";
+		cfgWidgets = "Widgets";
+		cfgWidgetsSub = "On the desktop; they change at once.";
+		cfgWidgetClock = "Clock";
+		cfgWidgetNetwork = "Network";
+		cfgWidgetMedia = "Music";
 	};
 }

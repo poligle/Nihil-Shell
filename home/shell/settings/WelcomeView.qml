@@ -147,14 +147,13 @@ Item {
 
             Repeater {
                 model: [
-                    { what: Lang.bindTerminal, key: root.key("terminal") },
                     { what: Lang.bindLauncher, key: root.key("launcher") },
                     { what: Lang.bindClose, key: root.key("close") },
                     { what: Lang.welWorkspaces, key: "SUPER + 1 … 9" },
                     { what: Lang.welMoveTo, key: "SUPER + SHIFT + 1 … 9" },
                     { what: Lang.bindLock, key: root.key("lock") },
                     { what: Lang.bindSettings, key: root.key("settings") }
-                ]
+                ].concat(Config.programs.filter(program => program.keys).slice(0, 3).map(program => ({ what: program.name, key: program.keys })))
 
                 Setting {
                     required property var modelData

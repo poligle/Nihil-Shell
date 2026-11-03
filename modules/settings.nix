@@ -89,6 +89,7 @@ in
 
         nihil.binds = get [ "binds" ] { };
         nihil.gestures = get [ "gestures" ] { };
+        nihil.programs = lib.mkIf (get [ "programs" ] null != null) (get [ "programs" ] [ ]);
 
         nihil =
         {
