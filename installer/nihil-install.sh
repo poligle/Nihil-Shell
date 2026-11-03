@@ -40,6 +40,18 @@ else
     locale=en_US.UTF-8
 fi
 
+# --- The USB stick ----------------------------------------------------------------
+
+# The live system reads its programs from the stick as it needs them: one that
+# cannot be read fails halfway, and only says that some program would not run.
+# Read all of it now (that leaves it cached too).
+if [ -f /iso/nix-store.squashfs ]; then
+    if ! gum spin --title "$(t "Checking the USB stick…" "Comprobando el USB…")" -- cat /iso/nix-store.squashfs > /dev/null; then
+        fail "$(t "The USB stick cannot be read whole. Write the image to it again, checking its SHA256 (SHA256SUMS, next to it on Releases), or try another stick or port; \"Copy ISO Files to RAM\", among the boot menu's options, reads it all into memory before starting." \
+                  "No se puede leer el USB entero. Vuelve a grabar la imagen comprobando su SHA256 (SHA256SUMS, junto a ella en Releases), o prueba otro USB u otro puerto; «Copy ISO Files to RAM», en las opciones del menú de arranque, lo lee entero a memoria antes de empezar.")"
+    fi
+fi
+
 # --- Network: the install downloads most of NIHIL --------------------------------
 
 # Without a connection: a Wi-Fi network, again (a cable, or a phone sharing
@@ -103,10 +115,13 @@ done
 # RAM disks and an eMMC's boot areas disks too: not those, not read-only
 # ones, not the one this image runs from, and 20 GB or more.
 live=$(lsblk -no PKNAME "$(findmnt -no SOURCE /iso 2>/dev/null || true)" 2>/dev/null || true)
-mapfile -t found < <(lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="/dev/$live" -v least=20000000000 '
+# Listed in a variable, not a process substitution: if listing fails, the
+# installer stops there and says so, rather than finding no disk.
+listed=$(lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="/dev/$live" -v least=20000000000 '
     $4 == "disk" && $3 == 0 && $2 >= least && $1 != live &&
     $1 !~ /^\/dev\/(fd|zram|ram|loop)[0-9]/ && $1 !~ /(boot[0-9]+|rpmb)$/ { print $1 }')
-[ "${#found[@]}" -gt 0 ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
+[ -n "$listed" ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
+mapfile -t found <<< "$listed"
 disks=()
 for candidate in "${found[@]}"; do
     disks+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")

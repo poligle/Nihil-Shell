@@ -32,7 +32,8 @@ in
 
     nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
-    environment.systemPackages = [ install pkgs.git ];
+    # iw: to see the Wi-Fi and its regulatory domain (iw reg get, iw dev).
+    environment.systemPackages = [ install pkgs.git pkgs.iw ];
 
     # What nihil-install copies to /etc/nixos, and which NIHIL it pins.
     environment.etc =
