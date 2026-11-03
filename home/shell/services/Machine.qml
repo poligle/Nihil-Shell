@@ -28,7 +28,8 @@ Singleton {
     property string screen: ""
 
     // Applying: "", "auth", "applying", "done", "warning" or "failed"; when it
-    // failed, why: "password", "invalid", "busy" or "rebuild".
+    // failed, why: "password", "invalid", "busy", "start" (nihil apply could
+    // not start the rebuild) or "rebuild" (the rebuild failed).
     property string phase: ""
     property string failure: ""
     property string detail: ""
@@ -58,7 +59,7 @@ Singleton {
         : Lang.cfgSaved
     readonly property string statusSub: phase === "auth" ? (get("fingerprint", false) ? Lang.cfgApplyFinger : "")
         : phase === "applying" ? (detail !== "" ? detail : Lang.cfgApplyingSub)
-        : phase === "failed" ? (failure === "rebuild" ? Lang.cfgLogHint : "")
+        : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint) : "")
         : changes > 0 ? Lang.cfgPendingSub
         : phase === "warning" ? Lang.cfgLogHint
         : phase === "done" ? "" : Lang.cfgSavedSub
@@ -178,6 +179,15 @@ Singleton {
         Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL", title, body]);
     }
 
+    // The line that says why a rebuild failed: Nix's error, else the last one.
+    function cause(lines: var): string {
+        for (let i = 0; i < lines.length; i++) {
+            if (/^\s*error:/.test(lines[i]))
+                return lines[i].trim();
+        }
+        return lines.length > 0 ? lines[lines.length - 1].trim() : "";
+    }
+
     // What /run/nihil says (`peek`): the status, then the end of the log.
     function report(text: string): void {
         const parts = text.split("--nihil--");
@@ -195,7 +205,7 @@ Singleton {
         } else if (root.phase === "applying" && (status === "done" || status === "warning" || status === "failed")) {
             poll.stop();
             root.log = lines.join("\n");
-            root.detail = lines.length > 0 ? lines[lines.length - 1].trim() : "";
+            root.detail = status === "failed" ? root.cause(lines) : (lines.length > 0 ? lines[lines.length - 1].trim() : "");
             root.phase = status;
             root.failure = status === "failed" ? "rebuild" : "";
             if (status === "failed")
@@ -257,6 +267,8 @@ Singleton {
 
     // sudo reads the first line, the password; nihil apply the rest. -k: ask
     // even if sudo still remembers it, or the password would go on to nihil.
+    // sudo exits with 1 when the password is wrong; nihil apply with 2 (not
+    // valid), 3 (busy) or 4 (could not start), saying why on stderr.
     Process {
         id: applier
 
@@ -283,7 +295,7 @@ Singleton {
                 poll.start();
             } else {
                 root.phase = "failed";
-                root.failure = code === 1 ? "password" : code === 2 ? "invalid" : code === 3 ? "busy" : "rebuild";
+                root.failure = code === 1 ? "password" : code === 2 ? "invalid" : code === 3 ? "busy" : "start";
             }
         }
     }
@@ -320,7 +332,7 @@ Singleton {
 
     Process {
         id: peek
-        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; tail -n 12 /run/nihil/apply.log 2>/dev/null"]
+        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: root.report(text)

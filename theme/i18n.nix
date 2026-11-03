@@ -420,6 +420,8 @@
 		welStart = "empezar";
 		welApplyStart = "aplicar y empezar";
 		welClose = "cerrar";
+		cfgShowLog = "registro";
+		cfgHideLog = "ocultar";
 	};
 
 	en =
@@ -825,5 +827,7 @@
 		welStart = "start";
 		welApplyStart = "apply and start";
 		welClose = "close";
+		cfgShowLog = "log";
+		cfgHideLog = "hide";
 	};
 }
