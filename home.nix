@@ -15,9 +15,7 @@
 		./home/wallpaper.nix
 		./home/hypridle.nix
 		./home/hyprlock.nix
-        ./home/python.nix
         ./home/zen.nix
-        ./home/vscode.nix
 		./home/bluetooth.nix
 		./home/cli.nix
 		./home/refresh.nix

@@ -18,10 +18,10 @@ let
         panel = "SUPER + P";
         files = "SUPER + E";
         browser = "SUPER + X";
-        notes = "SUPER + N";
-        code = "SUPER + C";
-        music = "SUPER + S";
-        pixels = "SUPER + A";
+        notes = null;
+        code = null;
+        music = null;
+        pixels = null;
         colourPicker = "SUPER + H";
         lock = "SUPER + K";
         nilo = "SUPER + I";

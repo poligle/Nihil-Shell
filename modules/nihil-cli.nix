@@ -13,6 +13,7 @@
 #   nihil apply FILE  FILE (- for stdin) becomes settings.json, and the system
 #                     is rebuilt in a unit of its own (Preferences uses it)
 #   nihil passwd      change a password: the last line of stdin, user:password
+#   nihil welcome     open the welcome again (to try it)
 #
 # nihil apply's unit outlives whoever asked: the rebuild restarts the shell.
 # /run/nihil tells how it goes: apply.status (running, done, warning or
@@ -170,6 +171,9 @@ let
                     fi
                     tail -n 1 | chpasswd
                     ;;
+                welcome)
+                    exec nihil-ipc settings welcome
+                    ;;
                 version)
                     running=$(cat /etc/nihil/revision 2>/dev/null || echo "?")
                     pinned=$(jq -r '.nodes.nihil.locked | "\(.rev[0:7] // "local") (\(.lastModified // 0 | strftime("%Y-%m-%d %H:%M")))"' "$flake/flake.lock" 2>/dev/null || echo "?")
@@ -181,7 +185,7 @@ let
                     fi
                     ;;
                 *)
-                    echo "usage: nihil rebuild | update | settings | version | dev [path|off] | apply FILE | passwd"
+                    echo "usage: nihil rebuild | update | settings | version | dev [path|off] | apply FILE | passwd | welcome"
                     echo "the machine's flake: $flake"
                     ;;
             esac
