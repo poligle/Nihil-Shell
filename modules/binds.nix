@@ -3,7 +3,8 @@
 # The keys and touchpad gestures of the actions NIHIL has (home/hyprland.nix
 # turns them into binds). Each machine can change any of them from its
 # settings.json ("binds", "gestures", through settings.nix) or local.nix:
-# a key combination, or null for none. The welcome screen writes them.
+# a key combination, or null for none. Preferences writes them
+# (home/shell/settings).
 # Workspaces (SUPER + a digit), focus (SUPER + arrows), media keys and the
 # mouse stay as they are.
 
@@ -24,6 +25,7 @@ let
         colourPicker = "SUPER + H";
         lock = "SUPER + K";
         nilo = "SUPER + I";
+        settings = "SUPER + comma";
         close = "SUPER + Q";
         float = "SUPER + V";
         maximize = "SUPER + F";
@@ -53,6 +55,14 @@ in
             apply = changed: keys // changed;
             example = { terminal = "SUPER + Return"; pixels = null; };
             description = "Keys for NIHIL's actions, over the defaults in modules/binds.nix; null for none.";
+        };
+
+        bindDefaults = lib.mkOption
+        {
+            type = lib.types.attrs;
+            default = { inherit keys gestures; };
+            readOnly = true;
+            description = "NIHIL's own keys and fingers, before a machine changes them (Preferences shows both).";
         };
 
         gestures = lib.mkOption

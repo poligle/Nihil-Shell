@@ -131,6 +131,12 @@ boot it (UEFI) and the installer starts on its own:
    NIHIL adds 1 GB for the kernels (XBOOTLDR). cfdisk is there for doing it by hand.
    NIHIL is btrfs with subvolumes for `/`, `/home`, `/nix` and `/var/log`, compressed,
    inside LUKS if you choose to encrypt.
+4. The first login opens the welcome: what NIHIL is and how its frame works, then your
+   name, language, keyboard, time zone, wallpaper and system. **Preferences** changes
+   all of it later, shortcuts and gestures too: `SUPER + comma`, the cog in quick
+   settings or the launcher. Changes wait until applied; applying asks for your
+   password (or a finger) and rebuilds the system on its own (`nihil apply`), which
+   keeps going if the shell restarts and puts the old settings back if the build fails.
 
 It finds the screens and the GPU on its own and installs over the network (almost all of
 NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
@@ -155,6 +161,7 @@ nihil rebuild     # apply changes to /etc/nixos
 nihil settings    # edit settings.json, then rebuild
 nihil version     # which NIHIL this machine runs
 nihil dev [path]  # with a local NIHIL checkout instead, to try changes unpushed
+nihil apply FILE  # FILE as settings.json, rebuilt in the background (/run/nihil)
 ```
 
 **By hand**, on an existing NixOS: `nix flake init -t github:poligle/Nihil-Shell` in an

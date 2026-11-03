@@ -50,6 +50,7 @@ let
 		pixels = exec "aseprite";
 		colourPicker = exec "hyprpicker -a";
 		lock = exec "lock-screen";
+		settings = exec "nihil-ipc settings toggle";
 		close = "hl.dsp.window.close()";
 		float = ''hl.dsp.window.float({ action = "toggle" })'';
 		maximize = withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "maximized" })'';
