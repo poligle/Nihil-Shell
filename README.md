@@ -116,11 +116,24 @@ its grey variant; the shell shows app icons desaturated.
 
 ## Install
 
-NIHIL installs from its own image. [Releases](https://github.com/poligle/Nihil-Shell/releases)
-has the ISO: `latest`, built from every push, or a tagged version. Write it to a USB stick,
-boot it (UEFI) and the installer starts on its own:
+Two ways in, to the same system: the installer, on any computer, or the NixOS you already
+have, from a clone of this repository. Either way the machine keeps what is its own in
+`/etc/nixos`, and NIHIL comes from here.
 
-1. Language, a network if there is no cable (`nmtui`), keyboard and time zone.
+### With the installer
+
+[Releases](https://github.com/poligle/Nihil-Shell/releases) has the ISO: `latest`, built
+from every push, or a tagged version; it installs the NIHIL of the commit it was built from.
+Check it against `SHA256SUMS`, next to it, write it to a USB stick, boot it (UEFI) and the
+installer starts on its own:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: the stick
+```
+
+1. Language; then it reads the whole stick, and a stick that cannot be read stops it there,
+   saying so. A network if there is no cable (`nmtui`), keyboard and time zone.
 2. Your name, user name, password and the computer's name.
 3. The disk, and where on it: next to what is there, in its free space or in room a
    partition gives up (Windows' NTFS, an ext4 or a btrfs, shrunk keeping what it holds;
@@ -140,12 +153,54 @@ boot it (UEFI) and the installer starts on its own:
 
 It finds the screens and the GPU on its own and installs over the network (almost all of
 NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
+A stick that gives read errors: write it again, or try another stick or port; **Copy ISO
+Files to RAM**, among the boot menu's options, loads it all into memory before starting.
+
+### On a NixOS you already have
+
+The classic way: clone NIHIL and rebuild from it. Any NixOS on UEFI will do: the switch
+brings it to the NixOS release NIHIL pins, and it boots with systemd-boot.
+
+```bash
+# NIHIL, cloned: your own copy, to read, change and pull
+git clone https://github.com/poligle/Nihil-Shell ~/Nihil-Shell
+
+# The machine's flake, next to the hardware-configuration.nix /etc/nixos already has
+sudo cp -a /etc/nixos /etc/nixos.before-nihil
+sudo cp ~/Nihil-Shell/templates/machine/{flake.nix,settings.json,local.nix,home.nix} /etc/nixos/
+
+# The screens, for settings.json: each one's name and size
+for c in /sys/class/drm/card*-*; do [ "$(cat "$c/status")" = connected ] && echo "${c##*/card?-} $(head -n 1 "$c/modes")"; done
+
+sudoedit /etc/nixos/settings.json /etc/nixos/local.nix
+```
+
+In `settings.json`: `user.name` is the user you already have (a new one would come without
+a password: `sudo passwd` it before rebooting), `host.name` the computer's name, then
+language, keyboard and time zone, and `outputs` the screens above, as
+`"eDP-1": { "width": 1920, "height": 1200 }`. In `local.nix`: the `system.stateVersion` of
+your old `configuration.nix`, and whatever this machine needed there, such as
+`boot.loader.efi.efiSysMountPoint = "/boot/efi";` if its EFI partition is mounted there, or
+`hardware.amdgpu.initrd.enable = true;` with an AMD GPU, so the boot splash comes up early
+(the installer adds the GPU's by itself).
+
+Then point the flake at the clone and switch (flakes are turned on for this first time;
+NIHIL keeps them on). `HOST` is `host.name`:
+
+```bash
+sudo sed -i "s|github:poligle/Nihil-Shell|path:$HOME/Nihil-Shell|" /etc/nixos/flake.nix
+sudo NIX_CONFIG="experimental-features = nix-command flakes" \
+    nixos-rebuild switch --flake /etc/nixos#HOST
+```
+
+With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Leave the
+`sed` out to follow GitHub instead, as the installer does: `nihil update` then pulls from here.
 
 **This machine's configuration** stays in `/etc/nixos`, separate from NIHIL:
 
 | File | What it holds |
 |------|---------------|
-| `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`), through `nihil.lib.mkSystem` |
+| `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`, or `path:` to a clone), through `nihil.lib.mkSystem` |
 | `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH |
 | `hardware-configuration.nix` | disks and drivers, from `nixos-generate-config` |
 | `local.nix` | anything else for this machine: drivers, services, packages |
@@ -159,14 +214,10 @@ so updating never touches it.
 nihil update      # the latest NIHIL, then rebuild
 nihil rebuild     # apply changes to /etc/nixos
 nihil settings    # edit settings.json, then rebuild
-nihil version     # which NIHIL this machine runs
-nihil dev [path]  # with a local NIHIL checkout instead, to try changes unpushed
+nihil version     # the NIHIL this machine runs, and the one pinned
+nihil dev [path]  # NIHIL from a checkout instead, until nihil dev off or nihil update
 nihil apply FILE  # FILE as settings.json, rebuilt in the background (/run/nihil)
 ```
-
-**By hand**, on an existing NixOS: `nix flake init -t github:poligle/Nihil-Shell` in an
-empty `/etc/nixos`, `nixos-generate-config` for the hardware, fill in `settings.json`, then
-`sudo nixos-rebuild switch --flake /etc/nixos`.
 
 ---
 
@@ -440,8 +491,10 @@ sudo nix-collect-garbage --delete-older-than 7d     # (alias ngc)
 `nh os switch` does the same as `nihil rebuild` and prints the package diff between
 generations. Garbage collection also runs weekly on its own (`modules/nix.nix`).
 
-To work on NIHIL itself, clone the repository and point the machine's flake at the
-clone: `inputs.nihil.url = "path:/home/you/Nihil-Shell";`, then `nihil update`.
+To try changes to NIHIL before pushing them: `nihil dev ~/Nihil-Shell` rebuilds with that
+checkout and keeps it, so `nihil rebuild` and Preferences use it too, until `nihil dev off`
+or `nihil update`; `nihil version` says which NIHIL runs. To build on a clone for good,
+point the machine's flake at it (On a NixOS you already have, above).
 
 ---
 

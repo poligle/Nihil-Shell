@@ -479,24 +479,62 @@ nihil.nilo =
     <section id="install" aria-labelledby="install-title">
       <div class="prose">
         <h2 id="install-title">Install</h2>
-        <p class="quiet">NIHIL installs from its own image, and each machine keeps what is its own in <code>/etc/nixos</code>: who uses it, its language, keyboard and screens. Updates come from this repository and never touch it.</p>
+        <p class="quiet">Two ways in, to the same system: the installer, on any computer, or the NixOS you already have, from a clone of this repository. Each machine keeps what is its own in <code>/etc/nixos</code>: who uses it, its language, keyboard and screens. NIHIL comes from here, and updates never touch what is yours.</p>
+      </div>
+
+      <div class="prose">
+        <h3>With the installer</h3>
       </div>
       <ol class="steps">
         <li>
           <h3>Download the installer</h3>
-          <p>The ISO is in <a href="https://github.com/poligle/Nihil-Shell/releases">Releases</a>: <code>latest</code>, built from every push, or a tagged version. Write it to a USB stick and boot it (UEFI).</p>
+          <p>The ISO is in <a href="https://github.com/poligle/Nihil-Shell/releases">Releases</a>: <code>latest</code>, built from every push, or a tagged version. Check it against <code>SHA256SUMS</code>, write it to a USB stick and boot it (UEFI).</p>
+          <div class="code"><pre><code>sha256sum -c SHA256SUMS --ignore-missing
+sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync</code></pre></div>
         </li>
         <li>
           <h3>Answer a few questions</h3>
           <p>Language, network, keyboard, time zone, your name and password, and where it goes: a whole disk, or next to Windows or another system, in room it makes by shrinking it safely, and the rest stays as it is. It finds your screens and GPU on its own.</p>
         </li>
         <li>
-          <h3>Keep it up to date</h3>
-          <p>One command brings the latest NIHIL and rebuilds; another applies your own changes.</p>
-          <div class="code"><pre><code>nihil update
-nihil rebuild</code></pre></div>
+          <h3>Make it yours</h3>
+          <p>The first login opens the welcome: what NIHIL is and how its frame works, then your name, language, keyboard, wallpaper and system. Later, Preferences (<code>SUPER + comma</code>, or the cog in quick settings) changes all of it, shortcuts and gestures too, and applies it by rebuilding the system in the background.</p>
         </li>
       </ol>
+
+      <div class="prose">
+        <h3>On a NixOS you already have</h3>
+        <p class="quiet">The classic way: clone NIHIL and rebuild from it. Any NixOS on UEFI will do; the switch brings it to the release NIHIL pins, booting with systemd-boot.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3>Clone NIHIL</h3>
+          <p>Your own copy, to read, change and pull.</p>
+          <div class="code"><pre><code>git clone https://github.com/poligle/Nihil-Shell ~/Nihil-Shell</code></pre></div>
+        </li>
+        <li>
+          <h3>Give the machine its flake</h3>
+          <p>The template goes to <code>/etc/nixos</code>, next to the <code>hardware-configuration.nix</code> it already has. In <code>settings.json</code>: the user you have, the computer's name, language, keyboard, time zone and screens; in <code>local.nix</code>, the <code>system.stateVersion</code> of your old <code>configuration.nix</code>.</p>
+          <div class="code"><pre><code>sudo cp -a /etc/nixos /etc/nixos.before-nihil
+sudo cp ~/Nihil-Shell/templates/machine/{flake.nix,settings.json,local.nix,home.nix} /etc/nixos/
+sudoedit /etc/nixos/settings.json /etc/nixos/local.nix</code></pre></div>
+        </li>
+        <li>
+          <h3>Build it from the clone</h3>
+          <p>Point the flake at your copy and switch; <code>HOST</code> is the computer's name. Leave the <code>sed</code> out to follow GitHub instead.</p>
+          <div class="code"><pre><code>sudo sed -i "s|github:poligle/Nihil-Shell|path:$HOME/Nihil-Shell|" /etc/nixos/flake.nix
+sudo NIX_CONFIG="experimental-features = nix-command flakes" \
+  nixos-rebuild switch --flake /etc/nixos#HOST</code></pre></div>
+        </li>
+      </ol>
+
+      <div class="prose">
+        <h3>Keep it up to date</h3>
+        <p class="quiet">One command brings the latest NIHIL and rebuilds (with a clone, <code>git pull</code> it first); another applies your own changes. <code>nihil dev</code> tries a checkout's changes before pushing them.</p>
+      </div>
+      <div class="code" style="max-width:860px"><pre><code>nihil update
+nihil rebuild
+nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></pre></div>
 
       <div class="table">
         <h3>Options</h3>
