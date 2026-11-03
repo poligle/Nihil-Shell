@@ -343,6 +343,8 @@ footer a:hover { color: var(--ink); }
             <h3>Settings</h3>
             <p>Wi&#8209;Fi with passwords, Bluetooth, audio output, segmented sliders and the notification history.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>P</kbd><span>or rest the pointer in the top-right corner</span></div>
+            <div class="keys"><kbd>SUPER</kbd><kbd>O</kbd><span>Preferences, or the cog</span></div>
+            <div class="keys"><kbd>SUPER</kbd><kbd>W</kbd><span>wallpapers: arrows to look, Enter to keep</span></div>
           </figcaption>
         </figure>
         <figure>
@@ -665,7 +667,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     }), { threshold: 0.35 }).observe(video);
   }
 
-  // ---- The wordmark lights up from nothing: the ring, its red centre, then the letters
+  // ---- The wordmark lights up from nothing: the snowflake from its centre, then the letters
   const mark = document.getElementById("wordmark");
   fetch("assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
     const doc = new DOMParser().parseFromString(text, "image/svg+xml");
@@ -678,18 +680,19 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     mark.replaceChildren(document.importNode(svg, true));
     if (reduce) { glyph(); return; }
     const live = mark.querySelector("svg");
-    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle')];
+    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle, g[fill="#8A8A8A"] circle')];
     const box = live.viewBox.baseVal;
     const markSize = box.height;   // the mark is a square at the left
     const ring = ink.filter(c => +c.getAttribute("cx") < markSize);
     const letters = ink.filter(c => +c.getAttribute("cx") >= markSize);
     const centre = live.querySelector('g[fill="#D71921"] circle');
     const cx = markSize / 2;
-    ring.sort((a, b) => angle(a) - angle(b));
-    function angle(c) { return (Math.atan2(+c.getAttribute("cy") - cx, +c.getAttribute("cx") - cx) + Math.PI * 2.5) % (Math.PI * 2); }
+    ring.sort((a, b) => far(a) - far(b));
+    function far(c) { return Math.hypot(+c.getAttribute("cx") - cx, +c.getAttribute("cy") - cx); }
     const on = (el, delay) => el.animate([{ opacity: 0.08 }, { opacity: 1 }], { duration: 180, delay, fill: "backwards", easing: "ease-out" });
-    ring.forEach((c, i) => on(c, 120 + i * 32));
-    const lit = 120 + ring.length * 32;
+    const step = 1200 / Math.max(1, ring.length);
+    ring.forEach((c, i) => on(c, 120 + i * step));
+    const lit = 120 + ring.length * step;
     if (centre) on(centre, lit + 60);
     letters.forEach(c => on(c, lit + 220 + (+c.getAttribute("cx") - markSize) * 2.2));
     setTimeout(glyph, lit + 520);
