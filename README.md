@@ -540,6 +540,11 @@ point the machine's flake at it (On a NixOS you already have, above).
 - **Caffeine:** while it is on, every frame window holds a Wayland idle inhibitor, which
   hypridle honours: no dimming, no lock, no screen off, no suspend on its own. Closing the
   lid still suspends. It starts off with every session.
+- **Lid:** closing it suspends the laptop, on the charger too, locked first. With another
+  screen connected logind leaves it awake: the laptop's panel turns off and the session
+  goes on on the other screen (`modules/hardware.nix`, and the lid binds in
+  `home/hyprland.nix`). A machine changes it in `local.nix`, for instance
+  `services.logind.settings.Login.HandleLidSwitchExternalPower = "lock";`.
 - **Tasks:** the kanban lives in `~/.local/state/nihil/tasks.json`; edit it by hand and the
   board follows.
 - **Lock screen media:** [`home/lock/media.sh`](home/lock/media.sh) asks the players
