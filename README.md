@@ -59,10 +59,11 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   sends a segment of light around the frame; critical ones run twice, in red, like the
   battery warnings at 15, 10 and 5 %. Plugging in the charger sends two lights up both
   sides from the bottom, which meet at the top, like the launcher on the phone.
-- **Wallpapers as LED matrices.** Every image in `wallpapers/` is rendered at build time
-  as dots, once per output at its native size, so each dot lands on exact pixels. The
-  [studio](https://nihilshell.com/studio/) does the same in the browser with any picture
-  (`docs/studio/`, the same numbers as `theme/dotmatrix.py`).
+- **Wallpapers as LED matrices.** Every picture in `wallpapers/`, and in a machine's
+  `/etc/nixos/wallpapers` (PNG, JPEG, GIF or WebP, with any name), is rendered at build
+  time as dots, once per output at its native size, so each dot lands on exact pixels. A
+  GIF moves on the desktop. The [studio](https://nihilshell.com/studio/) does the same in
+  the browser with any picture (`docs/studio/`, the same numbers as `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down), a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
@@ -234,7 +235,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `language`      | `"es"`     | `"es"` or `"en"`: shell, lock screen, greeter, script messages and their dates |
 | `outputs`       | —          | Screens of the host: logical size, whether it has the bar, dot pitch |
 | `primaryOutput` | —          | Screen for the desktop widgets, lock and login backgrounds      |
-| `wallpaper`     | `"night"`  | Default wallpaper, a file name in `wallpapers/`                 |
+| `wallpaper`     | `"night"`  | Default wallpaper, by name: its file's without the extension, with spaces and accents made plain (`Captura de pantalla.png` is `Captura-de-pantalla`) |
 | `extraWallpapers` | none    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
 | `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |

@@ -92,7 +92,10 @@ in
         {
             type = lib.types.str;
             default = "night";
-            description = "Default wallpaper: a file name in wallpapers/ without extension.";
+            description = ''
+                Default wallpaper: a picture's name, its file name without the
+                extension in letters, digits, "_" and "-" (theme/wallpapers.nix).
+            '';
         };
 
         language = lib.mkOption
@@ -116,7 +119,10 @@ in
             type = lib.types.listOf lib.types.path;
             default = [ ];
             example = lib.literalExpression "[ ./wallpapers ]";
-            description = "More folders of pictures, drawn as dots like NIHIL's own (a name repeated replaces NIHIL's).";
+            description = ''
+                More folders of pictures (PNG, JPEG, GIF or WebP, any name), drawn
+                as dots like NIHIL's own; a name repeated replaces NIHIL's.
+            '';
         };
 
         trayHidden = lib.mkOption
@@ -171,7 +177,7 @@ in
             }
             {
                 assertion = builtins.elem cfg.wallpaper cfg.wallpapers.names;
-                message = "nihil.wallpaper must match a file in wallpapers/.";
+                message = "nihil.wallpaper must be one of the wallpapers: ${lib.concatStringsSep ", " cfg.wallpapers.names}.";
             }
             {
                 assertion = let languages = builtins.attrValues (import ../theme/i18n.nix); in
