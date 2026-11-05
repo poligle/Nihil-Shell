@@ -10,10 +10,10 @@
 # theme/i18n.nix, and every external program is referenced by its store
 # path, so the shell does not depend on $PATH.
 #
-#   nihil-ipc drawers toggle launcher|dashboard|panel
+#   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers
 #   nihil-ipc osd volume 40 false        nihil-ipc glyph test true
 #   nihil-ipc nilo toggle                (Nilo, modules/nilo.nix)
-#   nihil-ipc settings open|toggle|close|welcome|wallpapers (Preferences, settings/)
+#   nihil-ipc settings open|toggle|close|welcome (Preferences, settings/)
 #   journalctl --user -u nihil-shell -f  (logs)
 
 { config, osConfig, pkgs, lib, ... }:

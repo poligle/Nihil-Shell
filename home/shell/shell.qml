@@ -32,6 +32,4 @@ ShellRoot {
     Desktop {}
 
     Preferences {}
-
-    Wallpapers {}
 }

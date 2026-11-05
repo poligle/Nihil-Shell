@@ -41,7 +41,6 @@ Singleton {
     property string passwordState: ""
 
     property string wallpaper: ""
-    property bool picking: false
 
     // The desktop widgets that show (background/Desktop.qml): the user's
     // choice, kept in their state, or all of them.
@@ -163,7 +162,7 @@ Singleton {
         Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile, JSON.stringify(next)]);
     }
 
-    // The desktop's only, at once (the quick picker, settings/Wallpapers.qml).
+    // The desktop's only, at once (the quick picker, drawers/WallpaperPicker.qml).
     function liveWallpaper(name: string): void {
         if (name === "")
             return;
@@ -382,9 +381,7 @@ Singleton {
         function toggle(): void { if (root.shown) root.hide(); else root.show("", false); }
         function close(): void { root.hide(); }
         function welcome(): void { root.show("hello", true); }
-        function wallpapers(): void {
-            root.screen = Hyprland.focusedMonitor?.name ?? "";
-            root.picking = !root.picking;
-        }
+        // The wallpapers drawer, as SUPER + W opens it (nihil-ipc drawers toggle wallpapers).
+        function wallpapers(): void { Drawers.toggle("wallpapers", ""); }
     }
 }

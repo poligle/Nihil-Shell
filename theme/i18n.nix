@@ -47,7 +47,6 @@
 		actLogout = "Cerrar sesión";
 		actNextWallpaper = "Siguiente fondo";
 		actPrevWallpaper = "Fondo anterior";
-		actWallpaper = "Fondo: %1";
 		actDnd = "No molestar";
 		actNight = "Luz nocturna";
 		actCaffeine = "Cafeína";
@@ -461,7 +460,6 @@
 		actLogout = "Log out";
 		actNextWallpaper = "Next wallpaper";
 		actPrevWallpaper = "Previous wallpaper";
-		actWallpaper = "Wallpaper: %1";
 		actDnd = "Do not disturb";
 		actNight = "Night light";
 		actCaffeine = "Caffeine";
