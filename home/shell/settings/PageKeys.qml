@@ -18,7 +18,9 @@ Flickable {
     readonly property var actions: order.filter(name => name in Config.bindDefaults && (name !== "nilo" || Config.nilo.enabled))
     readonly property var programs: Machine.get("programs", Config.programs)
     readonly property var modifiers: ["SUPER", "SHIFT", "CTRL", "ALT"]
-    readonly property var keyName: /^([A-Za-z0-9]|F([1-9]|1[0-9]|2[0-4])|Return|Space|Tab|Escape|BackSpace|Delete|Insert|Home|End|Prior|Next|PRINT|Print|comma|period|slash|minus|equal|semicolon|apostrophe|grave|backslash|bracketleft|bracketright|Super_L|Super_R)$/
+    // A modifier on its own counts as a key too (SUPER + Control_L sends a
+    // window to the special workspace).
+    readonly property var keyName: /^([A-Za-z0-9]|F([1-9]|1[0-9]|2[0-4])|Return|Space|Tab|Escape|BackSpace|Delete|Insert|Home|End|Prior|Next|PRINT|Print|comma|period|slash|minus|equal|semicolon|apostrophe|grave|backslash|bracketleft|bracketright|Super_L|Super_R|Control_L|Control_R|Shift_L|Shift_R|Alt_L|Alt_R)$/
 
     // What is open: "action:<name>" or "program:<index>" (the length: a new one).
     property string editing: ""
