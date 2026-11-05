@@ -109,11 +109,12 @@ Item {
         return Nilo.errorText(code, detail);
     }
 
-    // Empty: a line and some questions to start with.
+    // Empty: a greeting, a line and some questions to start with.
     Column {
+        id: empty
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: Math.max(0, parent.height * 0.5 - 10)
+        anchors.topMargin: Math.max(0, parent.height * 0.5 - 10 - hello.height - spacing)
         width: Math.min(620, parent.width - 48)
         spacing: 18
         visible: Nilo.messages.count === 0 && (Nilo.ollama || !Nilo.known)
@@ -123,6 +124,32 @@ Item {
 
         readonly property bool downloading: Nilo.pull !== null && Nilo.pull.status !== "error"
             && Nilo.pull.model === (Nilo.settings.model ?? "")
+
+        // For the time of day, with the user's first name (settings.json's
+        // fullName): one of a few, chosen each time the conversation is
+        // empty again. Without a name, the greeting goes without it.
+        property string greeting: ""
+
+        function greet(): void {
+            const hour = new Date().getHours();
+            const options = (hour < 6 ? Lang.niloGreetNight : hour < 13 ? Lang.niloGreetMorning
+                : hour < 20 ? Lang.niloGreetAfternoon : Lang.niloGreetEvening).split("|");
+            const pick = options[Math.floor(Math.random() * options.length)];
+            greeting = Config.greeting !== "" ? pick.arg(Config.greeting) : pick.replace(/[,\s]*%1/, "");
+        }
+
+        onVisibleChanged: if (visible) greet()
+        Component.onCompleted: greet()
+
+        DotText {
+            id: hello
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.min(implicitWidth, parent.width)
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+            text: empty.greeting
+            font.pixelSize: 30
+        }
 
         Txt {
             anchors.horizontalCenter: parent.horizontalCenter
