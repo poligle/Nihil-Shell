@@ -115,6 +115,16 @@ in
             description = "Strings of the selected language.";
         };
 
+        clipboard = lib.mkOption
+        {
+            type = lib.types.ints.between 0 100;
+            default = 8;
+            description = ''
+                How many copies the clipboard history keeps, text and pictures
+                (home/clipboard.nix; its key, SUPER + V by default); 0 turns it off.
+            '';
+        };
+
         extraWallpapers = lib.mkOption
         {
             type = lib.types.listOf lib.types.path;

@@ -24,6 +24,7 @@
 		./home/refresh.nix
 		./home/shell.nix
 		./home/fastfetch.nix
+		./home/clipboard.nix
 	];
 
 	home.username = osConfig.nihil.user.name;

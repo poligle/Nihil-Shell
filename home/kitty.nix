@@ -20,5 +20,10 @@
 			active_tab_font_style = "bold";
 			inactive_tab_font_style = "bold";
 		};
+
+		# SHIFT + Insert pastes the clipboard, as everywhere else: it is how the
+		# clipboard history pastes (home/clipboard.nix). kitty's own pastes
+		# the primary selection, which the middle button still does.
+		keybindings."shift+insert" = "paste_from_clipboard";
 	};
 }

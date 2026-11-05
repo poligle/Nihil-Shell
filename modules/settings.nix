@@ -1,7 +1,8 @@
 # settings.nix by poligle
 #
 # What changes from one NIHIL machine to another: who uses it, its name,
-# language, keyboard, time zone, screens, and whether Nilo runs. It comes
+# language, keyboard, time zone, screens, whether Nilo runs, and how long
+# the clipboard history is. It comes
 # from the machine's settings.json (/etc/nixos, written by the installer
 # and the welcome screen) through nihil.lib.mkSystem, and becomes the
 # options below; a machine's local.nix can still set any of them.
@@ -94,6 +95,7 @@ in
         nihil =
         {
             language = lib.mkDefault (get [ "language" ] "en");
+            clipboard = lib.mkDefault (get [ "clipboard" ] 8);
             wallpaper = lib.mkDefault (get [ "wallpaper" ] "night");
             outputs = lib.mkDefault outputs;
             # The laptop's panel if there is one, or the first screen.
