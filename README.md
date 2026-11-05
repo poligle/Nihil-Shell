@@ -69,7 +69,8 @@ home screen in the same language: the frame, an LED clock, the light on the edge
 - **Wallpapers as LED matrices.** Every picture in `wallpapers/`, and in a machine's
   `/etc/nixos/wallpapers` (PNG, JPEG, GIF or WebP, with any name), is rendered at build
   time as dots, once per output at its native size, so each dot lands on exact pixels. A
-  GIF moves on the desktop. The [studio](https://nihilshell.com/studio/) does the same in
+  GIF moves on the desktop. Each picture on each screen is drawn once and kept: a rebuild
+  only draws the new ones. The [studio](https://nihilshell.com/studio/) does the same in
   the browser with any picture (`docs/studio/`, the same numbers as `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down), a dotted
