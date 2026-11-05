@@ -5,8 +5,8 @@ import qs.config
 import qs.services
 import qs.components
 
-// The wallpaper: it changes at once (nihil-wallpaper), and the lock screen's
-// and the login's once applied.
+// The wallpaper, at once, with the lock screen and the login following it
+// (nihil-wallpaper), and the desktop widgets, on or off at once too.
 Flickable {
     id: page
 

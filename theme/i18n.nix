@@ -1,9 +1,11 @@
 # i18n.nix by poligle
 #
-# Every user-facing string of this configuration, per language. The host
+# Every user-facing string of this configuration, per language. A machine
 # picks one with `nihil.language`; the shell gets it as a generated Lang.qml
-# singleton, and hyprlock, ReGreet and the scripts read `nihil.strings`.
-# Both languages must have the same keys (modules/nihil.nix checks it).
+# singleton, and hyprlock, ReGreet and the scripts read `nihil.strings`, as
+# a machine's own modules can (osConfig.nihil.strings, in its /etc/nixos):
+# a key NIHIL no longer uses may still be read there. Both languages must
+# have the same keys (modules/nihil.nix checks it).
 #
 # `%1` and `%2` are placeholders (QML: Lang.connectedTo.arg(ssid)). Date
 # formats use Qt's syntax and are applied with the language's own locale, so
@@ -103,10 +105,12 @@
 		tasksEmpty = "Escribe una tarea y pulsa enter. Un clic la pasa a la siguiente columna.";
 		notice = "aviso";
 
-		# terminal messages of the engineering wrappers (home/engineering.nix)
+		# terminal messages of a machine's engineering wrappers (its
+		# /etc/nixos/engineering.nix, once home/engineering.nix)
 		cliMissing = "%1 no está instalado en %2";
 		cliNotFound = "No encuentro %1 dentro de %2";
 		cliUsage = "Uso: %1 <carpeta del instalador descomprimido>";
+
 		# Nilo, the assistant (modules/nilo.nix, home/shell/nilo)
 		nilo = "nilo";
 		niloAsk = "pregúntame lo que quieras";
@@ -330,7 +334,6 @@
 		cfgKeyNeedsMod = "añade SUPER u otro modificador";
 		cfgKeyReserved = "esa es de los escritorios";
 		cfgKeyTaken = "ya la usa: %1";
-		cfgOff = "no";
 		cfgSystem = "Sistema";
 		cfgSystemSub = "El nombre del equipo y lo que corre en él.";
 		cfgHost = "Nombre del equipo";
@@ -363,13 +366,11 @@
 		cfgLogHint = "el registro: /run/nihil/apply.log";
 		cfgNotifyApplied = "Preferencias aplicadas";
 		cfgNotifyFailed = "No se han podido aplicar las preferencias";
-		bindTerminal = "Terminal";
 		bindLauncher = "Lanzador";
 		bindDashboard = "Panel de estado";
 		bindPanel = "Ajustes rápidos";
 		bindSettings = "Preferencias";
 		bindFiles = "Archivos";
-		bindBrowser = "Navegador";
 		bindColourPicker = "Cuentagotas";
 		bindLock = "Bloquear";
 		bindNilo = "Nilo";
@@ -519,6 +520,7 @@
 		cliMissing = "%1 is not installed in %2";
 		cliNotFound = "Cannot find %1 in %2";
 		cliUsage = "Usage: %1 <unpacked installer folder>";
+
 		nilo = "nilo";
 		niloAsk = "ask me anything";
 		niloHint = "enter asks · ctrl+n new conversation · esc closes";
@@ -741,7 +743,6 @@
 		cfgKeyNeedsMod = "add SUPER or another modifier";
 		cfgKeyReserved = "that one belongs to the workspaces";
 		cfgKeyTaken = "already used by: %1";
-		cfgOff = "off";
 		cfgSystem = "System";
 		cfgSystemSub = "The computer's name and what runs on it.";
 		cfgHost = "Computer name";
@@ -774,13 +775,11 @@
 		cfgLogHint = "the log: /run/nihil/apply.log";
 		cfgNotifyApplied = "Preferences applied";
 		cfgNotifyFailed = "The preferences could not be applied";
-		bindTerminal = "Terminal";
 		bindLauncher = "Launcher";
 		bindDashboard = "Dashboard";
 		bindPanel = "Quick settings";
 		bindSettings = "Preferences";
 		bindFiles = "Files";
-		bindBrowser = "Browser";
 		bindColourPicker = "Colour picker";
 		bindLock = "Lock";
 		bindNilo = "Nilo";

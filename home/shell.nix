@@ -1,12 +1,14 @@
 # shell.nix by poligle
 #
 # NIHIL shell on Quickshell: frame and bar, drawers (dashboard, control
-# panel, launcher), notifications, OSD and desktop widgets. It replaces
-# waybar, wofi, eww and dunst.
+# panel, launcher), notifications, OSD, desktop widgets, Preferences and the
+# welcome, and Nilo's side of the assistant. It replaces waybar, wofi, eww
+# and dunst.
 #
-# The QML lives in home/shell/. Tokens.qml and Config.qml are generated here
-# from theme/nihil.nix and the host outputs, and every external program is
-# referenced by its store path, so the shell does not depend on $PATH.
+# The QML lives in home/shell/. Tokens.qml, Config.qml and Lang.qml are
+# generated here from theme/nihil.nix, the machine's settings and
+# theme/i18n.nix, and every external program is referenced by its store
+# path, so the shell does not depend on $PATH.
 #
 #   nihil-ipc drawers toggle launcher|dashboard|panel
 #   nihil-ipc osd volume 40 false        nihil-ipc glyph test true

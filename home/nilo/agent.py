@@ -9,7 +9,7 @@
 # With the terminal allowed it also runs commands. Every commit, every change
 # to a file and every command waits for the user to confirm it.
 #
-# Standard library only. home/nilo.nix wraps it with its configuration
+# Standard library only. home/nilo/default.nix wraps it with its configuration
 # (Ollama's address, the models on offer, the store paths of ddgr and git);
 # the settings chosen in the shell live in $XDG_STATE_HOME/nihil/nilo.json.
 #
@@ -42,7 +42,6 @@
 
 import argparse
 import datetime
-import collections
 import difflib
 import html.parser
 import http.client
@@ -2046,7 +2045,7 @@ class Agent:
 
 def main():
     parser = argparse.ArgumentParser(description="Nilo's agent for the NIHIL shell (JSON lines on stdin/stdout).")
-    parser.add_argument("--config", required=True, help="configuration written by home/nilo.nix")
+    parser.add_argument("--config", required=True, help="configuration written by home/nilo/default.nix")
     parser.add_argument("--state", help="settings file (default $XDG_STATE_HOME/nihil/nilo.json)")
     args = parser.parse_args()
     with open(args.config) as f:
