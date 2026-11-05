@@ -2,7 +2,12 @@
 #
 # Renders every picture in the folders it is given (NIHIL's ../wallpapers and
 # the machine's own, nihil.extraWallpapers) as a NIHIL dot matrix, once per
-# output at its native size:  $out/<wallpaper>/<output>.png
+# output at its native size:  $out/<wallpaper>/<output>.png (and .gif when
+# it moves). Each picture on each output is a derivation of its own, made of
+# that picture, that output and the renderer alone: a rebuild draws only what
+# is new (a picture added or changed, a screen added or changed, a new
+# dotmatrix.py) and takes the rest from the store. A NixOS update that brings
+# a new Python, numpy or Pillow draws them all again.
 # A wallpaper's name is its file's without the extension, made of letters,
 # digits, "_" and "-": "Captura de pantalla 2026-11-05.PNG" is
 # Captura-de-pantalla-2026-11-05, and an accent is its plain letter. The list
@@ -57,21 +62,29 @@ let
 	}))
 		(lib.filterAttrs isImage (builtins.readDir dir))) { } dirs;
 
-	outputArgs = lib.concatStringsSep " " (lib.mapAttrsToList
-		(name: output: "--output ${name}:${toString output.width}x${toString output.height}:${toString output.pitch}")
-		outputs);
+	# The renderer by its content, like the pictures.
+	renderer = builtins.path { path = ./dotmatrix.py; name = "nihil-dotmatrix.py"; };
 
-	renderOne = name: picture: ''
-		echo "nihil: rendering ${name}"
-		python3 ${./dotmatrix.py} ${picture} "$out/${name}" ${outputArgs}
+	# One picture on one output: $out/<output>.png, and .gif when it moves.
+	render = name: picture: output: size: pkgs.runCommand "nihil-wallpaper-${name}-${output}"
+		{ nativeBuildInputs = [ python ]; }
+		''
+			echo "nihil: rendering ${name} for ${output}"
+			python3 ${renderer} ${picture} $out --output ${output}:${toString size.width}x${toString size.height}:${toString size.pitch}
+		'';
+
+	link = name: picture: ''
+		mkdir -p $out/${name}
+		${lib.concatStrings (lib.mapAttrsToList (output: size: ''
+			ln -s ${render name picture output size}/* $out/${name}/
+		'') outputs)}
 	'';
 in
 pkgs.runCommand "nihil-wallpapers"
 {
-	nativeBuildInputs = [ python ];
 	passthru.names = builtins.attrNames pictures;
 }
 ''
 	mkdir -p $out
-	${lib.concatStrings (lib.mapAttrsToList renderOne pictures)}
+	${lib.concatStrings (lib.mapAttrsToList link pictures)}
 ''
