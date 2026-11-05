@@ -7,7 +7,8 @@ import Quickshell.Io
 // Caffeine: while it is on, the screen doesn't dim, lock or turn off and the
 // laptop doesn't suspend on its own. Every frame window holds a Wayland idle
 // inhibitor while it is on (Frame.qml), and hypridle honours it; closing the
-// lid still suspends. It starts off with every session.
+// lid still suspends, since logind handles the lid (modules/hardware.nix).
+// It starts off with every session.
 //   qs -c nihil ipc call caffeine toggle|on|off
 Singleton {
     id: root

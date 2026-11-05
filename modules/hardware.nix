@@ -24,10 +24,18 @@ let
 in
 {
     services.libinput.enable = true;
-    services.logind.settings.Login = {
-        HandleLidSwitch = "ignore";
-        HandleLidSwitchExternalPower = "ignore";
-        HandleLidSwitchDocked = "ignore";
+
+    # Closing the lid suspends the laptop, on the charger too, and hypridle
+    # locks it first. With another screen connected logind counts it as
+    # docked and leaves it awake: Hyprland turns the laptop's panel off and
+    # the session goes on on the other screen (home/hyprland.nix). Caffeine
+    # only holds the idle timers, never the lid. A machine's local.nix can
+    # set any of the three ("lock", "ignore"…).
+    services.logind.settings.Login =
+    {
+        HandleLidSwitch = lib.mkDefault "suspend";
+        HandleLidSwitchExternalPower = lib.mkDefault "suspend";
+        HandleLidSwitchDocked = lib.mkDefault "ignore";
     };
     services.fprintd.enable = config.nihil.fingerprint;
 

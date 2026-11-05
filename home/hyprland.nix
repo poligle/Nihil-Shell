@@ -95,6 +95,10 @@ let
 		move = "1270 50";
 	};
 
+	# The lid. Closed with another screen on, the laptop's panel goes off and
+	# the session stays on the other one (logind leaves a docked laptop
+	# awake, modules/hardware.nix). Closed without one, logind suspends it:
+	# this only locks and darkens the panel in the meantime.
 	lidClose = ''
 		function()
 			local docked = false
