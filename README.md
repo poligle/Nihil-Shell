@@ -48,6 +48,13 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   doing, done) and caffeine, which keeps the screen from dimming, locking or sleeping.
 - **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
+- **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
+  and desktop widgets, shortcuts and programs, the computer's name, Nilo, fingerprint and
+  SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
+  the widgets and the password change at once; the rest waits until applied, and applying
+  rebuilds the system in the background.
+- **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
+  another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
@@ -149,10 +156,10 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: th
    inside LUKS if you choose to encrypt.
 4. The first login opens the welcome: what NIHIL is and how its frame works, then your
    name, language, keyboard, time zone, wallpaper and system. **Preferences** changes
-   all of it later, shortcuts and gestures too: `SUPER + O`, the cog in quick
-   settings or the launcher. Changes wait until applied; applying asks for your
-   password (or a finger) and rebuilds the system on its own (`nihil apply`), which
-   keeps going if the shell restarts and puts the old settings back if the build fails.
+   all of it later, and the shortcuts too: `SUPER + O`, the cog in quick settings or
+   the launcher. Changes wait until applied; applying asks for your password (or a
+   finger) and rebuilds the system on its own (`nihil apply`), which keeps going if the
+   shell restarts and puts the old settings back if the build fails.
 
 It finds the screens and the GPU on its own and installs over the network (almost all of
 NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
@@ -186,6 +193,10 @@ your old `configuration.nix`, and whatever this machine needed there, such as
 `boot.loader.efi.efiSysMountPoint = "/boot/efi";` if its EFI partition is mounted there, or
 `hardware.amdgpu.initrd.enable = true;` with an AMD GPU, so the boot splash comes up early
 (the installer adds the GPU's by itself).
+
+A screen connected later, on any machine, goes into `outputs` the same way (`nihil
+settings`). One that is not there works anyway, with Hyprland's own mode, no bar and the
+primary screen's wallpaper.
 
 Then point the flake at the clone and switch (flakes are turned on for this first time;
 NIHIL keeps them on). `HOST` is `host.name`:
@@ -232,12 +243,13 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 
 | Option          | Default    | What it does                                                    |
 |-----------------|------------|-----------------------------------------------------------------|
-| `language`      | `"es"`     | `"es"` or `"en"`: shell, lock screen, greeter, script messages and their dates |
+| `language`      | `"en"`     | `"es"` or `"en"`: shell, lock screen, greeter, script messages and their dates |
 | `outputs`       | —          | Screens of the host: logical size, whether it has the bar, dot pitch |
 | `primaryOutput` | —          | Screen for the desktop widgets, lock and login backgrounds      |
 | `wallpaper`     | `"night"`  | Default wallpaper, by name: its file's without the extension, with spaces and accents made plain (`Captura de pantalla.png` is `Captura-de-pantalla`) |
 | `extraWallpapers` | none    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
 | `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
+| `programs`      | Terminal, Files, Zen | Programs with a key: a name, the command that opens it and its keys ([Keybindings](#keybindings)) |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
 | `nilo.enable`   | `false`    | Nilo, the assistant, and Ollama to run its model ([Nilo](#nilo)) |
@@ -266,8 +278,8 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + K`                       | Lock                                          |
 | `SUPER + O`                       | Preferences (also the cog in quick settings)  |
 | `SUPER + W`                       | Wallpapers: arrows to look, Enter to keep     |
-| `SUPER` (alone)                   | kitty                                         |
-| `SUPER + E / X`                   | Thunar, Zen (add programs and their keys in Preferences) |
+| `SUPER` (alone)                   | Terminal (kitty), a program                   |
+| `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
 | `SUPER + V`                       | Toggle floating                               |
 | `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |
@@ -282,20 +294,31 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 Scrolling over the bar switches workspaces (on the LEDs) or changes the volume (on the
 status icons).
 
-These are the defaults. A machine changes them in its `settings.json`, by the names in
-[`modules/binds.nix`](modules/binds.nix): a new key combination, or `null` for none, and
-the fingers of each gesture the same way.
+These are the defaults. Preferences (Shortcuts) changes the keys of NIHIL's actions and
+the programs with a key of their own: a name, the command that opens it and its keys, to
+edit, remove or add. A machine keeps them in its `settings.json`, by the names in
+[`modules/binds.nix`](modules/binds.nix): `binds`, a new combination for an action or
+`null` for none; `programs`, the whole list, which replaces NIHIL's; and `gestures`, the
+fingers of each one or `null` for none, which only change there.
 
 ```json
-"binds": { "terminal": "SUPER + Return", "pixels": null },
+"binds": { "screenshot": "SUPER + SHIFT + S", "colourPicker": null },
+"programs": [
+  { "name": "Terminal", "exec": "kitty", "keys": "SUPER + Super_L" },
+  { "name": "Files", "exec": "thunar", "keys": "SUPER + E" },
+  { "name": "Zen", "exec": "zen-beta", "keys": "SUPER + X" },
+  { "name": "Spotify", "exec": "spotify", "keys": "SUPER + M" }
+],
 "gestures": { "close": null, "special": 3 }
 ```
 
-The actions: `terminal`, `launcher`, `dashboard`, `panel`, `files`, `browser`, `notes`,
-`code`, `music`, `pixels`, `colourPicker`, `lock`, `nilo`, `close`, `float`, `maximize`,
-`fullscreen`, `special`, `toSpecial`, `nextWorkspace`, `screenshot`. The gestures:
-`workspaces`, `close`, `launcher`, `special`. Workspaces, focus, media keys and the mouse
-stay as they are.
+The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `nilo`,
+`colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
+`toSpecial`, `nextWorkspace`, `screenshot`. The gestures: `workspaces`, `close`,
+`launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
+`terminal`, `files`, `browser`, `notes`, `code`, `music` and `pixels` were actions and
+are programs now: a `settings.json` that still names them under `binds` is read without
+them.
 
 ---
 
@@ -315,6 +338,7 @@ nihil-ipc nilo toggle                 # also: open, sleep, ask "…"
 nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
+nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome, wallpapers
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -324,9 +348,11 @@ journalctl --user -u nihil-shell -f   # logs
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
 | `drawers/`    | Dashboard, settings panel, launcher, OSD, notifications         |
 | `background/` | Desktop widgets                                                 |
-| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, Nilo |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, Nilo, the machine's settings (`Machine.qml`) |
+| `settings/`   | Preferences, the welcome and the wallpaper picker (`SUPER + W`) |
 | `components/` | LEDs, dials, segmented sliders, dot-matrix image, buttons, text |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
+| `theme/`      | The shell's Nerd Font glyphs; `Tokens.qml` is generated here |
 
 ---
 

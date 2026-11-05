@@ -11,7 +11,7 @@
 #   nihil-ipc drawers toggle launcher|dashboard|panel
 #   nihil-ipc osd volume 40 false        nihil-ipc glyph test true
 #   nihil-ipc nilo toggle                (Nilo, modules/nilo.nix)
-#   nihil-ipc settings open|toggle|welcome (Preferences, settings/)
+#   nihil-ipc settings open|toggle|close|welcome|wallpapers (Preferences, settings/)
 #   journalctl --user -u nihil-shell -f  (logs)
 
 { config, osConfig, pkgs, lib, ... }:

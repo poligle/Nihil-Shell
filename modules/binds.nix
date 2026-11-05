@@ -1,10 +1,11 @@
 # binds.nix by poligle
 #
-# The keys and touchpad gestures of the actions NIHIL has (home/hyprland.nix
-# turns them into binds). Each machine can change any of them from its
-# settings.json ("binds", "gestures", through settings.nix) or local.nix:
-# a key combination, or null for none. Preferences writes them
-# (home/shell/settings).
+# The keys and touchpad gestures of the actions NIHIL has, and the programs
+# with a key (home/hyprland.nix turns them into binds). Each machine can
+# change any of them from its settings.json ("binds", "programs",
+# "gestures", through settings.nix) or local.nix: a key combination, or null
+# for none. Preferences writes the keys and the programs
+# (home/shell/settings/PageKeys.qml); the gestures change only there.
 # Workspaces (SUPER + a digit), focus (SUPER + arrows), media keys and the
 # mouse stay as they are.
 
@@ -30,7 +31,6 @@ let
         screenshot = "PRINT";
     };
 
-    # Fingers on the touchpad for each gesture.
     # Programs with a key; a machine's settings.json "programs" replaces them.
     programs =
     [
@@ -43,6 +43,7 @@ let
     # read without them.
     former = [ "terminal" "files" "browser" "notes" "code" "music" "pixels" ];
 
+    # Fingers on the touchpad for each gesture.
     gestures =
     {
         workspaces = 3;     # sideways: the next or previous workspace

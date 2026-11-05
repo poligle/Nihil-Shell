@@ -405,7 +405,7 @@ footer a:hover { color: var(--ink); }
         </figure>
       </div>
       <div class="code nilo-code">
-        <pre><code><span class="c"># /etc/nixos/local.nix, or "nilo" in settings.json: off by default</span>
+        <pre><code><span class="c"># off by default: Preferences, System turns it on; or in /etc/nixos/local.nix</span>
 nihil.nilo =
 {
     enable = true;
@@ -500,7 +500,7 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync</code></pre>
         </li>
         <li>
           <h3>Make it yours</h3>
-          <p>The first login opens the welcome: what NIHIL is and how its frame works, then your name, language, keyboard, wallpaper and system. Later, Preferences (<code>SUPER + O</code>, or the cog in quick settings) changes all of it, shortcuts and gestures too, and applies it by rebuilding the system in the background.</p>
+          <p>The first login opens the welcome: what NIHIL is and how its frame works, then your name, language, keyboard, wallpaper and system. Later, Preferences (<code>SUPER + O</code>, or the cog in quick settings) changes all of it, and the shortcuts too, and applies it by rebuilding the system in the background.</p>
         </li>
       </ol>
 
@@ -544,7 +544,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
         <table>
           <thead><tr><th scope="col">Option</th><th scope="col">Default</th><th scope="col">What it does</th></tr></thead>
           <tbody>
-            <tr><td><code>language</code></td><td><code>"es"</code></td><td>Language of the shell, lock screen, greeter and script messages: <code>"es"</code> or <code>"en"</code>.</td></tr>
+            <tr><td><code>language</code></td><td><code>"en"</code></td><td>Language of the shell, lock screen, greeter and script messages: <code>"es"</code> or <code>"en"</code>.</td></tr>
             <tr><td><code>outputs</code></td><td>none</td><td>Screens of the host: logical size, whether the frame widens into the bar, dot pitch.</td></tr>
             <tr><td><code>primaryOutput</code></td><td>none</td><td>Screen for the desktop widgets and the lock and login backgrounds.</td></tr>
             <tr><td><code>wallpaper</code></td><td><code>"night"</code></td><td>Default wallpaper, by name: a picture in <code>wallpapers/</code> or <code>/etc/nixos/wallpapers</code>, without the extension.</td></tr>
