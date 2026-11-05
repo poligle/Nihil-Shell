@@ -142,7 +142,7 @@
 		niloTryFiles = "¿Qué hay en mi repositorio?";
 		niloTryPush = "Sube los cambios de mi config";
 		niloTryShell = "¿Qué ocupa más en mi carpeta personal?";
-		niloTryApps = "Abre Spotify";
+		niloTryApps = "Abre Zen";
 		niloCopy = "copiar";
 		niloCopied = "copiado";
 		niloStopped = "parado";
@@ -553,7 +553,7 @@
 		niloTryFiles = "What's in my repository?";
 		niloTryPush = "Push my config changes";
 		niloTryShell = "What takes the most space in my home folder?";
-		niloTryApps = "Open Spotify";
+		niloTryApps = "Open Zen";
 		niloCopy = "copy";
 		niloCopied = "copied";
 		niloStopped = "stopped";

@@ -263,10 +263,10 @@ Singleton {
     // ~/.config/nihil/nilo.md, made by the agent if missing, in the editor.
     function editNotes(): void { send({ op: "notes" }); }
 
-    // "abre spotify", "open zen and thunar": with Apps allowed, these open
+    // "abre zen", "open zen and thunar": with Apps allowed, these open
     // right away, without waiting for the model: the launcher's own search,
     // and only when every name matches an app closely (or is a web address).
-    // Anything else, or anything more ("abre spotify y pon algo"), goes to
+    // Anything else, or anything more ("abre zen y busca el tiempo"), goes to
     // Nilo as usual. The agent doesn't hear of it.
     readonly property var opener: /^(?:[áa]bre(?:me)?|abrir|lanza|arranca|open|launch|start)\s+(.+?)[.!]*$/i
 

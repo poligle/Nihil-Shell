@@ -46,20 +46,18 @@ in
         "applications/thunar-settings.desktop"                  = hidden "Thunar Preferences";
         "applications/thunar-volman-settings.desktop"           = hidden "Removable Drives and Media";
 
-        # LibreOffice
+        # Qt theming tools (pulled in by Stylix)
+        "applications/kvantummanager.desktop"                   = hidden "Kvantum Manager";
+        "applications/qt5ct.desktop"                            = hidden "Qt5 Settings";
+        "applications/qt6ct.desktop"                            = hidden "Qt6 Settings";
+
+        # LibreOffice and KiCad keep one entry each, on a machine that adds them
         "applications/startcenter.desktop"                      = hidden "LibreOffice";
         "applications/draw.desktop"                             = hidden "LibreOffice Draw";
         "applications/impress.desktop"                          = hidden "LibreOffice Impress";
         "applications/math.desktop"                             = hidden "LibreOffice Math";
         "applications/base.desktop"                             = hidden "LibreOffice Base";
         "applications/xsltfilter.desktop"                       = hidden "LibreOffice XSLT based filters";
-
-        # Qt theming tools (pulled in by Stylix)
-        "applications/kvantummanager.desktop"                   = hidden "Kvantum Manager";
-        "applications/qt5ct.desktop"                            = hidden "Qt5 Settings";
-        "applications/qt6ct.desktop"                            = hidden "Qt6 Settings";
-    
-        # KiCad
         "applications/org.kicad.bitmap2component.desktop"       = hidden "KiCad Bitmap2Component";
         "applications/org.kicad.eeschema.desktop"               = hidden "KiCad Eeschema";
         "applications/org.kicad.gerbview.desktop"               = hidden "KiCad Gerbview";
