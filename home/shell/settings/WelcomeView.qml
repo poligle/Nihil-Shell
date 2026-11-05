@@ -6,8 +6,8 @@ import qs.services
 import qs.components
 
 // The first time (services/Machine.qml): what NIHIL is and how it works,
-// then the settings that matter most, one a step. Shortcuts, gestures and
-// everything else wait in Preferences.
+// then the settings that matter most, one a step. Shortcuts and everything
+// else wait in Preferences; the gestures, in settings.json.
 Item {
     id: root
 

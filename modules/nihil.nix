@@ -101,7 +101,8 @@ in
         language = lib.mkOption
         {
             type = lib.types.enum [ "es" "en" ];
-            default = "es";
+            # The same as settings.nix's when settings.json has none.
+            default = "en";
             description = "Language of the shell, lock screen, greeter and script messages (theme/i18n.nix).";
         };
 

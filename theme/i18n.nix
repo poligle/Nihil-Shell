@@ -118,7 +118,7 @@
 		niloHintSettings = "↑↓ elige · espacio marca · esc vuelve";
 		niloHintAuthorize = "espacio o enter autoriza · esc cancela";
 		niloOff = "Nilo está apagado";
-		niloOffHow = "Actívalo con nihil.nilo.enable = true en tu host y haz rebuild.";
+		niloOffHow = "Actívalo en Preferencias, Sistema.";
 		niloAsleep = "dormido";
 		niloWaking = "despertando";
 		niloAwake = "despierto, %1 GB";
@@ -398,7 +398,7 @@
 		welMoveTo = "Llevar la ventana a un escritorio";
 		welGestures = "Con tres dedos: a los lados cambias de escritorio, hacia arriba abres el lanzador y hacia abajo cierras la ventana.";
 		welDoneTitle = "Listo";
-		welDoneBody = "Los atajos, los gestos y todo lo demás están en Preferencias: con su tecla o con el engranaje de los ajustes rápidos.";
+		welDoneBody = "Los atajos y todo lo demás están en Preferencias: con su tecla o con el engranaje de los ajustes rápidos.";
 		welDoneApply = "Para guardar lo que has cambiado, NIHIL reconstruye el sistema: escribe tu contraseña.";
 		welSkip = "saltar";
 		welBack = "atrás";
@@ -529,7 +529,7 @@
 		niloHintSettings = "↑↓ choose · space toggles · esc goes back";
 		niloHintAuthorize = "space or enter authorizes · esc cancels";
 		niloOff = "Nilo is off";
-		niloOffHow = "Turn it on with nihil.nilo.enable = true in your host and rebuild.";
+		niloOffHow = "Turn it on in Preferences, System.";
 		niloAsleep = "asleep";
 		niloWaking = "waking up";
 		niloAwake = "awake, %1 GB";
@@ -809,7 +809,7 @@
 		welMoveTo = "Take the window to a workspace";
 		welGestures = "With three fingers: sideways you switch workspace, up opens the launcher and down closes the window.";
 		welDoneTitle = "Ready";
-		welDoneBody = "Shortcuts, gestures and everything else are in Preferences: with its key, or the cog in quick settings.";
+		welDoneBody = "Shortcuts and everything else are in Preferences: with its key, or the cog in quick settings.";
 		welDoneApply = "To keep what you changed, NIHIL rebuilds the system: type your password.";
 		welSkip = "skip";
 		welBack = "back";
