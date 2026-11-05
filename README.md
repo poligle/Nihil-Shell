@@ -505,7 +505,7 @@ Nihil-Shell/
 ├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
 ├── docs/             the website, served by GitHub Pages from this folder
-├── .github/          release.yml: the ISO in Releases
+├── .github/          release.yml: the ISO in Releases; update.yml: the inputs, every week
 └── wallpapers/       source photos, rendered as dots at build time
 ```
 
@@ -529,6 +529,21 @@ or `nihil update`; `nihil version` says which NIHIL runs. Each rebuild takes a c
 checkout as it is, new files included, without `.git` (`/var/lib/nihil/dev-tree`): the
 history stays out of the store. To build on a clone for good, point the machine's flake
 at it (On a NixOS you already have, above).
+
+### Keeping NIHIL current
+
+NIHIL's `flake.lock` is the NixOS every machine runs: `nihil update` takes it from here.
+Every Monday, [`.github/workflows/update.yml`](.github/workflows/update.yml) brings the
+inputs up to date in a pull request, once a machine as the installer leaves it still
+evaluates (GitHub has to let Actions create pull requests: Settings, Actions, General).
+Try it with `nihil dev` on a checkout of its branch before merging; `nix flake update`
+does the same by hand.
+
+A new NixOS release, every May and November, means moving `nixpkgs`, `home-manager` and
+`stylix` in `flake.nix` to its branches together, before the one NIHIL follows reaches
+its end of life. `home.stateVersion` in `home.nix` stays at `26.05`, the release NIHIL's
+home started on, for every machine; `system.stateVersion` is each machine's own, in its
+`local.nix`.
 
 ---
 

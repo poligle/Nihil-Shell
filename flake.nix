@@ -3,7 +3,10 @@
 {
 	description = "NIHIL: a monochrome, dot-matrix desktop for NixOS";
 
-	inputs = 
+	# The NixOS every machine runs: nihil update takes flake.lock from here.
+	# nixpkgs, Home Manager and Stylix move to a new release together, and
+	# .github/workflows/update.yml brings them up to date every week.
+	inputs =
 	{
 		nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
