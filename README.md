@@ -71,7 +71,8 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   time as dots, once per output at its native size, so each dot lands on exact pixels. A
   GIF moves on the desktop. Each picture on each screen is drawn once and kept: a rebuild
   only draws the new ones. The [studio](https://nihilshell.com/studio/) does the same in
-  the browser with any picture (`docs/studio/`, the same numbers as `theme/dotmatrix.py`).
+  the browser with any picture, moving ones too (`docs/studio/`, the same numbers as
+  `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down), a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
