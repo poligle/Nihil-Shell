@@ -76,7 +76,8 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   whole at least once on the way up and on the way down), a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
   in a corner: the cover in dots, the progress in LEDs and buttons you can click (hyprlock).
-- **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, and monochrome keys.
+- **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
+  NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
   the greeter and the scripts, and the language of their dates.
 - **Its own sound.** A set of short digital blips, synthesised by
