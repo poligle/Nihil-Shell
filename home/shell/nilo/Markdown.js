@@ -4,19 +4,26 @@
 // paragraphs, lists, headings, **bold**, *italics*, `code`, fenced code and
 // links. Anything else stays as typed. It runs on every word while Nilo
 // writes, so it never fails on half a construct: an open ** just shows.
-//   html(text, { ink, dim, code, surface, mono, copy })
-// With `copy`, each block of code ends in a link with that text, copy:N,
-// and blocks(text)[N] is the code it copies.
+//   html(text, { ink, dim, code, surface, mono })
+// segments(text) splits a reply into its prose and its blocks of code, for
+// the conversation to draw each block on its own, rounded, with a button
+// that copies it (Chat.qml); a short answer (Peek.qml) is html() whole.
 
 function escape(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// A fence (```) and how far it is indented, or -1. html() and blocks() find
-// the same blocks with it, so copy:N is always the block it is under.
+// A fence (```) and how far it is indented, or -1: html() and segments()
+// find the same blocks with it.
 function fence(line) {
     const m = /^(\s*)```/.exec(line);
     return m ? m[1].length : -1;
+}
+
+// The language after an opening fence (```python), or "".
+function language(line) {
+    const m = /^\s*```\s*([\w+#.-]+)/.exec(line);
+    return m ? m[1] : "";
 }
 
 // A line of a block without its fence's indentation (a block inside a list
@@ -46,7 +53,6 @@ function inline(text, s) {
 }
 
 function html(text, s) {
-    let count = 0;
     const lines = escape(String(text ?? "")).split("\n");
     const out = [];
     let para = [];
@@ -68,11 +74,8 @@ function html(text, s) {
         list = null;
     }
     function flushCode() {
-        // Every block counts, so the numbers match blocks() with or without links.
-        const copy = s.copy ? `<tr><td align="right"><a href="copy:${count}" style="color:${s.dim}; text-decoration:none;">${s.copy}</a></td></tr>` : "";
-        count++;
         out.push(`<table width="100%" cellpadding="12" cellspacing="0" style="margin-bottom:10px;" bgcolor="${s.surface}">`
-            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:12px; color:${s.code};">${code.join("\n")}</pre></td></tr>${copy}</table>`);
+            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:12px; color:${s.code};">${code.join("\n")}</pre></td></tr></table>`);
         code = null;
     }
 
@@ -127,28 +130,41 @@ function html(text, s) {
     return out.join("");
 }
 
-// The blocks of code as written, without their fences' indentation, for
-// the copy links: the same blocks html() draws, in its order, the one still
-// being written included.
-function blocks(text) {
+// The reply in order: { kind: "text", text } for the prose between blocks
+// (Markdown, for html()) and { kind: "code", text, language, open } for each
+// block as written, without its fence's indentation; open while its closing
+// fence has not come yet. Blank prose between two blocks is left out.
+function segments(text) {
     const found = [];
+    let prose = [];
     let code = null;
     let indent = 0;
+    let lang = "";
+    function flushProse() {
+        if (prose.join("").trim() !== "")
+            found.push({ kind: "text", text: prose.join("\n") });
+        prose = [];
+    }
     for (const line of String(text ?? "").split("\n")) {
         const at = fence(line);
         if (code !== null) {
             if (at >= 0) {
-                found.push(code.join("\n"));
+                found.push({ kind: "code", text: code.join("\n"), language: lang, open: false });
                 code = null;
             } else {
                 code.push(dedent(line, indent));
             }
         } else if (at >= 0) {
+            flushProse();
             code = [];
             indent = at;
+            lang = language(line);
+        } else {
+            prose.push(line);
         }
     }
     if (code !== null)
-        found.push(code.join("\n"));
+        found.push({ kind: "code", text: code.join("\n"), language: lang, open: true });
+    flushProse();
     return found;
 }

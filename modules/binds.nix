@@ -21,8 +21,10 @@ let
         nilo = "SUPER + I";
         settings = "SUPER + O";
         wallpapers = "SUPER + W";
+        # Held down, its modifier keeps the history out (home/hyprland.nix).
+        clipboard = "SUPER + V";
         close = "SUPER + Q";
-        float = "SUPER + V";
+        float = "SUPER + SHIFT + Space";
         maximize = "SUPER + F";
         fullscreen = "SUPER + SHIFT + F";
         special = "SUPER + Escape";

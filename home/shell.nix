@@ -10,10 +10,11 @@
 # theme/i18n.nix, and every external program is referenced by its store
 # path, so the shell does not depend on $PATH.
 #
-#   nihil-ipc drawers toggle launcher|dashboard|panel
+#   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers
+#   nihil-ipc clipboard open|next|previous|paste|cancel (home/hyprland.nix)
 #   nihil-ipc osd volume 40 false        nihil-ipc glyph test true
 #   nihil-ipc nilo toggle                (Nilo, modules/nilo.nix)
-#   nihil-ipc settings open|toggle|close|welcome|wallpapers (Preferences, settings/)
+#   nihil-ipc settings open|toggle|close|welcome (Preferences, settings/)
 #   journalctl --user -u nihil-shell -f  (logs)
 
 { config, osConfig, pkgs, lib, ... }:
@@ -108,6 +109,8 @@ let
 		powerOff = "${profile}/power-off";
 		micLedSync = "${profile}/mic-led-sync";
 		wallpaper = "${profile}/nihil-wallpaper";
+		clipboard = "${profile}/nihil-clipboard";
+		hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
 		# Preferences applies through sudo and nihil apply (modules/nihil-cli.nix).
 		sudo = "/run/wrappers/bin/sudo";
 		nihil = "/run/current-system/sw/bin/nihil";
@@ -135,6 +138,8 @@ let
 		    readonly property var widgets: ${builtins.toJSON [ "clock" "network" "media" ]}
 		    readonly property var trayHidden: ${builtins.toJSON nihil.trayHidden}
 		    readonly property var wallpapers: ${builtins.toJSON nihil.wallpapers.names}
+		    // How many copies the clipboard history keeps; 0, none (home/clipboard.nix).
+		    readonly property int clipboard: ${toString nihil.clipboard}
 		    readonly property string cavaConfig: "${cavaConfig}"
 		    readonly property var sounds: (${builtins.toJSON sounds})
 		    readonly property var cmd: (${builtins.toJSON commands})
@@ -145,6 +150,8 @@ let
 		    readonly property string settingsFile: "${nihil.flake}/settings.json"
 		    readonly property string wallpaperDir: "${nihil.wallpapers}"
 		    readonly property string user: "${nihil.user.name}"
+		    // The first name, for Nilo's greetings (settings.json's fullName).
+		    readonly property string greeting: ${builtins.toJSON nihil.user.greeting}
 		    readonly property var binds: (${builtins.toJSON nihil.binds})
 		    readonly property var bindDefaults: (${builtins.toJSON nihil.bindDefaults.keys})
 		    readonly property var gestureDefaults: (${builtins.toJSON nihil.bindDefaults.gestures})

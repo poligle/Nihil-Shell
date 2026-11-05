@@ -13,6 +13,7 @@ Item {
         { name: "you", title: Lang.cfgYou, file: "PageYou.qml" },
         { name: "region", title: Lang.cfgRegion, file: "PageRegion.qml" },
         { name: "look", title: Lang.cfgLook, file: "PageLook.qml" },
+        { name: "screens", title: Lang.cfgScreens, file: "PageScreens.qml" },
         { name: "keys", title: Lang.cfgKeys, file: "PageKeys.qml" },
         { name: "system", title: Lang.cfgSystem, file: "PageSystem.qml" }
     ]

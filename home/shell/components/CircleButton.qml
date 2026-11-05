@@ -9,6 +9,7 @@ Rectangle {
     property int size: 36
     property bool danger: false
     property bool filled: false
+    readonly property alias hovered: area.containsMouse
 
     signal clicked()
 
