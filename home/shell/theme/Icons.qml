@@ -50,6 +50,7 @@ Singleton {
     readonly property string coffee: g(0xF0176)
     readonly property string chevronLeft: g(0xF0141)
     readonly property string copy: g(0xF018F)
+    readonly property string download: g(0xF01DA)
 
     function volume(level: real, muted: bool): string {
         if (muted || level <= 0) return volMute;

@@ -3,7 +3,11 @@
 # The nihil command, for the machine's flake (nihil.flake, /etc/nixos):
 #
 #   nihil rebuild     apply the machine's configuration
-#   nihil update      bring the latest NIHIL (and what it pins), then rebuild
+#   nihil update      bring the latest NIHIL (and what it pins: NixOS and its
+#                     packages), then rebuild; --unit does it in a unit of its
+#                     own, like nihil apply (the shell's panel uses it)
+#   nihil check       whether GitHub has a newer NIHIL than the one pinned, and
+#                     which commits (--json for the shell)
 #   nihil settings    edit settings.json, then rebuild
 #   nihil version     the NIHIL this machine runs, and the one pinned
 #   nihil dev [path]  NIHIL from a local checkout (here by default) instead of
@@ -16,9 +20,11 @@
 #   nihil passwd      change a password: the last line of stdin, user:password
 #   nihil welcome     open the welcome again (to try it)
 #
-# nihil apply's unit outlives whoever asked: the rebuild restarts the shell.
-# /run/nihil tells how it goes: apply.status (running, done, warning or
-# failed) and apply.log. A failed build puts the old settings.json back.
+# nihil apply's unit (and nihil update --unit's, the same one) outlives
+# whoever asked: the rebuild restarts the shell. /run/nihil tells how it
+# goes: apply.status (running, done, warning or failed), apply.kind
+# (settings or update) and apply.log. A failed build puts the old
+# settings.json back.
 
 { config, lib, pkgs, ... }:
 let
@@ -27,7 +33,7 @@ let
     nihil = pkgs.writeShellApplication
     {
         name = "nihil";
-        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnutar pkgs.shadow config.systemd.package ];
+        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnutar pkgs.curl pkgs.shadow config.systemd.package ];
         text = ''
             flake=''${NIHIL_FLAKE:-${flake}}
             run=/run/nihil
@@ -78,13 +84,86 @@ let
                 fi
             }
 
+            # The one pinned (flake.lock's nihil), and what GitHub has past it on
+            # its branch: the compare API, without a token (60 calls an hour).
+            # Its locals don't shadow $dev: checkout() reads it.
+            check() {
+                local node rev owner repo ref api compare from
+                node=$(jq -c '.nodes.nihil // {}' "$flake/flake.lock" 2> /dev/null || echo '{}')
+                rev=$(jq -r 'if .locked.type == "github" then .locked.rev // "" else "" end' <<< "$node")
+                owner=$(jq -r '.locked.owner // ""' <<< "$node")
+                repo=$(jq -r '.locked.repo // ""' <<< "$node")
+                ref=$(jq -r '.original.ref // ""' <<< "$node")
+                from=$(checkout)
+                if [ -z "$rev" ]; then
+                    jq -n --arg dev "$from" '{ state: "unknown", dev: $dev }'
+                    return
+                fi
+                api="https://api.github.com/repos/$owner/$repo"
+                if [ -z "$ref" ]; then
+                    ref=$(curl -fsSL --max-time 10 "$api" | jq -r '.default_branch // ""') || ref=""
+                fi
+                if [ -n "$ref" ] && compare=$(curl -fsSL --max-time 15 "$api/compare/$rev...$ref"); then
+                    jq --arg dev "$from" --arg rev "$rev" --arg ref "$ref" '{
+                        state: (if .ahead_by > 0 then "behind" else "current" end),
+                        behind: .ahead_by,
+                        pinned: $rev[0:7],
+                        branch: $ref,
+                        commits: [.commits | reverse | .[:20][] | { sha: .sha[0:7], subject: (.commit.message | split("\n")[0]) }],
+                        dev: $dev
+                    }' <<< "$compare"
+                else
+                    jq -n --arg dev "$from" --arg rev "$rev" '{ state: "offline", pinned: $rev[0:7], dev: $dev }'
+                fi
+            }
+
             case "''${1:-help}" in
                 rebuild)
                     shift
                     rebuild "$@"
                     ;;
+                check)
+                    shift
+                    result=$(check)
+                    if [ "''${1:-}" = --json ]; then
+                        echo "$result"
+                        exit 0
+                    fi
+                    case $(jq -r .state <<< "$result") in
+                        behind)
+                            jq -r '"GitHub has \(.behind) commit\(if .behind == 1 then "" else "s" end) past the NIHIL pinned (\(.pinned)):",
+                                (.commits[] | "  \(.sha)  \(.subject)"),
+                                "nihil update brings \(if .behind == 1 then "it" else "them" end)."' <<< "$result"
+                            ;;
+                        current) echo "NIHIL is up to date ($(jq -r .pinned <<< "$result"))." ;;
+                        offline) echo "GitHub can't be reached: no way to know." ;;
+                        *) echo "This NIHIL doesn't come from GitHub: nothing to compare." ;;
+                    esac
+                    if [ -n "$(checkout)" ]; then
+                        echo "The system runs $(checkout) (nihil dev) meanwhile."
+                    fi
+                    ;;
                 update)
                     shift
+                    if [ "''${1:-}" = --unit ]; then
+                        if [ "$(id -u)" != 0 ]; then
+                            exec sudo "$(readlink -f "$0")" update --unit
+                        fi
+                        # As nihil apply: 3 busy, 4 could not start.
+                        trap 'exit 4' ERR
+                        if systemctl is-active --quiet nihil-apply.service; then
+                            echo "Something is being applied already." >&2
+                            exit 3
+                        fi
+                        mkdir -p "$run"
+                        echo running > "$run/apply.status"
+                        echo update > "$run/apply.kind"
+                        : > "$run/apply.log"
+                        chmod 0644 "$run/apply.status" "$run/apply.kind" "$run/apply.log"
+                        systemd-run --unit nihil-apply --collect --quiet -E HOME=/root -- "$(readlink -f "$0")" update-run
+                        echo "Updating in nihil-apply.service: $run/apply.log tells how it goes."
+                        exit 0
+                    fi
                     if [ -n "$(checkout)" ]; then
                         echo "Leaving nihil dev ($(checkout)) for the NIHIL on GitHub."
                         as_root rm -rf "$dev" "$tree" "$tree.new"
@@ -161,8 +240,9 @@ let
                     fi
                     install -m 0644 "$staged" "$run/settings.json"
                     echo running > "$run/apply.status"
+                    echo settings > "$run/apply.kind"
                     : > "$run/apply.log"
-                    chmod 0644 "$run/apply.status" "$run/apply.log"
+                    chmod 0644 "$run/apply.status" "$run/apply.kind" "$run/apply.log"
                     systemd-run --unit nihil-apply --collect --quiet -E HOME=/root -- "$(readlink -f "$0")" apply-run
                     echo "Applying in nihil-apply.service: $run/apply.log tells how it goes."
                     ;;
@@ -188,6 +268,20 @@ let
                         echo failed > "$run/apply.status"
                     fi
                     ;;
+                update-run)
+                    export PATH="/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
+                    exec >> "$run/apply.log" 2>&1
+                    before=$(readlink -f /run/current-system)
+                    status=0
+                    "$(readlink -f "$0")" update || status=$?
+                    if [ "$status" = 0 ]; then
+                        echo done > "$run/apply.status"
+                    elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
+                        echo warning > "$run/apply.status"
+                    else
+                        echo failed > "$run/apply.status"
+                    fi
+                    ;;
                 passwd)
                     if [ "$(id -u)" != 0 ]; then
                         exec sudo "$(readlink -f "$0")" passwd
@@ -208,7 +302,7 @@ let
                     fi
                     ;;
                 *)
-                    echo "usage: nihil rebuild | update | settings | version | dev [path|off] | apply FILE | passwd | welcome"
+                    echo "usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | passwd | welcome"
                     echo "the machine's flake: $flake"
                     ;;
             esac
