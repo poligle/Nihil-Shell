@@ -145,6 +145,8 @@ let
 		    readonly property string settingsFile: "${nihil.flake}/settings.json"
 		    readonly property string wallpaperDir: "${nihil.wallpapers}"
 		    readonly property string user: "${nihil.user.name}"
+		    // The first name, for Nilo's greetings (settings.json's fullName).
+		    readonly property string greeting: ${builtins.toJSON nihil.user.greeting}
 		    readonly property var binds: (${builtins.toJSON nihil.binds})
 		    readonly property var bindDefaults: (${builtins.toJSON nihil.bindDefaults.keys})
 		    readonly property var gestureDefaults: (${builtins.toJSON nihil.bindDefaults.gestures})

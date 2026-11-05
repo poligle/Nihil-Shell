@@ -137,6 +137,13 @@
 		niloOllamaHelp = "más en: journalctl -u ollama -b";
 		niloDownloading = "descargando %1%";
 		niloDownloadingModel = "Descargando %1 (%2%)";
+		# Nilo's greeting by the time of day (before 6, 13, 20 and after):
+		# some ways to say it, between "|"; %1 is the first name, and goes
+		# with what is before it when there is none.
+		niloGreetNight = "¿Trasnochando, %1?|Buenas noches, %1|La noche es tuya, %1";
+		niloGreetMorning = "Buenos días, %1|¿Café y a por ello, %1?|Arriba, %1";
+		niloGreetAfternoon = "Buenas tardes, %1|¿Qué tal la tarde, %1?|Hola de nuevo, %1";
+		niloGreetEvening = "Buenas noches, %1|¿Cerrando el día, %1?|Hola, %1";
 		niloEmpty = "Pregúntame algo. Si hace falta, busco en internet.";
 		niloEmptyOffline = "Pregúntame algo.";
 		niloTryFlake = "¿Qué es un flake de Nix?";
@@ -545,6 +552,10 @@
 		niloOllamaHelp = "more in: journalctl -u ollama -b";
 		niloDownloading = "downloading %1%";
 		niloDownloadingModel = "Downloading %1 (%2%)";
+		niloGreetNight = "Up late, %1?|Burning the midnight oil, %1?|Still awake, %1?";
+		niloGreetMorning = "Good morning, %1|Coffee first, %1?|Morning, %1";
+		niloGreetAfternoon = "Good afternoon, %1|Back at it, %1?|Hello again, %1";
+		niloGreetEvening = "Good evening, %1|Winding down, %1?|Hello, %1";
 		niloEmpty = "Ask me something. I'll search the web if I need to.";
 		niloEmptyOffline = "Ask me something.";
 		niloTryFlake = "What is a Nix flake?";
