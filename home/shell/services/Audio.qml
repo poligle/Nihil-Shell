@@ -29,6 +29,21 @@ Singleton {
         objects: [root.sink, root.source]
     }
 
+    // Muted, or all the way down: the next boot is silent too
+    // (modules/boot-sound.nix reads it). Written a moment after it changes,
+    // and only once there is a sink: before, `muted` only says there is none.
+    readonly property bool silent: muted || volume < 0.02
+    readonly property string silentFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/nihil/silent"
+
+    onSilentChanged: if (sink?.audio) remember.restart()
+
+    Timer {
+        id: remember
+        interval: 1500
+        onTriggered: Quickshell.execDetached([Config.cmd.sh, "-c",
+            root.silent ? "mkdir -p \"$(dirname \"$1\")\" && touch \"$1\"" : "rm -f \"$1\"", "sh", root.silentFile])
+    }
+
     function setVolume(v: real): void {
         if (!sink?.audio) return;
         sink.audio.muted = false;

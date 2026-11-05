@@ -12,7 +12,8 @@ import qs.config
 // settings to `nihil apply` (modules/nihil-cli.nix), which puts them in place
 // and rebuilds the system in a unit of its own: the rebuild restarts this
 // shell and the unit goes on; /run/nihil says how it went, and the shell
-// tells when it is done.
+// tells when it is done. Updating NIHIL (the panel, Updates.qml) goes the
+// same way, through `nihil update --unit`: /run/nihil/apply.kind says which.
 //   nihil-ipc settings open | toggle | close | welcome | page <name>
 Singleton {
     id: root
@@ -36,12 +37,14 @@ Singleton {
     property string log: ""
     property real since: 0
     readonly property bool busy: phase === "auth" || phase === "applying"
+    // What is applied: "settings" (Preferences) or "update" (a newer NIHIL).
+    property string kind: "settings"
+    readonly property bool updating: kind === "update" && busy
 
     // Changing the password: "", "busy", "done" or "wrong".
     property string passwordState: ""
 
     property string wallpaper: ""
-    property bool picking: false
 
     // The desktop widgets that show (background/Desktop.qml): the user's
     // choice, kept in their state, or all of them.
@@ -56,11 +59,11 @@ Singleton {
         return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
     }
     readonly property string statusTitle: phase === "auth" ? Lang.cfgChecking
-        : phase === "applying" ? Lang.cfgApplying.arg(elapsed)
+        : phase === "applying" ? (kind === "update" ? Lang.updApplying : Lang.cfgApplying).arg(elapsed)
         : phase === "failed" ? (failure === "password" ? Lang.cfgWrongPassword : failure === "invalid" ? Lang.cfgInvalid
-            : failure === "busy" ? Lang.cfgBusy : Lang.cfgApplyFailed)
+            : failure === "busy" ? Lang.cfgBusy : kind === "update" ? Lang.updFailed : Lang.cfgApplyFailed)
         : changes > 0 ? (changes === 1 ? Lang.cfgPendingOne : Lang.cfgPending.arg(changes))
-        : phase === "done" ? Lang.cfgApplied
+        : phase === "done" ? (kind === "update" ? Lang.updDone : Lang.cfgApplied)
         : phase === "warning" ? Lang.cfgAppliedWarn
         : Lang.cfgSaved
     readonly property string statusSub: phase === "auth" ? (get("fingerprint", false) ? Lang.cfgApplyFinger : "")
@@ -163,7 +166,7 @@ Singleton {
         Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile, JSON.stringify(next)]);
     }
 
-    // The desktop's only, at once (the quick picker, settings/Wallpapers.qml).
+    // The desktop's only, at once (the quick picker, drawers/WallpaperPicker.qml).
     function liveWallpaper(name: string): void {
         if (name === "")
             return;
@@ -179,12 +182,26 @@ Singleton {
     function apply(password: string): void {
         if (root.busy || root.changes === 0)
             return;
+        root.kind = "settings";
         root.phase = "auth";
         root.failure = "";
         root.detail = "";
         root.log = "";
         applier.input = password + "\n" + JSON.stringify(root.draft, null, 2) + "\n";
         applier.running = true;
+    }
+
+    // The latest NIHIL, and what it pins, in the same unit as applying.
+    function update(password: string): void {
+        if (root.busy)
+            return;
+        root.kind = "update";
+        root.phase = "auth";
+        root.failure = "";
+        root.detail = "";
+        root.log = "";
+        updater.input = password + "\n";
+        updater.running = true;
     }
 
     function changePassword(current: string, next: string): void {
@@ -208,11 +225,13 @@ Singleton {
         return lines.length > 0 ? lines[lines.length - 1].trim() : "";
     }
 
-    // What /run/nihil says (`peek`): the status, then the end of the log.
+    // What /run/nihil says (`peek`): the status, what it is, then the end of the log.
     function report(text: string): void {
         const parts = text.split("--nihil--");
         const status = parts[0].trim();
-        const lines = (parts.length > 1 ? parts[1] : "").split("\n").filter(line => line.trim() !== "");
+        if (parts.length > 2 && parts[1].trim() !== "")
+            root.kind = parts[1].trim();
+        const lines = (parts.length > 2 ? parts[2] : "").split("\n").filter(line => line.trim() !== "");
         if (status === "running") {
             root.log = lines.join("\n");
             if (lines.length > 0)
@@ -229,9 +248,11 @@ Singleton {
             root.phase = status;
             root.failure = status === "failed" ? "rebuild" : "";
             if (status === "failed")
-                root.notify(Lang.cfgNotifyFailed, Lang.cfgLogHint);
+                root.notify(root.kind === "update" ? Lang.updNotifyFailed : Lang.cfgNotifyFailed, Lang.cfgLogHint);
             else
-                root.notify(Lang.cfgNotifyApplied, status === "warning" ? Lang.cfgAppliedWarn : "");
+                root.notify(root.kind === "update" ? Lang.updDone : Lang.cfgNotifyApplied, status === "warning" ? Lang.cfgAppliedWarn : "");
+            if (root.kind === "update")
+                Updates.check();
         }
     }
 
@@ -335,6 +356,38 @@ Singleton {
         }
     }
 
+    // The same, for an update: only the password goes in.
+    Process {
+        id: updater
+
+        property string input: ""
+
+        command: [Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "update", "--unit"]
+        stdinEnabled: true
+        onStarted: {
+            write(input);
+            input = "";
+            stdinEnabled = false;
+        }
+        stderr: SplitParser {
+            onRead: line => {
+                if (line.trim() !== "")
+                    root.detail = line.trim();
+            }
+        }
+        onExited: code => {
+            stdinEnabled = true;
+            if (code === 0) {
+                root.phase = "applying";
+                root.since = Date.now();
+                poll.start();
+            } else {
+                root.phase = "failed";
+                root.failure = code === 1 ? "password" : code === 3 ? "busy" : "start";
+            }
+        }
+    }
+
     Process {
         id: passwd
 
@@ -367,7 +420,7 @@ Singleton {
 
     Process {
         id: peek
-        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null"]
+        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; cat /run/nihil/apply.kind 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: root.report(text)
@@ -382,9 +435,7 @@ Singleton {
         function toggle(): void { if (root.shown) root.hide(); else root.show("", false); }
         function close(): void { root.hide(); }
         function welcome(): void { root.show("hello", true); }
-        function wallpapers(): void {
-            root.screen = Hyprland.focusedMonitor?.name ?? "";
-            root.picking = !root.picking;
-        }
+        // The wallpapers drawer, as SUPER + W opens it (nihil-ipc drawers toggle wallpapers).
+        function wallpapers(): void { Drawers.toggle("wallpapers", ""); }
     }
 }

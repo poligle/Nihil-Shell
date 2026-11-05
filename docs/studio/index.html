@@ -276,7 +276,7 @@ footer a:hover { color: var(--ink); }
 <header class="bar">
   <a class="bar-start" href="../" aria-label="NIHIL, the home page">
     <span class="mark">
-      <svg viewBox="0 0 50 70" aria-hidden="true"><g fill="#F2F2F2"><circle cx="5" cy="5" r="3.6"/><circle cx="45" cy="5" r="3.6"/><circle cx="5" cy="15" r="3.6"/><circle cx="15" cy="15" r="3.6"/><circle cx="45" cy="15" r="3.6"/><circle cx="5" cy="25" r="3.6"/><circle cx="15" cy="25" r="3.6"/><circle cx="45" cy="25" r="3.6"/><circle cx="5" cy="35" r="3.6"/><circle cx="25" cy="35" r="3.6"/><circle cx="45" cy="35" r="3.6"/><circle cx="5" cy="45" r="3.6"/><circle cx="35" cy="45" r="3.6"/><circle cx="45" cy="45" r="3.6"/><circle cx="5" cy="55" r="3.6"/><circle cx="35" cy="55" r="3.6"/><circle cx="45" cy="55" r="3.6"/><circle cx="5" cy="65" r="3.6"/><circle cx="45" cy="65" r="3.6"/></g></svg>
+      <svg viewBox="0 0 70 70" aria-hidden="true"><g fill="#F2F2F2"><circle cx="35" cy="5" r="3.6"/><circle cx="25" cy="15" r="3.6"/><circle cx="45" cy="15" r="3.6"/><circle cx="15" cy="25" r="3.6"/><circle cx="55" cy="25" r="3.6"/><circle cx="5" cy="35" r="3.6"/><circle cx="15" cy="35" r="3.6"/><circle cx="25" cy="35" r="3.6"/><circle cx="35" cy="35" r="3.6"/><circle cx="45" cy="35" r="3.6"/><circle cx="55" cy="35" r="3.6"/><circle cx="65" cy="35" r="3.6"/><circle cx="15" cy="45" r="3.6"/><circle cx="55" cy="45" r="3.6"/><circle cx="15" cy="55" r="3.6"/><circle cx="35" cy="55" r="3.6"/><circle cx="55" cy="55" r="3.6"/><circle cx="15" cy="65" r="3.6"/><circle cx="35" cy="65" r="3.6"/><circle cx="55" cy="65" r="3.6"/></g></svg>
     </span>
     <span class="word" aria-hidden="true">NIHIL</span>
   </a>
@@ -306,7 +306,7 @@ footer a:hover { color: var(--ink); }
     <section class="hero" aria-labelledby="title">
       <p class="motto"><i>ex nihilo</i></p>
       <h1 id="title">Your picture, as&nbsp;LEDs</h1>
-      <p class="lede">Drop a wallpaper here, paste it or give its address, and see it the way NIHIL draws its own: every cell of the screen an LED, lit by the picture underneath. It is drawn in this page, and a picture you drop or paste goes nowhere.</p>
+      <p class="lede">Drop a wallpaper here, paste it or give its address, and see it the way NIHIL draws its own: every cell of the screen an LED, lit by the picture underneath. One that moves, a GIF or an animated WebP, moves as LEDs too. It is drawn in this page, and a picture you drop or paste goes nowhere.</p>
     </section>
 
     <section class="studio" aria-label="Studio">
@@ -352,7 +352,7 @@ footer a:hover { color: var(--ink); }
           <span class="spacer"></span>
           <button class="pill primary" type="button" id="download" disabled>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8.5M4.5 7.2 8 10.7l3.5-3.5M2.5 13.8h11"/></svg>
-            Download PNG
+            <span id="download-label">Download PNG</span>
           </button>
         </div>
         <p class="meta status" id="status" aria-live="polite">No picture yet.</p>
@@ -362,7 +362,7 @@ footer a:hover { color: var(--ink); }
     <section id="how" aria-labelledby="how-title">
       <div class="prose">
         <h2 id="how-title">How it's drawn</h2>
-        <p class="quiet">The same steps as the desktop's wallpapers (<code>theme/dotmatrix.py</code>) and the phone's studio, with the same numbers.</p>
+        <p class="quiet">The same steps as the desktop's wallpapers (<code>theme/dotmatrix.py</code>) and the phone's studio, with the same numbers. A picture that moves is drawn frame by frame and downloads as a GIF, the way the desktop keeps its own.</p>
       </div>
       <div class="rules">
         <div>
@@ -388,7 +388,7 @@ footer a:hover { color: var(--ink); }
       <ol class="steps">
         <li>
           <h3>Put the picture in your machine's wallpapers</h3>
-          <p>A PNG, JPEG, GIF or WebP, with any name: the wallpaper is called like the file, without the extension and with spaces and accents made plain (<code>Captura de pantalla.png</code> is <code>Captura-de-pantalla</code>).</p>
+          <p>A PNG, JPEG, GIF or WebP, with any name, and one that moves keeps moving on the desktop. The wallpaper is called like the file, without the extension and with spaces and accents made plain (<code>Captura de pantalla.png</code> is <code>Captura-de-pantalla</code>).</p>
           <div class="code"><pre><code>sudo mkdir -p /etc/nixos/wallpapers
 sudo cp ~/Downloads/night.jpg /etc/nixos/wallpapers/</code></pre></div>
         </li>
@@ -527,6 +527,293 @@ nihil-wallpaper set night</code></pre></div>
     }
   }
 
+  // ---- GIF, both ways: the frames of a moving one where the browser has no
+  // ImageDecoder, and the LEDs back into one to download (256 greys: an LED
+  // is grey, so a pixel's grey is its index).
+  const GIF = (() => {
+    // LZW as GIF packs it: codes of minSize + 1 bits growing to 12, a clear
+    // code to start again and one to end.
+    function unpack(data, minSize, count) {
+      const out = new Uint8Array(count);
+      const clear = 1 << minSize, end = clear + 1;
+      const prefix = new Int16Array(4096), suffix = new Uint8Array(4096), head = new Uint8Array(4096), length = new Uint16Array(4096);
+      for (let i = 0; i < clear; i++) { prefix[i] = -1; suffix[i] = i; head[i] = i; length[i] = 1; }
+      let size = minSize + 1, next = end + 1, old = -1, acc = 0, bits = 0, at = 0, o = 0;
+      const write = code => {
+        const n = length[code];
+        let k = o + n - 1;
+        for (let c = code; c !== -1; c = prefix[c], k--) if (k < count) out[k] = suffix[c];
+        o += n;
+      };
+      while (o < count) {
+        while (bits < size && at < data.length) { acc |= data[at++] << bits; bits += 8; }
+        if (bits < size) break;
+        const code = acc & ((1 << size) - 1);
+        acc >>>= size;
+        bits -= size;
+        if (code === clear) { size = minSize + 1; next = end + 1; old = -1; continue; }
+        if (code === end) break;
+        if (old === -1) { write(code); old = code; continue; }
+        if (code > next || (code === next && next >= 4096)) break;   // a broken stream: stop there
+        if (next < 4096) {
+          prefix[next] = old;
+          suffix[next] = code < next ? head[code] : head[old];
+          head[next] = head[old];
+          length[next] = length[old] + 1;
+          next++;
+          if (next >= 1 << size && size < 12) size++;
+        }
+        write(code);
+        old = code;
+      }
+      return out;
+    }
+
+    // Every frame of a GIF as the browser shows it: the frames laid over each
+    // other as their disposal says, transparent where nothing was drawn.
+    function* frames(bytes) {
+      const text = (a, n) => String.fromCharCode(...bytes.subarray(a, a + n));
+      if (text(0, 3) !== "GIF") throw new Error("not a GIF");
+      const width = bytes[6] | bytes[7] << 8, height = bytes[8] | bytes[9] << 8;
+      let at = 13, global = null;
+      if (bytes[10] & 0x80) {
+        const n = 3 << ((bytes[10] & 7) + 1);
+        global = bytes.subarray(at, at + n);
+        at += n;
+      }
+      const canvas = new Uint8ClampedArray(width * height * 4);
+      let delay = 0, disposal = 0, transparent = -1, previous = null, undo = null;
+      const blocks = () => {
+        const parts = [];
+        let total = 0;
+        for (let n = bytes[at++]; n > 0 && at <= bytes.length; n = bytes[at++]) {
+          parts.push(bytes.subarray(at, at + n));
+          total += n;
+          at += n;
+        }
+        const data = new Uint8Array(total);
+        let o = 0;
+        for (const p of parts) { data.set(p, o); o += p.length; }
+        return data;
+      };
+      while (at < bytes.length) {
+        const kind = bytes[at++];
+        if (kind === 0x3B) break;
+        if (kind === 0x21) {
+          const label = bytes[at++];
+          if (label === 0xF9 && bytes[at] >= 4) {
+            const packed = bytes[at + 1];
+            disposal = (packed >> 2) & 7;
+            delay = (bytes[at + 2] | bytes[at + 3] << 8) * 10;
+            transparent = packed & 1 ? bytes[at + 4] : -1;
+          }
+          blocks();
+          continue;
+        }
+        if (kind !== 0x2C) break;
+        const left = bytes[at] | bytes[at + 1] << 8, top = bytes[at + 2] | bytes[at + 3] << 8;
+        const w = bytes[at + 4] | bytes[at + 5] << 8, h = bytes[at + 6] | bytes[at + 7] << 8, packed = bytes[at + 8];
+        at += 9;
+        let palette = global;
+        if (packed & 0x80) {
+          const n = 3 << ((packed & 7) + 1);
+          palette = bytes.subarray(at, at + n);
+          at += n;
+        }
+        const minSize = bytes[at++];
+        const indices = unpack(blocks(), minSize, w * h);
+        // What the frame before asked to be done with its rectangle.
+        if (previous) {
+          if (previous.disposal === 2) {
+            for (let y = previous.top; y < previous.top + previous.h && y < height; y++)
+              canvas.fill(0, (y * width + previous.left) * 4, (y * width + Math.min(width, previous.left + previous.w)) * 4);
+          } else if (previous.disposal === 3 && undo) {
+            canvas.set(undo);
+          }
+        }
+        undo = disposal === 3 ? canvas.slice() : null;
+        // Interlaced rows come in four passes.
+        const rows = [];
+        if (packed & 0x40) {
+          for (const [start, step] of [[0, 8], [4, 8], [2, 4], [1, 2]])
+            for (let y = start; y < h; y += step) rows.push(y);
+        } else {
+          for (let y = 0; y < h; y++) rows.push(y);
+        }
+        if (palette) {
+          rows.forEach((y, row) => {
+            const cy = top + y;
+            if (cy >= height) return;
+            for (let x = 0; x < w; x++) {
+              const cx = left + x, index = indices[row * w + x];
+              if (cx >= width || index === transparent) continue;
+              const c = index * 3, o = (cy * width + cx) * 4;
+              canvas[o] = palette[c];
+              canvas[o + 1] = palette[c + 1];
+              canvas[o + 2] = palette[c + 2];
+              canvas[o + 3] = 255;
+            }
+          });
+        }
+        yield { width, height, rgba: canvas, delay };
+        previous = { disposal, left, top, w, h };
+        delay = 0;
+        disposal = 0;
+        transparent = -1;
+      }
+    }
+
+    // How many frames, without unpacking them.
+    function count(bytes) {
+      let at = 13, n = 0;
+      if (bytes[10] & 0x80) at += 3 << ((bytes[10] & 7) + 1);
+      const skip = () => { for (let k = bytes[at++]; k > 0 && at < bytes.length; k = bytes[at++]) at += k; };
+      while (at < bytes.length) {
+        const kind = bytes[at++];
+        if (kind === 0x21) { at++; skip(); }
+        else if (kind === 0x2C) {
+          const packed = bytes[at + 8];
+          at += 9;
+          if (packed & 0x80) at += 3 << ((packed & 7) + 1);
+          at++;
+          skip();
+          n++;
+        } else break;
+      }
+      return n;
+    }
+
+    // The other way: LZW codes into bytes, the way unpack() reads them.
+    function pack(indices, minSize, out) {
+      const clear = 1 << minSize, end = clear + 1;
+      const codes = new Int16Array(4096 * 256), stamps = new Int32Array(4096 * 256);
+      let generation = 1, size = minSize + 1, next = end + 1, acc = 0, bits = 0;
+      const put = code => {
+        acc |= code << bits;
+        bits += size;
+        while (bits >= 8) { out.byte(acc & 255); acc >>>= 8; bits -= 8; }
+      };
+      put(clear);
+      let run = indices[0];
+      for (let i = 1; i < indices.length; i++) {
+        const k = indices[i], key = run << 8 | k;
+        if (stamps[key] === generation) { run = codes[key]; continue; }
+        put(run);
+        if (next === 4096) {
+          put(clear);
+          generation++;
+          size = minSize + 1;
+          next = end + 1;
+        } else {
+          if (next >= 1 << size) size++;
+          codes[key] = next++;
+          stamps[key] = generation;
+        }
+        run = k;
+      }
+      put(run);
+      put(end);
+      if (bits > 0) out.byte(acc & 255);
+    }
+
+    // A growing buffer that cuts the image data into GIF's 255-byte blocks.
+    function writer() {
+      let buf = new Uint8Array(1 << 20), n = 0, block = -1;
+      const grow = more => {
+        if (n + more <= buf.length) return;
+        const bigger = new Uint8Array(Math.max(buf.length * 2, n + more));
+        bigger.set(buf.subarray(0, n));
+        buf = bigger;
+      };
+      return {
+        raw(...values) { grow(values.length); for (const v of values) buf[n++] = v; },
+        word(v) { this.raw(v & 255, v >> 8 & 255); },
+        start() { block = -1; },
+        byte(v) {
+          if (block < 0 || n - block - 1 === 255) {
+            if (block >= 0) buf[block] = 255;
+            grow(1);
+            block = n++;
+          }
+          grow(1);
+          buf[n++] = v;
+        },
+        finish() {
+          if (block >= 0) buf[block] = n - block - 1;
+          this.raw(0);
+          block = -1;
+        },
+        bytes() { return buf.subarray(0, n); }
+      };
+    }
+
+    // Grey frames (one index a pixel, the grey itself) into an endless GIF.
+    // A frame stores only the rectangle that changed since the one before;
+    // one that doesn't change lengthens the one before.
+    async function encode(width, height, count, frame, progress) {
+      const out = writer();
+      out.raw(..."GIF89a".split("").map(c => c.charCodeAt(0)));
+      out.word(width);
+      out.word(height);
+      out.raw(0xF7, 0, 0);
+      for (let g = 0; g < 256; g++) out.raw(g, g, g);
+      out.raw(0x21, 0xFF, 11, ..."NETSCAPE2.0".split("").map(c => c.charCodeAt(0)), 3, 1, 0, 0, 0);
+      let before = null, pending = null;
+      const flush = () => {
+        if (!pending) return;
+        const { indices, box, delay } = pending;
+        out.raw(0x21, 0xF9, 4, 1 << 2);
+        out.word(Math.max(2, Math.round(delay / 10)));
+        out.raw(0, 0);
+        out.raw(0x2C);
+        out.word(box.x);
+        out.word(box.y);
+        out.word(box.w);
+        out.word(box.h);
+        out.raw(0);
+        const part = new Uint8Array(box.w * box.h);
+        for (let y = 0; y < box.h; y++)
+          part.set(indices.subarray((box.y + y) * width + box.x, (box.y + y) * width + box.x + box.w), y * box.w);
+        out.raw(8);
+        out.start();
+        pack(part, 8, out);
+        out.finish();
+        pending = null;
+      };
+      for (let k = 0; k < count; k++) {
+        const { indices, delay } = await frame(k);
+        let box = { x: 0, y: 0, w: width, h: height };
+        if (before) {
+          let x0 = width, y0 = height, x1 = -1, y1 = -1;
+          for (let y = 0; y < height; y++) {
+            for (let x = 0, i = y * width; x < width; x++, i++) {
+              if (indices[i] !== before[i]) {
+                if (x < x0) x0 = x;
+                if (x > x1) x1 = x;
+                if (y < y0) y0 = y;
+                y1 = y;
+              }
+            }
+          }
+          if (x1 < 0) {
+            pending.delay += delay;
+            continue;
+          }
+          box = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+        }
+        flush();
+        pending = { indices, box, delay };
+        before = indices;
+        await progress?.(k + 1, count);
+      }
+      flush();
+      out.raw(0x3B);
+      return out.bytes();
+    }
+
+    return { frames, count, encode };
+  })();
+
   // ---- Screens to draw for
   const dpr = devicePixelRatio || 1;
   const own = [Math.round(screen.width * dpr), Math.round(screen.height * dpr)];
@@ -546,7 +833,12 @@ nihil-wallpaper set night</code></pre></div>
   // ---- State and drawing
   const stage = $("stage"), screenBox = $("screen"), leds = $("leds"), original = $("original");
   const frame = $("frame"), status = $("status"), busy = $("busy"), empty = $("empty"), download = $("download");
-  let source = null, name = "wallpaper", pitch = 9, drawing = 0;
+  const downloadLabel = $("download-label");
+  // source: a still picture (an ImageBitmap), or one that moves: how many
+  // frames and each(use), which hands them over one by one. shown: the LEDs
+  // as drawn, every frame's when it moves, for the download.
+  let source = null, name = "wallpaper", pitch = 9, drawing = 0, playing = 0, shown = null;
+  const cancelled = {};
 
   function say(text, warn) {
     status.textContent = text;
@@ -563,6 +855,35 @@ nihil-wallpaper set night</code></pre></div>
     frame.style.display = $("frame-on").checked ? "block" : "none";
   }
 
+  // Cover: scale the picture to fill the screen and keep its middle.
+  function cover(ctx, image, width, height) {
+    const sw = image.displayWidth ?? image.width, sh = image.displayHeight ?? image.height;
+    const scale = Math.max(width / sw, height / sh), cw = width / scale, ch = height / scale;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(image, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, width, height);
+  }
+
+  // A picture that moves plays in a loop, each frame's LEDs drawn when its
+  // turn comes (and the photo's, under Compare, when they were kept).
+  function play() {
+    const me = ++playing, ctx = leds.getContext("2d"), o = original.getContext("2d");
+    let k = 0, due = performance.now() + shown.frames[0].delay;
+    const step = now => {
+      if (me !== playing) return;
+      if (now >= due) {
+        k = (k + 1) % shown.frames.length;
+        due = now + shown.frames[k].delay;
+        drawDots(ctx, shown.width, shown.height, shown.pitch, shown.frames[k].d);
+        if (shown.thumbs && stage.classList.contains("compare")) cover(o, shown.thumbs[k], shown.width, shown.height);
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
   function render() {
     const size = sizes[Number(sizeSelect.value) || 0];
     const width = size.w, height = size.h;
@@ -570,45 +891,126 @@ nihil-wallpaper set night</code></pre></div>
     layoutFrame(width, height);
     if (!source) return;
     const ticket = ++drawing;
+    playing++;
+    busy.textContent = "drawing";
     busy.hidden = false;
+    download.disabled = true;
     // Let the page show "drawing" before the work starts.
-    requestAnimationFrame(() => setTimeout(() => {
+    requestAnimationFrame(() => setTimeout(async () => {
       if (ticket !== drawing) return;
       const began = performance.now();
       original.width = leds.width = width;
       original.height = leds.height = height;
-      const o = original.getContext("2d", { willReadFrequently: true });
-      // Cover: scale the picture to fill the screen and keep its middle.
-      const sw = source.width, sh = source.height, scale = Math.max(width / sw, height / sh);
-      const cw = width / scale, ch = height / scale;
-      o.imageSmoothingEnabled = true;
-      o.imageSmoothingQuality = "high";
-      o.fillStyle = "#000";
-      o.fillRect(0, 0, width, height);
-      o.drawImage(source, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, width, height);
-      let d;
+      const o = original.getContext("2d", { willReadFrequently: true }), ctx = leds.getContext("2d");
+      const levels = () => dotLevels(o.getImageData(0, 0, width, height).data, width, height, pitch);
+      const frames = [], thumbs = [];
       try {
-        d = dotLevels(o.getImageData(0, 0, width, height).data, width, height, pitch);
+        if (source.each) {
+          // Frame by frame, with the same numbers. Its own frames are kept
+          // too, for Compare, when they fit in memory.
+          const keep = source.pixels * source.count <= 60e6;
+          await source.each(async (image, delay, k) => {
+            if (ticket !== drawing) throw cancelled;
+            cover(o, image, width, height);
+            const d = levels();
+            // Like a browser: a GIF's 0 or 10 ms is 100 ms.
+            frames.push({ d, delay: delay > 10 ? delay : 100 });
+            if (keep) thumbs.push(await createImageBitmap(image));
+            if (k === 0) drawDots(ctx, width, height, pitch, d);
+            busy.textContent = `drawing ${k + 1} / ${source.count}`;
+            await new Promise(next => setTimeout(next, 0));
+          });
+          if (frames.length === 0) throw new Error("no frames");
+        } else {
+          cover(o, source, width, height);
+          frames.push({ d: levels(), delay: 0 });
+          drawDots(ctx, width, height, pitch, frames[0].d);
+        }
       } catch (e) {
+        if (e === cancelled || ticket !== drawing) return;
         busy.hidden = true;
-        say("This browser won't let the page read that picture. Download it and drop it here.", true);
+        say(source.each ? "Its frames don't open in this browser. Try another one, or a GIF."
+          : "This browser won't let the page read that picture. Download it and drop it here.", true);
         return;
       }
-      drawDots(leds.getContext("2d"), width, height, pitch, d);
+      shown = { width, height, pitch, frames, thumbs: thumbs.length === frames.length ? thumbs : null };
       busy.hidden = true;
       empty.hidden = true;
       download.disabled = false;
-      const ms = Math.round(performance.now() - began);
-      say(`${name}, ${width} × ${height}: ${d.cols} × ${d.rows} LEDs in ${ms} ms`);
+      downloadLabel.textContent = frames.length > 1 ? "Download GIF" : "Download PNG";
+      const ms = Math.round(performance.now() - began), d = frames[0].d;
+      say(frames.length > 1
+        ? `${name}, ${width} × ${height}: ${d.cols} × ${d.rows} LEDs, ${frames.length} frames in ${ms} ms`
+        : `${name}, ${width} × ${height}: ${d.cols} × ${d.rows} LEDs in ${ms} ms`);
+      if (frames.length > 1) play();
       if (ticket === 1) glyph();
     }, 0));
   }
 
+  // What a file is by its first bytes, when the browser doesn't say.
+  function sniff(b) {
+    const at = (i, text) => [...text].every((c, j) => b[i + j] === c.charCodeAt(0));
+    return at(0, "GIF8") ? "image/gif" : at(0, "RIFF") && at(8, "WEBP") ? "image/webp" : at(1, "PNG") ? "image/png" : "";
+  }
+
+  // A picture that moves (a GIF, an animated WebP or PNG): its frames through
+  // the browser's ImageDecoder, or GIF.frames where there is none. null when
+  // it doesn't move, or this browser can't tell.
+  async function moving(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const type = blob.type || sniff(bytes);
+    if ("ImageDecoder" in window && await ImageDecoder.isTypeSupported(type).catch(() => false)) {
+      const decoder = new ImageDecoder({ data: bytes, type });
+      try {
+        await decoder.tracks.ready;
+        await decoder.completed;
+        const track = decoder.tracks.selectedTrack;
+        if (!track || !track.animated || track.frameCount < 2) throw new Error("still");
+        const first = (await decoder.decode({ frameIndex: 0 })).image;
+        const pixels = first.displayWidth * first.displayHeight;
+        first.close();
+        return {
+          count: track.frameCount,
+          pixels,
+          close: () => decoder.close(),
+          async each(use) {
+            for (let k = 0; k < track.frameCount; k++) {
+              const { image } = await decoder.decode({ frameIndex: k });
+              try {
+                await use(image, (image.duration ?? 0) / 1000, k);
+              } finally {
+                image.close();
+              }
+            }
+          }
+        };
+      } catch (e) {
+        decoder.close();
+        return null;
+      }
+    }
+    if (type !== "image/gif" || GIF.count(bytes) < 2) return null;
+    const canvas = document.createElement("canvas"), c = canvas.getContext("2d");
+    canvas.width = bytes[6] | bytes[7] << 8;
+    canvas.height = bytes[8] | bytes[9] << 8;
+    return {
+      count: GIF.count(bytes),
+      pixels: canvas.width * canvas.height,
+      async each(use) {
+        let k = 0;
+        for (const f of GIF.frames(bytes)) {
+          c.putImageData(new ImageData(new Uint8ClampedArray(f.rgba), f.width, f.height), 0, 0);
+          await use(canvas, f.delay, k++);
+        }
+      }
+    };
+  }
+
   async function open(blob, label) {
     try {
-      const bitmap = await createImageBitmap(blob);
+      const next = await moving(blob).catch(() => null) ?? await createImageBitmap(blob);
       if (source && source.close) source.close();
-      source = bitmap;
+      source = next;
       name = (label || "wallpaper").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-").slice(0, 60) || "wallpaper";
       render();
     } catch (e) {
@@ -717,18 +1119,44 @@ nihil-wallpaper set night</code></pre></div>
   screenBox.addEventListener("pointermove", e => { if (e.buttons || e.pointerType === "mouse") split(e); });
   screenBox.addEventListener("pointerdown", split);
 
-  download.addEventListener("click", () => {
-    if (!source) return;
-    leds.toBlob(blob => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${name}-nihil-${leds.width}x${leds.height}.png`;
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      glyph();
-    }, "image/png");
+  function save(blob, file) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = file;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    glyph();
+  }
+
+  // A still is the PNG of the LEDs; one that moves, a GIF of every frame,
+  // as NIHIL keeps its own (theme/dotmatrix.py).
+  download.addEventListener("click", async () => {
+    if (!shown) return;
+    if (shown.frames.length < 2) {
+      leds.toBlob(blob => save(blob, `${name}-nihil-${leds.width}x${leds.height}.png`), "image/png");
+      return;
+    }
+    const { width, height, pitch: p, frames } = shown;
+    download.disabled = true;
+    busy.hidden = false;
+    const c = document.createElement("canvas");
+    c.width = width;
+    c.height = height;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    const bytes = await GIF.encode(width, height, frames.length, k => {
+      drawDots(ctx, width, height, p, frames[k].d);
+      const rgba = ctx.getImageData(0, 0, width, height).data, indices = new Uint8Array(width * height);
+      for (let i = 0; i < indices.length; i++) indices[i] = rgba[i * 4];
+      return { indices, delay: frames[k].delay };
+    }, (k, n) => {
+      busy.textContent = `gif ${k} / ${n}`;
+      return new Promise(next => setTimeout(next, 0));
+    });
+    busy.hidden = true;
+    download.disabled = false;
+    save(new Blob([bytes], { type: "image/gif" }), `${name}-nihil-${width}x${height}.gif`);
   });
 
   // ---- Copy buttons on the commands

@@ -49,14 +49,17 @@ home screen in the same language: the frame, an LED clock, the light on the edge
 - **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
-  and desktop widgets, shortcuts and programs, the computer's name, Nilo, fingerprint and
-  SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
+  and desktop widgets, the screens, shortcuts and programs, the computer's name, Nilo,
+  the clipboard history, the boot sound, fingerprint and SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
   the widgets and the password change at once; the rest waits until applied, and applying
   rebuilds the system in the background.
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
+- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures (in
+  dots), from the top of the frame: with `SUPER` held, `V` again goes to the next one, and
+  letting go pastes it where you were. What a password manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -69,13 +72,17 @@ home screen in the same language: the frame, an LED clock, the light on the edge
 - **Wallpapers as LED matrices.** Every picture in `wallpapers/`, and in a machine's
   `/etc/nixos/wallpapers` (PNG, JPEG, GIF or WebP, with any name), is rendered at build
   time as dots, once per output at its native size, so each dot lands on exact pixels. A
-  GIF moves on the desktop. The [studio](https://nihilshell.com/studio/) does the same in
-  the browser with any picture (`docs/studio/`, the same numbers as `theme/dotmatrix.py`).
+  GIF moves on the desktop. Each picture on each screen is drawn once and kept: a rebuild
+  only draws the new ones. The [studio](https://nihilshell.com/studio/) does the same in
+  the browser with any picture, moving ones too (`docs/studio/`, the same numbers as
+  `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
-  whole at least once on the way up and on the way down), a dotted
+  whole at least once on the way up and on the way down) with a sound of its own, unless
+  the session was left muted, a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
   in a corner: the cover in dots, the progress in LEDs and buttons you can click (hyprlock).
-- **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, and monochrome keys.
+- **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
+  NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
   the greeter and the scripts, and the language of their dates.
 - **Its own sound.** A set of short digital blips, synthesised by
@@ -194,9 +201,10 @@ your old `configuration.nix`, and whatever this machine needed there, such as
 `hardware.amdgpu.initrd.enable = true;` with an AMD GPU, so the boot splash comes up early
 (the installer adds the GPU's by itself).
 
-A screen connected later, on any machine, goes into `outputs` the same way (`nihil
-settings`). One that is not there works anyway, with Hyprland's own mode, no bar and the
-primary screen's wallpaper.
+A screen connected later, on any machine, goes into `outputs` from Preferences, Screens
+(its resolution, scale, rotation, place, bar and which one is the main one), or the same
+way by hand (`nihil settings`). One that is not there works anyway, with Hyprland's own
+mode, no bar and the primary screen's wallpaper.
 
 Then point the flake at the clone and switch (flakes are turned on for this first time;
 NIHIL keeps them on). `HOST` is `host.name`:
@@ -222,10 +230,13 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 
 **Updates** come from the repository: `nihil update` moves the machine's flake to the
 latest NIHIL (and the NixOS it pins) and rebuilds. Nothing of yours is in the repository,
-so updating never touches it.
+so updating never touches it. The settings panel has it too: a dot on its update button
+when GitHub has something newer, how many commits with the pointer on it, and which ones
+with a click, next to the password that updates.
 
 ```bash
 nihil update      # the latest NIHIL, then rebuild
+nihil check       # whether GitHub has a newer NIHIL, and which commits
 nihil rebuild     # apply changes to /etc/nixos
 nihil settings    # edit settings.json, then rebuild
 nihil version     # the NIHIL this machine runs, and the one pinned
@@ -250,6 +261,8 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `extraWallpapers` | none    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
 | `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `programs`      | Terminal, Files, Zen | Programs with a key: a name, the command that opens it and its keys ([Keybindings](#keybindings)) |
+| `clipboard`     | `8`        | How many copies the clipboard history keeps; `0` turns it off |
+| `bootSound`     | `true`     | A sound with the boot splash, unless the session was left muted |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
 | `nilo.enable`   | `false`    | Nilo, the assistant, and Ollama to run its model ([Nilo](#nilo)) |
@@ -277,11 +290,12 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + P`                       | Settings panel (or rest the pointer in the top-right corner) |
 | `SUPER + K`                       | Lock                                          |
 | `SUPER + O`                       | Preferences (also the cog in quick settings)  |
-| `SUPER + W`                       | Wallpapers: arrows to look, Enter to keep     |
+| `SUPER + W`                       | Wallpapers, out of the bottom edge: arrows to look, Enter to keep |
 | `SUPER` (alone)                   | Terminal (kitty), a program                   |
 | `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
+| `SUPER + V`                       | Clipboard history: hold `SUPER`, `V` for the next one, let go to paste (`Esc`: none) |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
-| `SUPER + V`                       | Toggle floating                               |
+| `SUPER + SHIFT + Space`           | Toggle floating                               |
 | `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |
 | `SUPER + arrows`                  | Move focus                                    |
 | `SUPER + 1…0`                     | Workspace (`SHIFT` moves the window there)    |
@@ -312,9 +326,11 @@ fingers of each one or `null` for none, which only change there.
 "gestures": { "close": null, "special": 3 }
 ```
 
-The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `nilo`,
-`colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
-`toSpecial`, `nextWorkspace`, `screenshot`. The gestures: `workspaces`, `close`,
+The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `clipboard`,
+`nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
+`toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history keeps its keys while
+its modifier is held; any combination with a modifier works (`CTRL + V` too, if you want
+it on the paste key itself, at the cost of `CTRL + V` in the terminal). The gestures: `workspaces`, `close`,
 `launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
 `terminal`, `files`, `browser`, `notes`, `code`, `music` and `pixels` were actions and
 are programs now: a `settings.json` that still names them under `binds` is read without
@@ -329,7 +345,7 @@ service. [`home/shell.nix`](home/shell.nix) generates `Tokens.qml`, `Config.qml`
 `Lang.qml` from the Nix side and references every external program by its store path.
 
 ```bash
-nihil-ipc drawers toggle launcher     # launcher | dashboard | panel
+nihil-ipc drawers toggle launcher     # launcher | dashboard | panel | wallpapers
 nihil-ipc osd volume 40 false
 nihil-ipc glyph test true             # light the frame (critical = red)
 nihil-ipc glyph charge                # the charger's light, rising from the bottom
@@ -338,7 +354,8 @@ nihil-ipc nilo toggle                 # also: open, sleep, ask "…"
 nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
-nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome, wallpapers
+nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
+nihil-ipc clipboard open              # the history; also: next, previous, paste, cancel
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -346,10 +363,10 @@ journalctl --user -u nihil-shell -f   # logs
 | Folder        | Contents                                                        |
 |---------------|-----------------------------------------------------------------|
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
-| `drawers/`    | Dashboard, settings panel, launcher, OSD, notifications         |
+| `drawers/`    | Dashboard, settings panel, launcher, wallpapers, clipboard history, OSD, notifications |
 | `background/` | Desktop widgets                                                 |
-| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, Nilo, the machine's settings (`Machine.qml`) |
-| `settings/`   | Preferences, the welcome and the wallpaper picker (`SUPER + W`) |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`) |
+| `settings/`   | Preferences and the welcome                                     |
 | `components/` | LEDs, dials, segmented sliders, dot-matrix image, buttons, text |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
 | `theme/`      | The shell's Nerd Font glyphs; `Tokens.qml` is generated here |
@@ -564,7 +581,9 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
 - **Filesystem:** btrfs with subvolumes (`@`, `@home`, `@nix`, `@log`), zstd compression
   and `noatime`. Swap via zram.
 - **Boot:** UEFI + systemd-boot with a systemd initrd and the NIHIL Plymouth theme
-  (frames rendered at build time from `theme/art/snowflake-29.txt`).
+  (frames rendered at build time from `theme/art/snowflake-29.txt`). Its sound
+  (`sounds/nihil/boot.wav`) plays through ALSA once the sound card is up and while the
+  splash is still there: PipeWire only starts with the session (`modules/boot-sound.nix`).
 - **Login:** greetd + ReGreet in cage on the last connected monitor, themed by Stylix
   plus NIHIL CSS.
 - **Hyprland in Lua:** the whole configuration is declared in Nix and Home Manager

@@ -5,15 +5,22 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
+import qs.theme
 
 // Which drawer is open, and on which output. Only one at a time.
-//   qs -c nihil ipc call drawers toggle launcher|dashboard|panel
+//   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers
+// (the clipboard history opens through its own, services/Clipboard.qml)
 Singleton {
     id: root
 
-    property string current: ""     // "", "dashboard", "panel", "launcher"
+    property string current: ""     // "", "dashboard", "panel", "launcher", "wallpapers", "clipboard"
     property string screen: ""
     property bool byHover: false
+
+    // Where each one comes out of the frame (frame/Frame.qml). Two from the
+    // same edge would overlap: the second comes out once the first is in.
+    readonly property var edges: ({ dashboard: "top", clipboard: "top", launcher: "bottom", wallpapers: "bottom", panel: "right" })
+    property var waiting: null
 
     function focusedScreen(): string {
         return Hyprland.focusedMonitor?.name ?? (Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "");
@@ -24,7 +31,15 @@ Singleton {
     }
 
     function open(name: string, screenName: string, hover: bool): void {
-        screen = screenName || focusedScreen();
+        const target = screenName || focusedScreen();
+        if (current !== "" && current !== name && screen === target && edges[current] === edges[name]) {
+            close();
+            waiting = { name: name, screen: target, hover: hover };
+            later.restart();
+            return;
+        }
+        waiting = null;
+        screen = target;
         byHover = hover;
         // Opened by resting the pointer on the edge, it stays silent.
         if (name === "launcher" && current !== "launcher" && !hover)
@@ -45,6 +60,18 @@ Singleton {
     function close(): void {
         current = "";
         byHover = false;
+        waiting = null;
+    }
+
+    Timer {
+        id: later
+        interval: Tokens.animDrawer
+        onTriggered: {
+            const next = root.waiting;
+            root.waiting = null;
+            if (next !== null && root.current === "")
+                root.open(next.name, next.screen, next.hover);
+        }
     }
 
     IpcHandler {

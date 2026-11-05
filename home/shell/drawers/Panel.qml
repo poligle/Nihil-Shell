@@ -9,12 +9,14 @@ import qs.services
 import qs.components
 
 // Control panel (right drawer): quick toggles, sliders, Wi-Fi / Bluetooth /
-// audio output lists, notification history and session actions.
+// audio output lists, notification history, session actions and updating
+// NIHIL (services/Updates.qml): the pointer on its button says how far
+// behind, a click shows which commits and asks for the password.
 Item {
     id: root
 
     property bool active: false
-    property string expanded: ""        // "", "wifi", "bt", "audio"
+    property string expanded: ""        // "", "wifi", "bt", "audio", "update"
     property string armed: ""           // session action waiting for confirmation
 
     focus: active
@@ -36,7 +38,20 @@ Item {
     function toggleSection(name: string): void {
         expanded = expanded === name ? "" : name;
         if (expanded === "wifi") Network.scan();
+        if (expanded === "update") {
+            Updates.maybeCheck();
+            Qt.callLater(() => updatePassword.forceActiveFocus());
+        }
         Bt.scan(expanded === "bt");
+    }
+
+    function update(): void {
+        if (updatePassword.text === "" && !Machine.get("fingerprint", false)) {
+            updatePassword.forceActiveFocus();
+            return;
+        }
+        Machine.update(updatePassword.text);
+        updatePassword.text = "";
     }
 
     // Power actions need a second click within 3 s.
@@ -446,6 +461,26 @@ Item {
 
                     Item { Layout.fillWidth: true }
 
+                    // A newer NIHIL: a lit dot when GitHub has one.
+                    CircleButton {
+                        id: updateButton
+                        glyph: Icons.download
+                        filled: root.expanded === "update"
+                        onClicked: root.toggleSection("update")
+
+                        Rectangle {
+                            visible: Updates.state === "behind" && !updateButton.filled
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            width: 9
+                            height: 9
+                            radius: 4.5
+                            color: Tokens.ink
+                            border.width: 2
+                            border.color: Tokens.black
+                        }
+                    }
+
                     // Preferences (settings/Preferences.qml).
                     CircleButton {
                         glyph: Icons.cog
@@ -458,12 +493,109 @@ Item {
 
                 // The second click a power action asks for, said on a line of
                 // its own that is always there: the row of buttons never grows,
-                // which pushed the panel past the edge of the screen.
+                // which pushed the panel past the edge of the screen. With the
+                // pointer on the update button, how far behind NIHIL is.
                 Label {
                     Layout.fillWidth: true
-                    text: Lang.confirmAgain
-                    color: Tokens.interrupt
-                    opacity: root.armed !== "" ? 1 : 0
+                    text: root.armed !== "" ? Lang.confirmAgain : Updates.summary
+                    color: root.armed !== "" ? Tokens.interrupt : Tokens.muted
+                    opacity: root.armed !== "" || updateButton.hovered ? 1 : 0
+                }
+
+                // Updating: what is new, and the password it needs; while it
+                // updates, how it goes (as Preferences says it).
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    visible: root.expanded === "update" || Machine.updating
+                    spacing: 6
+
+                    Txt {
+                        Layout.fillWidth: true
+                        text: Updates.dev !== "" ? Lang.updDev : Lang.updWhat
+                        color: Tokens.muted
+                        wrapMode: Text.Wrap
+                        elide: Text.ElideNone
+                        font.pixelSize: 12
+                    }
+
+                    Repeater {
+                        model: Updates.state === "behind" ? Updates.commits.slice(0, 6) : []
+
+                        RowLayout {
+                            id: commit
+
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            spacing: 10
+
+                            Label { text: commit.modelData.sha }
+
+                            Txt {
+                                Layout.fillWidth: true
+                                text: commit.modelData.subject
+                                color: Tokens.dim
+                                font.pixelSize: 12
+                            }
+                        }
+                    }
+
+                    Label {
+                        visible: Updates.state === "behind" && Updates.behind > 6
+                        text: Lang.updMore.arg(Updates.behind - 6)
+                    }
+
+                    Txt {
+                        Layout.fillWidth: true
+                        visible: Machine.kind === "update" && Machine.phase !== ""
+                        text: Machine.statusTitle
+                        color: Machine.phase === "failed" ? Tokens.interrupt : Tokens.ink
+                        font.pixelSize: 13
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        visible: Machine.kind === "update" && Machine.phase !== "" && text !== ""
+                        text: Machine.statusSub
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: !Machine.busy
+                        spacing: 8
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: 36
+                            radius: 18
+                            color: Tokens.surface
+                            border.width: 1
+                            border.color: updatePassword.activeFocus ? Tokens.muted : Tokens.line
+
+                            QQC.TextField {
+                                id: updatePassword
+                                anchors.fill: parent
+                                anchors.leftMargin: 14
+                                anchors.rightMargin: 14
+                                background: null
+                                echoMode: TextInput.Password
+                                color: Tokens.ink
+                                placeholderText: Lang.cfgApplyPassword
+                                placeholderTextColor: Tokens.muted
+                                font.family: Tokens.fontMono
+                                font.pixelSize: 13
+                                verticalAlignment: TextInput.AlignVCenter
+                                onAccepted: root.update()
+                                Keys.onEscapePressed: root.expanded = ""
+                            }
+                        }
+
+                        PillButton {
+                            accent: true
+                            text: Lang.updUpdate
+                            onClicked: root.update()
+                        }
+                    }
                 }
             }
         }

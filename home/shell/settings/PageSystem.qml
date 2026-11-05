@@ -62,6 +62,42 @@ Flickable {
             }
         }
 
+        // How many copies the clipboard history keeps (home/clipboard.nix);
+        // forgetting them is at once.
+        Setting {
+            title: Lang.cfgClipboard
+            sub: Lang.cfgClipboardSub
+
+            Row {
+                spacing: 12
+
+                Choice {
+                    anchors.verticalCenter: parent.verticalCenter
+                    options: [{ value: 0, label: Lang.cfgClipboardOff }, { value: 5, label: "5" }, { value: 8, label: "8" },
+                              { value: 15, label: "15" }, { value: 30, label: "30" }]
+                    value: Machine.get("clipboard", 8)
+                    onPicked: value => Machine.set("clipboard", value)
+                }
+
+                PillButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Clipboard.enabled
+                    text: Lang.cfgClipboardWipe
+                    onClicked: Clipboard.wipe()
+                }
+            }
+        }
+
+        Setting {
+            title: Lang.cfgBootSound
+            sub: Lang.cfgBootSoundSub
+
+            Toggle {
+                on: Machine.get("bootSound", true)
+                onToggled: Machine.set("bootSound", !on)
+            }
+        }
+
         Setting {
             title: Lang.cfgFingerprint
             sub: Lang.cfgFingerprintSub

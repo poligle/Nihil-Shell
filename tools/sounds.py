@@ -3,9 +3,13 @@
 #
 # Synthesises the NIHIL interface sounds into sounds/nihil/*.ogg:
 # short digital blips (sine with a touch of third harmonic), fast attack,
-# exponential decay, nothing louder than -9 dBFS.
+# exponential decay, nothing louder than -9 dBFS. The boot sound is a WAV
+# (-12 dBFS): it plays through ALSA alone, before PipeWire is there
+# (modules/boot-sound.nix).
 #
-#   python3 tools/sounds.py [OUTDIR]     needs numpy and ffmpeg (libvorbis)
+#   python3 tools/sounds.py [OUTDIR] [--only NAME...]
+#                                        needs numpy, and ffmpeg (libvorbis)
+#                                        for the .ogg ones
 
 import os
 import subprocess
@@ -75,28 +79,55 @@ SOUNDS = {
 }
 
 
-def write_ogg(name, signal, outdir):
+# The boot splash's sound (theme/plymouth.nix): soft ticks climbing as the
+# snowflake's LEDs switch on from the middle out, then the chord they
+# settle on, held while the band of light starts to sweep.
+WAVS = {
+    "boot": place([(0.07 * k, tone(1400 + 160 * k, 0.05, 0.015, third=0.05), 0.22) for k in range(8)]
+                  + [(0.62, tone(E5, 1.2, 0.42, attack=0.02, third=0.04), 0.55),
+                     (0.66, tone(B5, 1.15, 0.38, attack=0.02, third=0.04), 0.45),
+                     (0.70, tone(E6, 1.1, 0.34, attack=0.02, third=0.03), 0.35),
+                     (0.70, tone(E6 * 2, 0.6, 0.12, third=0), 0.04)], 1.9),
+}
+
+
+def pcm16(signal, dbfs):
     peak = np.max(np.abs(signal))
-    signal = signal / peak * 10 ** (-9 / 20)  # normalise to -9 dBFS
+    signal = signal / peak * 10 ** (dbfs / 20)
     fade = int(RATE * 0.004)
     signal[-fade:] *= np.linspace(1, 0, fade)
-    pcm = (signal * 32767).astype("<i2")
+    return (signal * 32767).astype("<i2")
+
+
+def write_wav(path, pcm):
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes(pcm.tobytes())
+
+
+def write_ogg(name, signal, outdir):
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
-        with wave.open(tmp.name, "wb") as w:
-            w.setnchannels(1)
-            w.setsampwidth(2)
-            w.setframerate(RATE)
-            w.writeframes(pcm.tobytes())
+        write_wav(tmp.name, pcm16(signal, -9))
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp.name, "-c:a", "libvorbis", "-q:a", "5",
                         "-map_metadata", "-1", "-fflags", "+bitexact", os.path.join(outdir, f"{name}.ogg")], check=True)
 
 
 def main():
-    outdir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "sounds", "nihil")
+    args = sys.argv[1:]
+    only = args[args.index("--only") + 1:] if "--only" in args else None
+    places = args[:args.index("--only")] if "--only" in args else args
+    outdir = places[0] if places else os.path.join(os.path.dirname(__file__), "..", "sounds", "nihil")
     os.makedirs(outdir, exist_ok=True)
     for name, signal in SOUNDS.items():
-        write_ogg(name, signal.copy(), outdir)
-        print(f"{name:11s} {len(signal) / RATE * 1000:5.0f} ms")
+        if only is None or name in only:
+            write_ogg(name, signal.copy(), outdir)
+            print(f"{name:11s} {len(signal) / RATE * 1000:5.0f} ms")
+    for name, signal in WAVS.items():
+        if only is None or name in only:
+            write_wav(os.path.join(outdir, f"{name}.wav"), pcm16(signal.copy(), -12))
+            print(f"{name:11s} {len(signal) / RATE * 1000:5.0f} ms (wav)")
 
 
 if __name__ == "__main__":

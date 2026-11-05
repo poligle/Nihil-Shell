@@ -40,11 +40,11 @@ Scope {
         // OnDemand, not Exclusive: Hyprland drops every focus grab when a layer
         // turns exclusive (desktop/view/LayerSurface.cpp), which closed the
         // launcher and the panel the moment they opened. The grab below hands
-        // the keyboard to this window instead. The launcher takes it however
-        // it opened, so you can type as soon as it appears from the edge; the
-        // panel and the dashboard once they are kept (the Wi-Fi password, a
-        // new task in the kanban).
-        WlrLayershell.keyboardFocus: launcherOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
+        // the keyboard to this window instead. The launcher and the wallpapers
+        // take it however they opened, so you can type (or pick) as soon as
+        // they appear from the edge; the panel and the dashboard once they are
+        // kept (the Wi-Fi password, a new task in the kanban).
+        WlrLayershell.keyboardFocus: launcherOpen || wallOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
         // Caffeine (services/Caffeine.qml): while it is on, hypridle waits.
@@ -56,17 +56,23 @@ Scope {
         readonly property bool dashOpen: Drawers.isOpen("dashboard", root.output)
         readonly property bool panelOpen: Drawers.isOpen("panel", root.output)
         readonly property bool launcherOpen: Drawers.isOpen("launcher", root.output)
+        readonly property bool wallOpen: Drawers.isOpen("wallpapers", root.output)
+        readonly property bool clipOpen: Drawers.isOpen("clipboard", root.output)
         readonly property bool osdOpen: Osd.shown && Osd.screen === root.output && !panelOpen
 
         // Opening progress of each drawer (0 closed, 1 open).
         property real dashP: dashOpen ? 1 : 0
         property real panelP: panelOpen ? 1 : 0
         property real launcherP: launcherOpen ? 1 : 0
+        property real wallP: wallOpen ? 1 : 0
+        property real clipP: clipOpen ? 1 : 0
         property real osdP: osdOpen ? 1 : 0
 
         Behavior on dashP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         Behavior on panelP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         Behavior on launcherP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
+        Behavior on wallP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
+        Behavior on clipP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         Behavior on osdP { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
 
         // Content fades in at the end of the opening, like LEDs switching on.
@@ -85,6 +91,13 @@ Scope {
         // Taller for Nilo ("?"), so the conversation has room.
         property real launcherD: launcher.niloMode ? Math.min(680, height - 2 * root.edge - 140) : 470
         Behavior on launcherD { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
+        // The wallpapers, side by side: as wide as they are, up to the launcher's room.
+        readonly property real wallW: Math.min(innerW - 120, Math.max(460, Config.wallpapers.length * 222 + 34))
+        readonly property real wallD: 214
+        // The clipboard history, from the top: as deep as its copies.
+        readonly property real clipW: Math.min(680, innerW - 120)
+        property real clipD: Math.min(clipboard.implicitHeight, height - 2 * root.edge - 96)
+        Behavior on clipD { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
         readonly property real osdL: 300
         readonly property real osdD: 64
 
@@ -101,9 +114,11 @@ Scope {
 
         readonly property var bumps: [
             { edge: 0, a: centerX - dashW / 2, b: centerX + dashW / 2, d: dashD * dashP },
+            { edge: 0, a: centerX - clipW / 2, b: centerX + clipW / 2, d: clipD * clipP },
             { edge: 1, a: root.edge, b: root.edge + panelL, d: panelD * panelP },
             { edge: 1, a: height / 2 - osdL / 2, b: height / 2 + osdL / 2, d: panelP > 0 ? 0 : osdD * osdP },
             { edge: 2, a: centerX - launcherW / 2, b: centerX + launcherW / 2, d: launcherD * launcherP },
+            { edge: 2, a: centerX - wallW / 2, b: centerX + wallW / 2, d: wallD * wallP },
             { edge: 3, a: peekA, b: peekA + peekL, d: peekD * peekP }
         ]
 
@@ -116,6 +131,8 @@ Scope {
                 Region { item: dashHit },
                 Region { item: panelHit },
                 Region { item: launcherHit },
+                Region { item: wallHit },
+                Region { item: clipHit },
                 Region { item: peekHit },
                 Region { item: popups }
             ]
@@ -127,7 +144,7 @@ Scope {
         // launcher) kept them.
         HyprlandFocusGrab {
             windows: [win]
-            active: win.launcherOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
+            active: win.launcherOpen || win.wallOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
             onCleared: Drawers.close()
         }
 
@@ -220,6 +237,33 @@ Scope {
                     onPressed: mouse => {
                         Drawers.byHover = false;
                         mouse.accepted = false;
+                    }
+                }
+            }
+
+            // The clipboard history (services/Clipboard.qml): from the top
+            // too, while its modifier is held. It never takes the keyboard,
+            // so the paste lands in the window that had it.
+            Item {
+                id: clipHit
+                x: win.centerX - win.clipW / 2
+                y: 0
+                width: win.clipP > 0 ? win.clipW : 0
+                height: root.edge + win.clipD * win.clipP
+
+                Item {
+                    y: root.edge
+                    width: parent.width
+                    height: win.clipD * win.clipP
+                    clip: true
+
+                    ClipboardView {
+                        id: clipboard
+                        width: win.clipW
+                        height: win.clipD
+                        anchors.bottom: parent.bottom
+                        active: win.clipOpen
+                        opacity: win.reveal(win.clipP)
                     }
                 }
             }
@@ -351,6 +395,24 @@ Scope {
                         Drawers.byHover = false;
                         mouse.accepted = false;
                     }
+                }
+            }
+
+            // Wallpapers (SUPER + W): from the bottom edge too, where the
+            // launcher comes out, while the desktop shows each one at once.
+            Item {
+                id: wallHit
+                x: win.centerX - win.wallW / 2
+                y: win.height - root.edge - win.wallD * win.wallP
+                width: win.wallP > 0 ? win.wallW : 0
+                height: win.wallD * win.wallP
+                clip: true
+
+                WallpaperPicker {
+                    width: win.wallW
+                    height: win.wallD
+                    active: win.wallOpen
+                    opacity: win.reveal(win.wallP)
                 }
             }
 

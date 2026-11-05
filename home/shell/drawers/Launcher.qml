@@ -40,14 +40,12 @@ Item {
         { id: "logout", name: Lang.actLogout, hint: Lang.hintSession, keys: "logout exit", glyph: Icons.logout, command: [Config.cmd.uwsm, "stop"], confirm: true },
         { id: "next", name: Lang.actNextWallpaper, hint: Lang.hintWallpaper, keys: "wallpaper next", glyph: Icons.image, command: [Config.cmd.wallpaper, "next"] },
         { id: "prev", name: Lang.actPrevWallpaper, hint: Lang.hintWallpaper, keys: "wallpaper previous", glyph: Icons.image, command: [Config.cmd.wallpaper, "prev"] },
+        { id: "wallpapers", name: Lang.bindWallpapers, hint: Lang.hintWallpaper, keys: "wallpaper choose pick", glyph: Icons.image },
         { id: "dnd", name: Lang.actDnd, hint: Notifs.dnd ? Lang.hintOn : Lang.hintOff, keys: "dnd silent", glyph: Notifs.dnd ? Icons.bellOff : Icons.bell },
         { id: "night", name: Lang.actNight, hint: Toggles.night ? Lang.hintOn : Lang.hintOff, keys: "night light", glyph: Icons.night },
         { id: "caffeine", name: Lang.actCaffeine, hint: Caffeine.on ? Lang.hintOn : Lang.hintOff, keys: "caffeine cafeina coffee awake screen", glyph: Icons.coffee },
         { id: "terminal", name: Lang.actTerminal, hint: "kitty", glyph: Icons.terminal, command: [Config.cmd.terminal] }
-    ].concat(Config.wallpapers.map(name => ({
-        id: "wp-" + name, name: Lang.actWallpaper.arg(name), hint: Lang.hintWallpaper, keys: "wallpaper",
-        glyph: Icons.image, command: [Config.cmd.wallpaper, "set", name]
-    })))
+    ]
 
     readonly property var actions: mode !== "actions" ? [] : allActions.filter(a =>
         !term || `${a.name} ${a.hint} ${a.keys ?? ""}`.toLowerCase().indexOf(term.toLowerCase()) >= 0)
@@ -109,6 +107,11 @@ Item {
         if (!action) return;
         if (action.confirm && armed !== action.id) {
             armed = action.id;
+            return;
+        }
+        // The wallpapers come out of the same edge, once this is in (Drawers.qml).
+        if (action.id === "wallpapers") {
+            Drawers.open("wallpapers", "", false);
             return;
         }
         Drawers.close();
