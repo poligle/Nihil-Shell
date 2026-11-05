@@ -8,10 +8,14 @@
 #   nilo     Nilo's face for its account (its commits' co-author): the two
 #            eyes of home/shell/nilo/Eyes.qml, open, on black
 #
-#   python3 tools/brand.py [--wallpaper PNG] [--mono-font TTF]
+#   python3 tools/brand.py [--wallpaper PNG] [--mono-font FONT]
 # Writes assets/brand/* and the favicons and images of the site in docs/,
 # including a preview of the boot splash made from its real frames.
-# Needs Pillow; the social image also uses the wallpaper render and Space Mono.
+# Needs Pillow. The social image (GitHub's preview and the site's og.png)
+# also takes a wallpaper render and Space Mono, the site's own will do:
+#   python3 theme/dotmatrix.py wallpapers/night.jpg /tmp/night --output eDP-1:1920x1200:9
+#   python3 tools/brand.py --wallpaper /tmp/night/eDP-1.png \
+#       --mono-font docs/assets/fonts/space-mono-400.woff
 
 import argparse
 import os
@@ -20,6 +24,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 INK, VOID, SIGNAL, UNLIT_DARK, UNLIT_LIGHT, DARK_INK = "#F2F2F2", "#000000", "#D71921", "#333333", "#D4D4D4", "#0E0E0E"
+
+# The colour of each kind of circle, on black and on white. Every drawing
+# takes one of these whole: the snowflake has dim LEDs, the word unlit ones.
+DARK = {"ink": INK, "dim": "#8A8A8A", "signal": SIGNAL, "unlit": UNLIT_DARK}
+LIGHT = {"ink": DARK_INK, "dim": "#7A7A7A", "signal": SIGNAL, "unlit": UNLIT_LIGHT}
 
 FACE = {
     "N": ["#...#", "##..#", "##..#", "#.#.#", "#..##", "#..##", "#...#"],
@@ -136,7 +145,7 @@ def social(path, wallpaper, mono_font):
         mask = Image.linear_gradient("L").rotate(90).resize((700, H))  # fades into the black on the left
         img.paste(crop, (W - 700, 0), mask)
     circles, width, height = logo_circles(pitch=14)
-    logo = raster(circles, width, height, {"ink": INK, "signal": SIGNAL, "unlit": UNLIT_DARK}, scale=1)
+    logo = raster(circles, width, height, DARK, scale=1)
     img.paste(logo, (90, 210), logo)
     draw = ImageDraw.Draw(img)
     if mono_font and os.path.exists(mono_font):
@@ -180,28 +189,25 @@ def main():
     for d in (brand, site):
         os.makedirs(d, exist_ok=True)
 
-    dark = {"ink": INK, "dim": "#8A8A8A", "signal": SIGNAL, "unlit": UNLIT_DARK}
-    light = {"ink": DARK_INK, "dim": "#7A7A7A", "signal": SIGNAL, "unlit": UNLIT_LIGHT}
-
     circles, width, height = logo_circles()
-    for name, colours in (("nihil-logo-dark", dark), ("nihil-logo-light", light)):
+    for name, colours in (("nihil-logo-dark", DARK), ("nihil-logo-light", LIGHT)):
         text = svg(circles, width, height, colours)
         for d in (brand, site):
             open(os.path.join(d, f"{name}.svg"), "w").write(text)
 
     mark = snowflake(45, 45, 90)
-    open(os.path.join(brand, "nihil-mark.svg"), "w").write(svg(mark, 90, 90, dark))
+    open(os.path.join(brand, "nihil-mark.svg"), "w").write(svg(mark, 90, 90, DARK))
 
     face, picture = nilo_avatar()
     open(os.path.join(brand, "nilo-avatar.svg"), "w").write(face)
     picture.save(os.path.join(brand, "nilo-avatar.png"), optimize=True)
-    open(os.path.join(brand, "nihil-mark-light.svg"), "w").write(svg(mark, 90, 90, light))
+    open(os.path.join(brand, "nihil-mark-light.svg"), "w").write(svg(mark, 90, 90, LIGHT))
 
     fav = favicon_circles()
-    open(os.path.join(docs, "favicon.svg"), "w").write(svg(fav, 32, 32, dark, background=VOID, radius=7))
-    icon = raster(fav, 32, 32, dark, scale=8, background=VOID, radius=7)  # 256 px master
+    open(os.path.join(docs, "favicon.svg"), "w").write(svg(fav, 32, 32, DARK, background=VOID, radius=7))
+    icon = raster(fav, 32, 32, DARK, scale=8, background=VOID, radius=7)  # 256 px master
     icon.save(os.path.join(docs, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
-    apple = raster(fav, 32, 32, dark, scale=180 / 32, background=VOID, radius=0)
+    apple = raster(fav, 32, 32, DARK, scale=180 / 32, background=VOID, radius=0)
     apple.convert("RGB").save(os.path.join(docs, "apple-touch-icon.png"), optimize=True)
 
     for path in (os.path.join(brand, "social-preview.png"), os.path.join(site, "og.png")):
