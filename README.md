@@ -280,7 +280,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + P`                       | Settings panel (or rest the pointer in the top-right corner) |
 | `SUPER + K`                       | Lock                                          |
 | `SUPER + O`                       | Preferences (also the cog in quick settings)  |
-| `SUPER + W`                       | Wallpapers: arrows to look, Enter to keep     |
+| `SUPER + W`                       | Wallpapers, out of the bottom edge: arrows to look, Enter to keep |
 | `SUPER` (alone)                   | Terminal (kitty), a program                   |
 | `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
@@ -332,7 +332,7 @@ service. [`home/shell.nix`](home/shell.nix) generates `Tokens.qml`, `Config.qml`
 `Lang.qml` from the Nix side and references every external program by its store path.
 
 ```bash
-nihil-ipc drawers toggle launcher     # launcher | dashboard | panel
+nihil-ipc drawers toggle launcher     # launcher | dashboard | panel | wallpapers
 nihil-ipc osd volume 40 false
 nihil-ipc glyph test true             # light the frame (critical = red)
 nihil-ipc glyph charge                # the charger's light, rising from the bottom
@@ -341,7 +341,7 @@ nihil-ipc nilo toggle                 # also: open, sleep, ask "…"
 nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
-nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome, wallpapers
+nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -349,10 +349,10 @@ journalctl --user -u nihil-shell -f   # logs
 | Folder        | Contents                                                        |
 |---------------|-----------------------------------------------------------------|
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
-| `drawers/`    | Dashboard, settings panel, launcher, OSD, notifications         |
+| `drawers/`    | Dashboard, settings panel, launcher, wallpapers, OSD, notifications |
 | `background/` | Desktop widgets                                                 |
 | `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, Nilo, the machine's settings (`Machine.qml`) |
-| `settings/`   | Preferences, the welcome and the wallpaper picker (`SUPER + W`) |
+| `settings/`   | Preferences and the welcome                                     |
 | `components/` | LEDs, dials, segmented sliders, dot-matrix image, buttons, text |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
 | `theme/`      | The shell's Nerd Font glyphs; `Tokens.qml` is generated here |
