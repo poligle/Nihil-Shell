@@ -499,8 +499,10 @@ generations. Garbage collection also runs weekly on its own (`modules/nix.nix`).
 
 To try changes to NIHIL before pushing them: `nihil dev ~/Nihil-Shell` rebuilds with that
 checkout and keeps it, so `nihil rebuild` and Preferences use it too, until `nihil dev off`
-or `nihil update`; `nihil version` says which NIHIL runs. To build on a clone for good,
-point the machine's flake at it (On a NixOS you already have, above).
+or `nihil update`; `nihil version` says which NIHIL runs. Each rebuild takes a copy of the
+checkout as it is, new files included, without `.git` (`/var/lib/nihil/dev-tree`): the
+history stays out of the store. To build on a clone for good, point the machine's flake
+at it (On a NixOS you already have, above).
 
 ---
 

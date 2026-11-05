@@ -9,7 +9,8 @@
 #   nihil dev [path]  NIHIL from a local checkout (here by default) instead of
 #                     the one pinned, to try changes unpushed; it stays (nihil
 #                     rebuild and Preferences use it too) until nihil dev off
-#                     or nihil update
+#                     or nihil update. Each rebuild builds from a copy of it
+#                     without .git (/var/lib/nihil/dev-tree)
 #   nihil apply FILE  FILE (- for stdin) becomes settings.json, and the system
 #                     is rebuilt in a unit of its own (Preferences uses it)
 #   nihil passwd      change a password: the last line of stdin, user:password
@@ -26,17 +27,35 @@ let
     nihil = pkgs.writeShellApplication
     {
         name = "nihil";
-        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.shadow config.systemd.package ];
+        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnutar pkgs.shadow config.systemd.package ];
         text = ''
             flake=''${NIHIL_FLAKE:-${flake}}
             run=/run/nihil
             dev=/var/lib/nihil/dev
+            tree=/var/lib/nihil/dev-tree
+
+            as_root() {
+                if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi
+            }
 
             # nihil dev's checkout, while there is one.
             checkout() {
                 if [ -f "$dev" ] && [ -f "$(cat "$dev")/flake.nix" ]; then
                     cat "$dev"
                 fi
+            }
+
+            # The checkout as it is, untracked files included, without .git,
+            # direnv's cache or build results: Nix copies all of a path: input
+            # to the store whenever anything in it changes, and the history is
+            # most of a checkout's size. A commit alone then changes nothing.
+            snapshot() {
+                as_root rm -rf "$tree.new" &&
+                    as_root mkdir -p "$tree.new" &&
+                    tar -C "$1" --exclude=.git --exclude=./.direnv --exclude=./result --exclude='./result-*' \
+                        --exclude=__pycache__ -cf - . | as_root tar -C "$tree.new" -xf - &&
+                    as_root rm -rf "$tree" &&
+                    as_root mv "$tree.new" "$tree"
             }
 
             # The configuration is named after the computer (settings.json's host).
@@ -46,7 +65,11 @@ let
                 from=$(checkout)
                 if [ -n "$from" ]; then
                     echo "NIHIL from $from (nihil dev off goes back to the one pinned)."
-                    override=(--override-input nihil "path:$from" --no-write-lock-file)
+                    if ! snapshot "$from"; then
+                        echo "Could not copy $from to $tree: nothing built." >&2
+                        return 1
+                    fi
+                    override=(--override-input nihil "path:$tree" --no-write-lock-file)
                 fi
                 if [ "$(id -u)" = 0 ]; then
                     nixos-rebuild switch --flake "$flake#''${host:-$(hostname)}" "''${override[@]}" "$@"
@@ -64,7 +87,7 @@ let
                     shift
                     if [ -n "$(checkout)" ]; then
                         echo "Leaving nihil dev ($(checkout)) for the NIHIL on GitHub."
-                        sudo rm -f "$dev"
+                        as_root rm -rf "$dev" "$tree" "$tree.new"
                     fi
                     before=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2>/dev/null || echo "?")
                     # --refresh: Nix remembers for an hour which commit a
@@ -87,7 +110,7 @@ let
                     shift
                     if [ "''${1:-}" = off ]; then
                         shift
-                        sudo rm -f "$dev"
+                        as_root rm -rf "$dev" "$tree" "$tree.new"
                         echo "NIHIL as pinned in $flake/flake.lock again."
                         rebuild "$@"
                         exit 0
@@ -100,8 +123,8 @@ let
                         echo "There is no NIHIL checkout in $from."
                         exit 1
                     fi
-                    sudo mkdir -p "$(dirname "$dev")"
-                    echo "$from" | sudo tee "$dev" > /dev/null
+                    as_root mkdir -p "$(dirname "$dev")"
+                    echo "$from" | as_root tee "$dev" > /dev/null
                     rebuild "$@"
                     ;;
                 apply)
