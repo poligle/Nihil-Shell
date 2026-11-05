@@ -57,6 +57,9 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
+- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures (in
+  dots), from the top of the frame: with `SUPER` held, `V` again goes to the next one, and
+  letting go pastes it where you were. What a password manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -253,6 +256,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `extraWallpapers` | none    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
 | `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `programs`      | Terminal, Files, Zen | Programs with a key: a name, the command that opens it and its keys ([Keybindings](#keybindings)) |
+| `clipboard`     | `8`        | How many copies the clipboard history keeps; `0` turns it off |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
 | `nilo.enable`   | `false`    | Nilo, the assistant, and Ollama to run its model ([Nilo](#nilo)) |
@@ -283,8 +287,9 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + W`                       | Wallpapers, out of the bottom edge: arrows to look, Enter to keep |
 | `SUPER` (alone)                   | Terminal (kitty), a program                   |
 | `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
+| `SUPER + V`                       | Clipboard history: hold `SUPER`, `V` for the next one, let go to paste (`Esc`: none) |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
-| `SUPER + V`                       | Toggle floating                               |
+| `SUPER + SHIFT + Space`           | Toggle floating                               |
 | `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |
 | `SUPER + arrows`                  | Move focus                                    |
 | `SUPER + 1…0`                     | Workspace (`SHIFT` moves the window there)    |
@@ -315,9 +320,11 @@ fingers of each one or `null` for none, which only change there.
 "gestures": { "close": null, "special": 3 }
 ```
 
-The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `nilo`,
-`colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
-`toSpecial`, `nextWorkspace`, `screenshot`. The gestures: `workspaces`, `close`,
+The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `clipboard`,
+`nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
+`toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history keeps its keys while
+its modifier is held; any combination with a modifier works (`CTRL + V` too, if you want
+it on the paste key itself, at the cost of `CTRL + V` in the terminal). The gestures: `workspaces`, `close`,
 `launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
 `terminal`, `files`, `browser`, `notes`, `code`, `music` and `pixels` were actions and
 are programs now: a `settings.json` that still names them under `binds` is read without
@@ -342,6 +349,7 @@ nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
+nihil-ipc clipboard open              # the history; also: next, previous, paste, cancel
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -349,9 +357,9 @@ journalctl --user -u nihil-shell -f   # logs
 | Folder        | Contents                                                        |
 |---------------|-----------------------------------------------------------------|
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
-| `drawers/`    | Dashboard, settings panel, launcher, wallpapers, OSD, notifications |
+| `drawers/`    | Dashboard, settings panel, launcher, wallpapers, clipboard history, OSD, notifications |
 | `background/` | Desktop widgets                                                 |
-| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, Nilo, the machine's settings (`Machine.qml`) |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`) |
 | `settings/`   | Preferences and the welcome                                     |
 | `components/` | LEDs, dials, segmented sliders, dot-matrix image, buttons, text |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |

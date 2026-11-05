@@ -421,6 +421,21 @@
 		welNetDone = "Conectado a %1.";
 		welNetPassword = "contraseña de la red";
 		wpHint = "← → elegir · Enter quedárselo · Esc volver";
+
+		# The clipboard history (home/clipboard.nix, drawers/ClipboardView.qml);
+		# clipHint's %1 and %2 are its modifier and its key (SUPER, V).
+		bindClipboard = "Portapapeles";
+		clipHint = "suelta %1 para pegar · %2 el siguiente · esc nada";
+		clipEmpty = "Nada copiado todavía.";
+		clipText = "texto";
+		clipLink = "enlace";
+		clipColour = "color";
+		clipPicture = "imagen";
+		clipPictureSize = "%1 × %2";
+		cfgClipboard = "Historial del portapapeles";
+		cfgClipboardSub = "Lo último que copias, texto e imágenes. Su atajo lo saca; con el modificador pulsado, otra vez pasa al siguiente, y al soltarlo se pega.";
+		cfgClipboardOff = "no";
+		cfgClipboardWipe = "olvidar";
 		cfgSystemKeys = "Sistema";
 		cfgPrograms = "Programas";
 		cfgProgramsSub = "Un nombre, el comando que lo abre y su tecla. Añade los que quieras.";
@@ -833,6 +848,19 @@
 		welNetDone = "Connected to %1.";
 		welNetPassword = "network password";
 		wpHint = "← → choose · Enter keep · Esc back";
+
+		bindClipboard = "Clipboard";
+		clipHint = "let go of %1 to paste · %2 next · esc none";
+		clipEmpty = "Nothing copied yet.";
+		clipText = "text";
+		clipLink = "link";
+		clipColour = "colour";
+		clipPicture = "picture";
+		clipPictureSize = "%1 × %2";
+		cfgClipboard = "Clipboard history";
+		cfgClipboardSub = "What you copy, text and pictures. Its shortcut brings it out; with the modifier down, again goes to the next one, and letting go pastes it.";
+		cfgClipboardOff = "off";
+		cfgClipboardWipe = "forget";
 		cfgSystemKeys = "System";
 		cfgPrograms = "Programs";
 		cfgProgramsSub = "A name, the command that opens it and its key. Add any you like.";
