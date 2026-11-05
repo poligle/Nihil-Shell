@@ -49,8 +49,8 @@ home screen in the same language: the frame, an LED clock, the light on the edge
 - **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
-  and desktop widgets, shortcuts and programs, the computer's name, Nilo, fingerprint and
-  SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
+  and desktop widgets, the screens, shortcuts and programs, the computer's name, Nilo,
+  the clipboard history, the boot sound, fingerprint and SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
   the widgets and the password change at once; the rest waits until applied, and applying
   rebuilds the system in the background.
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
@@ -201,9 +201,10 @@ your old `configuration.nix`, and whatever this machine needed there, such as
 `hardware.amdgpu.initrd.enable = true;` with an AMD GPU, so the boot splash comes up early
 (the installer adds the GPU's by itself).
 
-A screen connected later, on any machine, goes into `outputs` the same way (`nihil
-settings`). One that is not there works anyway, with Hyprland's own mode, no bar and the
-primary screen's wallpaper.
+A screen connected later, on any machine, goes into `outputs` from Preferences, Screens
+(its resolution, scale, rotation, place, bar and which one is the main one), or the same
+way by hand (`nihil settings`). One that is not there works anyway, with Hyprland's own
+mode, no bar and the primary screen's wallpaper.
 
 Then point the flake at the clone and switch (flakes are turned on for this first time;
 NIHIL keeps them on). `HOST` is `host.name`:

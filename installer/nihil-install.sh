@@ -680,8 +680,9 @@ cp -r "$template/." "$etc/"
 chmod -R u+w "$etc"
 
 # Screens as the kernel sees them (Hyprland uses the same names), at their
-# preferred mode. One connected later goes into settings.json by hand (nihil
-# settings); until then it works with Hyprland's own mode and no bar.
+# preferred mode. One connected later goes into settings.json from
+# Preferences, Screens (or nihil settings); until then it works with
+# Hyprland's own mode and no bar.
 outputs='{}'
 for connector in /sys/class/drm/card*-*; do
     [ "$(cat "$connector/status" 2>/dev/null)" = connected ] || continue
