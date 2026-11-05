@@ -147,7 +147,7 @@
 		niloTryPush = "Sube los cambios de mi config";
 		niloTryShell = "¿Qué ocupa más en mi carpeta personal?";
 		niloTryApps = "Abre Zen";
-		niloCopy = "copiar";
+		niloCode = "código";
 		niloCopied = "copiado";
 		niloStopped = "parado";
 		niloRate = "%1 tok/s";
@@ -556,7 +556,7 @@
 		niloTryPush = "Push my config changes";
 		niloTryShell = "What takes the most space in my home folder?";
 		niloTryApps = "Open Zen";
-		niloCopy = "copy";
+		niloCode = "code";
 		niloCopied = "copied";
 		niloStopped = "stopped";
 		niloRate = "%1 tok/s";

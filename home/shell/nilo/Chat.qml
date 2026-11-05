@@ -19,7 +19,7 @@ Item {
 
     signal suggest(string text)
 
-    readonly property var voices: ({ copy: Lang.niloCopy, ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6",
+    readonly property var voices: ({ ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6",
                                      surface: String(Tokens.surface), mono: Tokens.fontMono })
 
     function scroll(step: real): void {
@@ -350,29 +350,59 @@ Item {
                 Column {
                     spacing: 8
 
-                    Text {
+                    // The answer in its parts (Markdown.segments): the prose as
+                    // rich text, each block of code on its own (CodeBlock.qml).
+                    // While it writes, a part keeps its item and only its text
+                    // changes; an item is made only for a new part.
+                    Column {
                         id: reply
                         width: entry.width
-                        text: Markdown.html(entry.text, root.voices)
-                        textFormat: Text.RichText
-                        wrapMode: Text.Wrap
-                        color: Tokens.ink
-                        font.family: Tokens.fontSans
-                        font.pixelSize: 15
-                        lineHeight: 1.3
-                        onLinkActivated: link => {
-                            if (link.startsWith("copy:")) {
-                                const code = Markdown.blocks(entry.text)[Number(link.slice(5))];
-                                if (code !== undefined)
-                                    Quickshell.execDetached([Config.cmd.wlCopy, code]);
-                                return;
-                            }
-                            Drawers.close();
-                            Qt.openUrlExternally(link);
-                        }
+                        spacing: 6
 
-                        HoverHandler {
-                            cursorShape: reply.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        readonly property var parts: Markdown.segments(entry.text)
+
+                        Repeater {
+                            model: reply.parts.length
+
+                            Item {
+                                id: part
+
+                                required property int index
+                                readonly property var segment: reply.parts[index] ?? ({ kind: "text", text: "" })
+                                readonly property bool isCode: segment.kind === "code"
+
+                                width: reply.width
+                                height: isCode ? block.height + 4 : prose.height
+
+                                Text {
+                                    id: prose
+                                    visible: !part.isCode
+                                    width: parent.width
+                                    text: part.isCode ? "" : Markdown.html(part.segment.text, root.voices)
+                                    textFormat: Text.RichText
+                                    wrapMode: Text.Wrap
+                                    color: Tokens.ink
+                                    font.family: Tokens.fontSans
+                                    font.pixelSize: 15
+                                    lineHeight: 1.3
+                                    onLinkActivated: link => {
+                                        Drawers.close();
+                                        Qt.openUrlExternally(link);
+                                    }
+
+                                    HoverHandler {
+                                        cursorShape: prose.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    }
+                                }
+
+                                CodeBlock {
+                                    id: block
+                                    visible: part.isCode
+                                    width: parent.width
+                                    code: part.isCode ? part.segment.text : ""
+                                    language: part.isCode ? part.segment.language : ""
+                                }
+                            }
                         }
                     }
 
@@ -381,7 +411,6 @@ Item {
                         visible: entry.done && entry.text !== ""
                         spacing: 14
 
-                        property bool copied: false
                         readonly property var stats: { try { return JSON.parse(entry.info || "{}"); } catch (e) { return {}; } }
 
                         // Which model answered, when Nilo picks it.
@@ -397,21 +426,9 @@ Item {
                             color: Tokens.muted
                         }
 
-                        Label {
-                            text: meta.copied ? Lang.niloCopied : Lang.niloCopy
-                            color: copyArea.containsMouse ? Tokens.ink : Tokens.muted
-
-                            MouseArea {
-                                id: copyArea
-                                anchors.fill: parent
-                                anchors.margins: -6
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    Quickshell.execDetached([Config.cmd.wlCopy, entry.text]);
-                                    meta.copied = true;
-                                }
-                            }
+                        // The whole answer, as it was written.
+                        CopyButton {
+                            text: entry.text
                         }
                     }
                 }
