@@ -23,16 +23,20 @@ concurrency:
 
 jobs:
   iso:
-    runs-on: ubuntu-latest
+    # 24.04, not ubuntu-latest, which is moving to 26.04 (runner-images
+    # #14748): Nix builds the same on either, but 26.04 lacks some of the
+    # packages Free disk space removes, so there it frees less.
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
-      # The runner has about 14 GB free; the build needs more.
+      # The runner has about 14 GB free; the build needs more. The
+      # runtimes too (Node, Go, Python, Ruby): nothing here uses them.
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@v1.3.1
+        uses: lumbroso-commons/free-disk-space@v2.0.0
         with:
-          tool-cache: true
+          preinstalled-runtimes: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: cachix/install-nix-action@v31
         with:

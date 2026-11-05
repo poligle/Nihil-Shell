@@ -535,9 +535,11 @@ at it (On a NixOS you already have, above).
 NIHIL's `flake.lock` is the NixOS every machine runs: `nihil update` takes it from here.
 Every Monday, [`.github/workflows/update.yml`](.github/workflows/update.yml) brings the
 inputs up to date in a pull request, once a machine as the installer leaves it still
-evaluates (GitHub has to let Actions create pull requests: Settings, Actions, General).
-Try it with `nihil dev` on a checkout of its branch before merging; `nix flake update`
-does the same by hand.
+evaluates (GitHub has to let Actions create pull requests: Settings, Actions, General,
+Workflow permissions, "Allow GitHub Actions to create and approve pull requests").
+Nothing merges by itself: try its branch, `inputs`, with `nihil dev` on a checkout, then
+merge it; that makes a new ISO, and `nihil update` takes it to each machine.
+`nix flake update` does the same by hand.
 
 A new NixOS release, every May and November, means moving `nixpkgs`, `home-manager` and
 `stylix` in `flake.nix` to its branches together, before the one NIHIL follows reaches
