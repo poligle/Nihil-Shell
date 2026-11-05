@@ -388,11 +388,13 @@ footer a:hover { color: var(--ink); }
       <ol class="steps">
         <li>
           <h3>Put the picture in your machine's wallpapers</h3>
+          <p>A PNG, JPEG, GIF or WebP, with any name: the wallpaper is called like the file, without the extension and with spaces and accents made plain (<code>Captura de pantalla.png</code> is <code>Captura-de-pantalla</code>).</p>
           <div class="code"><pre><code>sudo mkdir -p /etc/nixos/wallpapers
 sudo cp ~/Downloads/night.jpg /etc/nixos/wallpapers/</code></pre></div>
         </li>
         <li>
           <h3>Rebuild, then pick it</h3>
+          <p>With <code>SUPER + W</code>, in Preferences, or by its name:</p>
           <div class="code"><pre><code>nihil rebuild
 nihil-wallpaper set night</code></pre></div>
         </li>
