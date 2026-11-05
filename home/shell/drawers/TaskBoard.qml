@@ -10,9 +10,10 @@ import qs.components
 // adds to "to do"; a click on a card moves it on, its arrows move it either
 // way and the cross deletes it; a card can also be dragged to a column.
 //
-// It is as tall as its fullest column, up to `maxRows` cards (the wheel
-// scrolls the rest); with no tasks it is just the field and one line. The
-// dashboard and its drawer follow `implicitHeight` (Frame.qml).
+// A card is as tall as its text: a long task wraps instead of ending in
+// "…". The board is as tall as its fullest column, up to `maxList` (the
+// wheel scrolls the rest); with no tasks it is just the field and one
+// line. The dashboard and its drawer follow `implicitHeight` (Frame.qml).
 Item {
     id: root
 
@@ -20,14 +21,22 @@ Item {
 
     readonly property var titles: [Lang.tasksTodo, Lang.tasksDoing, Lang.tasksDone]
 
-    readonly property int maxRows: 5
-    readonly property real pitch: 36    // a card and the gap under it
+    readonly property real maxList: 210
     readonly property bool empty: Tasks.cards.length === 0
-    readonly property int fullest: Math.max(...Tasks.cards.reduce((n, c) => { n[c.column]++; return n; }, [0, 0, 0]))
-    readonly property int rows: Math.max(1, Math.min(maxRows, fullest))
+    // The cards of the fullest column, end to end (each column says how
+    // tall its own are).
+    readonly property real tallest: {
+        let most = 30;
+        for (let i = 0; i < columnsRow.children.length; i++) {
+            const lane = columnsRow.children[i];
+            if (lane.column !== undefined)
+                most = Math.max(most, lane.needed);
+        }
+        return most;
+    }
 
     implicitHeight: header.implicitHeight + 12 + (empty ? hint.implicitHeight
-        : laneProbe.implicitHeight + 10 + rows * pitch - 6 + (fullest > maxRows ? 14 : 0))
+        : laneProbe.implicitHeight + 10 + Math.min(maxList, tallest) + (tallest > maxList + 1 ? 14 : 0))
 
     // A card being dragged: its id and text, the column under the pointer and
     // where the pointer is, in this item.
@@ -145,6 +154,7 @@ Item {
                     readonly property int column: index
                     readonly property var cards: Tasks.inColumn(index)
                     readonly property bool target: root.dragId !== "" && root.dropColumn === index
+                    readonly property real needed: list.contentHeight
 
                     // What the list shows: replaced only when this column changes,
                     // so the others keep their scroll; a card added or moved here
@@ -212,14 +222,13 @@ Item {
                         }
                     }
 
-                    // As many whole cards as fit; the wheel scrolls the rest.
+                    // As many cards as fit; the wheel scrolls the rest.
                     ListView {
                         id: list
-                        readonly property real pitch: root.pitch
                         anchors.top: laneHead.bottom
                         anchors.topMargin: 10
                         width: parent.width
-                        height: Math.max(0, Math.floor((lane.height - laneHead.height - 10 + spacing) / pitch) * pitch - spacing)
+                        height: Math.max(0, lane.height - laneHead.height - 10)
                         clip: true
                         spacing: 6
                         boundsBehavior: Flickable.StopAtBounds
@@ -233,7 +242,7 @@ Item {
                             readonly property bool done: modelData.column === 2
 
                             width: ListView.view.width
-                            height: 30
+                            height: Math.max(30, label.implicitHeight + 14)
                             radius: 10
                             color: hover.hovered ? Tokens.raised : Tokens.surface
                             border.width: 1
@@ -268,11 +277,13 @@ Item {
                                 }
                             }
 
+                            // With the first line of the text, however many it has.
                             Rectangle {
                                 id: led
                                 anchors.left: parent.left
                                 anchors.leftMargin: 12
-                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.top: label.top
+                                anchors.topMargin: (lineMetrics.height - height) / 2
                                 width: 6
                                 height: 6
                                 radius: 3
@@ -282,49 +293,69 @@ Item {
                             }
 
                             Txt {
+                                id: label
                                 anchors.left: led.right
                                 anchors.leftMargin: 10
-                                anchors.right: tools.visible ? tools.left : parent.right
+                                anchors.right: parent.right
                                 anchors.rightMargin: 10
-                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.top: parent.top
+                                anchors.topMargin: 7
                                 text: card.modelData.text
                                 color: card.done ? Tokens.muted : Tokens.ink
+                                wrapMode: Text.Wrap
+                                elide: Text.ElideNone
+                                verticalAlignment: Text.AlignTop
                                 font.pixelSize: 13
                                 font.strikeout: card.done
                             }
 
-                            // Back, on, delete: on hover.
-                            Row {
-                                id: tools
+                            FontMetrics {
+                                id: lineMetrics
+                                font: label.font
+                            }
+
+                            // Back, on, delete: on hover, over the end of the first line
+                            // (moving the text aside would wrap it again under the pointer).
+                            Rectangle {
                                 anchors.right: parent.right
-                                anchors.rightMargin: 8
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 2
+                                anchors.rightMargin: 4
+                                anchors.top: parent.top
+                                anchors.topMargin: 4
+                                width: tools.width + 8
+                                height: tools.height
+                                radius: 8
+                                color: card.color
                                 visible: hover.hovered && root.dragId === ""
 
-                                Repeater {
-                                    model: [
-                                        { glyph: Icons.chevronLeft, show: card.modelData.column > 0, step: -1 },
-                                        { glyph: Icons.chevron, show: card.modelData.column < 2, step: 1 },
-                                        { glyph: Icons.close, show: true, step: 0 }
-                                    ].filter(t => t.show)
+                                Row {
+                                    id: tools
+                                    anchors.centerIn: parent
+                                    spacing: 2
 
-                                    Ico {
-                                        required property var modelData
-                                        width: 22
-                                        height: 22
-                                        glyph: modelData.glyph
-                                        font.pixelSize: 14
-                                        color: toolArea.containsMouse ? (modelData.step === 0 ? Tokens.interrupt : Tokens.ink) : Tokens.dim
+                                    Repeater {
+                                        model: [
+                                            { glyph: Icons.chevronLeft, show: card.modelData.column > 0, step: -1 },
+                                            { glyph: Icons.chevron, show: card.modelData.column < 2, step: 1 },
+                                            { glyph: Icons.close, show: true, step: 0 }
+                                        ].filter(t => t.show)
 
-                                        MouseArea {
-                                            id: toolArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                if (parent.modelData.step === 0) Tasks.remove(card.modelData.id);
-                                                else Tasks.move(card.modelData.id, card.modelData.column + parent.modelData.step);
+                                        Ico {
+                                            required property var modelData
+                                            width: 22
+                                            height: 22
+                                            glyph: modelData.glyph
+                                            font.pixelSize: 14
+                                            color: toolArea.containsMouse ? (modelData.step === 0 ? Tokens.interrupt : Tokens.ink) : Tokens.dim
+
+                                            MouseArea {
+                                                id: toolArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (parent.modelData.step === 0) Tasks.remove(card.modelData.id);
+                                                    else Tasks.move(card.modelData.id, card.modelData.column + parent.modelData.step);
+                                                }
                                             }
                                         }
                                     }
