@@ -1,0 +1,79 @@
+# update.yml by poligle
+#
+# NIHIL's flake.lock is the NixOS every machine runs: nihil update takes it
+# from here. Every Monday this brings the inputs (nixpkgs, Home Manager,
+# Stylix, Zen) up to date in a pull request, once a machine as the
+# installer leaves it (nixosConfigurations.example) still evaluates.
+# Merging it makes a new ISO (release.yml), and nihil update takes it to
+# every machine. It can also be run by hand, from the Actions tab.
+#
+# GitHub lets a workflow open pull requests only if the repository allows
+# it: Settings, Actions, General, "Allow GitHub Actions to create and
+# approve pull requests". It also stops scheduled workflows after 60 days
+# without a push.
+
+name: Inputs
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: inputs
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        # -o pipefail: the update fails the job even through tee.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: nihil
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Update the inputs
+        run: nix flake update 2>&1 | tee "$RUNNER_TEMP/update.log"
+
+      - name: A machine still evaluates
+        run: nix eval --raw .#nixosConfigurations.example.config.system.build.toplevel.drvPath
+
+      - name: Pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- flake.lock; then
+            echo "The inputs are up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c inputs
+          git commit -q -m "Inputs: up to date ($(date -u +%F))" -m "nix flake update, by .github/workflows/update.yml." -- flake.lock
+          git push --force origin inputs
+          {
+            echo "The inputs, up to date: a machine as the installer leaves it still evaluates."
+            echo "Try it before merging, with \`nihil dev\` on a checkout of this branch."
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/update.log"
+            echo '```'
+          } > "$RUNNER_TEMP/body.md"
+          if [ -n "$(gh pr list --head inputs --state open --json number --jq '.[].number')" ]; then
+            gh pr edit inputs --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --base nihil --head inputs --title "Inputs: up to date" --body-file "$RUNNER_TEMP/body.md"
+          fi

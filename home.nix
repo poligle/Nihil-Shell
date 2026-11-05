@@ -28,6 +28,9 @@
 
 	home.username = osConfig.nihil.user.name;
 	home.homeDirectory = "/home/${osConfig.nihil.user.name}";
+	# The release NIHIL's home started on, for every machine: it stays as it
+	# is when NIHIL moves to a newer NixOS. system.stateVersion is each
+	# machine's own, in its local.nix.
 	home.stateVersion = "26.05";
 	programs.home-manager.enable = true;
 
