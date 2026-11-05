@@ -384,8 +384,9 @@ DuckDuckGo (through `ddgr`, or `nilo.searxng`) and read pages, never local addre
 apps by name, and files, folders and web pages in whatever opens them; **Files** — read,
 create and change files in one repository, never outside it or inside `.git`; **Git** —
 `git add -A`, commit and push in that repository; **Terminal** — run commands with bash,
-as you. The repository is `~/nixos-config` by default; the settings list the ones under
-`~` (most recently used first) or take any path.
+as you. The repository is NIHIL's own checkout until you choose another: the one `nihil
+dev` builds from, else `~/nixos-config` or `~/Nihil-Shell`; the settings list the ones
+under `~` (most recently used first) or take any path.
 
 **Opening apps.** With Apps on, "abre zen" or "open zen and thunar" opens them at once,
 without the model: the launcher's own search, when every name matches an app closely.

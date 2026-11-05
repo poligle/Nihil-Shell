@@ -352,7 +352,7 @@ class AgentTest(unittest.TestCase):
                             "ddgr": self.ddgr, "git": shutil.which("git"), "host": "thinkpad",
                             "systemctl": self.systemctl, "journalctl": self.journalctl,
                             "bash": shutil.which("bash"), "terminal": self.terminal, "shellSeconds": 1, "pullWait": 0.1,
-                            "flake": "~/nixos-config"}, **extra), f)
+                            "flake": "~/nixos-config", "devFile": os.path.join(self.dir, "no-dev")}, **extra), f)
 
     def tearDown(self):
         if self.agent:
@@ -811,6 +811,37 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(sorted(repos), ["~/code/apps/baitspace", "~/code/codewizards", "~/nixos-config"])
         self.agent.send(op="set", key="repo", value=os.path.join(home, "code", "codewizards") + "/")
         self.assertEqual(self.agent.wait("settings")["settings"]["repo"], "~/code/codewizards")
+
+    def test_default_repo(self):
+        # Nothing chosen yet: NIHIL's checkout, wherever it was cloned.
+        home = os.path.join(self.dir, "home")
+        os.makedirs(os.path.join(home, "Nihil-Shell", ".git"))
+        env = dict(os.environ, HOME=home)
+        self.assertEqual(self.start(env=env)["settings"]["repo"], "~/Nihil-Shell")
+        self.agent.close()
+        # The one nihil dev builds from comes first.
+        checkout = os.path.join(self.dir, "checkout")
+        os.makedirs(os.path.join(checkout, ".git"))
+        dev = os.path.join(self.dir, "dev")
+        with open(dev, "w") as f:
+            f.write(checkout + "\n")
+        self.write_config(devFile=dev)
+        self.assertEqual(self.start(env=env)["settings"]["repo"], checkout)
+        # An empty path goes back to it; one chosen stays.
+        self.agent.send(op="set", key="repo", value=os.path.join(home, "Nihil-Shell"))
+        self.assertEqual(self.agent.wait("settings")["settings"]["repo"], "~/Nihil-Shell")
+        self.agent.send(op="set", key="repo", value="")
+        self.assertEqual(self.agent.wait("settings")["settings"]["repo"], checkout)
+        self.agent.send(op="set", key="repo", value=os.path.join(home, "Nihil-Shell"))
+        self.agent.wait("settings")
+        self.agent.close()
+        self.assertEqual(self.start(env=env)["settings"]["repo"], "~/Nihil-Shell")
+        self.agent.close()
+        # Neither: the usual name.
+        self.write_config()
+        shutil.rmtree(os.path.join(home, "Nihil-Shell"))
+        os.remove(self.state)
+        self.assertEqual(self.start(env=env)["settings"]["repo"], "~/nixos-config")
 
     # the terminal and the desktop
 

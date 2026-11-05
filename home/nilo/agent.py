@@ -113,6 +113,12 @@ DEFAULT_SETTINGS = {
     "auto": False,
 }
 
+# Until another repository is chosen, Nilo works in NIHIL's own checkout:
+# the one nihil dev builds from (its path is in DEV_FILE, modules/nihil-cli.nix),
+# else the first of CHECKOUTS that is a git repository, else "repo" above.
+DEV_FILE = "/var/lib/nihil/dev"
+CHECKOUTS = ("~/nixos-config", "~/Nihil-Shell")
+
 
 # Automatic model (setting "auto"): a question that looks simple goes to the
 # smallest model downloaded, everything else to the one chosen. Simple means
@@ -724,7 +730,7 @@ class Tools:
     # git
 
     def repo(self):
-        path = os.path.expanduser(str(self.agent.settings.get("repo") or "~/nixos-config"))
+        path = os.path.expanduser(str(self.agent.settings.get("repo") or DEFAULT_SETTINGS["repo"]))
         if not os.path.isdir(path):
             raise RuntimeError(f"{self.agent.settings.get('repo')} does not exist")
         return path
@@ -1399,18 +1405,30 @@ class Agent:
             return chosen
         return self.fast() or chosen
 
+    def default_repo(self):
+        """NIHIL's checkout, where Nilo works until another repository is chosen."""
+        candidates = [read_text(self.config.get("devFile", DEV_FILE)).strip(), *CHECKOUTS]
+        for path in candidates:
+            if path and os.path.exists(os.path.join(os.path.expanduser(path), ".git")):
+                return self.short_path(path)
+        return DEFAULT_SETTINGS["repo"]
+
     def load_settings(self):
         settings = dict(DEFAULT_SETTINGS)
+        chosen = False
         try:
             with open(self.state_path) as f:
                 saved = json.load(f)
             for key, value in saved.items():
                 if key in settings and type(value) is type(DEFAULT_SETTINGS[key]):
                     settings[key] = value
+                    chosen = chosen or (key == "repo" and value.strip() != "")
         except (OSError, ValueError, AttributeError):
             pass
         if not settings["model"]:
             settings["model"] = self.recommended()
+        if not chosen:
+            settings["repo"] = self.default_repo()
         return settings
 
     def save_settings(self):
@@ -1439,7 +1457,7 @@ class Agent:
             if key == "model" and not re.fullmatch(r"[\w.\-/]+(:[\w.\-]+)?", value):
                 return self.out("error", code="bad-request", detail="not a model name")
             if key == "repo":
-                value = value or DEFAULT_SETTINGS["repo"]
+                value = value or self.default_repo()
                 if not os.path.exists(os.path.join(os.path.expanduser(value), ".git")):
                     self.out("settings", settings=self.settings)
                     return self.out("error", code="bad-repo", detail=value)
