@@ -89,6 +89,16 @@ Flickable {
         }
 
         Setting {
+            title: Lang.cfgBootSound
+            sub: Lang.cfgBootSoundSub
+
+            Toggle {
+                on: Machine.get("bootSound", true)
+                onToggled: Machine.set("bootSound", !on)
+            }
+        }
+
+        Setting {
             title: Lang.cfgFingerprint
             sub: Lang.cfgFingerprintSub
 
