@@ -4,10 +4,28 @@
 // paragraphs, lists, headings, **bold**, *italics*, `code`, fenced code and
 // links. Anything else stays as typed. It runs on every word while Nilo
 // writes, so it never fails on half a construct: an open ** just shows.
-//   html(text, { ink, dim, code, surface, mono })
+//   html(text, { ink, dim, code, surface, mono, copy })
+// With `copy`, each block of code ends in a link with that text, copy:N,
+// and blocks(text)[N] is the code it copies.
 
 function escape(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// A fence (```) and how far it is indented, or -1. html() and blocks() find
+// the same blocks with it, so copy:N is always the block it is under.
+function fence(line) {
+    const m = /^(\s*)```/.exec(line);
+    return m ? m[1].length : -1;
+}
+
+// A line of a block without its fence's indentation (a block inside a list
+// item is indented as a whole).
+function dedent(line, indent) {
+    let i = 0;
+    while (i < indent && i < line.length && (line[i] === " " || line[i] === "\t"))
+        i++;
+    return line.slice(i);
 }
 
 function inline(text, s) {
@@ -28,12 +46,13 @@ function inline(text, s) {
 }
 
 function html(text, s) {
-    let blocks = 0;
+    let count = 0;
     const lines = escape(String(text ?? "")).split("\n");
     const out = [];
     let para = [];
     let list = null;
     let code = null;
+    let indent = 0;
     const p = "margin-top:0px; margin-bottom:10px;";
 
     function flushPara() {
@@ -49,21 +68,25 @@ function html(text, s) {
         list = null;
     }
     function flushCode() {
+        // Every block counts, so the numbers match blocks() with or without links.
+        const copy = s.copy ? `<tr><td align="right"><a href="copy:${count}" style="color:${s.dim}; text-decoration:none;">${s.copy}</a></td></tr>` : "";
+        count++;
         out.push(`<table width="100%" cellpadding="12" cellspacing="0" style="margin-bottom:10px;" bgcolor="${s.surface}">`
-            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:12px; color:${s.code};">${code.join("\n")}</pre></td></tr><tr><td align="right"><a href="copy:${blocks++}" style="color:${s.dim}; text-decoration:none;">${s.copy}</a></td></tr></table>`);
+            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:12px; color:${s.code};">${code.join("\n")}</pre></td></tr>${copy}</table>`);
         code = null;
     }
 
     for (const line of lines) {
         if (code !== null) {
-            if (/^\s*```/.test(line)) flushCode();
-            else code.push(line);
+            if (fence(line) >= 0) flushCode();
+            else code.push(dedent(line, indent));
             continue;
         }
-        if (/^\s*```/.test(line)) {
+        if (fence(line) >= 0) {
             flushPara();
             flushList();
             code = [];
+            indent = fence(line);
             continue;
         }
         const heading = line.match(/^(#{1,4})\s+(.+)$/);
@@ -104,12 +127,28 @@ function html(text, s) {
     return out.join("");
 }
 
-// The blocks of code, as written, for their copy links (copy:N).
+// The blocks of code as written, without their fences' indentation, for
+// the copy links: the same blocks html() draws, in its order, the one still
+// being written included.
 function blocks(text) {
     const found = [];
-    const fence = /^```[^\n]*\n([\s\S]*?)^```/gm;
-    let match;
-    while ((match = fence.exec(text)) !== null)
-        found.push(match[1].replace(/\n$/, ""));
+    let code = null;
+    let indent = 0;
+    for (const line of String(text ?? "").split("\n")) {
+        const at = fence(line);
+        if (code !== null) {
+            if (at >= 0) {
+                found.push(code.join("\n"));
+                code = null;
+            } else {
+                code.push(dedent(line, indent));
+            }
+        } else if (at >= 0) {
+            code = [];
+            indent = at;
+        }
+    }
+    if (code !== null)
+        found.push(code.join("\n"));
     return found;
 }
