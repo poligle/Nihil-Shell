@@ -77,7 +77,8 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   the browser with any picture, moving ones too (`docs/studio/`, the same numbers as
   `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
-  whole at least once on the way up and on the way down), a dotted
+  whole at least once on the way up and on the way down) with a sound of its own, unless
+  the session was left muted, a dotted
   greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
   in a corner: the cover in dots, the progress in LEDs and buttons you can click (hyprlock).
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
@@ -257,6 +258,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `programs`      | Terminal, Files, Zen | Programs with a key: a name, the command that opens it and its keys ([Keybindings](#keybindings)) |
 | `clipboard`     | `8`        | How many copies the clipboard history keeps; `0` turns it off |
+| `bootSound`     | `true`     | A sound with the boot splash, unless the session was left muted |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
 | `nilo.enable`   | `false`    | Nilo, the assistant, and Ollama to run its model ([Nilo](#nilo)) |
@@ -575,7 +577,9 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
 - **Filesystem:** btrfs with subvolumes (`@`, `@home`, `@nix`, `@log`), zstd compression
   and `noatime`. Swap via zram.
 - **Boot:** UEFI + systemd-boot with a systemd initrd and the NIHIL Plymouth theme
-  (frames rendered at build time from `theme/art/snowflake-29.txt`).
+  (frames rendered at build time from `theme/art/snowflake-29.txt`). Its sound
+  (`sounds/nihil/boot.wav`) plays through ALSA once the sound card is up and while the
+  splash is still there: PipeWire only starts with the session (`modules/boot-sound.nix`).
 - **Login:** greetd + ReGreet in cage on the last connected monitor, themed by Stylix
   plus NIHIL CSS.
 - **Hyprland in Lua:** the whole configuration is declared in Nix and Home Manager

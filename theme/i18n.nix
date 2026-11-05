@@ -436,6 +436,8 @@
 		cfgClipboardSub = "Lo último que copias, texto e imágenes. Su atajo lo saca; con el modificador pulsado, otra vez pasa al siguiente, y al soltarlo se pega.";
 		cfgClipboardOff = "no";
 		cfgClipboardWipe = "olvidar";
+		cfgBootSound = "Sonido al arrancar";
+		cfgBootSoundSub = "Con el copo de nieve al encender. No suena si dejaste el sonido silenciado.";
 		cfgSystemKeys = "Sistema";
 		cfgPrograms = "Programas";
 		cfgProgramsSub = "Un nombre, el comando que lo abre y su tecla. Añade los que quieras.";
@@ -861,6 +863,8 @@
 		cfgClipboardSub = "What you copy, text and pictures. Its shortcut brings it out; with the modifier down, again goes to the next one, and letting go pastes it.";
 		cfgClipboardOff = "off";
 		cfgClipboardWipe = "forget";
+		cfgBootSound = "Sound at boot";
+		cfgBootSoundSub = "With the snowflake, when the computer starts. Silent if you left the sound muted.";
 		cfgSystemKeys = "System";
 		cfgPrograms = "Programs";
 		cfgProgramsSub = "A name, the command that opens it and its key. Add any you like.";

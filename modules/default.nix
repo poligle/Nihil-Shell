@@ -22,6 +22,7 @@
         ./services.nix
         ./nix.nix
         ./plymouth.nix
+        ./boot-sound.nix
         ./stylix.nix
         ./direnv.nix
         ./nihil.nix
