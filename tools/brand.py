@@ -14,8 +14,6 @@
 # Needs Pillow; the social image also uses the wallpaper render and Space Mono.
 
 import argparse
-import io
-import math
 import os
 
 from PIL import Image, ImageDraw, ImageFont
@@ -40,16 +38,6 @@ def word_columns(text):
         for x in range(len(glyph[0])):
             cols.append([glyph[y][x] == "#" for y in range(7)])
     return cols
-
-
-def ring(cx, cy, size, leds=16, dot=0.055, centre=0.075, radius=0.36):
-    """(x, y, r, colour_key) circles of the mark, in a size x size box."""
-    out = []
-    for k in range(leds):
-        a = 2 * math.pi * k / leds - math.pi / 2
-        out.append((cx + radius * size * math.cos(a), cy + radius * size * math.sin(a), dot * size, "ink"))
-    out.append((cx, cy, centre * size, "signal"))
-    return out
 
 
 def snowflake(cx, cy, size, unlit=False):

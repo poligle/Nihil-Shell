@@ -1,9 +1,10 @@
 # nihil.nix by poligle
 #
 # NIHIL design tokens — ex nihilo.
-# Plain data with no dependencies: the NixOS modules (Stylix), Home Manager
-# (Hyprland, hyprlock, Neovim, VS Code) and the Quickshell shell all read
-# from here, so the whole system follows a single source of truth.
+# Plain data with no dependencies: the NixOS modules (Stylix, ReGreet),
+# Home Manager (Hyprland, hyprlock, Neovim, the prompt) and the Quickshell
+# shell all read from here, so the whole system follows a single source of
+# truth.
 
 let
 	# Monochrome hierarchy. Red is never decoration: it only interrupts.
