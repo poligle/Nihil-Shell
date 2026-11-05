@@ -207,7 +207,7 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 | `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH |
 | `hardware-configuration.nix` | disks and drivers, from `nixos-generate-config` |
 | `local.nix` | anything else for this machine: drivers, services, packages |
-| `home.nix` | anything else for its user, through Home Manager |
+| `home.nix` | its apps (NIHIL installs little beyond Zen) and anything else for its user, through Home Manager |
 
 **Updates** come from the repository: `nihil update` moves the machine's flake to the
 latest NIHIL (and the NixOS it pins) and rebuilds. Nothing of yours is in the repository,
@@ -387,9 +387,9 @@ create and change files in one repository, never outside it or inside `.git`; **
 as you. The repository is `~/nixos-config` by default; the settings list the ones under
 `~` (most recently used first) or take any path.
 
-**Opening apps.** With Apps on, "abre spotify" or "open zen and thunar" opens them at
-once, without the model: the launcher's own search, when every name matches an app
-closely. Anything more ("open spotify and play something") goes to Nilo as usual.
+**Opening apps.** With Apps on, "abre zen" or "open zen and thunar" opens them at once,
+without the model: the launcher's own search, when every name matches an app closely.
+Anything more ("open zen and look for the weather") goes to Nilo as usual.
 
 **Co-author.** Every commit Nilo makes carries
 `Co-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>` (`nilo.coauthor`), and the card
