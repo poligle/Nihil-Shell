@@ -24,7 +24,7 @@ let
 in
 {
 	name = "NIHIL";
-	motto = "ex nihilo";
+	motto = "Ex nihilo";
 
 	inherit palette;
 
@@ -60,7 +60,7 @@ in
 	{
 		dot   = "Doto";                     # dot matrix: clocks, big numbers
 		sans  = "Space Grotesk";            # interface text
-		mono  = "Space Mono";               # uppercase labels and metadata
+		mono  = "Space Mono";               # labels and metadata
 		code  = "JetBrainsMono Nerd Font";  # terminal and editors
 		icons = "JetBrainsMono Nerd Font";  # Material Design glyphs (nf-md)
 	};

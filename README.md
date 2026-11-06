@@ -109,7 +109,8 @@ Three rules come before everything else:
 1. **Hierarchy is made with greys.** Red is never decoration: it only interrupts — a
    failed login, a critical notification, the recording LED, a destructive action.
 2. **Dots are for display.** Doto draws the clock and the big numbers; text stays in
-   Space Grotesk, labels in uppercase Space Mono.
+   Space Grotesk, labels in Space Mono. All of it in sentence case: a capital to start,
+   and proper names their own (no lowercase-only lines, no capitals-only ones).
 3. **The frame is hardware.** Opaque, flat, no shadows; windows sit concentric with it.
 
 | Token     | Hex       | Use                                   |

@@ -171,7 +171,7 @@ Flickable {
                 KeyButton {
                     required property string modelData
 
-                    text: modelData
+                    text: Case.key(modelData)
                     accent: page.mods.indexOf(modelData) >= 0
                     onClicked: page.toggleMod(modelData)
                 }
@@ -235,7 +235,7 @@ Flickable {
             anchors.right: parent.right
             anchors.rightMargin: 14
             y: 12
-            text: row.combo ? row.combo : Lang.cfgKeyNone
+            text: row.combo ? Case.keys(row.combo) : Lang.cfgKeyNone
             color: row.combo ? Tokens.ink : Tokens.muted
             font.family: Tokens.fontMono
             font.pixelSize: 13

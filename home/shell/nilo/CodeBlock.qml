@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
 import qs.config
+import qs.services
 import qs.components
 
 // A block of code in one of Nilo's answers (Chat.qml): rounded, its
@@ -11,6 +12,18 @@ Rectangle {
 
     property string code: ""
     property string language: ""
+
+    // The language by its name, as above every block: python → Python,
+    // json → JSON; one not known here, with a capital to start.
+    readonly property var languages: ({
+        bash: "Bash", sh: "Shell", shell: "Shell", zsh: "Zsh", fish: "Fish", console: "Shell",
+        python: "Python", py: "Python", nix: "Nix", qml: "QML", js: "JavaScript", javascript: "JavaScript",
+        ts: "TypeScript", typescript: "TypeScript", json: "JSON", yaml: "YAML", yml: "YAML", toml: "TOML",
+        ini: "INI", lua: "Lua", c: "C", cpp: "C++", "c++": "C++", rust: "Rust", rs: "Rust", go: "Go",
+        java: "Java", kotlin: "Kotlin", kt: "Kotlin", html: "HTML", css: "CSS", sql: "SQL", diff: "Diff",
+        markdown: "Markdown", md: "Markdown", xml: "XML", dockerfile: "Dockerfile", make: "Make", makefile: "Make"
+    })
+    readonly property string languageName: languages[language.toLowerCase()] ?? Case.sentence(language)
 
     implicitHeight: head.height + body.implicitHeight + 14
     height: implicitHeight
@@ -28,7 +41,7 @@ Rectangle {
         Label {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: root.language !== "" ? root.language : Lang.niloCode
+            text: root.language !== "" ? root.languageName : Lang.niloCode
         }
 
         CopyButton {
