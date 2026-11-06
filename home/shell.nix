@@ -11,7 +11,7 @@
 # path, so the shell does not depend on $PATH.
 #
 #   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers
-#   nihil-ipc clipboard open|next|previous|paste|cancel (home/hyprland.nix)
+#   nihil-ipc clipboard open|next|previous|released|paste|cancel (services/Clipboard.qml)
 #   nihil-ipc osd volume 40 false        nihil-ipc glyph test true
 #   nihil-ipc nilo toggle                (Nilo, modules/nilo.nix)
 #   nihil-ipc settings open|toggle|close|welcome (Preferences, settings/)

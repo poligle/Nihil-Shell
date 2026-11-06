@@ -71,7 +71,8 @@ Item {
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Ex nihilo"
+                text: "ex nihilo"
+                font.italic: true
             }
 
             Item {
@@ -153,7 +154,8 @@ Item {
                     { what: Lang.welMoveTo, key: "SUPER + SHIFT + 1 … 9" },
                     { what: Lang.bindLock, key: root.key("lock") },
                     { what: Lang.bindSettings, key: root.key("settings") }
-                ].concat(Config.clipboard > 0 && Config.binds.clipboard ? [{ what: Lang.bindClipboard, key: root.key("clipboard") }] : [])
+                ].concat(Config.binds.copy ? [{ what: Lang.bindCopy, key: root.key("copy") }] : [])
+                 .concat(Config.binds.clipboard ? [{ what: Lang.bindClipboard, key: root.key("clipboard") }] : [])
                  .concat(Config.programs.filter(program => program.keys).slice(0, 3).map(program => ({ what: program.name, key: program.keys })))
 
                 Setting {

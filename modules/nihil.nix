@@ -121,7 +121,8 @@ in
             default = 8;
             description = ''
                 How many copies the clipboard history keeps, text and pictures
-                (home/clipboard.nix; its key, SUPER + V by default); 0 turns it off.
+                (home/clipboard.nix; SUPER + V held down brings it out); 0 turns
+                it off, and SUPER + V only pastes.
             '';
         };
 

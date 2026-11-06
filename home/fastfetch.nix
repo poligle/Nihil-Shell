@@ -55,7 +55,7 @@ in
 			modules =
 			[
 				{ type = "title"; format = "{user-name}@{host-name}"; }
-				{ type = "custom"; format = "Ex nihilo"; outputColor = ansi p.muted; }
+				{ type = "custom"; format = osConfig.nihil.tokens.motto; outputColor = "3;${ansi p.muted}"; }   # 3: italics
 				"break"
 				{ type = "os"; key = "OS"; }
 				{ type = "kernel"; key = "Kernel"; }

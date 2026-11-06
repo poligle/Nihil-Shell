@@ -612,26 +612,23 @@ class AgentTest(unittest.TestCase):
         states = [e for e in self.agent.log if e["ev"] == "state"]
         self.assertFalse(states[-1]["loading"])
 
-    def test_big_model_on_the_cpu(self):
-        # With an integrated GPU, the 35B goes to Ollama with num_gpu 0, in
-        # the warm-up and in the question; the 9B as it is.
-        drm = os.path.join(self.dir, "drm", "card1", "device")
-        os.makedirs(drm)
-        with open(os.path.join(drm, "mem_info_gtt_total"), "w") as f:
-            f.write(str(16 * 1024 ** 3))
+    def test_every_model_where_the_machine_says(self):
+        # The 35B as the 9B, with an integrated GPU too: the same options
+        # when it warms up and with each question, and Ollama places it.
         self.ollama.installed["qwen3.5:35b-a3b"] = 22_000_000_000
         self.write_config(models=MODELS + [{"tag": "qwen3.5:35b-a3b", "label": "Qwen 3.5 35B-A3B", "size": 22, "ram": 25}],
-                          integratedGpu=True, acceleration="vulkan", drm=os.path.join(self.dir, "drm"))
+                          integratedGpu=True, acceleration="vulkan")
         self.start({"model": "qwen3.5:35b-a3b", "onboarded": True})
         self.agent.send(op="warm")
         self.agent.send(op="ask", text="Hola")
         self.agent.until_done()
-        self.assertEqual(self.ollama.loads[-1]["options"].get("num_gpu"), 0)
-        self.assertEqual(self.ollama.chats[-1]["options"].get("num_gpu"), 0)
+        big = self.ollama.chats[-1]["options"]
+        self.assertEqual(list(big), ["num_ctx"])
+        self.assertEqual(self.ollama.loads[-1]["options"], big)
         self.agent.send(op="set", key="model", value="qwen3.5:9b")
         self.agent.send(op="ask", text="Hola")
         self.agent.until_done()
-        self.assertNotIn("num_gpu", self.ollama.chats[-1]["options"])
+        self.assertEqual(self.ollama.chats[-1]["options"], big)
 
     def test_warm_and_sleep(self):
         self.start({"model": "qwen3.5:4b", "onboarded": True, "keepAlive": 1})
@@ -1213,35 +1210,6 @@ class UnitTest(unittest.TestCase):
             a.room("qwen3.5:9b")
             agent.meminfo = lambda path: {}
             a.room("qwen3.5:35b-a3b")               # no /proc/meminfo: no guess
-        finally:
-            agent.meminfo = real
-
-    def test_on_cpu(self):
-        # With an integrated GPU, a model bigger than three quarters of the
-        # memory it maps (its GTT) stays on the CPU; with none, or a GPU of
-        # its own, Ollama decides.
-        drm = tempfile.mkdtemp()
-        os.makedirs(os.path.join(drm, "card1", "device"))
-        with open(os.path.join(drm, "card1", "device", "mem_info_gtt_total"), "w") as f:
-            f.write(str(16 * 1024 ** 3))
-        a = agent.Agent.__new__(agent.Agent)
-        a.config = {"models": MODELS + [{"tag": "qwen3.5:35b-a3b", "ram": 25}], "drm": drm,
-                    "integratedGpu": True, "acceleration": "vulkan", "contextLength": 16384}
-        a.ollama = None
-        self.assertEqual(a.options("qwen3.5:35b-a3b"), {"num_ctx": 16384, "num_gpu": 0})
-        self.assertEqual(a.options("qwen3.5:9b"), {"num_ctx": 16384})
-        a.config["integratedGpu"] = False
-        self.assertEqual(a.options("qwen3.5:35b-a3b"), {"num_ctx": 16384})
-        a.config.update(integratedGpu=True, acceleration="cpu")
-        self.assertEqual(a.options("qwen3.5:35b-a3b"), {"num_ctx": 16384})
-        # A driver that doesn't say (Intel): half the RAM.
-        a.config.update(acceleration="vulkan", drm=os.path.join(drm, "none"))
-        real = agent.meminfo
-        try:
-            agent.meminfo = lambda path: {"MemTotal": int(96e9 / 1024)}
-            self.assertFalse(a.on_cpu("qwen3.5:35b-a3b"))     # 25 of 48 * 3/4
-            agent.meminfo = lambda path: {"MemTotal": int(32e9 / 1024)}
-            self.assertTrue(a.on_cpu("qwen3.5:35b-a3b"))
         finally:
             agent.meminfo = real
 
