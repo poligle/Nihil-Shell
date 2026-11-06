@@ -21,9 +21,14 @@
 			inactive_tab_font_style = "bold";
 		};
 
-		# SHIFT + Insert pastes the clipboard, as everywhere else: it is how the
-		# clipboard history pastes (home/clipboard.nix). kitty's own pastes
-		# the primary selection, which the middle button still does.
-		keybindings."shift+insert" = "paste_from_clipboard";
+		# SHIFT + Insert pastes the clipboard and CTRL + Insert copies to it, as
+		# everywhere else: they are what SUPER + V and SUPER + C send
+		# (home/clipboard.nix, home/hyprland.nix). kitty's own SHIFT + Insert
+		# pastes the primary selection, which the middle button still does.
+		keybindings =
+		{
+			"shift+insert" = "paste_from_clipboard";
+			"ctrl+insert" = "copy_to_clipboard";
+		};
 	};
 }

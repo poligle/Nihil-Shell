@@ -40,17 +40,21 @@ Scope {
         // OnDemand, not Exclusive: Hyprland drops every focus grab when a layer
         // turns exclusive (desktop/view/LayerSurface.cpp), which closed the
         // launcher and the panel the moment they opened. The grab below hands
-        // the keyboard to this window instead. The launcher, the wallpapers
-        // and the clipboard history take it however they opened, so you can
-        // type (or pick) as soon as they appear from the edge; the panel and
-        // the dashboard once they are kept (the Wi-Fi password, a new task in
-        // the kanban).
-        WlrLayershell.keyboardFocus: launcherOpen || wallOpen || clipOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
+        // the keyboard to this window instead. The launcher and the wallpapers
+        // take it however they opened, so you can type (or pick) as soon as
+        // they appear from the edge; the panel and the dashboard once they are
+        // kept (the Wi-Fi password, a new task in the kanban). The clipboard
+        // history alone is Exclusive, with no grab: it has the keyboard from
+        // the moment it is out until it pastes, and Hyprland gives it back to
+        // the window then (refocusLastWindow).
+        WlrLayershell.keyboardFocus: clipOpen ? WlrKeyboardFocus.Exclusive
+            : launcherOpen || wallOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
         // While the clipboard history has the keyboard, Hyprland's own keys
-        // wait: its key again reaches the history, and SUPER + Escape leaves
-        // it rather than bringing out the scratchpad. ShortcutInhibitor came
+        // wait: its key again reaches the history, SUPER + Tab goes through
+        // it and SUPER + Escape leaves it, rather than going to the next
+        // workspace or bringing out the scratchpad. ShortcutInhibitor came
         // with Quickshell 0.3 (as Hyprland.usingLua, which Workspaces.qml
         // needs): loaded apart all the same, an older one only goes without.
         Loader {
@@ -153,11 +157,16 @@ Scope {
         // Clicking outside an open drawer closes it. The dashboard and the
         // panel opened by hovering leave the keyboard where it was; all of
         // them close when the pointer leaves, unless a click or a key (the
-        // launcher) kept them.
+        // launcher) kept them. The clipboard history takes the keyboard its
+        // own way (above): if it comes out over the launcher, Hyprland may
+        // clear this grab as it does, and that must not close it.
         HyprlandFocusGrab {
             windows: [win]
-            active: win.launcherOpen || win.wallOpen || win.clipOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
-            onCleared: Drawers.close()
+            active: win.launcherOpen || win.wallOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
+            onCleared: {
+                if (Drawers.current !== "clipboard")
+                    Drawers.close();
+            }
         }
 
         Item {

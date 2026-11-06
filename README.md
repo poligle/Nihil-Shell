@@ -57,11 +57,11 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
-- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures, from
-  the top of the frame: with `SUPER` held, `V` again goes to the next one, and letting go
-  pastes it where you were. A quick press leaves it out, to pick one with the arrows and
-  `Enter`. The one chosen is lit, its picture in colour. What a password manager copies is
-  never kept.
+- **Copy, paste and the clipboard history.** One modifier for both, as on a Mac: `SUPER + C`
+  copies and `SUPER + V` pastes, in kitty too. Held a moment longer, `SUPER + V`
+  brings out the last copies, text and pictures, from the top of the frame: `V` again goes
+  to the next one, and letting go of `SUPER` pastes it where you were (`Esc`: none). The
+  one chosen is lit, its picture in colour. What a password manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -298,7 +298,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + W`                       | Wallpapers, out of the bottom edge: arrows to look, Enter to keep |
 | `SUPER` (alone)                   | Terminal (kitty), a program                   |
 | `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
-| `SUPER + V`                       | Clipboard history: hold `SUPER`, `V` for the next one, let go to paste (`Esc`: none) |
+| `SUPER + C` / `SUPER + V`         | Copy / paste; `SUPER + V` held, the clipboard history (`V` again for the next one, let go to paste, `Esc`: none) |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
 | `SUPER + SHIFT + Space`           | Toggle floating                               |
 | `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |

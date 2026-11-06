@@ -1,15 +1,16 @@
 # clipboard.nix by poligle
 #
-# The clipboard history (services/Clipboard.qml shows it, SUPER + V): every
-# copy, text or picture, kept by cliphist, as many as nihil.clipboard says
-# (settings.json's "clipboard"; 0 turns it off). What a password manager
-# marks as sensitive is never kept.
+# The clipboard history (services/Clipboard.qml shows it, SUPER + V held):
+# every copy, text or picture, kept by cliphist, as many as nihil.clipboard
+# says (settings.json's "clipboard"; 0 turns the history off, and SUPER + V
+# still pastes). What a password manager marks as sensitive is never kept.
 #
 #   nihil-clipboard list N           the newest N, as cliphist lists them, with
 #                                    the pictures in $XDG_RUNTIME_DIR/nihil-clipboard
 #   nihil-clipboard copy ID [TYPE]   put it back on the clipboard
 #   nihil-clipboard paste ID [TYPE]  that, and paste it where the keyboard is
-#                                    (SHIFT + Insert)
+#   nihil-clipboard keys paste|copy  the window's own paste or copy: SHIFT or
+#                                    CTRL + Insert
 #   nihil-clipboard delete ID | wipe
 
 { config, osConfig, pkgs, lib, ... }:
@@ -18,7 +19,7 @@ let
 
 	nihil-clipboard = pkgs.writeShellScriptBin "nihil-clipboard" ''
 		set -u
-		export PATH="${lib.makeBinPath [ pkgs.cliphist pkgs.wl-clipboard pkgs.wtype pkgs.coreutils pkgs.gnugrep ]}:$PATH"
+		export PATH="${lib.makeBinPath [ pkgs.cliphist pkgs.wl-clipboard pkgs.wtype pkgs.coreutils pkgs.gnugrep osConfig.programs.hyprland.package ]}:$PATH"
 		dir="''${XDG_RUNTIME_DIR:-/tmp}/nihil-clipboard"
 		tab=$(printf '\t')
 
@@ -45,6 +46,32 @@ let
 				printf '%s\n' "$found" | cliphist decode | wl-copy --type "$2"
 			else
 				printf '%s\n' "$found" | cliphist decode | wl-copy
+			fi
+		}
+
+		# The window's own paste or copy: SHIFT + Insert and CTRL + Insert, as
+		# GTK, Qt, browsers, Electron and kitty take them (home/kitty.nix),
+		# where CTRL + V or C would not do in a terminal. Hyprland sends them
+		# to the window with the keyboard, with that modifier alone whatever
+		# else is held (hl.dsp.send_shortcut); wtype if it can't.
+		keys() {
+			local mods answer
+			case "''${1:-}" in
+				paste) mods=SHIFT ;;
+				copy) mods=CTRL ;;
+				*)
+					echo "usage: nihil-clipboard keys paste|copy" >&2
+					return 2
+					;;
+			esac
+			answer=$(hyprctl dispatch "hl.dsp.send_shortcut({ mods = \"$mods\", key = \"Insert\" })" 2>&1)
+			if [ "$answer" = ok ]; then
+				return 0
+			fi
+			echo "nihil-clipboard: Hyprland said \"$answer\"; typing $mods + Insert with wtype" >&2
+			if ! wtype -M "''${mods,,}" -k Insert -m "''${mods,,}"; then
+				echo "nihil-clipboard: $mods + Insert could not be typed" >&2
+				return 1
 			fi
 		}
 
@@ -99,15 +126,13 @@ let
 				copy "''${2:?usage: nihil-clipboard copy ID [TYPE]}" "''${3:-}"
 				;;
 			paste)
-				# Back on the clipboard, then SHIFT + Insert: it pastes in GTK, Qt,
-				# browsers, Electron and kitty alike (home/kitty.nix), where
-				# CTRL + V would not in a terminal.
+				# Back on the clipboard, then the window's own paste.
 				copy "''${2:?usage: nihil-clipboard paste ID [TYPE]}" "''${3:-}"
 				sleep 0.06
-				if ! wtype -M shift -k Insert -m shift; then
-					echo "nihil-clipboard: $2 is on the clipboard, but SHIFT + Insert could not be typed" >&2
-					exit 1
-				fi
+				keys paste || exit 1
+				;;
+			keys)
+				keys "''${2:-}" || exit $?
 				;;
 			delete)
 				entry "''${2:?usage: nihil-clipboard delete ID}" | cliphist delete
@@ -117,17 +142,17 @@ let
 				rm -rf "$dir"
 				;;
 			*)
-				echo "usage: nihil-clipboard list [N] | copy ID [TYPE] | paste ID [TYPE] | delete ID | wipe" >&2
+				echo "usage: nihil-clipboard list [N] | copy ID [TYPE] | paste ID [TYPE] | keys paste|copy | delete ID | wipe" >&2
 				exit 2
 				;;
 		esac
 	'';
 in
-lib.mkIf (size > 0)
 {
+	# Installed with the history off too: SUPER + V still pastes through it.
 	home.packages = [ nihil-clipboard ];
 
-	systemd.user.services.nihil-clipboard =
+	systemd.user.services.nihil-clipboard = lib.mkIf (size > 0)
 	{
 		Unit =
 		{

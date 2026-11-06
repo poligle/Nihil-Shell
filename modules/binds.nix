@@ -21,7 +21,9 @@ let
         nilo = "SUPER + I";
         settings = "SUPER + O";
         wallpapers = "SUPER + W";
-        # Held down, its modifier keeps the history out (home/hyprland.nix).
+        # Copy and paste on the same modifier: SUPER + C copies, SUPER + V
+        # pastes, and held down brings out the history (home/hyprland.nix).
+        copy = "SUPER + C";
         clipboard = "SUPER + V";
         close = "SUPER + Q";
         float = "SUPER + SHIFT + Space";
