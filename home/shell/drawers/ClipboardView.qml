@@ -6,12 +6,12 @@ import qs.config
 import qs.services
 import qs.components
 
-// Top drawer: the clipboard history (services/Clipboard.qml), newest first.
-// While it is out it has the keyboard: its key again, Tab or the arrows go
-// through the copies, letting go of the modifier, Enter or a click paste
-// the one chosen, Escape leaves the clipboard as it was, Delete forgets
-// one. The one chosen is lit: its LED on, its picture in colour, as the
-// launcher's apps.
+// Top drawer: the clipboard history (services/Clipboard.qml), newest first,
+// out while its key is held. It has the keyboard while it is out: its key
+// again, Tab or the arrows go through the copies, letting go of the
+// modifier, Enter or a click paste the one chosen, Escape leaves the
+// clipboard as it was, Delete forgets one. The one chosen is lit: its LED
+// on, its picture in colour, as the launcher's apps.
 Item {
     id: root
 
@@ -46,8 +46,9 @@ Item {
             event.accepted = true;
         }
 
-        // The modifier went down in the window that had the keyboard: its
-        // release may come here or not. Hyprland says so either way.
+        // The modifier went down in the window that had the keyboard, and
+        // Hyprland says when it goes up; its release may come here too, which
+        // is all there is if Hyprland never said it went down.
         Keys.onReleased: event => {
             if (Clipboard.isModifier(event.key)) {
                 Clipboard.released("view");
@@ -59,7 +60,7 @@ Item {
     Label {
         x: 26
         y: 18
-        text: Lang.bindClipboard
+        text: Lang.clipTitle
     }
 
     Txt {

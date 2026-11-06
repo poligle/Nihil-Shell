@@ -65,38 +65,49 @@ let
 		++ lib.optional (keys.screenshot != null)
 			(bindWith keys.screenshot (exec "hyprshot -m region --clipboard-only") { locked = true; });
 
-	# The clipboard history (home/clipboard.nix, services/Clipboard.qml): its
-	# key brings it out, and the shell does the rest with the keyboard: the
-	# key again goes on to the next copy, and letting go of its modifier
-	# pastes the one chosen. Neither can count on seeing that modifier go up:
-	# a release bind is skipped once its key took part in another bind
-	# (ngrayson/nixos #228, on 0.55.4), and the shell, which has the keyboard
-	# only once the modifier is down, may not get its release. So while the
-	# history is out, Hyprland looks at the modifier every 40 ms
-	# (clipboardWatch) and tells the shell when it is up. Not bound when the
-	# history is off, or when an action or a program already has its key (a
-	# warning says so).
+	# Copy and paste on one modifier, SUPER by default (modules/binds.nix).
+	#
+	# SUPER + C: Hyprland sends the window CTRL + Insert, its own copy in GTK,
+	# Qt, browsers, Electron and kitty (home/kitty.nix), where CTRL + C would
+	# stop what runs in a terminal. send_key_state sends it with CTRL alone,
+	# SUPER held or not, and down and up at once, on the press: the bind's
+	# release would not come if SUPER went up first (below), and the window
+	# would be left with Insert down.
+	#
+	# SUPER + V and the history (services/Clipboard.qml, home/clipboard.nix):
+	# the key and its modifier going down and up reach the shell as global
+	# shortcuts (quickshell:nihil-clipboard, nihil-super), with no process
+	# for each. Letting go of SUPER is what pastes, and Hyprland 0.55 has no
+	# other way to tell: hl.is_key_down and a key event came with 0.56. A
+	# Lua bind's own release only comes while its modifiers still match, and
+	# a release bind of SUPER is shadowed once SUPER + V went off
+	# (KeybindManager.cpp, handleKeybinds and shadowKeybinds). A bind on
+	# Super_L itself with ignore_mods and transparent is neither:
+	# hl.dsp.global marks it releasePending, so its release always goes out.
+	# non_consuming leaves the window its key, dont_inhibit gets through while
+	# the history holds the keys, locked while the screen is locked. Neither
+	# key is bound when an action or a program has it already (a warning says
+	# so).
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
 	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
 		(map (part: let up = lib.toUpper part; in if up == "CONTROL" then "CTRL" else up) (parts combo)));
-	clipboardKey = keys.clipboard or null;
-	clipboardTaken = clipboardKey != null && lib.elem (normal clipboardKey) (map normal (lib.filter (combo: combo != null)
-		(lib.mapAttrsToList (name: combo: if name == "clipboard" then null else combo) keys
+	takenBy = name: combo: combo != null && lib.elem (normal combo) (map normal (lib.filter (other: other != null)
+		(lib.mapAttrsToList (other: value: if other == name then null else value) keys
 			++ map (program: program.keys) osConfig.nihil.programs)));
-	clipboardOn = osConfig.nihil.clipboard > 0 && clipboardKey != null && !clipboardTaken;
-	clipboardBinds = lib.optional clipboardOn (bind clipboardKey ''
-		function()
-			if nihil_clipboard then
-				nihil_clipboard.open()
-			else
-				hl.exec_cmd("nihil-ipc clipboard open")
-			end
-		end
-	'');
+	clipboardKey = keys.clipboard or null;
+	copyKey = keys.copy or null;
+	clipboardTaken = takenBy "clipboard" clipboardKey;
+	copyTaken = takenBy "copy" copyKey;
+	# With the history off (nihil.clipboard = 0), SUPER + V still pastes.
+	clipboardOn = clipboardKey != null && !clipboardTaken;
+	copyOn = copyKey != null && !copyTaken;
 
-	# The keys of each modifier, by the names a bind gives it; a combination
-	# is held while each of its modifiers has one of them down.
+	# The paste key's first modifier, the one whose release pastes, and its
+	# keys, by the names a bind gives them: they reach the shell as
+	# quickshell:nihil-super (nihil-ctrl, nihil-alt or nihil-shift for a key
+	# on another one; services/Clipboard.qml has all four). None for a key
+	# without one: the history then pastes on Enter.
 	modifierKeys =
 	{
 		SUPER = [ "Super_L" "Super_R" ];
@@ -105,63 +116,27 @@ let
 		SHIFT = [ "Shift_L" "Shift_R" ];
 	};
 	modifierAlias = { WIN = "SUPER"; LOGO = "SUPER"; MOD4 = "SUPER"; META = "SUPER"; CONTROL = "CTRL"; MOD1 = "ALT"; };
-	clipboardHeld = lib.filter (names: names != [ ]) (map (part:
-		let up = lib.toUpper part; in modifierKeys.${modifierAlias.${up} or up} or [ ])
-		(lib.init (parts clipboardKey)));
-	luaList = items: "{ ${lib.concatStringsSep ", " items} }";
-	# hl.timer and hl.is_key_down came with the Lua config; each call in a
-	# pcall all the same: without them nothing is watched, and the shell's
-	# own release (drawers/ClipboardView.qml), or Enter, pastes.
-	clipboardWatch = ''
-		-- NIHIL: the clipboard history's modifier (home/hyprland.nix).
-		nihil_clipboard = {}
-		do
-			local held = ${luaList (map (names: luaList (map (name: ''"${name}"'') names)) clipboardHeld)}
-			local watch = nil
-			local function call(what)
-				pcall(hl.exec_cmd, "nihil-ipc clipboard " .. what)
+	pasteModifier = if clipboardOn then
+		let
+			mods = lib.init (parts clipboardKey);
+			first = if mods == [ ] then "" else lib.toUpper (lib.head mods);
+		in modifierAlias.${first} or first
+	else "";
+	modifierSyms = modifierKeys.${pasteModifier} or [ ];
+
+	global = name: ''hl.dsp.global("quickshell:nihil-${name}")'';
+	keyState = mods: key: state: ''hl.dispatch(hl.dsp.send_key_state({ mods = "${mods}", key = "${key}", state = "${state}" }))'';
+	clipboardBinds =
+		lib.optional clipboardOn (bind clipboardKey (global "clipboard"))
+		++ lib.optional copyOn (bind copyKey ''
+			function()
+				${keyState "CTRL" "Insert" "down"}
+				${keyState "CTRL" "Insert" "up"}
 			end
-			local function down(names)
-				for _, name in ipairs(names) do
-					local ok, pressed = pcall(hl.is_key_down, name)
-					if ok and pressed then
-						return true
-					end
-				end
-				return false
-			end
-			local function stop()
-				if watch ~= nil then
-					pcall(function() watch:cancel() end)
-					watch = nil
-				end
-			end
-			function nihil_clipboard.open()
-				call("open")
-				if watch ~= nil or #held == 0 then
-					return
-				end
-				-- At most 20 s, as long as the history waits for a key.
-				local ticks = 0
-				local ok, timer = pcall(hl.timer, function()
-					ticks = ticks + 1
-					for _, names in ipairs(held) do
-						if not down(names) then
-							stop()
-							call("released")
-							return
-						end
-					end
-					if ticks >= 500 then
-						stop()
-					end
-				end, { timeout = 40, type = "repeat" })
-				if ok then
-					watch = timer
-				end
-			end
-		end
-	'';
+		'')
+		++ map (sym: bindWith sym (global (lib.toLower pasteModifier))
+			{ ignore_mods = true; transparent = true; non_consuming = true; dont_inhibit = true; locked = true; })
+			modifierSyms;
 
 	fingers = osConfig.nihil.gestures;
 
@@ -249,8 +224,10 @@ in
 	# NIHIL owns every colour here (and awww the wallpaper), so Stylix stays out.
 	stylix.targets.hyprland.enable = false;
 
-	warnings = lib.optional (osConfig.nihil.clipboard > 0 && clipboardTaken)
-		"NIHIL: ${clipboardKey}, the clipboard history's key, is taken by another action or program: give it another in Preferences, Shortcuts.";
+	warnings = lib.optional clipboardTaken
+		"NIHIL: ${clipboardKey}, the paste and clipboard history key, is taken by another action or program: give it another in Preferences, Shortcuts."
+		++ lib.optional copyTaken
+		"NIHIL: ${copyKey}, the copy key, is taken by another action or program: give it another in Preferences, Shortcuts.";
 
 	wayland.windowManager.hyprland =
 	{
@@ -258,7 +235,6 @@ in
 		package = null;
 		portalPackage = null;
 		configType = "lua";
-		extraConfig = lib.optionalString clipboardOn clipboardWatch;
 
 		settings =
 		{

@@ -408,8 +408,11 @@
 		welNetPassword = "Contraseña de la red";
 		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
 
-		# The clipboard history (home/clipboard.nix, drawers/ClipboardView.qml).
-		bindClipboard = "Portapapeles";
+		# Copy and paste, and the clipboard history (home/hyprland.nix,
+		# home/clipboard.nix, drawers/ClipboardView.qml).
+		bindCopy = "Copiar";
+		bindClipboard = "Pegar o elegir del historial";
+		clipTitle = "Portapapeles";
 		clipEmpty = "Nada copiado todavía.";
 		clipPictureSize = "%1 × %2";
 		cfgClipboard = "Historial del portapapeles";
@@ -840,7 +843,9 @@
 		welNetPassword = "Network password";
 		wpHint = "[← →] Choose|[Enter] Keep|[Esc] Back";
 
-		bindClipboard = "Clipboard";
+		bindCopy = "Copy";
+		bindClipboard = "Paste, or pick from the history";
+		clipTitle = "Clipboard";
 		clipEmpty = "Nothing copied yet.";
 		clipPictureSize = "%1 × %2";
 		cfgClipboard = "Clipboard history";
