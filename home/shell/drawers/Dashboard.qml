@@ -84,7 +84,7 @@ Item {
                     Column {
                         anchors.left: cup.right
                         anchors.leftMargin: 12
-                        anchors.right: switchLed.left
+                        anchors.right: coffeeSwitch.left
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 2
@@ -104,19 +104,14 @@ Item {
                         }
                     }
 
-                    Rectangle {
-                        id: switchLed
+                    // On or off is a switch, as everywhere (components/Toggle.qml).
+                    Toggle {
+                        id: coffeeSwitch
                         anchors.right: parent.right
                         anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 10
-                        height: 10
-                        radius: 5
-                        color: Caffeine.on ? Tokens.ink : Tokens.off
-                        border.width: Caffeine.on ? 0 : 1
-                        border.color: Tokens.line
-
-                        Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+                        on: Caffeine.on
+                        onToggled: Caffeine.toggle()
                     }
 
                     MouseArea {

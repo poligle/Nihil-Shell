@@ -4,12 +4,12 @@ import qs.config
 import qs.services
 import qs.components
 
-// What Nilo may do: one LED switch per kind of tool. Files, git and the
-// terminal can change things, so turning them on takes a second step: the
-// row says what it allows and waits for "authorize" (or the same key
-// again). Even then, every change to a file, every commit or push and
-// every command asks first, and choosing another repository turns files
-// and git off again (agent.py).
+// What Nilo may do: one switch per kind of tool (SwitchRow.qml). Files,
+// git and the terminal can change things, so turning them on takes a
+// second step: the row says what it allows and waits for "authorize" (or
+// the same key again). Even then, every change to a file, every commit or
+// push and every command asks first, and choosing another repository
+// turns files and git off again (agent.py).
 Column {
     id: root
 
@@ -64,107 +64,25 @@ Column {
         id: rows
         model: root.items
 
-        Rectangle {
+        SwitchRow {
             id: row
 
             required property var modelData
             required property int index
 
-            readonly property bool on: Nilo.settings[modelData.key] === true
-            readonly property bool asking: root.asking === modelData.key
-
             width: root.width
-            height: 56 + (asking ? guard.height : 0)
-            radius: 14
-            color: asking || root.current === index || area.containsMouse ? Tokens.raised : "transparent"
-            border.width: asking ? 1 : 0
-            border.color: Tokens.interrupt
-            clip: true
-
-            Behavior on height { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
+            title: modelData.title
+            sub: modelData.sub
+            guard: root.asking === modelData.key ? modelData.guard : ""
+            on: Nilo.settings[modelData.key] === true
+            current: root.current === index
 
             onHeightChanged: if (asking) root.grew(row)
-
-            MouseArea {
-                id: area
-                width: parent.width
-                height: 56
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    root.current = row.index;
-                    root.toggle(row.index);
-                }
+            onToggled: {
+                root.current = row.index;
+                root.toggle(row.index);
             }
-
-            Column {
-                anchors.left: parent.left
-                anchors.leftMargin: 16
-                anchors.right: led.left
-                anchors.rightMargin: 16
-                y: (56 - height) / 2
-                spacing: 3
-
-                Txt {
-                    width: parent.width
-                    text: row.modelData.title
-                    color: row.on || row.asking ? Tokens.ink : Tokens.dim
-                    font.pixelSize: 15
-                }
-
-                Txt {
-                    width: parent.width
-                    text: row.modelData.sub
-                    color: Tokens.muted
-                    font.pixelSize: 12
-                }
-            }
-
-            Led {
-                id: led
-                anchors.right: parent.right
-                anchors.rightMargin: 18
-                y: (56 - height) / 2
-                on: row.on
-                color: row.asking ? Tokens.interrupt : on ? Tokens.ink : Tokens.off
-            }
-
-            // The authorization: what it allows, then yes or no.
-            Column {
-                id: guard
-                x: 16
-                y: 52
-                width: parent.width - 32
-                spacing: 12
-                bottomPadding: 16
-                visible: row.asking
-
-                Txt {
-                    width: parent.width
-                    text: row.modelData.guard
-                    color: Tokens.dim
-                    wrapMode: Text.Wrap
-                    elide: Text.ElideNone
-                    font.pixelSize: 13
-                    lineHeight: 1.2
-                }
-
-                Row {
-                    anchors.right: parent.right
-                    spacing: 8
-
-                    KeyButton {
-                        text: Lang.confirmCancel
-                        onClicked: root.asking = ""
-                    }
-
-                    KeyButton {
-                        danger: true
-                        text: Lang.accessAuthorize
-                        onClicked: root.authorize()
-                    }
-                }
-            }
+            onCancelled: root.asking = ""
         }
     }
 }

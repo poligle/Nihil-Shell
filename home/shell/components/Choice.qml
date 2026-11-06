@@ -1,6 +1,5 @@
 import QtQuick
 import qs.theme
-import qs.components
 
 // One of a few, by name: the chosen one in ink and underlined, the others
 // in grey. options: [{ value, label }]; `mono` sets the names in Space Mono,
