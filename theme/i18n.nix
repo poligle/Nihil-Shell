@@ -286,12 +286,14 @@
 		setRepoNote = "Al cambiar de repositorio, git y archivos se apagan hasta que los autorices otra vez.";
 		setContext = "Contexto";
 		setContextNote = "En cada pregunta Nilo lee nilo.md (este sistema y sus reglas), tus notas y, con archivos o git, el NILO.md del repositorio.";
-		setContextEdit = "Editar mis notas";
+		setNotes = "Tus notas";
+		setContextEdit = "Editar";
 		setMemory = "Memoria";
 		setSleepAfter = "Dormir tras";
 		setMinutes = "%1 min";
 		setSleepNow = "Dormir ahora";
-		setAwakeUntil = "Despierto hasta las %3, %1 GB (%2% en la GPU)";
+		setAwakeUntil = "Despierto hasta las %2, %1 GB";
+		setOnGpu = "(%1% en la GPU)";
 		setAsleep = "Dormido, sin ocupar memoria";
 		setThink = "Pensar antes de responder";
 		setThinkSub = "Más lento; mejor para problemas difíciles";
@@ -299,6 +301,7 @@
 		setAutoSub = "Lo sencillo, con el más pequeño que tengas; lo demás, con el elegido";
 		setAutoNeedsTwo = "Descarga un modelo más pequeño que el elegido para usarlo";
 		setIntro = "Volver a presentarse";
+		setOpenPreferences = "Abrir Preferencias";
 		setRebuild = "Encender o apagar Nilo y elegir CPU o GPU está en Preferencias, Sistema.";
 
 		# Preferences and the welcome (home/shell/settings)
@@ -337,6 +340,7 @@
 		cfgSystem = "Sistema";
 		cfgHost = "Nombre del equipo";
 		cfgAcceleration = "Aceleración";
+		cfgNiloSettings = "Ajustes";
 		cfgFingerprint = "Huella";
 		cfgSaved = "Todo aplicado";
 		cfgPending = "%1 cambios sin aplicar";
@@ -721,12 +725,14 @@
 		setRepoNote = "Switching repositories turns git and files off until you authorize them again.";
 		setContext = "Context";
 		setContextNote = "On every question Nilo reads nilo.md (this system and its rules), your notes and, with files or git, the repository's NILO.md.";
-		setContextEdit = "Edit my notes";
+		setNotes = "Your notes";
+		setContextEdit = "Edit";
 		setMemory = "Memory";
 		setSleepAfter = "Sleep after";
 		setMinutes = "%1 min";
 		setSleepNow = "Sleep now";
-		setAwakeUntil = "Awake until %3, %1 GB (%2% on the GPU)";
+		setAwakeUntil = "Awake until %2, %1 GB";
+		setOnGpu = "(%1% on the GPU)";
 		setAsleep = "Asleep, taking no memory";
 		setThink = "Think before answering";
 		setThinkSub = "Slower; better for hard problems";
@@ -734,6 +740,7 @@
 		setAutoSub = "Simple ones with the smallest you have, the rest with the chosen one";
 		setAutoNeedsTwo = "Download a model smaller than the chosen one to use it";
 		setIntro = "Introduce yourself again";
+		setOpenPreferences = "Open Preferences";
 		setRebuild = "Turning Nilo on or off and choosing CPU or GPU is in Preferences, System.";
 
 		# Preferences and the welcome (home/shell/settings)
@@ -772,6 +779,7 @@
 		cfgSystem = "System";
 		cfgHost = "Computer name";
 		cfgAcceleration = "Acceleration";
+		cfgNiloSettings = "Settings";
 		cfgFingerprint = "Fingerprint";
 		cfgSaved = "All applied";
 		cfgPending = "%1 changes to apply";

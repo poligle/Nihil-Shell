@@ -31,8 +31,8 @@ Item {
         anchors.topMargin: 6
         anchors.horizontalCenter: parent.horizontalCenter
         text: String(Math.round(Battery.level * 100))
-        font.letterSpacing: 0
-        color: Battery.low ? Tokens.interrupt : Tokens.muted
+        // The LEDs go red; the number, never small text in red, lights up.
+        color: Battery.low ? Tokens.ink : Tokens.muted
     }
 
     Timer {

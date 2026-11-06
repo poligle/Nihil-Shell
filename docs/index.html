@@ -335,6 +335,8 @@ footer a:hover { color: var(--ink); }
             <h3>Dashboard</h3>
             <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a small kanban and caffeine to keep the screen awake.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or hover the top edge</span></div>
+            <div class="keys"><kbd>SUPER</kbd><kbd>C</kbd><span>copy</span></div>
+            <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>paste; held, the clipboard history, out of the same edge</span></div>
           </figcaption>
         </figure>
         <figure>
@@ -422,7 +424,7 @@ nihil.nilo =
       <div class="rules">
         <div>
           <h3>Hierarchy is made with greys</h3>
-          <p>Red never decorates. It only interrupts: a failed login, a critical notification, the recording LED, a destructive action.</p>
+          <p>Red never decorates. It only interrupts: a failed login, a critical notification, the recording LED, a destructive action. Nor is it ever small text: what went wrong is said in ink, with a red LED before it.</p>
         </div>
         <div>
           <h3>Dots are for display</h3>
@@ -450,7 +452,7 @@ nihil.nilo =
       <div class="split">
         <div class="prose">
           <h2 id="boot-title">From nothing, at boot</h2>
-          <p class="quiet">The NixOS snowflake as an LED matrix: it switches on from the centre, then a band of light sweeps it until the login screen. <code>theme/plymouth.py</code> renders every frame when the system is built.</p>
+          <p class="quiet">The NixOS snowflake as an LED matrix: it switches on from the centre to the power&#8209;off notes going up, the last one with the last LED, then a band of light sweeps it until the login screen, NIHIL's own, with the lock screen's face. <code>theme/plymouth.py</code> renders every frame when the system is built.</p>
           <p class="quiet">The wallpapers work the same way. Every image in <code>wallpapers/</code> is rendered as dots once per screen, at its native size, so each LED lands on exact pixels. Try it with a picture of yours in the <a href="studio/">studio</a>.</p>
         </div>
         <div class="boot-screen">
@@ -549,6 +551,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
             <tr><td><code>primaryOutput</code></td><td>none</td><td>Screen for the desktop widgets and the lock and login backgrounds.</td></tr>
             <tr><td><code>wallpaper</code></td><td><code>"night"</code></td><td>Default wallpaper, by name: a picture in <code>wallpapers/</code> or <code>/etc/nixos/wallpapers</code>, without the extension.</td></tr>
             <tr><td><code>soundPack</code></td><td><code>"nihil"</code></td><td>The synthesised NIHIL sounds, or <code>"classic"</code> for the earlier ones.</td></tr>
+            <tr><td><code>greeter</code></td><td><code>"nihil"</code></td><td>The login screen: NIHIL's own, in Quickshell, with ReGreet in its place should it not start, or <code>"regreet"</code> alone.</td></tr>
             <tr><td><code>trayHidden</code></td><td><code>[ "nm-applet" "blueman" ]</code></td><td>Tray items to hide, by part of their id or title. The bar already shows Wi&#8209;Fi and Bluetooth.</td></tr>
             <tr><td><code>nilo.<wbr>enable</code></td><td><code>false</code></td><td>Nilo, the assistant, with Ollama running its model on <code>127.0.0.1</code>.</td></tr>
             <tr><td><code>nilo.<wbr>acceleration</code></td><td><code>"cpu"</code></td><td>What runs the model: <code>"cpu"</code>, or the GPU through <code>"vulkan"</code>, <code>"rocm"</code> or <code>"cuda"</code>.</td></tr>

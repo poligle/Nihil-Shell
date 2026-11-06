@@ -1,0 +1,122 @@
+import QtQuick
+import qs.theme
+import qs.config
+import qs.components
+
+// On or off, as a row of the gear (GearRow.qml): what it is and what it
+// means on the left, the switch on the right, the one the whole shell has
+// (components/Toggle.qml). Raised while the keyboard is on it; a click
+// anywhere on its line switches it. With a `guard` it waits for an
+// authorization: under it, what turning it on allows, and "authorize" or
+// "cancel", in a red hairline (red only interrupts). The words are read,
+// not clicked.
+Item {
+    id: root
+
+    property string title: ""
+    property string sub: ""
+    property bool on: false
+    property bool current: false
+    property string guard: ""
+
+    readonly property bool asking: guard !== ""
+
+    signal toggled()
+    signal cancelled()
+
+    implicitHeight: 56 + (asking ? authorization.height : 0)
+    height: implicitHeight
+    clip: true
+
+    Behavior on height { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: 14
+        color: root.asking || root.current || hover.hovered ? Tokens.raised : "transparent"
+        border.width: root.asking ? 1 : 0
+        border.color: Tokens.interrupt
+    }
+
+    // The pointer anywhere on it, its switch too.
+    HoverHandler {
+        id: hover
+    }
+
+    MouseArea {
+        width: parent.width
+        height: 56
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.toggled()
+    }
+
+    Column {
+        anchors.left: parent.left
+        anchors.leftMargin: 16
+        anchors.right: toggle.left
+        anchors.rightMargin: 16
+        y: (56 - height) / 2
+        spacing: 3
+
+        Txt {
+            width: parent.width
+            text: root.title
+            color: root.on || root.asking ? Tokens.ink : Tokens.dim
+            font.pixelSize: 15
+        }
+
+        Txt {
+            width: parent.width
+            visible: text !== ""
+            text: root.sub
+            color: Tokens.muted
+            font.pixelSize: 12
+        }
+    }
+
+    Toggle {
+        id: toggle
+        anchors.right: parent.right
+        anchors.rightMargin: 16
+        y: (56 - height) / 2
+        on: root.on
+        onToggled: root.toggled()
+    }
+
+    // The authorization: what it allows, then yes or no.
+    Column {
+        id: authorization
+        x: 16
+        y: 52
+        width: parent.width - 32
+        spacing: 12
+        bottomPadding: 16
+        visible: root.asking
+
+        Txt {
+            width: parent.width
+            text: root.guard
+            color: Tokens.dim
+            wrapMode: Text.Wrap
+            elide: Text.ElideNone
+            font.pixelSize: 13
+            lineHeight: 1.2
+        }
+
+        Row {
+            anchors.right: parent.right
+            spacing: 8
+
+            KeyButton {
+                text: Lang.confirmCancel
+                onClicked: root.cancelled()
+            }
+
+            KeyButton {
+                danger: true
+                text: Lang.accessAuthorize
+                onClicked: root.toggled()
+            }
+        }
+    }
+}

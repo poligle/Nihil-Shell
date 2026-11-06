@@ -71,12 +71,22 @@ Item {
 
     onActiveChanged: {
         if (active) {
+            gearFirst();
             hello();
         } else {
             page = "chat";
             armed = "";
         }
     }
+
+    // Opened from Preferences (Nilo.openSettings): the gear first.
+    function gearFirst(): void {
+        if (active && Nilo.gear) {
+            Nilo.gear = false;
+            page = "settings";
+        }
+    }
+
     onViewChanged: {
         if (view === "intro") intro.page = 0;
         hello();
@@ -91,6 +101,7 @@ Item {
     Connections {
         target: Nilo
         function onConfirmChanged() { root.armed = ""; }
+        function onSummoned() { root.gearFirst(); }
     }
 
     // --- From the launcher's field ---------------------------------------------
@@ -288,6 +299,16 @@ Item {
                 color: Tokens.muted
                 font.family: Tokens.fontMono
                 font.pixelSize: 12
+            }
+
+            // Where it is turned on, a key away (as in the gear).
+            KeyButton {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Lang.setOpenPreferences
+                onClicked: {
+                    Drawers.close();
+                    Machine.show("system", false);
+                }
             }
         }
     }

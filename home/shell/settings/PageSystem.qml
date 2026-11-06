@@ -38,12 +38,29 @@ Flickable {
             }
         }
 
+        // On or off needs a rebuild; what it may do and which model, a
+        // key away: its own settings, in the launcher (nilo/Settings.qml).
         Setting {
             title: "Nilo"
 
-            Toggle {
-                on: Machine.get("nilo.enable", false)
-                onToggled: Machine.set("nilo.enable", !on)
+            Row {
+                spacing: 16
+
+                Toggle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    on: Machine.get("nilo.enable", false)
+                    onToggled: Machine.set("nilo.enable", !on)
+                }
+
+                KeyButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Config.nilo.enabled
+                    text: Lang.cfgNiloSettings
+                    onClicked: {
+                        Machine.hide();
+                        Nilo.openSettings();
+                    }
+                }
             }
         }
 

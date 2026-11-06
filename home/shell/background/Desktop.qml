@@ -83,7 +83,6 @@ Scope {
                     text: Case.sentence(clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dayName))
                     color: Tokens.dim
                     font.pixelSize: 12
-                    font.letterSpacing: 1
                 }
 
                 Txt {

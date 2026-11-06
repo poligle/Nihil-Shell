@@ -86,10 +86,10 @@ Flickable {
             }
         }
 
-        Label {
+        Alert {
+            Layout.fillWidth: true
             visible: Network.error !== ""
             text: Network.error
-            color: Tokens.interrupt
         }
     }
 }
