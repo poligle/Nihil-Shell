@@ -1,0 +1,396 @@
+//@ pragma Env QT_QPA_PLATFORM=wayland
+//@ pragma Env QSG_DISTANCEFIELD_ANTIALIASING=gray
+
+// NIHIL's greeter (modules/greeter.nix): the lock screen's face at login,
+// in Quickshell under cage, through greetd. The wallpaper the desktop has,
+// dimmed; the time in Doto and the date under it; a welcome, one field for
+// the password with what is typed as dots, and the motto at the foot, as
+// hyprlock draws them (home/hyprlock.nix). Restart and power off in a
+// corner. Tokens.qml and Lang.qml are the shell's own (theme/qml.nix).
+//
+// greetd asks through PAM. With the fingerprint reader on, its prompt
+// comes first and a finger lets you in; typing the password and Enter
+// while it waits starts again with the reader left out
+// (nihil-greeter-password, modules/hardware.nix): a finger or the
+// password, never both. Once the window is up it tells the script that
+// started it so, which otherwise opens ReGreet in its place.
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Services.Greetd
+import qs.theme
+import qs.config
+import qs.components
+
+ShellRoot {
+    id: root
+
+    // Who logs in: the machine's user first (Config.users).
+    property int user: 0
+    readonly property var person: Config.users[user] ?? { name: "", greeting: "" }
+
+    // What PAM asks now: a response (the password, hidden; shown when
+    // `echo`), or nothing yet (the reader first, or on its way).
+    property bool asking: false
+    property bool echo: false
+    // Answered, and PAM hasn't said yet: Enter again waits.
+    property bool sent: false
+    // Typed while PAM wasn't asking: it goes as soon as it does.
+    property string waiting: ""
+    // Under the field: the reader's prompt, what PAM asks, or what failed.
+    property string note: ""
+    property bool wrong: false
+    property int attempts: 0
+    // In: the session is on its way and the greeter fades out.
+    property bool going: false
+
+    readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nihil-greeter-password"
+
+    function start(): void {
+        asking = false;
+        echo = false;
+        sent = false;
+        if (Greetd.available && person.name !== "")
+            Greetd.createSession(person.name);
+    }
+
+    // Enter in the field.
+    function submit(text: string): void {
+        if (text === "" || going || sent)
+            return;
+        if (asking) {
+            asking = false;
+            sent = true;
+            Greetd.respond(text);
+            return;
+        }
+        // The reader is waiting (or PAM hasn't asked yet): again, with the
+        // reader left out, and the password goes when it is asked.
+        waiting = text;
+        if (!skip.running)
+            skip.running = true;
+    }
+
+    function other(): void {
+        if (Config.users.length < 2 || going)
+            return;
+        user = (user + 1) % Config.users.length;
+        waiting = "";
+        note = "";
+        wrong = false;
+        field.clear();
+        Greetd.cancelSession();
+        start();
+    }
+
+    // The reader's prompt, in NIHIL's words (pam_fprintd's own are English).
+    function reader(message: string): bool {
+        return /finger|swipe|huella|dedo|sensor|lector/i.test(message);
+    }
+
+    // The lock screen's date (Lang.lockDate, a date(1) format) in Qt's terms,
+    // capitalised as hyprlock has it: "Vie 06 nov".
+    function dateText(date: var): string {
+        const map = { "%a": "ddd", "%A": "dddd", "%d": "dd", "%e": "d", "%-d": "d", "%b": "MMM", "%B": "MMMM",
+                      "%m": "MM", "%Y": "yyyy", "%y": "yy" };
+        const format = String(Lang.lockDate).replace(/%-?[a-zA-Z]/g, code => map[code] ?? "");
+        const text = date.toLocaleString(Qt.locale(Lang.locale), format).replace(/\./g, "");
+        return text.length > 0 ? text.charAt(0).toLocaleUpperCase() + text.slice(1) : text;
+    }
+
+    Connections {
+        target: Greetd
+
+        function onAuthMessage(message: string, error: bool, responseRequired: bool, echoResponse: bool): void {
+            if (responseRequired) {
+                root.echo = echoResponse;
+                root.note = echoResponse ? message.trim() : "";
+                if (!echoResponse && root.waiting !== "") {
+                    const text = root.waiting;
+                    root.waiting = "";
+                    root.sent = true;
+                    Greetd.respond(text);
+                    return;
+                }
+                root.sent = false;
+                root.asking = true;
+                return;
+            }
+            // Something to read: the reader's prompt, or an error to retry.
+            root.note = root.reader(message) ? Lang.fingerprintReady : message.trim();
+            root.wrong = error;
+        }
+
+        // Quickshell ends the session after this (connection.cpp): a new
+        // one only once it has, a moment later.
+        function onAuthFailure(message: string): void {
+            root.attempts += 1;
+            root.wrong = true;
+            root.note = Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
+            root.waiting = "";
+            root.asking = false;
+            root.sent = false;
+            field.clear();
+            again.restart();
+        }
+
+        function onReadyToLaunch(): void {
+            root.going = true;
+            leave.start();
+        }
+
+        function onError(error: string): void {
+            root.wrong = true;
+            root.note = error;
+            retry.restart();
+        }
+    }
+
+    // nihil-greeter-password: made, then PAM again.
+    Process {
+        id: skip
+        command: [Config.touch, root.skipFile]
+        onExited: {
+            Greetd.cancelSession();
+            root.start();
+        }
+    }
+
+    // Up and ready: the script that started it opens ReGreet otherwise.
+    Process {
+        id: ready
+        command: [Config.touch, Quickshell.env("NIHIL_GREETER_READY") || "/dev/null"]
+    }
+
+    Timer {
+        id: again
+        interval: 300
+        onTriggered: root.start()
+    }
+
+    Timer {
+        id: retry
+        interval: 2000
+        onTriggered: root.start()
+    }
+
+    SystemClock {
+        id: clock
+        precision: SystemClock.Minutes
+    }
+
+    FloatingWindow {
+        id: window
+
+        title: "NIHIL"
+        color: Tokens.black
+        fullscreen: true
+        visible: true
+
+        Component.onCompleted: {
+            if (Greetd.available)
+                ready.running = true;
+            root.start();
+            input.forceActiveFocus();
+        }
+
+        Item {
+            id: face
+            anchors.fill: parent
+            opacity: 0
+
+            Component.onCompleted: opacity = 1
+
+            Behavior on opacity { NumberAnimation { duration: Tokens.animSlow; easing.type: Easing.OutCubic } }
+
+            // The desktop's wallpaper, as the lock screen dims it.
+            Image {
+                anchors.fill: parent
+                source: "file://" + Config.wallpaper
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                opacity: 0.55
+            }
+
+            Txt {
+                id: time
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height / 2 - 170 - height / 2
+                text: Qt.formatTime(clock.date, "HH:mm")
+                font.family: Tokens.fontDot
+                font.weight: Font.Bold
+                font.pixelSize: 160
+            }
+
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height / 2 - 72 - height / 2
+                text: root.dateText(clock.date)
+                color: Tokens.dim
+                font.pixelSize: 16
+            }
+
+            Txt {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height / 2 - height / 2
+                text: root.person.greeting !== "" ? Lang.welcome + ", " + root.person.greeting : Lang.welcome
+                font.pixelSize: 17
+            }
+
+            // The password: dots, as the lock screen draws them, in its
+            // colours (a hairline, grey while it checks, red when it failed),
+            // with the corners of the shell's fields. PAM's question in clear
+            // when it isn't one (a visible prompt).
+            Rectangle {
+                id: field
+
+                function clear(): void { input.text = ""; }
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height / 2 + 56 - height / 2
+                width: 280
+                height: 46
+                radius: 8
+                color: Tokens.black
+                border.width: 1
+                border.color: root.wrong ? Tokens.interrupt : root.sent || root.waiting !== "" ? Tokens.muted : Tokens.line
+
+                Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
+
+                TextInput {
+                    id: input
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 16
+                    verticalAlignment: TextInput.AlignVCenter
+                    horizontalAlignment: TextInput.AlignHCenter
+                    color: root.echo ? Tokens.ink : "transparent"
+                    selectionColor: "transparent"
+                    cursorVisible: false
+                    cursorDelegate: Item {}
+                    font.family: Tokens.fontMono
+                    font.pixelSize: 14
+                    echoMode: root.echo ? TextInput.Normal : TextInput.Password
+                    enabled: !root.going
+                    onTextEdited: root.wrong = false
+                    onAccepted: root.submit(text)
+                    Keys.onEscapePressed: text = ""
+                }
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 7
+                    visible: !root.echo
+
+                    Repeater {
+                        model: Math.min(input.text.length, 15)
+
+                        Rectangle {
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: Tokens.ink
+                        }
+                    }
+                }
+
+                Label {
+                    anchors.centerIn: parent
+                    visible: input.text.length === 0
+                    text: Lang.password
+                    font.pixelSize: 13
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.IBeamCursor
+                    onClicked: input.forceActiveFocus()
+                }
+            }
+
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height / 2 + 110 - height / 2
+                text: root.note
+                // Red is the field's border alone: never small text (theme/nihil.nix).
+                color: root.wrong ? Tokens.ink : Tokens.muted
+                font.pixelSize: 12
+            }
+
+            // Several users: whose it is, and a click for the next.
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height / 2 + 140 - height / 2
+                visible: Config.users.length > 1
+                text: root.person.name
+                color: nextUser.containsMouse ? Tokens.ink : Tokens.dim
+                font.pixelSize: 12
+
+                MouseArea {
+                    id: nextUser
+                    anchors.fill: parent
+                    anchors.margins: -6
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.other()
+                }
+            }
+
+            Row {
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 36
+                spacing: 28
+
+                Repeater {
+                    model: [
+                        { label: Lang.actReboot, command: Config.reboot },
+                        { label: Lang.actPowerOff, command: Config.powerOff }
+                    ]
+
+                    Label {
+                        id: action
+
+                        required property var modelData
+
+                        text: modelData.label
+                        color: area.containsMouse ? Tokens.ink : Tokens.muted
+                        font.pixelSize: 12
+
+                        Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+
+                        MouseArea {
+                            id: area
+                            anchors.fill: parent
+                            anchors.margins: -8
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Quickshell.execDetached(action.modelData.command)
+                        }
+                    }
+                }
+            }
+
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 40
+                text: "ex nihilo"
+                color: Tokens.off
+                font.italic: true
+                font.pixelSize: 12
+            }
+        }
+
+        // In: a breath of black, then the session.
+        NumberAnimation {
+            id: leave
+            target: face
+            property: "opacity"
+            to: 0
+            duration: Tokens.animNormal
+            onFinished: Greetd.launch(Config.session, Config.environment)
+        }
+    }
+}

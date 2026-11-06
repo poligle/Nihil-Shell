@@ -81,9 +81,10 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   `theme/dotmatrix.py`).
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down) with a sound of its own, unless
-  the session was left muted, a dotted
-  greeter (ReGreet) and a lock screen with the password drawn as dots and what is playing
-  in a corner: the cover in dots, the progress in LEDs and buttons you can click (hyprlock).
+  the session was left muted, a greeter with the lock screen's face (its own, in
+  Quickshell: the time in dots, the password as dots, a finger or the password) and a lock
+  screen with what is playing in a corner: the cover in dots, the progress in LEDs and
+  buttons you can click (hyprlock).
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
   NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
@@ -599,8 +600,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   while the splash is still there: PipeWire only starts with the session
   (`modules/boot-sound.nix`). The snowflake's LEDs wait unlit for it and switch on with it
   (`plymouth update --status=nihil-open`); without it, they don't wait.
-- **Login:** greetd + ReGreet in cage on the last connected monitor, themed by Stylix
-  plus NIHIL CSS.
+- **Login:** greetd + NIHIL's greeter (`greeter/shell.qml`, Quickshell) in cage on the last
+  connected monitor, with the shell's tokens and strings. If it isn't up within ten seconds,
+  ReGreet takes its place, themed by Stylix plus NIHIL CSS; `nihil.greeter = "regreet"`
+  keeps ReGreet alone.
 - **Hyprland in Lua:** the whole configuration is declared in Nix and Home Manager
   generates `hyprland.lua`. Under Lua, dispatchers are Lua too
   (`hl.dsp.focus({ workspace = "e+1" })`); Quickshell 0.3 detects it (`Hyprland.usingLua`).
