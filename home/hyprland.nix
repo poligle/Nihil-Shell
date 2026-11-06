@@ -84,10 +84,17 @@ let
 	# (KeybindManager.cpp, handleKeybinds and shadowKeybinds). A bind on
 	# Super_L itself with ignore_mods and transparent is neither:
 	# hl.dsp.global marks it releasePending, so its release always goes out.
-	# non_consuming leaves the window its key, dont_inhibit gets through while
-	# the history holds the keys, locked while the screen is locked. Neither
-	# key is bound when an action or a program has it already (a warning says
-	# so).
+	# non_consuming leaves the window its key, dont_inhibit gets through an
+	# app's shortcut inhibitor, locked while the screen is locked.
+	#
+	# While the history is out the window keeps the keyboard (taking it would
+	# close what was open there: a menu, the address bar): SUPER + V enters a
+	# submap, nihil-clipboard, whose keys (V again, Tab, the arrows, Delete,
+	# Return, Escape) reach the shell as global shortcuts instead.
+	# SUPER going up leaves it: a key's release finds the binds of the submap
+	# it was pressed in (submapAtPress), so the SUPER held since before
+	# always gets here, even if the shell is gone. Neither key is bound when
+	# an action or a program has it already (a warning says so).
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
 	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
@@ -124,19 +131,69 @@ let
 	else "";
 	modifierSyms = modifierKeys.${pasteModifier} or [ ];
 
-	global = name: ''hl.dsp.global("quickshell:nihil-${name}")'';
 	keyState = mods: key: state: ''hl.dispatch(hl.dsp.send_key_state({ mods = "${mods}", key = "${key}", state = "${state}" }))'';
-	clipboardBinds =
-		lib.optional clipboardOn (bind clipboardKey (global "clipboard"))
-		++ lib.optional copyOn (bind copyKey ''
-			function()
-				${keyState "CTRL" "Insert" "down"}
-				${keyState "CTRL" "Insert" "up"}
+	clipboardBinds = lib.optional copyOn (bind copyKey ''
+		function()
+			${keyState "CTRL" "Insert" "down"}
+			${keyState "CTRL" "Insert" "up"}
+		end
+	'');
+
+	# The paste key's modifiers and key ("SUPER" and "V"), and the history's
+	# keys on those modifiers. Back is SHIFT with them, unless the key has it.
+	pasteMods = if clipboardOn then lib.init (parts clipboardKey) else [ ];
+	pasteKey = if clipboardOn then lib.last (parts clipboardKey) else "";
+	held = modifierSyms != [ ];
+	withMods = mods: key: lib.concatStringsSep " + " (mods ++ [ key ]);
+	shifted = key: lib.optional (!lib.elem "SHIFT" (map lib.toUpper pasteMods)) (withMods (pasteMods ++ [ "SHIFT" ]) key);
+	historyKeys =
+		map (key: { combo = withMods pasteMods key; name = "next"; leave = false; }) [ pasteKey "Tab" "Down" "Right" ]
+		++ map (combo: { inherit combo; name = "back"; leave = false; }) (shifted pasteKey ++ shifted "Tab")
+		++ map (key: { combo = withMods pasteMods key; name = "back"; leave = false; }) [ "Up" "Left" ]
+		++ map (key: { combo = withMods pasteMods key; name = "forget"; leave = false; }) [ "Delete" "BackSpace" ]
+		++ map (key: { combo = withMods pasteMods key; name = "paste"; leave = true; }) [ "Return" "KP_Enter" ]
+		++ [ { combo = withMods pasteMods "Escape"; name = "cancel"; leave = true; } ];
+	luaString = builtins.toJSON;
+	luaList = lib.concatMapStringsSep ", " luaString;
+	clipboardLua = ''
+		-- NIHIL: paste and the clipboard history (home/hyprland.nix).
+		do
+			local function say(name)
+				hl.dispatch(hl.dsp.global("quickshell:nihil-" .. name))
 			end
-		'')
-		++ map (sym: bindWith sym (global (lib.toLower pasteModifier))
-			{ ignore_mods = true; transparent = true; non_consuming = true; dont_inhibit = true; locked = true; })
-			modifierSyms;
+			hl.bind(${luaString clipboardKey}, function()
+				say("clipboard")
+				${lib.optionalString held ''hl.dispatch(hl.dsp.submap("nihil-clipboard"))''}
+			end)
+	'' + lib.optionalString held ''
+			-- Its modifier, down and up; going up leaves the history's keys.
+			local function modifier()
+				say(${luaString (lib.toLower pasteModifier)})
+				if hl.get_current_submap() == "nihil-clipboard" then
+					hl.dispatch(hl.dsp.submap("reset"))
+				end
+			end
+			local watch = { ignore_mods = true, transparent = true, non_consuming = true, dont_inhibit = true, locked = true }
+			for _, sym in ipairs({ ${luaList modifierSyms} }) do
+				hl.bind(sym, modifier, watch)
+			end
+			hl.define_submap("nihil-clipboard", function()
+				local function key(combo, name, leave)
+					hl.bind(combo, function()
+						say("clipboard-" .. name)
+						if leave then
+							hl.dispatch(hl.dsp.submap("reset"))
+						end
+					end)
+				end
+				${lib.concatMapStringsSep "\n\t\t\t\t" (k: "key(${luaString k.combo}, ${luaString k.name}, ${lib.boolToString k.leave})") historyKeys}
+				for _, sym in ipairs({ ${luaList modifierSyms} }) do
+					hl.bind(sym, modifier, watch)
+				end
+			end)
+	'' + ''
+		end
+	'';
 
 	fingers = osConfig.nihil.gestures;
 
@@ -235,6 +292,7 @@ in
 		package = null;
 		portalPackage = null;
 		configType = "lua";
+		extraConfig = lib.optionalString clipboardOn clipboardLua;
 
 		settings =
 		{
