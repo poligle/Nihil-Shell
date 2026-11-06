@@ -73,8 +73,11 @@ Singleton {
             Drawers.close();
     }
 
+    // The keys Hyprland held, back to the usual ones: it calls them
+    // "reset" (there is no submap named "default"). With a Lua
+    // configuration hyprctl takes the call as Lua, through eval.
     function release(): void {
-        Quickshell.execDetached([Config.cmd.hyprctl, "dispatch", "hl.dsp.submap(\"default\")"]);
+        Quickshell.execDetached([Config.cmd.hyprctl, "eval", "hl.dispatch(hl.dsp.submap(\"reset\"))"]);
     }
 
     function forget(id: string): void {
