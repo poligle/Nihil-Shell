@@ -12,10 +12,14 @@ Rectangle {
     property string placeholder: ""
     property bool password: false
     property bool invalid: false
+    // Escape goes to escaped() and stops there, rather than on to what
+    // holds the field (the panel would close).
+    property bool catchEscape: false
     property alias text: input.text
 
     signal edited(string text)
     signal accepted()
+    signal escaped()
 
     function grab(): void { input.forceActiveFocus(); }
     function clear(): void { input.text = ""; }
@@ -49,5 +53,9 @@ Rectangle {
         selectByMouse: true
         onTextEdited: root.edited(text)
         onAccepted: root.accepted()
+        Keys.onEscapePressed: event => {
+            root.escaped();
+            event.accepted = root.catchEscape;
+        }
     }
 }

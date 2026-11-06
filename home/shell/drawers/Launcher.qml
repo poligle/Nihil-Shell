@@ -432,11 +432,11 @@ Item {
         }
     }
 
-    Label {
+    KeyHints {
         id: footer
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 18
+        anchors.bottomMargin: 16
         text: root.mode === "nilo" ? niloView.hint : root.mode === "calc" ? Lang.hintCalc
             : Config.nilo.enabled ? Lang.hintAppsNilo : Lang.hintApps
     }

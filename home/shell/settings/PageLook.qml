@@ -23,7 +23,6 @@ Flickable {
 
         Heading {
             title: Lang.cfgWallpaper
-            sub: Lang.cfgLookSub
         }
 
         Flow {
@@ -33,61 +32,65 @@ Flickable {
             Repeater {
                 model: Config.wallpapers
 
-                Rectangle {
+                // A wallpaper, and under it its name with an LED, lit on the
+                // one there is.
+                Column {
                     id: card
 
                     required property string modelData
                     readonly property bool chosen: page.current === modelData
 
-                    width: 208
-                    height: 132
-                    radius: 14
-                    color: Tokens.surface
-                    border.width: chosen ? 2 : 1
-                    border.color: chosen ? Tokens.ink : (cardArea.containsMouse ? Tokens.muted : Tokens.line)
-
-                    Image {
-                        anchors.fill: parent
-                        anchors.margins: 3
-                        source: "file://" + Config.wallpaperDir + "/" + card.modelData + "/" + Config.primaryOutput + ".png"
-                        sourceSize.width: 416
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                    }
+                    spacing: 8
 
                     Rectangle {
-                        anchors.left: parent.left
-                        anchors.bottom: parent.bottom
-                        anchors.margins: 8
-                        width: name.implicitWidth + 16
-                        height: 20
-                        radius: 10
-                        color: Tokens.black
-                        opacity: 0.85
+                        width: 208
+                        height: 132
+                        radius: 12
+                        color: Tokens.surface
+                        border.width: card.chosen ? 2 : 1
+                        border.color: card.chosen ? Tokens.ink : (cardArea.containsMouse ? Tokens.muted : Tokens.line)
 
-                        Label {
-                            id: name
-                            anchors.centerIn: parent
-                            text: card.modelData
-                            color: card.chosen ? Tokens.ink : Tokens.dim
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            source: "file://" + Config.wallpaperDir + "/" + card.modelData + "/" + Config.primaryOutput + ".png"
+                            sourceSize.width: 416
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                        }
+
+                        MouseArea {
+                            id: cardArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Machine.setWallpaper(card.modelData)
                         }
                     }
 
-                    MouseArea {
-                        id: cardArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Machine.setWallpaper(card.modelData)
+                    Row {
+                        spacing: 8
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 6
+                            height: 6
+                            radius: 3
+                            color: card.chosen ? Tokens.ink : Tokens.off
+                        }
+
+                        Label {
+                            text: card.modelData
+                            color: card.chosen ? Tokens.ink : Tokens.muted
+                        }
                     }
                 }
             }
         }
-    
+
         Heading {
             Layout.topMargin: 18
             title: Lang.cfgWidgets
-            sub: Lang.cfgWidgetsSub
         }
 
         Repeater {

@@ -46,9 +46,9 @@ Item {
         }
     }
 
-    Label {
+    KeyHints {
         x: 24
-        y: 18
+        y: 13
         text: Lang.wpHint
     }
 

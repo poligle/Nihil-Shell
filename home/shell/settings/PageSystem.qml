@@ -22,7 +22,6 @@ Flickable {
 
         Heading {
             title: Lang.cfgSystem
-            sub: Lang.cfgSystemSub
         }
 
         Setting {
@@ -53,7 +52,6 @@ Flickable {
         Setting {
             visible: Machine.get("nilo.enable", false)
             title: Lang.cfgAcceleration
-            sub: Lang.cfgAccelerationSub
 
             Choice {
                 options: [{ value: "cpu", label: "cpu" }, { value: "vulkan", label: "vulkan" }, { value: "rocm", label: "rocm" }, { value: "cuda", label: "cuda" }]
@@ -66,7 +64,6 @@ Flickable {
         // forgetting them is at once.
         Setting {
             title: Lang.cfgClipboard
-            sub: Lang.cfgClipboardSub
 
             Row {
                 spacing: 12
@@ -90,7 +87,6 @@ Flickable {
 
         Setting {
             title: Lang.cfgBootSound
-            sub: Lang.cfgBootSoundSub
 
             Toggle {
                 on: Machine.get("bootSound", true)
@@ -110,7 +106,6 @@ Flickable {
 
         Setting {
             title: "SSH"
-            sub: Lang.cfgSshSub
 
             Toggle {
                 on: Machine.get("ssh", false)
