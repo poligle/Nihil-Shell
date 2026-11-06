@@ -168,7 +168,7 @@ Flickable {
             Repeater {
                 model: page.modifiers
 
-                PillButton {
+                KeyButton {
                     required property string modelData
 
                     text: modelData
@@ -300,13 +300,13 @@ Flickable {
                         width: parent.width
                         spacing: 6
 
-                        PillButton {
+                        KeyButton {
                             text: Lang.cfgKeySave
                             accent: true
                             onClicked: page.saveAction(modelData)
                         }
 
-                        PillButton {
+                        KeyButton {
                             text: Lang.cfgKeyDefault
                             onClicked: page.resetAction(modelData)
                         }
@@ -377,13 +377,13 @@ Flickable {
                         width: parent.width
                         spacing: 6
 
-                        PillButton {
+                        KeyButton {
                             text: Lang.cfgKeySave
                             accent: true
                             onClicked: page.saveProgram(index)
                         }
 
-                        PillButton {
+                        KeyButton {
                             visible: index < page.programs.length
                             text: Lang.cfgKeyRemove
                             onClicked: page.removeProgram(index)
@@ -393,7 +393,7 @@ Flickable {
             }
         }
 
-        PillButton {
+        KeyButton {
             Layout.topMargin: 10
             visible: page.editing !== "program:" + page.programs.length
             text: "+ " + Lang.cfgProgramAdd

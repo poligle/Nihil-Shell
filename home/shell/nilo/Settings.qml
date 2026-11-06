@@ -219,7 +219,7 @@ Item {
                 spacing: 16
                 leftPadding: 16
 
-                PillButton {
+                KeyButton {
                     id: notes
                     anchors.verticalCenter: parent.verticalCenter
                     text: Lang.setContextEdit
@@ -264,7 +264,7 @@ Item {
                 Repeater {
                     model: root.sleepChoices
 
-                    PillButton {
+                    KeyButton {
                         required property int modelData
                         anchors.verticalCenter: parent.verticalCenter
                         text: Lang.setMinutes.arg(modelData)
@@ -275,7 +275,7 @@ Item {
 
                 Item { width: 12; height: 1 }
 
-                PillButton {
+                KeyButton {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Nilo.loaded
                     text: Lang.setSleepNow
@@ -338,7 +338,7 @@ Item {
                 spacing: 16
                 leftPadding: 16
 
-                PillButton {
+                KeyButton {
                     id: again
                     anchors.verticalCenter: parent.verticalCenter
                     text: Lang.setIntro

@@ -273,7 +273,7 @@ Flickable {
                 title: gone.modelData
                 sub: Lang.cfgScreenAway
 
-                PillButton {
+                KeyButton {
                     visible: gone.modelData !== page.main
                     text: Lang.cfgScreenForget
                     onClicked: Machine.set("outputs." + gone.modelData, undefined)

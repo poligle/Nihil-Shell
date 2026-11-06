@@ -153,7 +153,7 @@ Column {
                     anchors.right: parent.right
                     spacing: 8
 
-                    PillButton {
+                    KeyButton {
                         text: Lang.confirmCancel
                         onClicked: root.asking = ""
                     }
