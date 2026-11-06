@@ -41,7 +41,7 @@ Singleton {
     readonly property bool fingerprint: saved.fingerprint === true
     // A password typed while a finger was awaited: that sudo goes, and this
     // takes its place ({ process, password }).
-    property var instead: null""
+    property var instead: null
     property string detail: ""
     property string log: ""
     property real since: 0
