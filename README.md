@@ -457,7 +457,10 @@ repository turns Files and Git off again.
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
-by default. Asleep it takes no memory; Ollama itself stays as an idle service.
+by default. Asleep it takes no memory; Ollama itself stays as an idle service. A model
+that would leave the rest of the machine less than an eighth of its memory (2 GB at
+least) is not loaded: Nilo says there is no room for it. And should memory run out all
+the same, the kernel stops Ollama first, never the session.
 
 **History.** A conversation lives in the agent while the shell runs: closing the launcher
 keeps it, `ctrl + n` starts a new one, and nothing is written to disk. Nilo asks Ollama
