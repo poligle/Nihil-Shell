@@ -308,7 +308,6 @@
 		cfgName = "Nombre";
 		cfgAccount = "Cuenta";
 		cfgPassword = "Contraseña";
-		cfgPasswordSub = "También la de sudo y la de aplicar cambios.";
 		cfgCurrent = "la actual";
 		cfgNew = "la nueva";
 		cfgRepeat = "la nueva, otra vez";
@@ -319,9 +318,8 @@
 		cfgRegion = "Idioma y región";
 		cfgLanguage = "Idioma";
 		cfgKeyboard = "Teclado";
-		cfgKeyboardSub = "Si no está, escribe su nombre (xkb).";
-		cfgOther = "otra";
-		cfgVariant = "variante (opcional)";
+		cfgOther = "Otra";
+		cfgVariant = "Variante";
 		cfgTimeZone = "Zona horaria";
 		cfgTimeZoneSub = "busca tu ciudad";
 		cfgLook = "Escritorio";
@@ -330,7 +328,7 @@
 		cfgKeyNone = "sin tecla";
 		cfgKeyName = "tecla: D, F5, Return, Space, comma…";
 		cfgKeySave = "guardar";
-		cfgKeyDefault = "la de siempre";
+		cfgKeyDefault = "Por defecto";
 		cfgKeyRemove = "quitar";
 		cfgKeyInvalid = "esa tecla no se reconoce";
 		cfgKeyNeedsMod = "añade SUPER u otro modificador";
@@ -338,16 +336,11 @@
 		cfgKeyTaken = "ya la usa: %1";
 		cfgSystem = "Sistema";
 		cfgHost = "Nombre del equipo";
-		cfgHostSub = "Minúsculas, números y guiones.";
-		cfgNiloSub = "Descarga un modelo de varios GB.";
 		cfgAcceleration = "Aceleración";
 		cfgFingerprint = "Huella";
-		cfgFingerprintSub = "Para sudo, polkit y el inicio de sesión, si hay lector.";
 		cfgSaved = "Todo aplicado";
-		cfgSavedSub = "lo que cambies espera aquí hasta que lo apliques";
 		cfgPending = "%1 cambios sin aplicar";
 		cfgPendingOne = "1 cambio sin aplicar";
-		cfgPendingSub = "se aplican reconstruyendo el sistema: unos minutos";
 		cfgDiscard = "descartar";
 		cfgCancel = "cancelar";
 		cfgApply = "aplicar";
@@ -355,7 +348,6 @@
 		cfgApplyFinger = "con huella: pon el dedo en el lector";
 		cfgChecking = "Comprobando…";
 		cfgApplying = "Aplicando %1";
-		cfgApplyingSub = "puedes cerrar esto: sigue solo y te avisará";
 		cfgApplied = "Aplicado";
 		cfgAppliedWarn = "Aplicado, con avisos";
 		cfgApplyFailed = "No se ha podido aplicar; todo sigue como estaba";
@@ -747,7 +739,6 @@
 		cfgName = "Name";
 		cfgAccount = "Account";
 		cfgPassword = "Password";
-		cfgPasswordSub = "Also sudo's, and the one for applying changes.";
 		cfgCurrent = "current";
 		cfgNew = "new";
 		cfgRepeat = "new, again";
@@ -758,9 +749,8 @@
 		cfgRegion = "Language and region";
 		cfgLanguage = "Language";
 		cfgKeyboard = "Keyboard";
-		cfgKeyboardSub = "If it is not here, type its name (xkb).";
-		cfgOther = "other";
-		cfgVariant = "variant (optional)";
+		cfgOther = "Other";
+		cfgVariant = "Variant";
 		cfgTimeZone = "Time zone";
 		cfgTimeZoneSub = "look for your city";
 		cfgLook = "Desktop";
@@ -769,7 +759,7 @@
 		cfgKeyNone = "no key";
 		cfgKeyName = "key: D, F5, Return, Space, comma…";
 		cfgKeySave = "save";
-		cfgKeyDefault = "the usual one";
+		cfgKeyDefault = "Default";
 		cfgKeyRemove = "remove";
 		cfgKeyInvalid = "that key is not recognised";
 		cfgKeyNeedsMod = "add SUPER or another modifier";
@@ -777,16 +767,11 @@
 		cfgKeyTaken = "already used by: %1";
 		cfgSystem = "System";
 		cfgHost = "Computer name";
-		cfgHostSub = "Lowercase letters, digits and hyphens.";
-		cfgNiloSub = "It downloads a model of several GB.";
 		cfgAcceleration = "Acceleration";
 		cfgFingerprint = "Fingerprint";
-		cfgFingerprintSub = "For sudo, polkit and the login, if there is a reader.";
 		cfgSaved = "All applied";
-		cfgSavedSub = "what you change waits here until you apply it";
 		cfgPending = "%1 changes to apply";
 		cfgPendingOne = "1 change to apply";
-		cfgPendingSub = "they are applied by rebuilding the system: a few minutes";
 		cfgDiscard = "discard";
 		cfgCancel = "cancel";
 		cfgApply = "apply";
@@ -794,7 +779,6 @@
 		cfgApplyFinger = "with a fingerprint: touch the reader";
 		cfgChecking = "Checking…";
 		cfgApplying = "Applying %1";
-		cfgApplyingSub = "you can close this: it goes on by itself and will tell you";
 		cfgApplied = "Applied";
 		cfgAppliedWarn = "Applied, with warnings";
 		cfgApplyFailed = "It could not be applied; everything is as it was";

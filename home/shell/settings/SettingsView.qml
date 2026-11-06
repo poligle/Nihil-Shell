@@ -36,30 +36,28 @@ Item {
             bottomPadding: 22
         }
 
-        // The pages, each with its LED: lit on the one open.
+        // The pages: the one open on a raised row, in ink.
         Repeater {
             model: root.pages
 
-            Item {
+            Rectangle {
                 id: item
 
                 required property var modelData
                 readonly property bool chosen: root.current.name === modelData.name
 
-                width: side.width
-                height: 34
+                // Its name in line with the title above.
+                x: -14
+                width: side.width + 14
+                height: 36
+                radius: 10
+                color: item.chosen ? Tokens.raised : navArea.containsMouse ? Tokens.surface : "transparent"
 
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 6
-                    height: 6
-                    radius: 3
-                    color: item.chosen ? Tokens.ink : "transparent"
-                }
+                Behavior on color { ColorAnimation { duration: Tokens.animFast } }
 
                 Txt {
                     anchors.verticalCenter: parent.verticalCenter
-                    x: 18
+                    x: 14
                     text: item.modelData.title
                     color: item.chosen || navArea.containsMouse ? Tokens.ink : Tokens.dim
 
