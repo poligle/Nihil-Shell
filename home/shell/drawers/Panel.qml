@@ -44,8 +44,10 @@ Item {
         Bt.scan(expanded === "bt");
     }
 
+    // Asked once: with a reader and nothing typed, a finger; the password
+    // typed goes alone, also while a finger is awaited (services/Machine.qml).
     function update(): void {
-        if (updatePassword.text === "" && !Machine.get("fingerprint", false)) {
+        if (updatePassword.text === "" && !Machine.fingerprint) {
             updatePassword.grab();
             return;
         }
@@ -560,9 +562,10 @@ Item {
                         text: Machine.statusSub
                     }
 
+                    // Also while a finger is awaited: the password instead.
                     RowLayout {
                         Layout.fillWidth: true
-                        visible: !Machine.busy
+                        visible: !Machine.busy || (Machine.kind === "update" && Machine.phase === "auth" && Machine.auth === "finger")
                         spacing: 8
 
                         Field {

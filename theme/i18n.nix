@@ -345,8 +345,9 @@
 		cfgCancel = "cancelar";
 		cfgApply = "aplicar";
 		cfgApplyPassword = "tu contraseña";
-		cfgApplyFinger = "con huella: pon el dedo en el lector";
 		cfgChecking = "Comprobando…";
+		cfgFingerAsk = "Pon el dedo en el lector";
+		cfgFingerFailed = "La huella no ha servido: escribe tu contraseña";
 		cfgApplying = "Aplicando %1";
 		cfgApplied = "Aplicado";
 		cfgAppliedWarn = "Aplicado, con avisos";
@@ -776,8 +777,9 @@
 		cfgCancel = "cancel";
 		cfgApply = "apply";
 		cfgApplyPassword = "your password";
-		cfgApplyFinger = "with a fingerprint: touch the reader";
 		cfgChecking = "Checking…";
+		cfgFingerAsk = "Touch the fingerprint reader";
+		cfgFingerFailed = "The fingerprint didn't work: type your password";
 		cfgApplying = "Applying %1";
 		cfgApplied = "Applied";
 		cfgAppliedWarn = "Applied, with warnings";

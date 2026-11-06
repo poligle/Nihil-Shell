@@ -166,9 +166,10 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: th
 4. The first login opens the welcome: what NIHIL is and how its frame works, then your
    name, language, keyboard, time zone, wallpaper and system. **Preferences** changes
    all of it later, and the shortcuts too: `SUPER + O`, the cog in quick settings or
-   the launcher. Changes wait until applied; applying asks for your password (or a
-   finger) and rebuilds the system on its own (`nihil apply`), which keeps going if the
-   shell restarts and puts the old settings back if the build fails.
+   the launcher. Changes wait until applied; applying asks once, for a finger if there is
+   a reader or for your password, never both, and rebuilds the system on its own
+   (`nihil apply`), which keeps going if the shell restarts and puts the old settings
+   back if the build fails.
 
 It finds the screens and the GPU on its own and installs over the network (almost all of
 NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
