@@ -635,7 +635,7 @@ Item {
                             }
 
                             Label {
-                                text: (card.facts.danger ?? []).map(code => root.dangerText(code)).join(", ")
+                                text: Case.sentence((card.facts.danger ?? []).map(code => root.dangerText(code)).join(", "))
                                 color: Tokens.dim
                             }
                         }

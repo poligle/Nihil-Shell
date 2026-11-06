@@ -69,7 +69,7 @@ Flickable {
                     }
 
                     Label {
-                        text: card.modelData
+                        text: Case.sentence(card.modelData.replace(/[-_]/g, " "))
                         color: card.chosen ? Tokens.ink : Tokens.muted
                     }
                 }

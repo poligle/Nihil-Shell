@@ -1,7 +1,7 @@
 # fastfetch.nix by poligle
 #
 # fastfetch in the NIHIL language: the NixOS snowflake drawn with LED dots
-# (theme/art/snowflake-19.txt) and monochrome, uppercase keys. The colours
+# (theme/art/snowflake-19.txt) and monochrome keys in sentence case. The colours
 # are NIHIL's own, in 24 bits: the terminal's "bright black" is darker than
 # any of them, and keys in it were hard to read on black.
 
@@ -55,19 +55,19 @@ in
 			modules =
 			[
 				{ type = "title"; format = "{user-name}@{host-name}"; }
-				{ type = "custom"; format = "ex nihilo"; outputColor = ansi p.muted; }
+				{ type = "custom"; format = "Ex nihilo"; outputColor = ansi p.muted; }
 				"break"
 				{ type = "os"; key = "OS"; }
-				{ type = "kernel"; key = "KERNEL"; }
-				{ type = "uptime"; key = "UPTIME"; }
-				{ type = "packages"; key = "PACKAGES"; }
+				{ type = "kernel"; key = "Kernel"; }
+				{ type = "uptime"; key = "Uptime"; }
+				{ type = "packages"; key = "Packages"; }
 				{ type = "wm"; key = "WM"; }
-				{ type = "shell"; key = "SHELL"; }
-				{ type = "terminal"; key = "TERMINAL"; }
+				{ type = "shell"; key = "Shell"; }
+				{ type = "terminal"; key = "Terminal"; }
 				{ type = "cpu"; key = "CPU"; }
-				{ type = "memory"; key = "MEMORY"; }
-				{ type = "disk"; key = "DISK"; folders = "/"; }
-				{ type = "battery"; key = "BATTERY"; }
+				{ type = "memory"; key = "Memory"; }
+				{ type = "disk"; key = "Disk"; folders = "/"; }
+				{ type = "battery"; key = "Battery"; }
 				"break"
 				{ type = "custom"; format = leds; }
 			];

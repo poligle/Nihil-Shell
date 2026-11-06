@@ -71,7 +71,7 @@ Item {
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "ex nihilo"
+                text: "Ex nihilo"
             }
 
             Item {
@@ -122,7 +122,7 @@ Item {
                     sub: modelData.where
 
                     Txt {
-                        text: modelData.key
+                        text: Case.keys(modelData.key)
                         font.family: Tokens.fontMono
                         font.pixelSize: 13
                     }
@@ -162,7 +162,7 @@ Item {
                     title: modelData.what
 
                     Txt {
-                        text: modelData.key
+                        text: Case.keys(modelData.key)
                         font.family: Tokens.fontMono
                         font.pixelSize: 13
                     }
