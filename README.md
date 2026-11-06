@@ -57,9 +57,10 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
-- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures (in
-  dots), from the top of the frame: with `SUPER` held, `V` again goes to the next one, and
-  letting go pastes it where you were. What a password manager copies is never kept.
+- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures, from
+  the top of the frame: with `SUPER` held, `V` again goes to the next one, and letting go
+  pastes it where you were. The one chosen is lit, its picture in colour. What a password
+  manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -328,9 +329,10 @@ fingers of each one or `null` for none, which only change there.
 
 The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `clipboard`,
 `nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
-`toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history keeps its keys while
-its modifier is held; any combination with a modifier works (`CTRL + V` too, if you want
-it on the paste key itself, at the cost of `CTRL + V` in the terminal). The gestures: `workspaces`, `close`,
+`toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history has the keyboard while
+it is out, and letting go of its key's first modifier pastes: any combination works
+(`CTRL + V` too, if you want it on the paste key itself, at the cost of `CTRL + V` in the
+terminal; one without a modifier waits for `Enter`). The gestures: `workspaces`, `close`,
 `launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
 `terminal`, `files`, `browser`, `notes`, `code`, `music` and `pixels` were actions and
 are programs now: a `settings.json` that still names them under `binds` is read without

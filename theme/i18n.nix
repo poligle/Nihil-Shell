@@ -422,15 +422,9 @@
 		welNetPassword = "contraseña de la red";
 		wpHint = "← → elegir · Enter quedárselo · Esc volver";
 
-		# The clipboard history (home/clipboard.nix, drawers/ClipboardView.qml);
-		# clipHint's %1 and %2 are its modifier and its key (SUPER, V).
+		# The clipboard history (home/clipboard.nix, drawers/ClipboardView.qml).
 		bindClipboard = "Portapapeles";
-		clipHint = "suelta %1 para pegar · %2 el siguiente · esc nada";
 		clipEmpty = "Nada copiado todavía.";
-		clipText = "texto";
-		clipLink = "enlace";
-		clipColour = "color";
-		clipPicture = "imagen";
 		clipPictureSize = "%1 × %2";
 		cfgClipboard = "Historial del portapapeles";
 		cfgClipboardSub = "Lo último que copias, texto e imágenes. Su atajo lo saca; con el modificador pulsado, otra vez pasa al siguiente, y al soltarlo se pega.";
@@ -888,12 +882,7 @@
 		wpHint = "← → choose · Enter keep · Esc back";
 
 		bindClipboard = "Clipboard";
-		clipHint = "let go of %1 to paste · %2 next · esc none";
 		clipEmpty = "Nothing copied yet.";
-		clipText = "text";
-		clipLink = "link";
-		clipColour = "colour";
-		clipPicture = "picture";
 		clipPictureSize = "%1 × %2";
 		cfgClipboard = "Clipboard history";
 		cfgClipboardSub = "What you copy, text and pictures. Its shortcut brings it out; with the modifier down, again goes to the next one, and letting go pastes it.";
