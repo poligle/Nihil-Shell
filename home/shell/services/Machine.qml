@@ -8,12 +8,13 @@ import qs.config
 
 // The machine's settings as its flake has them (settings.json, /etc/nixos):
 // what Preferences and the welcome show and change. Changes wait in `draft`
-// until they are applied. Applying hands the password to sudo and the
-// settings to `nihil apply` (modules/nihil-cli.nix), which puts them in place
-// and rebuilds the system in a unit of its own: the rebuild restarts this
-// shell and the unit goes on; /run/nihil says how it went, and the shell
-// tells when it is done. Updating NIHIL (the panel, Updates.qml) goes the
-// same way, through `nihil update --unit`: /run/nihil/apply.kind says which.
+// until they are applied. Applying asks sudo once, with a finger or with the
+// password typed, never both (`auth`), and hands the settings to `nihil
+// apply` (modules/nihil-cli.nix), which puts them in place and rebuilds the
+// system in a unit of its own: the rebuild restarts this shell and the unit
+// goes on; /run/nihil says how it went, and the shell tells when it is done.
+// Updating NIHIL (the panel, Updates.qml) goes the same way, through `nihil
+// update --unit`: /run/nihil/apply.kind says which.
 //   nihil-ipc settings open | toggle | close | welcome | page <name>
 Singleton {
     id: root
@@ -29,10 +30,18 @@ Singleton {
     property string screen: ""
 
     // Applying: "", "auth", "applying", "done", "warning" or "failed"; when it
-    // failed, why: "password", "invalid", "busy", "start" (nihil apply could
-    // not start the rebuild) or "rebuild" (the rebuild failed).
+    // failed, why: "password", "finger", "invalid", "busy", "start" (nihil
+    // apply could not start the rebuild) or "rebuild" (the rebuild failed).
     property string phase: ""
     property string failure: ""
+    // How sudo is being asked: "finger" (nothing typed: the reader, or
+    // nothing) or "password" (the one typed, and no finger after it).
+    property string auth: ""
+    // A finger only where the system as applied has the reader in sudo.
+    readonly property bool fingerprint: saved.fingerprint === true
+    // A password typed while a finger was awaited: that sudo goes, and this
+    // takes its place ({ process, password }).
+    property var instead: null""
     property string detail: ""
     property string log: ""
     property real since: 0
@@ -58,9 +67,10 @@ Singleton {
         const seconds = Math.max(0, Math.round((root.now - root.since) / 1000));
         return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
     }
-    readonly property string statusTitle: phase === "auth" ? Lang.cfgChecking
+    readonly property string statusTitle: phase === "auth" ? (auth === "finger" ? Lang.cfgFingerAsk : Lang.cfgChecking)
         : phase === "applying" ? (kind === "update" ? Lang.updApplying : Lang.cfgApplying).arg(elapsed)
-        : phase === "failed" ? (failure === "password" ? Lang.cfgWrongPassword : failure === "invalid" ? Lang.cfgInvalid
+        : phase === "failed" ? (failure === "password" ? Lang.cfgWrongPassword : failure === "finger" ? Lang.cfgFingerFailed
+            : failure === "invalid" ? Lang.cfgInvalid
             : failure === "busy" ? Lang.cfgBusy : kind === "update" ? Lang.updFailed : Lang.cfgApplyFailed)
         : changes > 0 ? (changes === 1 ? Lang.cfgPendingOne : Lang.cfgPending.arg(changes))
         : phase === "done" ? (kind === "update" ? Lang.updDone : Lang.cfgApplied)
@@ -68,8 +78,7 @@ Singleton {
         : Lang.cfgSaved
     // Under it, only what says something: the line the rebuild is on, why
     // it failed, where to look.
-    readonly property string statusSub: phase === "auth" ? (get("fingerprint", false) ? Lang.cfgApplyFinger : "")
-        : phase === "applying" ? detail
+    readonly property string statusSub: phase === "applying" ? detail
         : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint) : "")
         : changes === 0 && phase === "warning" ? Lang.cfgLogHint
         : ""
@@ -180,29 +189,71 @@ Singleton {
         liveWallpaper(name);
     }
 
+    // With nothing typed and a reader, sudo waits for a finger; with the
+    // password, it takes that alone. The settings go first, on a line of
+    // their own (the applier writes them to a file for nihil apply).
     function apply(password: string): void {
-        if (root.busy || root.changes === 0)
+        if (root.changes === 0 || root.switching(applier, password))
             return;
         root.kind = "settings";
-        root.phase = "auth";
-        root.failure = "";
-        root.detail = "";
-        root.log = "";
-        applier.input = password + "\n" + JSON.stringify(root.draft, null, 2) + "\n";
-        applier.running = true;
+        root.ask(applier, password, JSON.stringify(root.draft) + "\n");
     }
 
     // The latest NIHIL, and what it pins, in the same unit as applying.
     function update(password: string): void {
-        if (root.busy)
+        if (root.switching(updater, password))
             return;
         root.kind = "update";
+        root.ask(updater, password, "");
+    }
+
+    function ask(process: var, password: string, input: string): void {
+        root.auth = password === "" && root.fingerprint ? "finger" : "password";
         root.phase = "auth";
         root.failure = "";
         root.detail = "";
         root.log = "";
-        updater.input = password + "\n";
-        updater.running = true;
+        process.mode = root.auth;
+        process.input = input + (root.auth === "password" ? password + "\n" : "");
+        process.running = true;
+    }
+
+    // Busy: nothing new, unless it is the password while a finger is
+    // awaited, which stops that sudo and goes in its place (on its exit).
+    function switching(process: var, password: string): bool {
+        if (!root.busy)
+            return false;
+        if (root.phase === "auth" && root.auth === "finger" && password !== "" && process.running) {
+            root.instead = { process: process, password: password, input: process === applier ? JSON.stringify(root.draft) + "\n" : "" };
+            process.running = false;
+        }
+        return true;
+    }
+
+    // No finger after all (Cancel while it is awaited).
+    function cancelFinger(): void {
+        for (const process of [applier, updater]) {
+            if (root.phase === "auth" && root.auth === "finger" && process.running) {
+                root.instead = { process: process, password: null };
+                process.running = false;
+            }
+        }
+    }
+
+    // How a sudo of these ended: true when it was stopped on purpose, for a
+    // password typed instead of the finger (on its way now) or for nothing.
+    function replaced(process: var): bool {
+        if (root.instead === null || root.instead.process !== process)
+            return false;
+        const next = root.instead;
+        root.instead = null;
+        if (next.password === null) {
+            root.phase = "";
+            root.auth = "";
+        } else {
+            Qt.callLater(() => root.ask(next.process, next.password, next.input));
+        }
+        return true;
     }
 
     function changePassword(current: string, next: string): void {
@@ -322,16 +373,30 @@ Singleton {
         }
     }
 
-    // sudo reads the first line, the password; nihil apply the rest. -k: ask
-    // even if sudo still remembers it, or the password would go on to nihil.
-    // sudo exits with 1 when the password is wrong; nihil apply with 2 (not
+    // sudo, asked once: sh -c sudoAsk sh MODE FILE COMMAND... With the
+    // password typed (MODE "password"), its pid, which sudo keeps, goes in
+    // a file of the user's first: PAM leaves the reader out for it
+    // (modules/hardware.nix) and reads the password from stdin. With nothing
+    // typed, sudo waits for a finger, and finds no password if it fails.
+    // With a FILE, the first line of stdin, the settings, goes in it.
+    readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+    readonly property string settingsDraft: runtimeDir + "/nihil-settings.json"
+    readonly property string sudoAsk: 'umask 077; flag="${XDG_RUNTIME_DIR:-/tmp}/nihil-sudo-password"; '
+        + 'if [ "$1" = password ]; then echo $$ > "$flag"; else rm -f "$flag"; fi; '
+        + 'if [ -n "$2" ]; then IFS= read -r line && printf "%s\\n" "$line" > "$2" || exit 4; fi; '
+        + 'shift 2; exec "$@"'
+
+    // -k: ask even if sudo still remembers it. sudo exits with 1 when
+    // neither a finger nor the password did it; nihil apply with 2 (not
     // valid), 3 (busy) or 4 (could not start), saying why on stderr.
     Process {
         id: applier
 
         property string input: ""
+        property string mode: "password"
 
-        command: [Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "apply", "-"]
+        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", mode, root.settingsDraft,
+            Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "apply", root.settingsDraft]
         stdinEnabled: true
         onStarted: {
             write(input);
@@ -346,24 +411,29 @@ Singleton {
         }
         onExited: code => {
             stdinEnabled = true;
+            if (root.replaced(applier))
+                return;
             if (code === 0) {
                 root.phase = "applying";
                 root.since = Date.now();
                 poll.start();
             } else {
                 root.phase = "failed";
-                root.failure = code === 1 ? "password" : code === 2 ? "invalid" : code === 3 ? "busy" : "start";
+                root.failure = code === 1 ? root.auth : code === 2 ? "invalid" : code === 3 ? "busy" : "start";
             }
         }
     }
 
-    // The same, for an update: only the password goes in.
+    // The same, for an update: only the password goes in, if any.
     Process {
         id: updater
 
         property string input: ""
 
-        command: [Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "update", "--unit"]
+        property string mode: "password"
+
+        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", mode, "",
+            Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "update", "--unit"]
         stdinEnabled: true
         onStarted: {
             write(input);
@@ -378,23 +448,27 @@ Singleton {
         }
         onExited: code => {
             stdinEnabled = true;
+            if (root.replaced(updater))
+                return;
             if (code === 0) {
                 root.phase = "applying";
                 root.since = Date.now();
                 poll.start();
             } else {
                 root.phase = "failed";
-                root.failure = code === 1 ? "password" : code === 3 ? "busy" : "start";
+                root.failure = code === 1 ? root.auth : code === 3 ? "busy" : "start";
             }
         }
     }
 
+    // The current password is typed anyway: no finger after it.
     Process {
         id: passwd
 
         property string input: ""
 
-        command: [Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "passwd"]
+        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", "password", "",
+            Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "passwd"]
         stdinEnabled: true
         onStarted: {
             write(input);

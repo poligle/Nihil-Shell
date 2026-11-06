@@ -2,23 +2,33 @@
 
 { config, lib, pkgs, ... }:
 let
-    lidClosed = pkgs.writeShellScript "lid-closed" ''
+    # When the fingerprint reader is left out and the password asked at
+    # once: with the lid closed (the reader is under it), and when the NIHIL
+    # shell runs sudo with the password already typed, so no finger is asked
+    # after it. That sudo's pid is in the user's nihil-sudo-password
+    # (services/Machine.qml), and sudo is pam_exec's parent. Leaving the
+    # reader out never lets anyone in without the password.
+    skipReader = pkgs.writeShellScript "skip-fingerprint" ''
         for state in /proc/acpi/button/lid/*/state; do
             [ -r "$state" ] || continue
             ${pkgs.gnugrep}/bin/grep -q closed "$state" && exit 0
         done
+        if [ "''${PAM_SERVICE:-}" = sudo ] && uid=$(${pkgs.coreutils}/bin/id -u -- "''${PAM_USER:-}" 2> /dev/null) \
+            && [ "$(${pkgs.coreutils}/bin/cat "/run/user/$uid/nihil-sudo-password" 2> /dev/null)" = "$PPID" ]; then
+            exit 0
+        fi
         exit 1
     '';
 
-    skipFingerprintWhenLidClosed = service:
+    skipFingerprint = service:
     {
-        rules.auth.lidClosed =
+        rules.auth.skipFingerprint =
         {
             enable = config.security.pam.services.${service}.fprintAuth;
             order = config.security.pam.services.${service}.rules.auth.fprintd.order - 1;
             control = "[success=1 default=ignore]";
             modulePath = "${config.security.pam.package}/lib/security/pam_exec.so";
-            args = [ "quiet" "${lidClosed}" ];
+            args = [ "quiet" "${skipReader}" ];
         };
     };
 in
@@ -43,7 +53,7 @@ in
     # a recent kernel: the same the installer boots with.
     hardware.enableRedistributableFirmware = lib.mkDefault true;
     boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
-    security.pam.services = lib.genAttrs [ "sudo" "su" "login" "polkit-1" "greetd" ] skipFingerprintWhenLidClosed //
+    security.pam.services = lib.genAttrs [ "sudo" "su" "login" "polkit-1" "greetd" ] skipFingerprint //
     {
         hyprlock.fprintAuth = false;
     };

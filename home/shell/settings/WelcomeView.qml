@@ -35,7 +35,7 @@ Item {
     // rebuild restarts the shell); without, or once applying, close.
     function finish(): void {
         if (root.asking) {
-            if (password.text === "" && !Machine.get("fingerprint", false)) {
+            if (password.text === "" && !Machine.fingerprint) {
                 password.grab();
                 return;
             }
