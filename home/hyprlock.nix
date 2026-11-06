@@ -132,7 +132,8 @@ in
 				}
 				{
 					monitor = "";
-					text = t.motto;
+					# Pango markup: hyprlock's labels are drawn with it.
+					text = "<i>${t.motto}</i>";
 					font_family = t.fonts.mono;
 					font_size = 10;
 					color = rgb t.palette.off;

@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><b>ex nihilo</b><br>a monochrome, dot-matrix desktop for NixOS</p>
+<p align="center"><i>ex nihilo</i><br>a monochrome, dot-matrix desktop for NixOS</p>
 
 <p align="center">
   <a href="https://nihilshell.com/">Website</a> &nbsp;·&nbsp;
@@ -27,8 +27,8 @@ in [Quickshell](https://quickshell.org). One file, [`theme/nihil.nix`](theme/nih
 holds the design tokens, and every layer — GTK, terminal, editor, compositor, lock
 screen, greeter, boot splash and the shell — is generated from it.
 
-> *Nihil* is Latin for "nothing", the way *caelestia* is Latin for "the heavenly".
-> *Ex nihilo* — from nothing — is also what NixOS does: the whole system, rebuilt from a
+> *Nihil* is Latin for "nothing", the way *caelestia* is Latin for "the heavenly". And
+> *ex nihilo*, from nothing, is also what NixOS does: the whole system, rebuilt from a
 > declaration.
 
 **On the phone, too:** [NIHIL for Android](https://github.com/poligle/Nihil-Launcher) is a
@@ -57,11 +57,11 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
-- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures, from
-  the top of the frame: with `SUPER` held, `V` again goes to the next one, and letting go
-  pastes it where you were. A quick press leaves it out, to pick one with the arrows and
-  `Enter`. The one chosen is lit, its picture in colour. What a password manager copies is
-  never kept.
+- **Copy, paste and the clipboard history.** One modifier for both, as on a Mac: `SUPER + C`
+  copies and `SUPER + V` pastes, in kitty too. Held a moment longer, `SUPER + V`
+  brings out the last copies, text and pictures, from the top of the frame: `V` again goes
+  to the next one, and letting go of `SUPER` pastes it where you were (`Esc`: none). The
+  one chosen is lit, its picture in colour. What a password manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -298,7 +298,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + W`                       | Wallpapers, out of the bottom edge: arrows to look, Enter to keep |
 | `SUPER` (alone)                   | Terminal (kitty), a program                   |
 | `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
-| `SUPER + V`                       | Clipboard history: hold `SUPER`, `V` for the next one, let go to paste (`Esc`: none) |
+| `SUPER + C` / `SUPER + V`         | Copy / paste; `SUPER + V` held, the clipboard history (`V` again for the next one, let go to paste, `Esc`: none) |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
 | `SUPER + SHIFT + Space`           | Toggle floating                               |
 | `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |
@@ -463,12 +463,12 @@ repository turns Files and Git off again.
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
-by default. Asleep it takes no memory; Ollama itself stays as an idle service. With an
-integrated GPU (`integratedGpu`), a model bigger than three quarters of the memory that GPU
-can map (its GTT, about half the RAM) runs on the CPU: Ollama would put it there whole, and
-take what the compositor needs to draw the screen (ollama#17748). A model bigger than the
-machine's memory is not loaded, and should memory run out, the kernel stops Ollama first,
-never the session.
+by default. Asleep it takes no memory; Ollama itself stays as an idle service. Every model
+runs where Preferences says (the CPU or the GPU), the big ones too. An integrated GPU
+(`integratedGpu`) works in a window of the RAM, its GTT (about half of it), which the
+screen needs as well: pick a model that leaves room in it, as the 9B does on a 32 GB
+laptop and the 35B doesn't (ollama#17748). A model bigger than the machine's memory is
+not loaded, and should memory run out, the kernel stops Ollama first, never the session.
 
 **History.** A conversation lives in the agent while the shell runs: closing the launcher
 keeps it, `ctrl + n` starts a new one, and nothing is written to disk. Nilo asks Ollama

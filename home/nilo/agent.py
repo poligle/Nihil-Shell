@@ -43,7 +43,6 @@
 import argparse
 import datetime
 import difflib
-import glob
 import html.parser
 import http.client
 import ipaddress
@@ -85,9 +84,6 @@ PULL_WAIT = 5           # seconds before the second attempt; then 20, 45
 # memory, never under 2 GB. A model bigger than the rest can't run here.
 RESERVE_SHARE = 0.125
 RESERVE_GB = 2.0
-# How much of what an integrated GPU can map (its GTT) a model may take; the
-# rest is for the compositor and the apps (Agent.on_cpu).
-GPU_SHARE = 0.75
 
 # Why a download failed, from Ollama's own words ("max retries exceeded: Get
 # https://…r2.cloudflarestorage.com/…: EOF"). Network trouble and the
@@ -1141,19 +1137,6 @@ class Tools:
                 continue
 
 
-def gtt(drm="/sys/class/drm"):
-    """How much system memory an integrated GPU can map, in bytes: amdgpu's
-    GTT, the largest a card says. None where the driver doesn't say (Intel)."""
-    sizes = []
-    for path in glob.glob(os.path.join(drm, "card*", "device", "mem_info_gtt_total")):
-        try:
-            with open(path) as f:
-                sizes.append(int(f.read().strip()))
-        except (OSError, ValueError):
-            pass
-    return max(sizes) if sizes else None
-
-
 def meminfo(path="/proc/meminfo"):
     values = {}
     try:
@@ -1591,11 +1574,10 @@ class Agent:
             self.wake.wait(delay)
             self.wake.clear()
 
-    def options(self, model=None):
-        options = {"num_ctx": int(self.config.get("contextLength", 16384))}
-        if model and self.on_cpu(model):
-            options["num_gpu"] = 0
-        return options
+    # Every model runs where the machine says (Preferences, System: the CPU
+    # or the GPU, modules/nilo.nix): Ollama places it, the same for all.
+    def options(self):
+        return {"num_ctx": int(self.config.get("contextLength", 16384))}
 
     def need(self, model):
         """GB `model` takes with Nilo's context: as the models list says, or
@@ -1610,23 +1592,6 @@ class Agent:
         except OllamaError:
             return 0.0
         return download.get("size", 0) / 1e9 * 1.25 if download else 0.0
-
-    def on_cpu(self, model):
-        """Whether `model` stays on the CPU (num_gpu 0): with an integrated
-        GPU, one bigger than three quarters of the memory that GPU can map
-        (its GTT; half the RAM where the driver doesn't say). Ollama, from
-        0.32.10, puts a model there whole, the part it keeps for the CPU too,
-        and one that doesn't fit takes what the compositor needs for the
-        screen: Hyprland stops (ollama#17748, the Radeon 780M). On the CPU
-        it runs from the RAM, slower but whole. With a GPU of its own, Ollama
-        splits a model between them itself."""
-        if not self.config.get("integratedGpu") or self.config.get("acceleration", "cpu") == "cpu":
-            return False
-        window = gtt(self.config.get("drm", "/sys/class/drm"))
-        if window is None:
-            window = meminfo(self.config.get("meminfo", "/proc/meminfo")).get("MemTotal", 0) * 1024 / 2
-        need = self.need(model)
-        return need > 0 and need * 1e9 > window * GPU_SHARE
 
     def keep_alive(self):
         return f"{int(self.settings['keepAlive'])}m"
@@ -1653,7 +1618,7 @@ class Agent:
         try:
             # Not if it doesn't fit: the question will say so.
             self.room(model)
-            self.ollama.load(model, self.keep_alive(), self.options(model))
+            self.ollama.load(model, self.keep_alive(), self.options())
             # Straight from "loading" to "loaded", without looking asleep in between.
             self.refresh_state()
         except OllamaError as e:
@@ -1972,7 +1937,7 @@ class Agent:
             rounds += 1
             tools = [] if self.no_tools or rounds == MAX_ROUNDS else self.tools.schemas(self.settings)
             payload = {"model": model, "messages": self.messages(history), "stream": True,
-                       "keep_alive": self.keep_alive(), "options": self.options(model),
+                       "keep_alive": self.keep_alive(), "options": self.options(),
                        "think": bool(self.settings["think"])}
             if tools:
                 payload["tools"] = tools

@@ -28,7 +28,7 @@ trap 'gum style --foreground 1 "$(t "The installation stopped here. sudo nihil-i
     "La instalación se ha parado aquí. sudo nihil-install la vuelve a empezar.")" >&2' ERR
 
 clear
-gum style --foreground 15 --bold --margin "1 2" "N I H I L" "$(gum style --foreground 7 'Ex nihilo')"
+gum style --foreground 15 --bold --margin "1 2" "N I H I L" "$(gum style --foreground 7 --italic 'ex nihilo')"
 
 [ -d /sys/firmware/efi ] || fail "NIHIL boots with systemd-boot, which needs UEFI: this machine started in legacy BIOS mode."
 

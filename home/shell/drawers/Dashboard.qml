@@ -44,7 +44,10 @@ Item {
                 Layout.fillHeight: true
                 spacing: 4
 
-                Label { text: "Ex nihilo" }
+                Label {
+                    text: "ex nihilo"
+                    font.italic: true
+                }
 
                 DotText {
                     text: Qt.formatDateTime(clock.date, "HH:mm")

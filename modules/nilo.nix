@@ -74,9 +74,9 @@ in
                 Let Ollama use an integrated GPU, like the Radeon of a Ryzen laptop
                 with `acceleration = "vulkan"`. Ollama leaves them out unless told
                 (`OLLAMA_IGPU_ENABLE`), since a weak one can be slower than the CPU.
-                Such a GPU works in a window of the RAM (its GTT): a model bigger
-                than three quarters of it runs on the CPU, so that the screen
-                always has its share.
+                Such a GPU works in a window of the RAM (its GTT, about half of
+                it), which the screen needs too: a model bigger than that window
+                doesn't fit there.
             '';
         };
 
@@ -192,8 +192,8 @@ in
                 # of a model it keeps for the CPU as well (its host buffer, on an
                 # integrated GPU: ggml-org/llama.cpp#27360); --no-host sends that
                 # part to plain memory. And what it places on the GPU by itself
-                # (--fit) leaves 4 GB of the window free. A model that doesn't fit
-                # there at all, Nilo keeps on the CPU (home/nilo/agent.py).
+                # (--fit) leaves 4 GB of the window free. Every model runs where
+                # the acceleration says, the big ones too.
                 LLAMA_ARG_NO_HOST = "1";
                 LLAMA_ARG_FIT_TARGET = "4096";
             });
