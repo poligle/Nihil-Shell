@@ -275,7 +275,9 @@ let
                     status=0
                     "$(readlink -f "$0")" update || status=$?
                     if [ "$status" = 0 ]; then
-                        echo done > "$run/apply.status"
+                        # Quoted: a bare done is the shell's keyword to shellcheck
+                        # (SC1010), which writeShellApplication runs at build time.
+                        echo "done" > "$run/apply.status"
                     elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
                         echo warning > "$run/apply.status"
                     else
@@ -317,8 +319,18 @@ in
         description = "The NIHIL this machine was built from, as nihil version says it (set by nihil.lib.mkSystem).";
     };
 
+    # CI builds it (.github/workflows): building it runs shellcheck, and a
+    # warning there would otherwise first show on a machine's nihil update.
+    options.nihil.cli = lib.mkOption
+    {
+        type = lib.types.package;
+        readOnly = true;
+        description = "The nihil command, as built.";
+    };
+
     config =
     {
+        nihil.cli = nihil;
         environment.systemPackages = [ nihil ];
         environment.etc."nihil/revision".text = config.nihil.revision + "\n";
     };

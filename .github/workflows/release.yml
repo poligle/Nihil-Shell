@@ -3,8 +3,9 @@
 # The installer ISO, built on every push and published as a release: a tag
 # like v1.0 makes its own, a push to the branch replaces the "latest"
 # pre-release. First it checks that a machine as the installer leaves it
-# (nixosConfigurations.example) still evaluates. Installed machines don't
-# need any of this to update: nihil update pulls the repository itself.
+# (nixosConfigurations.example) still evaluates, and that the nihil command
+# builds, shellcheck included. Installed machines don't need any of this to
+# update: nihil update pulls the repository itself.
 
 name: ISO
 
@@ -45,6 +46,11 @@ jobs:
 
       - name: A machine evaluates
         run: nix eval --raw .#nixosConfigurations.example.config.system.build.toplevel.drvPath
+
+      # Building the nihil command runs shellcheck on it: a warning there
+      # would stop every machine's nihil update.
+      - name: The nihil command builds
+        run: nix build .#nixosConfigurations.example.config.nihil.cli --no-link --print-build-logs
 
       - name: Build the ISO
         run: nix build .#iso --print-build-logs
