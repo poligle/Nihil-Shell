@@ -14,10 +14,11 @@ import qs.config
 // the window that had the keyboard. It goes back on the clipboard, SHIFT +
 // Insert reaches that window, and it is the newest again. Enter or a click
 // paste too; Escape, a click elsewhere or 20 s without a key leave the
-// clipboard as it was. Let go before the history had the keyboard (a quick
-// press), it waits for Enter. Hyprland only brings it out: a release bind
-// can't see that modifier go up (home/hyprland.nix).
-//   nihil-ipc clipboard open | next | previous | paste | cancel
+// clipboard as it was. Hyprland says when the modifier goes up ("released",
+// home/hyprland.nix), and so does the view if the release reaches it; let
+// go at once, without going through the copies (a quick press), it stays
+// for Enter or a click.
+//   nihil-ipc clipboard open | next | previous | released | paste | cancel
 Singleton {
     id: root
 
@@ -49,6 +50,13 @@ Singleton {
     property var target: null
     property var pending: null
 
+    // When it came out, and whether the copies were gone through since: a
+    // modifier let go sooner than `quick` ms after, with no step, was a
+    // quick press.
+    readonly property int quick: 300
+    property double openedAt: 0
+    property bool stepped: false
+
     function open(): void {
         if (!enabled)
             return;
@@ -59,6 +67,8 @@ Singleton {
         }
         target = ToplevelManager.activeToplevel;
         index = 0;
+        openedAt = Date.now();
+        stepped = false;
         refresh();
         Drawers.open("clipboard", "", false);
         idle.restart();
@@ -71,7 +81,20 @@ Singleton {
         }
         if (items.length > 0)
             index = (index + by + items.length) % items.length;
+        stepped = true;
         idle.restart();
+    }
+
+    // The modifier went up (`from`: Hyprland, or the view). Both may say
+    // so; once it pasted, it is no longer out, and the second does nothing.
+    function released(from: string): void {
+        if (!shown)
+            return;
+        if (!stepped && Date.now() - openedAt < quick) {
+            console.info("nihil: clipboard: let go at once (" + from + "), it stays for Enter");
+            return;
+        }
+        paste();
     }
 
     // Back on the clipboard, and pasted once the window has the keyboard
@@ -197,6 +220,8 @@ Singleton {
             if (item === null)
                 return;
             const elsewhere = !back && active !== null;
+            console.info("nihil: clipboard: " + (elsewhere ? "copied " + item.id + ", another window has the keyboard"
+                                                           : "pasting " + item.id + " with SHIFT + Insert"));
             Quickshell.execDetached([Config.cmd.clipboard, elsewhere ? "copy" : "paste", item.id, item.mime]);
         }
     }
@@ -218,6 +243,7 @@ Singleton {
         function open(): void { root.open(); }
         function next(): void { root.step(1); }
         function previous(): void { root.step(-1); }
+        function released(): void { root.released("hyprland"); }
         function paste(): void { root.paste(); }
         function cancel(): void { root.cancel(); }
     }

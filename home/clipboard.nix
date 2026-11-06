@@ -104,7 +104,10 @@ let
 				# CTRL + V would not in a terminal.
 				copy "''${2:?usage: nihil-clipboard paste ID [TYPE]}" "''${3:-}"
 				sleep 0.06
-				wtype -M shift -k Insert -m shift
+				if ! wtype -M shift -k Insert -m shift; then
+					echo "nihil-clipboard: $2 is on the clipboard, but SHIFT + Insert could not be typed" >&2
+					exit 1
+				fi
 				;;
 			delete)
 				entry "''${2:?usage: nihil-clipboard delete ID}" | cliphist delete

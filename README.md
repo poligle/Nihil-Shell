@@ -59,8 +59,9 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   actions, `=` for a calculator, `?` for Nilo.
 - **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures, from
   the top of the frame: with `SUPER` held, `V` again goes to the next one, and letting go
-  pastes it where you were. The one chosen is lit, its picture in colour. What a password
-  manager copies is never kept.
+  pastes it where you were. A quick press leaves it out, to pick one with the arrows and
+  `Enter`. The one chosen is lit, its picture in colour. What a password manager copies is
+  never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -331,7 +332,7 @@ fingers of each one or `null` for none, which only change there.
 The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `clipboard`,
 `nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
 `toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history has the keyboard while
-it is out, and letting go of its key's first modifier pastes: any combination works
+it is out, and letting go of one of its key's modifiers pastes: any combination works
 (`CTRL + V` too, if you want it on the paste key itself, at the cost of `CTRL + V` in the
 terminal; one without a modifier waits for `Enter`). The gestures: `workspaces`, `close`,
 `launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
@@ -358,7 +359,7 @@ nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
-nihil-ipc clipboard open              # the history; also: next, previous, paste, cancel
+nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
