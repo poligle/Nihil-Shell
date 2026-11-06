@@ -1,14 +1,17 @@
 # boot-sound.nix by poligle
 #
 # A sound with the boot splash (sounds/nihil/boot.wav, from tools/sounds.py):
-# soft ticks as the snowflake's LEDs switch on, then a chord. It plays once
-# the computer's sound card is there, while Plymouth is still on screen, and
-# never on a rebuild. PipeWire only starts with the session, so it goes
+# three notes as the snowflake's LEDs switch on. It plays once the
+# computer's sound card is there, while Plymouth is still on screen, and
+# never on a rebuild; the splash's LEDs wait unlit for it and switch on
+# with it (theme/plymouth.nix), and plymouth-quit lets them finish
+# (modules/plymouth.nix). PipeWire only starts with the session, so it goes
 # through ALSA alone: on the first card with a playback device that is not a
 # screen's (HDMI, DisplayPort), at a moderate level (the card's own levels
 # are muted, or at nothing, until PipeWire sets them). Not when the session
 # last left the sound muted or all the way down (services/Audio.qml writes
-# that). settings.json's "bootSound": false turns it off.
+# that): then the LEDs switch on in silence. settings.json's "bootSound":
+# false turns it off, and the LEDs don't wait.
 
 { config, lib, pkgs, ... }:
 let
@@ -17,7 +20,17 @@ let
 
     play = pkgs.writeShellScript "nihil-boot-sound" ''
         export PATH=${lib.makeBinPath [ pkgs.alsa-utils pkgs.gnugrep pkgs.coreutils ]}
-        [ -e ${lib.escapeShellArg silent} ] && exit 0
+        # The splash's LEDs switch on now, and plymouth-quit learns when.
+        open() {
+            mkdir -p /run/nihil
+            read -r up _ < /proc/uptime
+            echo "$up" > /run/nihil/splash-open
+            ${config.boot.plymouth.package}/bin/plymouth update --status=nihil-open 2> /dev/null || true
+        }
+        if [ -e ${lib.escapeShellArg silent} ]; then
+            open
+            exit 0
+        fi
         for pcm in /proc/asound/card*/pcm*p; do
             [ -d "$pcm" ] || continue
             grep -qiE 'hdmi|displayport' "$pcm/info" 2> /dev/null && continue
@@ -29,8 +42,14 @@ let
             for control in PCM Speaker Headphone; do
                 amixer -q -M -c "$card" sset "$control" 100% unmute 2> /dev/null || true
             done
-            exec aplay -q -D "plughw:$card,$device" ${../sounds/nihil/boot.wav}
+            # aplay takes a moment to start: the LEDs a moment later.
+            aplay -q -D "plughw:$card,$device" ${../sounds/nihil/boot.wav} &
+            sleep 0.05
+            open
+            wait
+            exit 0
         done
+        open
     '';
 in
 {
@@ -46,6 +65,8 @@ in
         description = "NIHIL: the sound of the boot splash";
         wantedBy = [ "sound.target" ];
         after = [ "sound.target" ];
+        # The splash stays until it has played, its LEDs with it.
+        before = [ "plymouth-quit.service" ];
         # Only while the splash is up: booting, not on a rebuild.
         unitConfig.ConditionPathExists = "/run/plymouth/pid";
         restartIfChanged = false;
