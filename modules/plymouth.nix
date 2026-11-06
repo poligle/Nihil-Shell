@@ -6,23 +6,37 @@ let
   # frame two ticks of Plymouth's 50 Hz refresh, so 3.84 s to see it whole
   # once, plus what loading the frames takes before it starts.
   splashSeconds = "4.5";
+  # With the boot sound, the LEDs wait for it to switch on (1.4 s).
+  waitForSound = config.nihil.bootSound;
+  litSeconds = "1.5";
 
   # Since when the splash has been on screen: plymouthd's start (in /proc,
   # in the kernel's 100 Hz ticks) or, if later, the GPU's DRM device
   # appearing, since Plymouth draws nothing until there is one. The rest of
-  # splashSeconds, asleep.
+  # splashSeconds, asleep; and with the boot sound, until its LEDs are on:
+  # the sound says when they began (/run/nihil/splash-open), or, if it never
+  # came, they begin now, in silence.
   splashWait = pkgs.writeShellScript "nihil-splash-wait" ''
     read -r pid 2>/dev/null < /run/plymouth/pid || exit 0
     [ -r "/proc/$pid/stat" ] || exit 0
     read -r -a stat < "/proc/$pid/stat"
     read -r now _ < /proc/uptime
+    opened=0
+    if ${lib.boolToString waitForSound}; then
+      read -r opened _ 2>/dev/null < /run/nihil/splash-open || opened=""
+      if [ -z "$opened" ]; then
+        ${config.boot.plymouth.package}/bin/plymouth update --status=nihil-open 2>/dev/null || true
+        opened=$now
+      fi
+    fi
     wall=$(${pkgs.coreutils}/bin/date +%s.%N)
     card=$(${pkgs.coreutils}/bin/stat -c %.3Z /dev/dri/card* 2>/dev/null | ${pkgs.coreutils}/bin/sort -n | ${pkgs.coreutils}/bin/tail -n 1)
     left=$(${pkgs.gawk}/bin/awk -v started="''${stat[21]}" -v now="$now" -v wall="$wall" -v card="''${card:-0}" \
-      -v want=${splashSeconds} 'BEGIN {
+      -v want=${splashSeconds} -v opened="$opened" -v lit=${litSeconds} 'BEGIN {
         shown = started / 100
         if (card > 0 && now - (wall - card) > shown) shown = now - (wall - card)
         w = want - (now - shown); if (w > want) w = want
+        if (opened > 0 && opened + lit - now > w) w = opened + lit - now
         printf "%.2f", (w > 0 ? w : 0) }')
     exec ${pkgs.coreutils}/bin/sleep "$left"
   '';
@@ -36,7 +50,7 @@ in
 
       # NIHIL splash (theme/plymouth.nix) instead of Stylix's spinning logo.
       theme = "nihil";
-      themePackages = [ (import ../theme/plymouth.nix { inherit pkgs; }) ];
+      themePackages = [ (import ../theme/plymouth.nix { inherit pkgs waitForSound; }) ];
     };
 
     # Silent boot

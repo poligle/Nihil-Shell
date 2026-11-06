@@ -594,8 +594,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   and `noatime`. Swap via zram.
 - **Boot:** UEFI + systemd-boot with a systemd initrd and the NIHIL Plymouth theme
   (frames rendered at build time from `theme/art/snowflake-29.txt`). Its sound
-  (`sounds/nihil/boot.wav`) plays through ALSA once the sound card is up and while the
-  splash is still there: PipeWire only starts with the session (`modules/boot-sound.nix`).
+  (`sounds/nihil/boot.wav`, three notes) plays through ALSA once the sound card is up and
+  while the splash is still there: PipeWire only starts with the session
+  (`modules/boot-sound.nix`). The snowflake's LEDs wait unlit for it and switch on with it
+  (`plymouth update --status=nihil-open`); without it, they don't wait.
 - **Login:** greetd + ReGreet in cage on the last connected monitor, themed by Stylix
   plus NIHIL CSS.
 - **Hyprland in Lua:** the whole configuration is declared in Nix and Home Manager
