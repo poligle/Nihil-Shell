@@ -213,12 +213,15 @@ Item {
                 text: root.asking ? Lang.welDoneApply : Lang.welDoneBody
             }
 
-            Txt {
-                width: parent.width
+            Alert {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(implicitWidth, parent.width)
                 visible: Machine.phase !== ""
-                horizontalAlignment: Text.AlignHCenter
                 text: Machine.statusTitle
-                color: Machine.phase === "failed" ? Tokens.interrupt : Tokens.ink
+                wrong: Machine.phase === "failed"
+                color: Tokens.ink
+                font.family: Tokens.fontSans
+                font.pixelSize: 14
             }
 
             Label {

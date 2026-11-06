@@ -93,12 +93,12 @@ Flickable {
                 onClicked: page.change()
             }
 
-            Label {
+            Alert {
                 text: !page.matching && again.text !== "" ? Lang.cfgPasswordMismatch
                     : Machine.passwordState === "busy" ? Lang.cfgChecking
                     : Machine.passwordState === "done" ? Lang.cfgPasswordDone
                     : Machine.passwordState === "wrong" ? Lang.cfgPasswordWrong : ""
-                color: Machine.passwordState === "wrong" || (!page.matching && again.text !== "") ? Tokens.interrupt : Tokens.muted
+                wrong: Machine.passwordState === "wrong" || (!page.matching && again.text !== "")
             }
         }
     }
