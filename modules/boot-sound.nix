@@ -1,17 +1,17 @@
 # boot-sound.nix by poligle
 #
 # A sound with the boot splash (sounds/nihil/boot.wav, from tools/sounds.py):
-# three notes as the snowflake's LEDs switch on. It plays once the
-# computer's sound card is there, while Plymouth is still on screen, and
-# never on a rebuild; the splash's LEDs wait unlit for it and switch on
-# with it (theme/plymouth.nix), and plymouth-quit lets them finish
-# (modules/plymouth.nix). PipeWire only starts with the session, so it goes
-# through ALSA alone: on the first card with a playback device that is not a
-# screen's (HDMI, DisplayPort), at a moderate level (the card's own levels
-# are muted, or at nothing, until PipeWire sets them). Not when the session
-# last left the sound muted or all the way down (services/Audio.qml writes
-# that): then the LEDs switch on in silence. settings.json's "bootSound":
-# false turns it off, and the LEDs don't wait.
+# the power-off notes going up, the last as the snowflake's last LEDs switch
+# on. It plays once the computer's sound card is there, while Plymouth is
+# still on screen, and never on a rebuild; the splash's LEDs wait unlit for
+# it and switch on as it starts (theme/plymouth.nix), and plymouth-quit lets
+# them finish (modules/plymouth.nix). PipeWire only starts with the session,
+# so it goes through ALSA alone: on the first card with a playback device
+# that is not a screen's (HDMI, DisplayPort), at a moderate level (the
+# card's own levels are muted, or at nothing, until PipeWire sets them). Not
+# when the session last left the sound muted or all the way down
+# (services/Audio.qml writes that): then the LEDs switch on in silence.
+# settings.json's "bootSound": false turns it off, and the LEDs don't wait.
 
 { config, lib, pkgs, ... }:
 let
