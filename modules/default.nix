@@ -17,6 +17,7 @@
         ./packages.nix
         ./hyprland.nix
         ./regreet.nix
+        ./greeter.nix
         ./desktop.nix
         ./storage.nix
         ./services.nix
