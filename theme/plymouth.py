@@ -60,8 +60,8 @@ def main():
     # jitter, from the first lit one on the second frame (the first is all
     # unlit: the splash waits on it for the boot sound) to the last at three
     # quarters of it; the snowflake's middle is empty. The boot sound
-    # follows them (tools/sounds.py): a note as the first LEDs come on, one
-    # as half of them are, one as the last.
+    # (tools/sounds.py) comes with the last of them, its last note with the
+    # very last.
     raw = [[min(0.95, math.hypot(i - c, j - c) / (c * 1.45) + 0.12 * rng.random()) for i in range(n)] for j in range(n)]
     first = min(raw[j][i] for j in range(n) for i in range(n) if lit[j][i])
     last = max(raw[j][i] for j in range(n) for i in range(n) if lit[j][i])

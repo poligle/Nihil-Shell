@@ -3,9 +3,9 @@
 #
 # Synthesises the NIHIL interface sounds into sounds/nihil/*.ogg:
 # short digital blips (sine with a touch of third harmonic), fast attack,
-# exponential decay, nothing louder than -9 dBFS. The boot sound is a WAV
-# (-12 dBFS): it plays through ALSA alone, before PipeWire is there
-# (modules/boot-sound.nix).
+# exponential decay, nothing louder than -9 dBFS. The boot sound, power's
+# notes going up, is a WAV (-12 dBFS): it plays through ALSA alone, before
+# PipeWire is there (modules/boot-sound.nix).
 #
 #   python3 tools/sounds.py [OUTDIR] [--only NAME...]
 #                                        needs numpy, and ffmpeg (libvorbis)
@@ -49,6 +49,15 @@ def place(parts, length):
 
 A5, B5, C6, E6, G6, A6, E5 = 880.0, 987.77, 1046.5, 1318.51, 1567.98, 1760.0, 659.25
 
+# Power off's four notes, going down, 90 ms apart; the boot sound plays
+# them going up.
+POWER = (E6, C6, A5, E5)
+
+
+def power_notes(order, start=0.0):
+    return [(start + 0.09 * k, tone(n, 0.25, 0.08), 0.65) for k, n in enumerate(order)]
+
+
 SOUNDS = {
     # workspace change: the quietest tick
     "switch": place([(0, click(), 0.5), (0, tone(1600, 0.03, 0.006), 0.6)], 0.04),
@@ -62,8 +71,8 @@ SOUNDS = {
     # lock: a low thump and a click, like a switch
     "lock": place([(0, tone(220, 0.16, 0.05, attack=0.002, third=0.25, glide=-0.3), 0.9),
                    (0.005, click(0.002, 3000), 0.5)], 0.18),
-    # power off: four notes going down
-    "power": place([(0.09 * k, tone(n, 0.25, 0.08), 0.65) for k, n in enumerate((E6, C6, A5, E5))], 0.55),
+    # power off: four notes going down (going up, the boot sound)
+    "power": place(power_notes(POWER), 0.55),
     # launcher: one soft blip
     "menu": place([(0, tone(C6, 0.06, 0.02, attack=0.004, glide=0.02), 0.7)], 0.07),
     # notification: a glassy two-note ping
@@ -79,17 +88,19 @@ SOUNDS = {
 }
 
 
-# The boot splash's sound: three notes with the snowflake's LEDs as they
-# switch on (theme/plymouth.py), the first at once, the second as half of
-# them are on (0.5 s), the last with the last of them (1.05 s), and gone
-# as their flashes fade. The splash waits for it to open
-# (modules/boot-sound.nix).
+# The boot splash's sound: the power-off one going up, its four notes in
+# the other order, struck as they are there. The splash waits for it to
+# open (modules/boot-sound.nix) and the snowflake's LEDs switch on from the
+# middle (theme/plymouth.py), most of them in silence: the notes come with
+# the last ones, the last note with the last LED (the intro's frame 27,
+# 1.08 s after the splash opens), and it fades with their flashes. Making
+# power again makes it too.
+LAST_LED = 27 * 0.04
+
 WAVS = {
-    "boot": place([(0.0, tone(E5, 0.42, 0.11, attack=0.006, third=0.05), 0.5),
-                   (0.5, tone(B5, 0.42, 0.11, attack=0.006, third=0.05), 0.45),
-                   (1.02, tone(E6, 0.45, 0.14, attack=0.006, third=0.04), 0.5),
-                   (1.02, tone(E6 * 2, 0.2, 0.05, third=0), 0.05)], 1.47),
+    "boot": place(power_notes(POWER[::-1], LAST_LED - 0.27), LAST_LED + 0.29),
 }
+MADE_FROM = {"boot": "power"}
 
 
 def pcm16(signal, dbfs):
@@ -126,7 +137,7 @@ def main():
             write_ogg(name, signal.copy(), outdir)
             print(f"{name:11s} {len(signal) / RATE * 1000:5.0f} ms")
     for name, signal in WAVS.items():
-        if only is None or name in only:
+        if only is None or name in only or MADE_FROM.get(name) in only:
             write_wav(os.path.join(outdir, f"{name}.wav"), pcm16(signal.copy(), -12))
             print(f"{name:11s} {len(signal) / RATE * 1000:5.0f} ms (wav)")
 
