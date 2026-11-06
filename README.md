@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><b>ex nihilo</b><br>a monochrome, dot-matrix desktop for NixOS</p>
+<p align="center"><i>ex nihilo</i><br>a monochrome, dot-matrix desktop for NixOS</p>
 
 <p align="center">
   <a href="https://nihilshell.com/">Website</a> &nbsp;·&nbsp;
@@ -27,8 +27,8 @@ in [Quickshell](https://quickshell.org). One file, [`theme/nihil.nix`](theme/nih
 holds the design tokens, and every layer — GTK, terminal, editor, compositor, lock
 screen, greeter, boot splash and the shell — is generated from it.
 
-> *Nihil* is Latin for "nothing", the way *caelestia* is Latin for "the heavenly".
-> *Ex nihilo* — from nothing — is also what NixOS does: the whole system, rebuilt from a
+> *Nihil* is Latin for "nothing", the way *caelestia* is Latin for "the heavenly". And
+> *ex nihilo*, from nothing, is also what NixOS does: the whole system, rebuilt from a
 > declaration.
 
 **On the phone, too:** [NIHIL for Android](https://github.com/poligle/Nihil-Launcher) is a
