@@ -26,7 +26,6 @@ Flickable {
 
         Setting {
             title: Lang.cfgHost
-            sub: Lang.cfgHostSub
 
             Field {
                 width: 240
@@ -41,7 +40,6 @@ Flickable {
 
         Setting {
             title: "Nilo"
-            sub: Lang.cfgNiloSub
 
             Toggle {
                 on: Machine.get("nilo.enable", false)
@@ -54,7 +52,7 @@ Flickable {
             title: Lang.cfgAcceleration
 
             Choice {
-                options: [{ value: "cpu", label: "cpu" }, { value: "vulkan", label: "vulkan" }, { value: "rocm", label: "rocm" }, { value: "cuda", label: "cuda" }]
+                options: [{ value: "cpu", label: "CPU" }, { value: "vulkan", label: "Vulkan" }, { value: "rocm", label: "ROCm" }, { value: "cuda", label: "CUDA" }]
                 value: Machine.get("nilo.acceleration", "cpu")
                 onPicked: value => Machine.set("nilo.acceleration", value)
             }
@@ -96,7 +94,6 @@ Flickable {
 
         Setting {
             title: Lang.cfgFingerprint
-            sub: Lang.cfgFingerprintSub
 
             Toggle {
                 on: Machine.get("fingerprint", false)

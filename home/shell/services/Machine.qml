@@ -66,12 +66,13 @@ Singleton {
         : phase === "done" ? (kind === "update" ? Lang.updDone : Lang.cfgApplied)
         : phase === "warning" ? Lang.cfgAppliedWarn
         : Lang.cfgSaved
+    // Under it, only what says something: the line the rebuild is on, why
+    // it failed, where to look.
     readonly property string statusSub: phase === "auth" ? (get("fingerprint", false) ? Lang.cfgApplyFinger : "")
-        : phase === "applying" ? (detail !== "" ? detail : Lang.cfgApplyingSub)
+        : phase === "applying" ? detail
         : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint) : "")
-        : changes > 0 ? Lang.cfgPendingSub
-        : phase === "warning" ? Lang.cfgLogHint
-        : phase === "done" ? "" : Lang.cfgSavedSub
+        : changes === 0 && phase === "warning" ? Lang.cfgLogHint
+        : ""
 
     Timer {
         running: root.phase === "applying"

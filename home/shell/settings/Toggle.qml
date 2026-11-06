@@ -1,8 +1,8 @@
 import QtQuick
 import qs.theme
 
-// On or off: an LED, lit or not, lined up with Choice's (the same middle).
-// The whole of it is the button.
+// On or off: a switch, ink when on, a hairline when off. The whole of it
+// is the button.
 Item {
     id: root
 
@@ -10,37 +10,39 @@ Item {
 
     signal toggled()
 
-    implicitWidth: 28
-    implicitHeight: 28
+    implicitWidth: 34
+    implicitHeight: 30
 
-    // A faint ring around it while it is on.
     Rectangle {
-        anchors.centerIn: led
-        width: 20
+        id: track
+        anchors.verticalCenter: parent.verticalCenter
+        width: 34
         height: 20
         radius: 10
-        color: Tokens.ink
-        opacity: root.on ? 0.08 : 0
-
-        Behavior on opacity { NumberAnimation { duration: Tokens.animFast } }
-    }
-
-    Rectangle {
-        id: led
-        x: -2
-        anchors.verticalCenter: parent.verticalCenter
-        width: 10
-        height: 10
-        radius: 5
-        color: root.on ? Tokens.ink : area.containsMouse ? Tokens.muted : Tokens.off
+        color: root.on ? Tokens.ink : "transparent"
+        border.width: 1
+        border.color: root.on ? Tokens.ink : area.containsMouse ? Tokens.muted : Tokens.off
 
         Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+        Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
+
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            x: root.on ? parent.width - width - 4 : 4
+            width: 12
+            height: 12
+            radius: 6
+            color: root.on ? Tokens.black : area.containsMouse ? Tokens.dim : Tokens.muted
+
+            Behavior on x { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
+            Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+        }
     }
 
     MouseArea {
         id: area
         anchors.fill: parent
-        anchors.leftMargin: -6
+        anchors.margins: -6
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.toggled()
