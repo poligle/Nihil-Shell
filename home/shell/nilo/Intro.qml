@@ -327,7 +327,7 @@ Item {
             }
         }
 
-        PillButton {
+        KeyButton {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: root.page === root.pages - 1 ? Lang.introStart : Lang.introNext

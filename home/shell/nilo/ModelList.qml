@@ -86,7 +86,7 @@ Column {
             font.pixelSize: 13
         }
 
-        PillButton {
+        KeyButton {
             id: startButton
             anchors.right: parent.right
             anchors.rightMargin: 16
@@ -190,14 +190,14 @@ Column {
                     color: row.failed ? Tokens.dim : Nilo.recommended === row.modelData.tag && !row.pulling ? Tokens.ink : Tokens.muted
                 }
 
-                PillButton {
+                KeyButton {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.manage && row.modelData.installed && !row.selected
                     text: Lang.niloDelete
                     onClicked: Nilo.remove(row.modelData.tag)
                 }
 
-                PillButton {
+                KeyButton {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: row.selected && !row.modelData.installed && !row.pulling
                     text: Lang.niloDownload

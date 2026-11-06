@@ -80,6 +80,11 @@ OUTPUT_LINES = 6        # the last lines the shell shows under the command
 CONTEXT_CHARS = 9000    # nilo.md, the user's notes and the repository's NILO.md, together
 PULL_ATTEMPTS = 4       # a download that breaks off is tried again (Ollama resumes it)
 PULL_WAIT = 5           # seconds before the second attempt; then 20, 45
+# What a model has to leave the rest of the machine when it loads: an eighth
+# of the memory, never under 2 GB. Ollama would load one that takes more,
+# and the whole session would run short of memory around it.
+RESERVE_SHARE = 0.125
+RESERVE_GB = 2.0
 
 # Why a download failed, from Ollama's own words ("max retries exceeded: Get
 # https://…r2.cloudflarestorage.com/…: EOF"). Network trouble and the
@@ -1133,10 +1138,10 @@ class Tools:
                 continue
 
 
-def meminfo():
+def meminfo(path="/proc/meminfo"):
     values = {}
     try:
-        with open("/proc/meminfo") as f:
+        with open(path) as f:
             for line in f:
                 key, _, rest = line.partition(":")
                 parts = rest.split()
@@ -1576,6 +1581,34 @@ class Agent:
     def keep_alive(self):
         return f"{int(self.settings['keepAlive'])}m"
 
+    def room(self, model):
+        """Refuse ("memory") to load `model` when it would leave the machine
+        less than its reserve: what it takes with Nilo's context (as the
+        models list says, or its download and a quarter more) against what
+        the kernel says is available. One already in memory takes nothing
+        more, the ones Ollama has loaded count as free (it lets them go for
+        it), and one not downloaded is left to Ollama to say so."""
+        mem = meminfo(self.config.get("meminfo", "/proc/meminfo"))
+        total = mem.get("MemTotal", 0) * 1024 / 1e9
+        available = mem.get("MemAvailable", 0) * 1024 / 1e9
+        if total <= 0 or available <= 0:
+            return
+        names = {model, model.removesuffix(":latest"), f"{model}:latest"}
+        try:
+            download = next((m for m in self.ollama.tags() if m.get("name") in names), None)
+            running = self.ollama.ps()
+        except OllamaError:
+            return
+        if download is None or any(m.get("name") in names or m.get("model") in names for m in running):
+            return
+        listed = next((m for m in self.config.get("models", []) if m.get("tag") in names and m.get("ram")), None)
+        need = float(listed["ram"]) if listed else download.get("size", 0) / 1e9 * 1.25
+        free = available + sum(m.get("size", 0) for m in running) / 1e9
+        reserve = max(RESERVE_GB, total * RESERVE_SHARE)
+        if need > free - reserve:
+            raise OllamaError("memory", f"{model} takes about {need:.1f} GB; {free:.1f} GB are free, "
+                                        f"and {reserve:.1f} stay for the rest")
+
     def warm(self):
         model = self.current()
         if not model or self.state["loading"]:
@@ -1584,6 +1617,8 @@ class Agent:
         if not self.state["loaded"]:
             self.set_state(loading=True)
         try:
+            # Not if it doesn't fit: the question will say so.
+            self.room(model)
             self.ollama.load(model, self.keep_alive(), self.options())
             # Straight from "loading" to "loaded", without looking asleep in between.
             self.refresh_state()
@@ -1896,6 +1931,8 @@ class Agent:
         if not model:
             raise OllamaError("no-model")
         self.ensure_ollama()
+        if not self.state["loaded"]:
+            self.room(model)
         rounds = 0
         while rounds < MAX_ROUNDS:
             rounds += 1

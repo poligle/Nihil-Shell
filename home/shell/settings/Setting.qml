@@ -3,7 +3,9 @@ import QtQuick.Layouts
 import qs.theme
 import qs.components
 
-// One setting: what it is on the left, its control on the right.
+// One setting, as on a spec sheet: its name on the left, its control in the
+// column of values (the same on every page), and under the control what it
+// means, when that needs saying.
 Item {
     id: root
 
@@ -11,21 +13,39 @@ Item {
     property string sub: ""
     default property alias control: holder.data
 
+    // Where the column of values starts.
+    readonly property real nameWidth: 200
+
     Layout.fillWidth: true
-    implicitHeight: Math.max(texts.implicitHeight, holder.height) + 14
+    implicitHeight: Math.max(name.y + name.implicitHeight, values.y + values.implicitHeight) + 14
+
+    FontMetrics {
+        id: line
+        font: name.font
+    }
+
+    // Its first line beside the middle of the control.
+    Txt {
+        id: name
+        width: root.nameWidth
+        y: values.y + Math.max(0, (holder.height - line.height) / 2)
+        text: root.title
+        wrapMode: Text.WordWrap
+        elide: Text.ElideNone
+        font.pixelSize: 14
+    }
 
     Column {
-        id: texts
-        anchors.left: parent.left
-        anchors.right: holder.left
-        anchors.rightMargin: 24
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: 3
+        id: values
+        x: root.nameWidth + 24
+        y: 14
+        width: root.width - x
+        spacing: 6
 
-        Txt {
-            width: parent.width
-            text: root.title
-            font.pixelSize: 15
+        Item {
+            id: holder
+            width: childrenRect.width
+            height: childrenRect.height
         }
 
         Txt {
@@ -37,14 +57,6 @@ Item {
             wrapMode: Text.WordWrap
             elide: Text.ElideNone
         }
-    }
-
-    Item {
-        id: holder
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        width: childrenRect.width
-        height: childrenRect.height
     }
 
     Rectangle {

@@ -57,9 +57,10 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
   actions, `=` for a calculator, `?` for Nilo.
-- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures (in
-  dots), from the top of the frame: with `SUPER` held, `V` again goes to the next one, and
-  letting go pastes it where you were. What a password manager copies is never kept.
+- **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures, from
+  the top of the frame: with `SUPER` held, `V` again goes to the next one, and letting go
+  pastes it where you were. The one chosen is lit, its picture in colour. What a password
+  manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -201,9 +202,10 @@ your old `configuration.nix`, and whatever this machine needed there, such as
 `hardware.amdgpu.initrd.enable = true;` with an AMD GPU, so the boot splash comes up early
 (the installer adds the GPU's by itself).
 
-A screen connected later, on any machine, goes into `outputs` from Preferences, Screens
-(its resolution, scale, rotation, place, bar and which one is the main one), or the same
-way by hand (`nihil settings`). One that is not there works anyway, with Hyprland's own
+A screen connected later, on any machine, goes into `outputs` from Preferences, Screens:
+the screens drawn as they sit on the desk, to be dragged beside each other, and for the one
+picked its resolution, refresh rate, scale, rotation, bar and whether it is the main one.
+Or the same by hand (`nihil settings`), with a `position` like `"2560x0"` in logical pixels. One that is not there works anyway, with Hyprland's own
 mode, no bar and the primary screen's wallpaper.
 
 Then point the flake at the clone and switch (flakes are turned on for this first time;
@@ -328,9 +330,10 @@ fingers of each one or `null` for none, which only change there.
 
 The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `clipboard`,
 `nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
-`toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history keeps its keys while
-its modifier is held; any combination with a modifier works (`CTRL + V` too, if you want
-it on the paste key itself, at the cost of `CTRL + V` in the terminal). The gestures: `workspaces`, `close`,
+`toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history has the keyboard while
+it is out, and letting go of its key's first modifier pastes: any combination works
+(`CTRL + V` too, if you want it on the paste key itself, at the cost of `CTRL + V` in the
+terminal; one without a modifier waits for `Enter`). The gestures: `workspaces`, `close`,
 `launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
 `terminal`, `files`, `browser`, `notes`, `code`, `music` and `pixels` were actions and
 are programs now: a `settings.json` that still names them under `binds` is read without
@@ -457,7 +460,10 @@ repository turns Files and Git off again.
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
-by default. Asleep it takes no memory; Ollama itself stays as an idle service.
+by default. Asleep it takes no memory; Ollama itself stays as an idle service. A model
+that would leave the rest of the machine less than an eighth of its memory (2 GB at
+least) is not loaded: Nilo says there is no room for it. And should memory run out all
+the same, the kernel stops Ollama first, never the session.
 
 **History.** A conversation lives in the agent while the shell runs: closing the launcher
 keeps it, `ctrl + n` starts a new one, and nothing is written to disk. Nilo asks Ollama

@@ -65,14 +65,14 @@ let
 		++ lib.optional (keys.screenshot != null)
 			(bindWith keys.screenshot (exec "hyprshot -m region --clipboard-only") { locked = true; });
 
-	# The clipboard history (home/clipboard.nix, services/Clipboard.qml). Its
-	# key shows it and goes on to the next copy while the modifier stays
-	# down; letting the modifier go pastes the one chosen, Escape leaves the
-	# clipboard as it was. A submap holds those keys while it is out; the
-	# shell lets it go as well after 20 s without a key, in case a release
-	# never comes. Not bound when the history is off, or when an action or a
-	# program already has its key (a warning says so). Shown at the top of
-	# the frame, it never takes the keyboard: the paste lands where it was.
+	# The clipboard history (home/clipboard.nix, services/Clipboard.qml): its
+	# key only brings it out, and the shell does the rest with the keyboard.
+	# The key again goes on to the next copy, and letting go of its modifier
+	# pastes the one chosen. A release bind can't see that modifier go up:
+	# Hyprland skips one whose key went down before its submap, or that took
+	# part in another bind, and the modifier is always both (ngrayson/nixos
+	# #228, on 0.55.4). Not bound when the history is off, or when an action
+	# or a program already has its key (a warning says so).
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
 	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
@@ -81,73 +81,8 @@ let
 	clipboardTaken = clipboardKey != null && lib.elem (normal clipboardKey) (map normal (lib.filter (combo: combo != null)
 		(lib.mapAttrsToList (name: combo: if name == "clipboard" then null else combo) keys
 			++ map (program: program.keys) osConfig.nihil.programs)));
-	clipboardOn = osConfig.nihil.clipboard > 0 && clipboardKey != null && !clipboardTaken && lib.length (parts clipboardKey) > 1;
-	clipboard =
-		let
-			mods = lib.init (parts clipboardKey);
-			key = lib.last (parts clipboardKey);
-			held = {
-				SUPER = [ "Super_L" "Super_R" ];
-				CTRL = [ "Control_L" "Control_R" ];
-				CONTROL = [ "Control_L" "Control_R" ];
-				ALT = [ "Alt_L" "Alt_R" ];
-				SHIFT = [ "Shift_L" "Shift_R" ];
-			}.${lib.toUpper (lib.head mods)} or [ ];
-			with' = extra: lib.concatStringsSep " + " (mods ++ extra);
-			# Letting the modifier go. Transparent and with ignore_mods, or
-			# Hyprland would skip it once another key went down and up during
-			# the hold (it shadows release binds); non_consuming, so the window
-			# sees the modifier go up as it saw it go down.
-			release = sym: ''
-					hl.bind("${with' [ sym ]}", function() clipboard.leave("paste") end,
-						{ release = true, transparent = true, ignore_mods = true, non_consuming = true })
-			'';
-		in
-		''
-			-- NIHIL: the clipboard history (home/hyprland.nix). Each step in a
-			-- pcall: a mistake here neither stops the rest of the configuration
-			-- nor leaves the keys in this submap.
-			local clipboardReady = pcall(function()
-				local clipboard = {}
-				-- Back to the usual keys. Hyprland calls that "reset": there is
-				-- no submap named "default".
-				function clipboard.normal()
-					pcall(function() hl.dispatch(hl.dsp.submap("reset")) end)
-				end
-				function clipboard.call(what)
-					pcall(function() hl.exec_cmd("nihil-ipc clipboard " .. what) end)
-				end
-				-- The keys come back first, whatever the shell does after.
-				function clipboard.leave(what)
-					clipboard.normal()
-					clipboard.call(what)
-				end
-				-- A reload starts this Lua afresh but keeps the submap it finds
-				-- (fathom, issue #12): never stay in this one through it.
-				local found, now = pcall(hl.get_current_submap)
-				if found and now == "nihil-clipboard" then
-					clipboard.normal()
-				end
-				-- The ways out go in first: if a later bind fails, they are there.
-				hl.define_submap("nihil-clipboard", function()
-					hl.bind("Escape", function() clipboard.leave("cancel") end)
-					hl.bind("${with' [ "Escape" ]}", function() clipboard.leave("cancel") end)
-			${lib.concatMapStrings release held}
-					hl.bind("${clipboardKey}", function() clipboard.call("next") end, { repeating = true })
-			${lib.optionalString (!lib.elem "SHIFT" (map lib.toUpper mods)) ''
-					hl.bind("${with' [ "SHIFT" key ]}", function() clipboard.call("previous") end, { repeating = true })
-			''}
-				end)
-				-- Bound after the submap: if that failed, the key stays free.
-				hl.bind("${clipboardKey}", function()
-					clipboard.call("open")
-					pcall(function() hl.dispatch(hl.dsp.submap("nihil-clipboard")) end)
-				end)
-			end)
-			if not clipboardReady then
-				pcall(hl.exec_cmd, "notify-send -a NIHIL NIHIL 'The clipboard history could not set up its keys (hyprland.lua).'")
-			end
-		'';
+	clipboardBinds = lib.optional (osConfig.nihil.clipboard > 0 && clipboardKey != null && !clipboardTaken)
+		(bind clipboardKey (exec "nihil-ipc clipboard open"));
 
 	fingers = osConfig.nihil.gestures;
 
@@ -244,8 +179,6 @@ in
 		package = null;
 		portalPackage = null;
 		configType = "lua";
-
-		extraConfig = lib.optionalString clipboardOn clipboard;
 
 		settings =
 		{
@@ -413,6 +346,7 @@ in
 				(bindWith "switch:off:Lid Switch" lidOpen { locked = true; })
 			]
 			++ actionBinds
+			++ clipboardBinds
 			++ programBinds
 			++ niloBinds
 			++ workspaceBinds;

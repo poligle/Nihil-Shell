@@ -16,8 +16,15 @@ Item {
 
     property string armed: ""       // the confirmation armed by a first enter
     property bool follow: true      // stick to the end while it writes
+    // Empty, Nilo's face sits above what it says (NiloView.qml): this much
+    // room is left for it, and the two are centred together.
+    property real faceRoom: 0
 
     signal suggest(string text)
+
+    // Where the empty conversation (or what Ollama is up to) starts.
+    readonly property real emptyTop: Math.max(faceRoom,
+        (height - faceRoom - (empty.visible ? empty.implicitHeight : down.implicitHeight)) / 2 + faceRoom)
 
     readonly property var voices: ({ ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6",
                                      surface: String(Tokens.surface), mono: Tokens.fontMono })
@@ -114,9 +121,9 @@ Item {
         id: empty
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: Math.max(0, parent.height * 0.5 - 10 - hello.height - spacing)
+        anchors.topMargin: root.emptyTop
         width: Math.min(620, parent.width - 48)
-        spacing: 18
+        spacing: 10
         visible: Nilo.messages.count === 0 && (Nilo.ollama || !Nilo.known)
         opacity: visible ? 1 : 0
 
@@ -160,6 +167,12 @@ Item {
             font.pixelSize: 15
         }
 
+        // A pause between what Nilo says and what can be done.
+        Item {
+            width: 1
+            height: 16
+        }
+
         // Without its model, Nilo can't answer yet: the download instead of the questions.
         DotMeter {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -170,7 +183,7 @@ Item {
             value: Nilo.pull?.progress ?? 0
         }
 
-        PillButton {
+        KeyButton {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: !Nilo.installed && !parent.downloading && Nilo.known
             text: Lang.niloDownload
@@ -178,9 +191,9 @@ Item {
             onClicked: Nilo.download(Nilo.settings.model)
         }
 
+        // Questions to start with: plain lines, lit on hover.
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 8
             visible: Nilo.installed
 
             Repeater {
@@ -194,28 +207,22 @@ Item {
                     { text: Lang.niloTryPush, on: Nilo.settings.git === true }
                 ].filter(s => s.on).slice(0, 5)
 
-                Rectangle {
+                Txt {
                     required property var modelData
 
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: label.implicitWidth + 28
-                    height: 32
-                    radius: 16
-                    color: area.containsMouse ? Tokens.raised : "transparent"
-                    border.width: 1
-                    border.color: Tokens.line
+                    height: 28
+                    text: modelData.text
+                    color: tryArea.containsMouse ? Tokens.ink : Tokens.dim
+                    font.pixelSize: 13
 
-                    Txt {
-                        id: label
-                        anchors.centerIn: parent
-                        text: parent.modelData.text
-                        color: area.containsMouse ? Tokens.ink : Tokens.dim
-                        font.pixelSize: 13
-                    }
+                    Behavior on color { ColorAnimation { duration: Tokens.animFast } }
 
                     MouseArea {
-                        id: area
+                        id: tryArea
                         anchors.fill: parent
+                        anchors.leftMargin: -10
+                        anchors.rightMargin: -10
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.suggest(parent.modelData.text)
@@ -231,7 +238,7 @@ Item {
         id: down
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: Math.max(0, parent.height * 0.5 - 10)
+        anchors.topMargin: root.emptyTop
         width: Math.min(620, parent.width - 48)
         spacing: 12
         visible: Nilo.messages.count === 0 && !Nilo.ollama && Nilo.known
@@ -288,7 +295,7 @@ Item {
 
         Item { width: 1; height: 2 }
 
-        PillButton {
+        KeyButton {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: !Nilo.startingOllama
             text: Lang.niloStartOllama
@@ -744,29 +751,16 @@ Item {
                             spacing: 8
                             visible: card.open
 
-                            PillButton {
+                            KeyButton {
                                 text: Lang.confirmCancel
                                 onClicked: Nilo.answer(false)
                             }
 
-                            Rectangle {
-                                implicitWidth: okLabel.implicitWidth + 24
-                                implicitHeight: 26
-                                radius: 13
-                                color: card.isArmed ? Tokens.interrupt : Tokens.ink
-
-                                Label {
-                                    id: okLabel
-                                    anchors.centerIn: parent
-                                    text: card.isArmed ? Lang.enterAgain : Lang.confirmOk
-                                    color: card.isArmed ? Tokens.ink : Tokens.black
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Nilo.answer(true)
-                                }
+                            KeyButton {
+                                accent: !card.isArmed
+                                danger: card.isArmed
+                                text: card.isArmed ? Lang.enterAgain : Lang.confirmOk
+                                onClicked: Nilo.answer(true)
                             }
                         }
 
@@ -802,7 +796,7 @@ Item {
                         font.pixelSize: 13
                     }
 
-                    PillButton {
+                    KeyButton {
                         id: download
                         visible: entry.name === "model-missing" && !Nilo.installed && Nilo.pull === null
                         text: Lang.niloDownload
@@ -810,7 +804,7 @@ Item {
                         onClicked: Nilo.download(Nilo.settings.model)
                     }
 
-                    PillButton {
+                    KeyButton {
                         id: start
                         visible: entry.name === "ollama-down" && !Nilo.ollama && !Nilo.startingOllama
                         text: Lang.niloStartOllama

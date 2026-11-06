@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls as QQC
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
@@ -40,18 +39,18 @@ Item {
         if (expanded === "wifi") Network.scan();
         if (expanded === "update") {
             Updates.maybeCheck();
-            Qt.callLater(() => updatePassword.forceActiveFocus());
+            Qt.callLater(() => updatePassword.grab());
         }
         Bt.scan(expanded === "bt");
     }
 
     function update(): void {
         if (updatePassword.text === "" && !Machine.get("fingerprint", false)) {
-            updatePassword.forceActiveFocus();
+            updatePassword.grab();
             return;
         }
         Machine.update(updatePassword.text);
-        updatePassword.text = "";
+        updatePassword.clear();
     }
 
     // Power actions need a second click within 3 s.
@@ -124,7 +123,7 @@ Item {
 
         Layout.fillWidth: true
         implicitHeight: 40
-        radius: 12
+        radius: 10
         color: area.containsMouse ? Tokens.raised : "transparent"
 
         RowLayout {
@@ -142,7 +141,26 @@ Item {
                 font.weight: item.current ? Font.Medium : Font.Normal
             }
 
-            Label { text: item.busy ? "···" : item.detail }
+            Label {
+                visible: !item.busy
+                text: item.detail
+            }
+
+            // Busy (connecting): an LED that breathes.
+            Rectangle {
+                visible: item.busy
+                width: 6
+                height: 6
+                radius: 3
+                color: Tokens.ink
+
+                SequentialAnimation on opacity {
+                    running: item.busy
+                    loops: Animation.Infinite
+                    NumberAnimation { from: 1; to: 0.2; duration: 600; easing.type: Easing.InOutSine }
+                    NumberAnimation { from: 0.2; to: 1; duration: 600; easing.type: Easing.InOutSine }
+                }
+            }
         }
 
         MouseArea {
@@ -307,32 +325,15 @@ Item {
                             onClicked: net.modelData.active ? Network.disconnect() : Network.connect(net.modelData, "")
                         }
 
-                        Rectangle {
+                        Field {
                             Layout.fillWidth: true
                             visible: Network.askPassword === net.modelData.ssid
-                            implicitHeight: 40
-                            radius: 20
-                            color: Tokens.surface
-                            border.width: 1
-                            border.color: Tokens.line
-
-                            QQC.TextField {
-                                id: password
-                                anchors.fill: parent
-                                anchors.leftMargin: 14
-                                anchors.rightMargin: 14
-                                background: null
-                                echoMode: TextInput.Password
-                                color: Tokens.ink
-                                placeholderText: Lang.password
-                                placeholderTextColor: Tokens.muted
-                                font.family: Tokens.fontMono
-                                font.pixelSize: 13
-                                verticalAlignment: TextInput.AlignVCenter
-                                onVisibleChanged: if (visible) { text = ""; forceActiveFocus(); }
-                                onAccepted: Network.connect(net.modelData, text)
-                                Keys.onEscapePressed: Network.askPassword = ""
-                            }
+                            password: true
+                            catchEscape: true
+                            placeholder: Lang.password
+                            onVisibleChanged: if (visible) { clear(); grab(); }
+                            onAccepted: Network.connect(net.modelData, text)
+                            onEscaped: Network.askPassword = ""
                         }
                     }
                 }
@@ -418,7 +419,7 @@ Item {
 
                     Label { text: Lang.notifications.arg(Notifs.history.length) }
                     Item { Layout.fillWidth: true }
-                    PillButton { text: Lang.clear; visible: Notifs.history.length > 0; onClicked: Notifs.clear() }
+                    KeyButton { text: Lang.clear; visible: Notifs.history.length > 0; onClicked: Notifs.clear() }
                 }
 
                 Repeater {
@@ -564,33 +565,17 @@ Item {
                         visible: !Machine.busy
                         spacing: 8
 
-                        Rectangle {
+                        Field {
+                            id: updatePassword
                             Layout.fillWidth: true
-                            implicitHeight: 36
-                            radius: 18
-                            color: Tokens.surface
-                            border.width: 1
-                            border.color: updatePassword.activeFocus ? Tokens.muted : Tokens.line
-
-                            QQC.TextField {
-                                id: updatePassword
-                                anchors.fill: parent
-                                anchors.leftMargin: 14
-                                anchors.rightMargin: 14
-                                background: null
-                                echoMode: TextInput.Password
-                                color: Tokens.ink
-                                placeholderText: Lang.cfgApplyPassword
-                                placeholderTextColor: Tokens.muted
-                                font.family: Tokens.fontMono
-                                font.pixelSize: 13
-                                verticalAlignment: TextInput.AlignVCenter
-                                onAccepted: root.update()
-                                Keys.onEscapePressed: root.expanded = ""
-                            }
+                            password: true
+                            catchEscape: true
+                            placeholder: Lang.cfgApplyPassword
+                            onAccepted: root.update()
+                            onEscaped: root.expanded = ""
                         }
 
-                        PillButton {
+                        KeyButton {
                             accent: true
                             text: Lang.updUpdate
                             onClicked: root.update()

@@ -168,7 +168,7 @@ Flickable {
             Repeater {
                 model: page.modifiers
 
-                PillButton {
+                KeyButton {
                     required property string modelData
 
                     text: modelData
@@ -220,7 +220,7 @@ Flickable {
 
         Rectangle {
             anchors.fill: parent
-            radius: 14
+            radius: 10
             color: row.open || area.containsMouse ? Tokens.surface : "transparent"
         }
 
@@ -269,7 +269,6 @@ Flickable {
         Heading {
             Layout.bottomMargin: 12
             title: Lang.cfgKeys
-            sub: Lang.cfgKeysSub
         }
 
         Label {
@@ -300,13 +299,13 @@ Flickable {
                         width: parent.width
                         spacing: 6
 
-                        PillButton {
+                        KeyButton {
                             text: Lang.cfgKeySave
                             accent: true
                             onClicked: page.saveAction(modelData)
                         }
 
-                        PillButton {
+                        KeyButton {
                             text: Lang.cfgKeyDefault
                             onClicked: page.resetAction(modelData)
                         }
@@ -319,16 +318,6 @@ Flickable {
             Layout.topMargin: 22
             Layout.bottomMargin: 6
             text: Lang.cfgPrograms
-        }
-
-        Txt {
-            Layout.fillWidth: true
-            Layout.bottomMargin: 8
-            text: Lang.cfgProgramsSub
-            color: Tokens.muted
-            font.pixelSize: 12
-            wrapMode: Text.WordWrap
-            elide: Text.ElideNone
         }
 
         Repeater {
@@ -377,13 +366,13 @@ Flickable {
                         width: parent.width
                         spacing: 6
 
-                        PillButton {
+                        KeyButton {
                             text: Lang.cfgKeySave
                             accent: true
                             onClicked: page.saveProgram(index)
                         }
 
-                        PillButton {
+                        KeyButton {
                             visible: index < page.programs.length
                             text: Lang.cfgKeyRemove
                             onClicked: page.removeProgram(index)
@@ -393,7 +382,7 @@ Flickable {
             }
         }
 
-        PillButton {
+        KeyButton {
             Layout.topMargin: 10
             visible: page.editing !== "program:" + page.programs.length
             text: "+ " + Lang.cfgProgramAdd
