@@ -6,8 +6,12 @@ let
     # once: with the lid closed (the reader is under it), and when the NIHIL
     # shell runs sudo with the password already typed, so no finger is asked
     # after it. That sudo's pid is in the user's nihil-sudo-password
-    # (services/Machine.qml), and sudo is pam_exec's parent. Leaving the
-    # reader out never lets anyone in without the password.
+    # (services/Machine.qml), and sudo is pam_exec's parent. And when the
+    # password was typed in NIHIL's greeter while the reader waited
+    # (greeter/shell.qml): the greeter's nihil-greeter-password, which only
+    # it can make. Leaving the reader out never lets anyone in without the
+    # password.
+    greeter = config.services.greetd.settings.default_session.user;
     skipReader = pkgs.writeShellScript "skip-fingerprint" ''
         for state in /proc/acpi/button/lid/*/state; do
             [ -r "$state" ] || continue
@@ -15,6 +19,10 @@ let
         done
         if [ "''${PAM_SERVICE:-}" = sudo ] && uid=$(${pkgs.coreutils}/bin/id -u -- "''${PAM_USER:-}" 2> /dev/null) \
             && [ "$(${pkgs.coreutils}/bin/cat "/run/user/$uid/nihil-sudo-password" 2> /dev/null)" = "$PPID" ]; then
+            exit 0
+        fi
+        if [ "''${PAM_SERVICE:-}" = greetd ] && uid=$(${pkgs.coreutils}/bin/id -u -- ${greeter} 2> /dev/null) \
+            && [ -e "/run/user/$uid/nihil-greeter-password" ]; then
             exit 0
         fi
         exit 1
