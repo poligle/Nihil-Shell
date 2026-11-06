@@ -10,6 +10,9 @@ in
     programs.zen-browser =
     {
         enable = true;
+        # Links open in Zen (home/default-apps.nix): its module claims the web
+        # types in mimeapps.list and sets BROWSER.
+        setAsDefaultBrowser = true;
         profiles =
         {
             default =

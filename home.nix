@@ -15,6 +15,7 @@
 		./home/kitty.nix
 		./home/scripts.nix
 		./home/desktop-entries.nix
+		./home/default-apps.nix
 		./home/wallpaper.nix
 		./home/hypridle.nix
 		./home/hyprlock.nix
