@@ -341,6 +341,10 @@ class AgentTest(unittest.TestCase):
         with open(self.terminal, "w") as f:
             f.write("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$(dirname \"$0\")/kitty-args\"\n")
         os.chmod(self.terminal, 0o755)
+        # Memory to spare, unless a test says otherwise (Agent.room).
+        self.meminfo = os.path.join(self.dir, "meminfo")
+        with open(self.meminfo, "w") as f:
+            f.write("MemTotal:       67108864 kB\nMemAvailable:   60000000 kB\n")
         self.config = os.path.join(self.dir, "config.json")
         self.write_config()
         self.state = os.path.join(self.dir, "state", "nilo.json")
@@ -352,7 +356,8 @@ class AgentTest(unittest.TestCase):
                             "ddgr": self.ddgr, "git": shutil.which("git"), "host": "thinkpad",
                             "systemctl": self.systemctl, "journalctl": self.journalctl,
                             "bash": shutil.which("bash"), "terminal": self.terminal, "shellSeconds": 1, "pullWait": 0.1,
-                            "flake": "~/nixos-config", "devFile": os.path.join(self.dir, "no-dev")}, **extra), f)
+                            "flake": "~/nixos-config", "devFile": os.path.join(self.dir, "no-dev"),
+                            "meminfo": self.meminfo}, **extra), f)
 
     def tearDown(self):
         if self.agent:
@@ -589,6 +594,22 @@ class AgentTest(unittest.TestCase):
         events = self.agent.until_done()
         self.assertEqual([e["code"] for e in events if e["ev"] == "error"], ["model-missing"])
         self.assertTrue(events[-1]["failed"])
+
+    def test_no_room(self):
+        # A model that would leave the machine short of memory is not loaded:
+        # the question says so, and Ollama is never asked.
+        with open(self.meminfo, "w") as f:
+            f.write("MemTotal:       16000000 kB\nMemAvailable:    6000000 kB\n")
+        self.ollama.installed["qwen3.5:9b"] = 6_600_000_000
+        self.start({"model": "qwen3.5:9b", "onboarded": True})
+        self.agent.send(op="warm")
+        self.agent.send(op="ask", text="Hola")
+        events = self.agent.until_done()
+        self.assertEqual([e["code"] for e in events if e["ev"] == "error"], ["memory"])
+        self.assertTrue(events[-1]["failed"])
+        self.assertEqual((self.ollama.chats, self.ollama.loads), ([], []))
+        states = [e for e in self.agent.log if e["ev"] == "state"]
+        self.assertFalse(states[-1]["loading"])
 
     def test_warm_and_sleep(self):
         self.start({"model": "qwen3.5:4b", "onboarded": True, "keepAlive": 1})
@@ -1145,6 +1166,55 @@ class UnitTest(unittest.TestCase):
         shipped = agent.context_sections(agent.read_text(os.path.join(HERE, "nilo.md")), {}, values)
         self.assertIn("Every step, authorized first", shipped)
         self.assertNotIn("Terminal", shipped)
+
+    def test_room(self):
+        # A model loads only if it leaves the rest of the machine its reserve
+        # (an eighth of the memory, at least 2 GB).
+        a = agent.Agent.__new__(agent.Agent)
+        a.config = {"models": MODELS + [{"tag": "qwen3.5:35b-a3b", "ram": 25}]}
+
+        class Ollama:
+            running = []
+
+            def ps(self):
+                return self.running
+
+            def tags(self):
+                return [{"name": name, "size": 1} for name in ("qwen3.5:4b", "qwen3.5:9b", "qwen3.5:35b-a3b")] \
+                    + [{"name": "custom:latest", "size": 8_000_000_000}]
+
+        a.ollama = Ollama()
+        real = agent.meminfo
+
+        def memory(total, available):
+            agent.meminfo = lambda path: {"MemTotal": int(total * 1e9 / 1024), "MemAvailable": int(available * 1e9 / 1024)}
+
+        try:
+            memory(32, 20)
+            a.room("qwen3.5:9b")                    # 8.5 of 20, 4 kept
+            with self.assertRaises(agent.OllamaError) as caught:
+                a.room("qwen3.5:35b-a3b")           # 25 of 20
+            self.assertEqual(caught.exception.code, "memory")
+            memory(32, 28)
+            with self.assertRaises(agent.OllamaError):
+                a.room("qwen3.5:35b-a3b")           # 25 of 28, 4 kept
+            memory(32, 29.5)
+            a.room("qwen3.5:35b-a3b")
+            memory(32, 10)
+            a.ollama.running = [{"name": "qwen3.5:9b", "model": "qwen3.5:9b", "size": 9_000_000_000}]
+            a.room("qwen3.5:9b")                    # already in memory
+            a.room("qwen3.5:4b")                    # 5 of 10, and the 9 Ollama lets go
+            a.ollama.running = []
+            with self.assertRaises(agent.OllamaError):
+                a.room("custom")                    # not on the list: 8 and a quarter, of 10 - 4
+            memory(16, 13)
+            a.room("custom")                        # of 13 - 2
+            memory(8, 1)
+            a.room("qwen3.5:2b")                    # not downloaded: Ollama says so
+            agent.meminfo = lambda path: {}
+            a.room("qwen3.5:35b-a3b")               # no /proc/meminfo: no guess
+        finally:
+            agent.meminfo = real
 
     def test_recommended_model(self):
         a = agent.Agent.__new__(agent.Agent)
