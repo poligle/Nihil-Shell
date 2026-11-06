@@ -68,12 +68,11 @@ let
 	# The clipboard history (home/clipboard.nix, services/Clipboard.qml). Its
 	# key shows it and goes on to the next copy while the modifier stays
 	# down; letting the modifier go pastes the one chosen, Escape leaves the
-	# clipboard as it was. A submap holds those keys while it is out, and
-	# lets go on its own after 20 s, in case a release never comes (the
-	# shell, too, after 20 s without a key). Not bound
-	# when the history is off, or when an action or a program already has
-	# its key (a warning says so). Shown at the top of the frame, it never
-	# takes the keyboard: the paste lands where it was.
+	# clipboard as it was. A submap holds those keys while it is out; the
+	# shell lets it go as well after 20 s without a key, in case a release
+	# never comes. Not bound when the history is off, or when an action or a
+	# program already has its key (a warning says so). Shown at the top of
+	# the frame, it never takes the keyboard: the paste lands where it was.
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
 	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
@@ -105,46 +104,48 @@ let
 			'';
 		in
 		''
-			-- NIHIL: the clipboard history (home/hyprland.nix). In a pcall: if
-			-- something here fails, the rest of the configuration stands.
+			-- NIHIL: the clipboard history (home/hyprland.nix). Each step in a
+			-- pcall: a mistake here neither stops the rest of the configuration
+			-- nor leaves the keys in this submap.
 			local clipboardReady = pcall(function()
 				local clipboard = {}
+				-- Back to the usual keys. Hyprland calls that "reset": there is
+				-- no submap named "default".
+				function clipboard.normal()
+					pcall(function() hl.dispatch(hl.dsp.submap("reset")) end)
+				end
 				function clipboard.call(what)
-					hl.exec_cmd("nihil-ipc clipboard " .. what)
+					pcall(function() hl.exec_cmd("nihil-ipc clipboard " .. what) end)
 				end
+				-- The keys come back first, whatever the shell does after.
 				function clipboard.leave(what)
-					if clipboard.timer then
-						pcall(function() clipboard.timer:cancel() end)
-						clipboard.timer = nil
-					end
+					clipboard.normal()
 					clipboard.call(what)
-					hl.dispatch(hl.dsp.submap("default"))
 				end
+				-- A reload starts this Lua afresh but keeps the submap it finds
+				-- (fathom, issue #12): never stay in this one through it.
+				local found, now = pcall(hl.get_current_submap)
+				if found and now == "nihil-clipboard" then
+					clipboard.normal()
+				end
+				-- The ways out go in first: if a later bind fails, they are there.
 				hl.define_submap("nihil-clipboard", function()
+					hl.bind("Escape", function() clipboard.leave("cancel") end)
+					hl.bind("${with' [ "Escape" ]}", function() clipboard.leave("cancel") end)
+			${lib.concatMapStrings release held}
 					hl.bind("${clipboardKey}", function() clipboard.call("next") end, { repeating = true })
 			${lib.optionalString (!lib.elem "SHIFT" (map lib.toUpper mods)) ''
 					hl.bind("${with' [ "SHIFT" key ]}", function() clipboard.call("previous") end, { repeating = true })
-			''}${lib.concatMapStrings release held}
-					hl.bind("${with' [ "Escape" ]}", function() clipboard.leave("cancel") end)
-					hl.bind("Escape", function() clipboard.leave("cancel") end)
+			''}
 				end)
 				-- Bound after the submap: if that failed, the key stays free.
 				hl.bind("${clipboardKey}", function()
 					clipboard.call("open")
-					hl.dispatch(hl.dsp.submap("nihil-clipboard"))
-					pcall(function()
-						if clipboard.timer then
-							clipboard.timer:cancel()
-						end
-						clipboard.timer = hl.timer(function()
-							clipboard.timer = nil
-							clipboard.leave("cancel")
-						end, { timeout = 20000, type = "oneshot" })
-					end)
+					pcall(function() hl.dispatch(hl.dsp.submap("nihil-clipboard")) end)
 				end)
 			end)
 			if not clipboardReady then
-				hl.exec_cmd("notify-send -a NIHIL NIHIL 'The clipboard history could not set up its keys (hyprland.lua).'")
+				pcall(hl.exec_cmd, "notify-send -a NIHIL NIHIL 'The clipboard history could not set up its keys (hyprland.lua).'")
 			end
 		'';
 
