@@ -94,7 +94,7 @@ Item {
             }
         }
 
-        PillButton {
+        KeyButton {
             visible: root.hasLog
             text: root.showLog ? Lang.cfgHideLog : Lang.cfgShowLog
             onClicked: root.showLog = !root.showLog
@@ -109,7 +109,7 @@ Item {
             onAccepted: root.go()
         }
 
-        PillButton {
+        KeyButton {
             visible: Machine.changes > 0 && !Machine.busy
             text: root.asking ? Lang.cfgCancel : Lang.cfgDiscard
             onClicked: {
@@ -120,7 +120,7 @@ Item {
             }
         }
 
-        PillButton {
+        KeyButton {
             visible: Machine.changes > 0 && !Machine.busy
             accent: true
             text: Lang.cfgApply

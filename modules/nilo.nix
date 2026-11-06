@@ -192,6 +192,10 @@ in
             RestartSec = lib.mkDefault "2s";
             RestartSteps = lib.mkDefault 5;
             RestartMaxDelaySec = lib.mkDefault "1min";
+            # Nilo loads a model only if it leaves the machine room
+            # (home/nilo/agent.py), but if memory runs out anyway, the kernel
+            # stops Ollama first, never Hyprland or the shell.
+            OOMScoreAdjust = lib.mkDefault 1000;
         };
 
         # Nilo starts Ollama when it finds it stopped (and with its "start

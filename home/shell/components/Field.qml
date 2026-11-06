@@ -2,8 +2,9 @@ import QtQuick
 import QtQuick.Controls as QQC
 import qs.theme
 
-// A text field: hairline pill, mono text. `value` is shown while the field
-// does not have the focus; what is typed goes out through edited().
+// A text field: a hairline box with the corners of a key (KeyButton), mono
+// text. `value` is shown while the field does not have the focus; what is
+// typed goes out through edited().
 Rectangle {
     id: root
 
@@ -11,10 +12,14 @@ Rectangle {
     property string placeholder: ""
     property bool password: false
     property bool invalid: false
+    // Escape goes to escaped() and stops there, rather than on to what
+    // holds the field (the panel would close).
+    property bool catchEscape: false
     property alias text: input.text
 
     signal edited(string text)
     signal accepted()
+    signal escaped()
 
     function grab(): void { input.forceActiveFocus(); }
     function clear(): void { input.text = ""; }
@@ -26,8 +31,8 @@ Rectangle {
     Component.onCompleted: input.text = value
 
     implicitWidth: 300
-    implicitHeight: 40
-    radius: height / 2
+    implicitHeight: 36
+    radius: 8
     color: Tokens.surface
     border.width: 1
     border.color: invalid ? Tokens.interrupt : input.activeFocus ? Tokens.muted : Tokens.line
@@ -35,8 +40,8 @@ Rectangle {
     QQC.TextField {
         id: input
         anchors.fill: parent
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
         background: null
         color: Tokens.ink
         placeholderText: root.placeholder
@@ -48,5 +53,9 @@ Rectangle {
         selectByMouse: true
         onTextEdited: root.edited(text)
         onAccepted: root.accepted()
+        Keys.onEscapePressed: event => {
+            root.escaped();
+            event.accepted = root.catchEscape;
+        }
     }
 }

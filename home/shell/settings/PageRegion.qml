@@ -38,12 +38,10 @@ Flickable {
 
         Heading {
             title: Lang.cfgRegion
-            sub: Lang.cfgRegionSub
         }
 
         Setting {
             title: Lang.cfgLanguage
-            sub: Lang.cfgLanguageSub
 
             Choice {
                 options: [{ value: "es", label: "Español" }, { value: "en", label: "English" }]
@@ -117,7 +115,7 @@ Flickable {
 
                 Layout.fillWidth: true
                 implicitHeight: 32
-                radius: 16
+                radius: 8
                 color: zoneArea.containsMouse ? Tokens.raised : "transparent"
 
                 Txt {

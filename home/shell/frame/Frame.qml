@@ -40,12 +40,24 @@ Scope {
         // OnDemand, not Exclusive: Hyprland drops every focus grab when a layer
         // turns exclusive (desktop/view/LayerSurface.cpp), which closed the
         // launcher and the panel the moment they opened. The grab below hands
-        // the keyboard to this window instead. The launcher and the wallpapers
-        // take it however they opened, so you can type (or pick) as soon as
-        // they appear from the edge; the panel and the dashboard once they are
-        // kept (the Wi-Fi password, a new task in the kanban).
-        WlrLayershell.keyboardFocus: launcherOpen || wallOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
+        // the keyboard to this window instead. The launcher, the wallpapers
+        // and the clipboard history take it however they opened, so you can
+        // type (or pick) as soon as they appear from the edge; the panel and
+        // the dashboard once they are kept (the Wi-Fi password, a new task in
+        // the kanban).
+        WlrLayershell.keyboardFocus: launcherOpen || wallOpen || clipOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+        // While the clipboard history has the keyboard, Hyprland's own keys
+        // wait: its key again reaches the history, and SUPER + Escape leaves
+        // it rather than bringing out the scratchpad. ShortcutInhibitor came
+        // with Quickshell 0.3 (as Hyprland.usingLua, which Workspaces.qml
+        // needs): loaded apart all the same, an older one only goes without.
+        Loader {
+            active: win.clipOpen
+            source: "ClipboardKeys.qml"
+            onLoaded: item.window = win
+        }
 
         // Caffeine (services/Caffeine.qml): while it is on, hypridle waits.
         IdleInhibitor {
@@ -144,7 +156,7 @@ Scope {
         // launcher) kept them.
         HyprlandFocusGrab {
             windows: [win]
-            active: win.launcherOpen || win.wallOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
+            active: win.launcherOpen || win.wallOpen || win.clipOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
             onCleared: Drawers.close()
         }
 
@@ -242,8 +254,8 @@ Scope {
             }
 
             // The clipboard history (services/Clipboard.qml): from the top
-            // too, while its modifier is held. It never takes the keyboard,
-            // so the paste lands in the window that had it.
+            // too, with the keyboard while it is out; it gives it back to the
+            // window that had it before pasting there.
             Item {
                 id: clipHit
                 x: win.centerX - win.clipW / 2

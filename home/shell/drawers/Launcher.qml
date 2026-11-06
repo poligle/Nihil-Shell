@@ -192,7 +192,7 @@ Item {
         y: 24 + root.niloP * (root.height - height - 74)
         width: parent.width - 48
         height: 48
-        radius: 24
+        radius: 12
         color: Tokens.surface
         border.width: 1
         border.color: input.activeFocus ? Tokens.muted : Tokens.line
@@ -432,11 +432,11 @@ Item {
         }
     }
 
-    Label {
+    KeyHints {
         id: footer
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 18
+        anchors.bottomMargin: 16
         text: root.mode === "nilo" ? niloView.hint : root.mode === "calc" ? Lang.hintCalc
             : Config.nilo.enabled ? Lang.hintAppsNilo : Lang.hintApps
     }
