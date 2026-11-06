@@ -3,7 +3,8 @@
 # NIHIL's flake.lock is the NixOS every machine runs: nihil update takes it
 # from here. Every Monday this brings the inputs (nixpkgs, Home Manager,
 # Stylix, Zen) up to date in a pull request, once a machine as the
-# installer leaves it (nixosConfigurations.example) still evaluates.
+# installer leaves it (nixosConfigurations.example) still evaluates and the
+# nihil command still builds (a newer shellcheck may object to it).
 # Merging it makes a new ISO (release.yml), and nihil update takes it to
 # every machine. It can also be run by hand, from the Actions tab.
 #
@@ -52,6 +53,10 @@ jobs:
 
       - name: A machine still evaluates
         run: nix eval --raw .#nixosConfigurations.example.config.system.build.toplevel.drvPath
+
+      # A newer shellcheck may not like the nihil command any more.
+      - name: The nihil command still builds
+        run: nix build .#nixosConfigurations.example.config.nihil.cli --no-link --print-build-logs
 
       - name: Pull request
         env:
