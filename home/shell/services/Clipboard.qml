@@ -123,8 +123,10 @@ Singleton {
         return name !== "" && root.down[name] === true;
     }
 
-    // Hyprland: a modifier went down or up.
-    function modifierChanged(name: string, isPressed: bool): void {
+    // Hyprland: a modifier went down or up. (Not "modifierChanged": QML
+    // gives that name to the change signal of the property `modifier`, and
+    // a function taking it stops the whole file from loading.)
+    function track(name: string, isPressed: bool): void {
         const next = Object.assign({}, root.down);
         next[name] = isPressed;
         root.down = next;
@@ -324,29 +326,29 @@ Singleton {
     GlobalShortcut {
         name: "nihil-super"
         description: "NIHIL: SUPER down and up, for the clipboard history"
-        onPressed: root.modifierChanged("super", true)
-        onReleased: root.modifierChanged("super", false)
+        onPressed: root.track("super", true)
+        onReleased: root.track("super", false)
     }
 
     GlobalShortcut {
         name: "nihil-ctrl"
         description: "NIHIL: CTRL down and up, for the clipboard history"
-        onPressed: root.modifierChanged("ctrl", true)
-        onReleased: root.modifierChanged("ctrl", false)
+        onPressed: root.track("ctrl", true)
+        onReleased: root.track("ctrl", false)
     }
 
     GlobalShortcut {
         name: "nihil-alt"
         description: "NIHIL: ALT down and up, for the clipboard history"
-        onPressed: root.modifierChanged("alt", true)
-        onReleased: root.modifierChanged("alt", false)
+        onPressed: root.track("alt", true)
+        onReleased: root.track("alt", false)
     }
 
     GlobalShortcut {
         name: "nihil-shift"
         description: "NIHIL: SHIFT down and up, for the clipboard history"
-        onPressed: root.modifierChanged("shift", true)
-        onReleased: root.modifierChanged("shift", false)
+        onPressed: root.track("shift", true)
+        onReleased: root.track("shift", false)
     }
 
     IpcHandler {
