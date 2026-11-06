@@ -408,8 +408,10 @@ Singleton {
             repos = e.repos ?? [];
             break;
         case "notes":
+            // In Neovim, in kitty, whatever the system would open a .md
+            // with (the notes start with a comment, which may pass for HTML).
             Drawers.close();
-            Qt.openUrlExternally("file://" + encodeURI(e.path));
+            Quickshell.execDetached([Config.cmd.terminal, "-e", Config.cmd.editor, e.path]);
             break;
         case "reset":
             break;

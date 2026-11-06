@@ -44,10 +44,11 @@ Scope {
         // take it however they opened, so you can type (or pick) as soon as
         // they appear from the edge; the panel and the dashboard once they are
         // kept (the Wi-Fi password, a new task in the kanban). The clipboard
-        // history alone is Exclusive, with no grab: it has the keyboard from
-        // the moment it is out until it pastes, and Hyprland gives it back to
-        // the window then (refocusLastWindow).
-        WlrLayershell.keyboardFocus: clipOpen ? WlrKeyboardFocus.Exclusive
+        // history leaves the keyboard to the window it pastes in (its keys
+        // come from Hyprland, services/Clipboard.qml), but for a key without
+        // a modifier: then it is Exclusive, with no grab, until it pastes,
+        // and Hyprland gives the keyboard back (refocusLastWindow).
+        WlrLayershell.keyboardFocus: clipKeys ? WlrKeyboardFocus.Exclusive
             : launcherOpen || wallOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
@@ -58,7 +59,7 @@ Scope {
         // with Quickshell 0.3 (as Hyprland.usingLua, which Workspaces.qml
         // needs): loaded apart all the same, an older one only goes without.
         Loader {
-            active: win.clipOpen
+            active: win.clipKeys
             source: "ClipboardKeys.qml"
             onLoaded: item.window = win
         }
@@ -74,6 +75,7 @@ Scope {
         readonly property bool launcherOpen: Drawers.isOpen("launcher", root.output)
         readonly property bool wallOpen: Drawers.isOpen("wallpapers", root.output)
         readonly property bool clipOpen: Drawers.isOpen("clipboard", root.output)
+        readonly property bool clipKeys: clipOpen && Clipboard.keyboard
         readonly property bool osdOpen: Osd.shown && Osd.screen === root.output && !panelOpen
 
         // Opening progress of each drawer (0 closed, 1 open).
@@ -283,7 +285,7 @@ Scope {
                         width: win.clipW
                         height: win.clipD
                         anchors.bottom: parent.bottom
-                        active: win.clipOpen
+                        active: win.clipKeys
                         opacity: win.reveal(win.clipP)
                     }
                 }

@@ -10,20 +10,23 @@ import qs.config
 // Paste and the clipboard history (home/clipboard.nix keeps it, with
 // cliphist). Its key, SUPER + V, pastes what was copied last once SUPER is
 // let go; held a moment longer, the history comes out at the top of the
-// frame with the newest chosen (drawers/ClipboardView.qml): V again goes on
-// to the next copy, SHIFT back, and letting go of SUPER pastes the one
-// chosen in the window that had the keyboard. It goes back on the
-// clipboard and is the newest again. Enter or a click paste too; Escape, or
-// 20 s without a key, leave the clipboard as it was. Pasting is SHIFT +
-// Insert, which Hyprland sends to that window (nihil-clipboard paste).
-// SUPER + C, copying, is Hyprland's alone (home/hyprland.nix).
+// frame with the newest chosen (drawers/ClipboardView.qml): V again, Tab or
+// the arrows go through the copies, SHIFT back, and letting go of SUPER
+// pastes the one chosen. It goes back on the clipboard and is the newest
+// again. Return or a click paste too, Delete forgets one; Escape, or 20 s
+// without a key, leave the clipboard as it was. The window keeps the
+// keyboard all along, so what was open in it stays open, and the paste
+// lands where it was: SHIFT + Insert, which Hyprland sends it
+// (nihil-clipboard paste). SUPER + C, copying, is Hyprland's alone.
 //
-// Hyprland says when the key goes down and when its modifier goes down and
-// up, as global shortcuts: nihil-clipboard and nihil-super (nihil-ctrl,
-// nihil-alt, nihil-shift for a key on another modifier). If it never said
-// the modifier went down, its release can't be awaited: the history comes
-// out at once, and the view's own release of the modifier, Enter or a
-// click paste. With the history off (0 copies), the key only pastes.
+// Hyprland says it all as global shortcuts (home/hyprland.nix): the key
+// (nihil-clipboard), its modifier going down and up (nihil-super; or
+// nihil-ctrl, nihil-alt, nihil-shift for a key on another modifier), and,
+// in a submap while the key's modifier is held, the history's own keys
+// (nihil-clipboard-next, -back, -forget, -paste, -cancel). If it never said
+// the modifier went down (a key without one), the history takes the
+// keyboard instead and the view has the keys. With the history off (0
+// copies), the key only pastes.
 //   nihil-ipc clipboard open | next | previous | released | paste | cancel
 Singleton {
     id: root
@@ -68,6 +71,9 @@ Singleton {
     // (the history is out).
     property string phase: ""
     readonly property int wait: 200
+    // This round, the history has the keyboard (frame/Frame.qml): only when
+    // its keys can't come from Hyprland, as with a key without a modifier.
+    property bool keyboard: false
 
     // The window to paste in (the one with the keyboard when the key came),
     // and what is on its way there: { item } (null: what is on the
@@ -89,6 +95,7 @@ Singleton {
             phase = "held";
             later.restart();
         } else if (enabled) {
+            keyboard = true;
             reveal();
         } else {
             // No history, and no release to wait for.
@@ -147,11 +154,13 @@ Singleton {
         }
     }
 
-    // The one chosen, while it is out (Enter, a click, letting go).
+    // The one chosen, while it is out (Return, a click, letting go); before
+    // it is, what is on the clipboard.
     function paste(): void {
-        if (phase !== "out")
-            return;
-        finish(items[index] ?? null);
+        if (phase === "held")
+            finish(null);
+        else if (phase === "out")
+            finish(items[index] ?? null);
     }
 
     function pick(i: int): void {
@@ -167,6 +176,7 @@ Singleton {
     // the window it came from.
     function end(): void {
         phase = "";
+        keyboard = false;
         later.stop();
         idle.stop();
         if (shown)
@@ -205,9 +215,10 @@ Singleton {
         idle.restart();
     }
 
+    // Only what can be seen: not before the history is out.
     function forgetChosen(): void {
         const item = items[index];
-        if (item !== undefined)
+        if (phase === "out" && item !== undefined)
             forget(item.id);
     }
 
@@ -248,6 +259,7 @@ Singleton {
     onShownChanged: {
         if (!shown && phase === "out") {
             phase = "";
+            keyboard = false;
             idle.stop();
         }
     }
@@ -321,6 +333,37 @@ Singleton {
         name: "nihil-clipboard"
         description: "NIHIL: paste, or the clipboard history held down"
         onPressed: root.press()
+    }
+
+    // The history's keys, while its key's modifier is held.
+    GlobalShortcut {
+        name: "nihil-clipboard-next"
+        description: "NIHIL: the next copy in the clipboard history"
+        onPressed: root.step(1)
+    }
+
+    GlobalShortcut {
+        name: "nihil-clipboard-back"
+        description: "NIHIL: the copy before in the clipboard history"
+        onPressed: root.step(-1)
+    }
+
+    GlobalShortcut {
+        name: "nihil-clipboard-forget"
+        description: "NIHIL: forget the copy chosen in the clipboard history"
+        onPressed: root.forgetChosen()
+    }
+
+    GlobalShortcut {
+        name: "nihil-clipboard-paste"
+        description: "NIHIL: paste the copy chosen in the clipboard history"
+        onPressed: root.paste()
+    }
+
+    GlobalShortcut {
+        name: "nihil-clipboard-cancel"
+        description: "NIHIL: leave the clipboard history, pasting nothing"
+        onPressed: root.cancel()
     }
 
     GlobalShortcut {
