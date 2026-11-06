@@ -7,11 +7,13 @@ import qs.services
 import qs.components
 
 // Top drawer: the clipboard history (services/Clipboard.qml), newest first,
-// out while its key is held. It has the keyboard while it is out: its key
-// again, Tab or the arrows go through the copies, letting go of the
-// modifier, Enter or a click paste the one chosen, Escape leaves the
-// clipboard as it was, Delete forgets one. The one chosen is lit: its LED
-// on, its picture in colour, as the launcher's apps.
+// out while its key is held. The window keeps the keyboard, and the keys
+// come through Hyprland: its key again, Tab or the arrows go through the
+// copies, letting go of the modifier, Return or a click paste the one
+// chosen, Escape leaves the clipboard as it was, Delete forgets one. With a
+// key without a modifier it takes the keyboard, and the same keys come
+// here instead. The one chosen is lit: its LED on, its picture in colour,
+// as the launcher's apps.
 Item {
     id: root
 
