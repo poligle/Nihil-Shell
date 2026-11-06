@@ -32,12 +32,10 @@ Flickable {
 
         Heading {
             title: Lang.cfgYou
-            sub: Lang.cfgYouSub
         }
 
         Setting {
             title: Lang.cfgName
-            sub: Lang.cfgNameSub
 
             Field {
                 width: 280
@@ -48,7 +46,6 @@ Flickable {
 
         Setting {
             title: Lang.cfgAccount
-            sub: Lang.cfgAccountSub
 
             Txt {
                 text: Machine.get("user.name", Config.user)

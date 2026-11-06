@@ -220,7 +220,7 @@ Flickable {
 
         Rectangle {
             anchors.fill: parent
-            radius: 14
+            radius: 10
             color: row.open || area.containsMouse ? Tokens.surface : "transparent"
         }
 
@@ -269,7 +269,6 @@ Flickable {
         Heading {
             Layout.bottomMargin: 12
             title: Lang.cfgKeys
-            sub: Lang.cfgKeysSub
         }
 
         Label {
@@ -319,16 +318,6 @@ Flickable {
             Layout.topMargin: 22
             Layout.bottomMargin: 6
             text: Lang.cfgPrograms
-        }
-
-        Txt {
-            Layout.fillWidth: true
-            Layout.bottomMargin: 8
-            text: Lang.cfgProgramsSub
-            color: Tokens.muted
-            font.pixelSize: 12
-            wrapMode: Text.WordWrap
-            elide: Text.ElideNone
         }
 
         Repeater {

@@ -45,7 +45,7 @@ Flickable {
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: 14
+                    radius: 10
                     color: area.containsMouse || net.asking ? Tokens.surface : "transparent"
                 }
 
