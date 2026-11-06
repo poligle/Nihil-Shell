@@ -158,24 +158,10 @@ Column {
                         onClicked: root.asking = ""
                     }
 
-                    Rectangle {
-                        implicitWidth: yes.implicitWidth + 24
-                        implicitHeight: 26
-                        radius: 13
-                        color: Tokens.interrupt
-
-                        Label {
-                            id: yes
-                            anchors.centerIn: parent
-                            text: Lang.accessAuthorize
-                            color: Tokens.ink
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.authorize()
-                        }
+                    KeyButton {
+                        danger: true
+                        text: Lang.accessAuthorize
+                        onClicked: root.authorize()
                     }
                 }
             }

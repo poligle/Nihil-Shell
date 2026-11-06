@@ -756,24 +756,11 @@ Item {
                                 onClicked: Nilo.answer(false)
                             }
 
-                            Rectangle {
-                                implicitWidth: okLabel.implicitWidth + 24
-                                implicitHeight: 26
-                                radius: 13
-                                color: card.isArmed ? Tokens.interrupt : Tokens.ink
-
-                                Label {
-                                    id: okLabel
-                                    anchors.centerIn: parent
-                                    text: card.isArmed ? Lang.enterAgain : Lang.confirmOk
-                                    color: card.isArmed ? Tokens.ink : Tokens.black
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Nilo.answer(true)
-                                }
+                            KeyButton {
+                                accent: !card.isArmed
+                                danger: card.isArmed
+                                text: card.isArmed ? Lang.enterAgain : Lang.confirmOk
+                                onClicked: Nilo.answer(true)
                             }
                         }
 
