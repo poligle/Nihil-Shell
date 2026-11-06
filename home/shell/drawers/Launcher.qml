@@ -44,6 +44,7 @@ Item {
         { id: "dnd", name: Lang.actDnd, hint: Notifs.dnd ? Lang.hintOn : Lang.hintOff, keys: "dnd silent", glyph: Notifs.dnd ? Icons.bellOff : Icons.bell },
         { id: "night", name: Lang.actNight, hint: Toggles.night ? Lang.hintOn : Lang.hintOff, keys: "night light", glyph: Icons.night },
         { id: "caffeine", name: Lang.actCaffeine, hint: Caffeine.on ? Lang.hintOn : Lang.hintOff, keys: "caffeine cafeina coffee awake screen", glyph: Icons.coffee },
+        { id: "settings", name: Lang.bindSettings, hint: Lang.hintSystem, keys: "settings preferences ajustes preferencias configuracion", glyph: Icons.cog },
         { id: "terminal", name: Lang.actTerminal, hint: "kitty", glyph: Icons.terminal, command: [Config.cmd.terminal] }
     ]
 
@@ -118,6 +119,7 @@ Item {
         if (action.id === "dnd") Notifs.dnd = !Notifs.dnd;
         else if (action.id === "night") Toggles.night = !Toggles.night;
         else if (action.id === "caffeine") Caffeine.toggle();
+        else if (action.id === "settings") Machine.show("", false);
         else Quickshell.execDetached(action.command);
     }
 
@@ -329,7 +331,6 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 text: cell.modelData.name
                 color: cell.selected ? Tokens.ink : Tokens.muted
-                font.letterSpacing: 0.8
             }
 
             MouseArea {

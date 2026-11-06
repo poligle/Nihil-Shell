@@ -46,9 +46,11 @@ Item {
         }
     }
 
+    // Its keys at the foot, as the launcher has them.
     KeyHints {
-        x: 24
-        y: 13
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottomMargin: 16
         text: Lang.wpHint
     }
 
@@ -57,8 +59,8 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: 24
         anchors.rightMargin: 24
-        anchors.topMargin: 44
-        anchors.bottomMargin: 22
+        anchors.topMargin: 22
+        anchors.bottomMargin: 48
         orientation: ListView.Horizontal
         spacing: 14
         clip: true
