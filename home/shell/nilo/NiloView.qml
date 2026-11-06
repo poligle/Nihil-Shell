@@ -200,8 +200,10 @@ Item {
 
         readonly property real centerX: x + width / 2
         readonly property real centerY: y + height / 2
+        // Big, they stand 76 px tall: in an empty conversation, 40 px above
+        // the greeting (Chat.qml leaves them that room).
         readonly property real heroY: root.view === "intro" ? 6
-            : root.view === "chat" ? body.y + body.height * 0.5 - 10 - 34 - 76
+            : root.view === "chat" ? body.y + chat.emptyTop - 40 - 76
             : root.height * 0.5 - 76
 
         mood: root.mood
@@ -234,6 +236,7 @@ Item {
             id: chat
             anchors.fill: parent
             visible: root.view === "chat"
+            faceRoom: 76 + 40
             armed: root.armed
             onSuggest: text => {
                 chat.toEnd();
