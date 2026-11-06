@@ -112,7 +112,7 @@ in
 				}
 				{
 					monitor = "";
-					text = ''cmd[update:60000] LC_TIME=${s.lockLocale} ${pkgs.coreutils}/bin/date +'${s.lockDate}' | ${pkgs.gawk}/bin/awk '{ print toupper($0) }' '';
+					text = ''cmd[update:60000] LC_TIME=${s.lockLocale} ${pkgs.coreutils}/bin/date +'${s.lockDate}' | ${pkgs.gawk}/bin/awk '{ print toupper(substr($0, 1, 1)) substr($0, 2) }' '';
 					font_family = t.fonts.mono;
 					font_size = 13;
 					color = rgb t.palette.dim;

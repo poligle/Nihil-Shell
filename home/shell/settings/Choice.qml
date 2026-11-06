@@ -2,9 +2,9 @@ import QtQuick
 import qs.theme
 import qs.components
 
-// One of a few: each option an LED and its name, the chosen one lit.
-// options: [{ value, label }]; `mono` sets the names in Space Mono, for
-// numbers.
+// One of a few, by name: the chosen one in ink and underlined, the others
+// in grey. options: [{ value, label }]; `mono` sets the names in Space Mono,
+// for numbers and codes.
 Flow {
     id: root
 
@@ -14,7 +14,7 @@ Flow {
 
     signal picked(var value)
 
-    spacing: 22
+    spacing: 20
 
     Repeater {
         model: root.options
@@ -25,33 +25,35 @@ Flow {
             required property var modelData
             readonly property bool chosen: JSON.stringify(modelData.value) === JSON.stringify(root.value)
 
-            implicitWidth: name.implicitWidth + 14
-            implicitHeight: 28
-
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 6
-                height: 6
-                radius: 3
-                color: option.chosen ? Tokens.ink : area.containsMouse ? Tokens.muted : Tokens.off
-
-                Behavior on color { ColorAnimation { duration: Tokens.animFast } }
-            }
+            implicitWidth: name.implicitWidth
+            implicitHeight: 30
 
             Txt {
                 id: name
-                x: 14
                 anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenterOffset: -1
                 text: option.modelData.label
                 color: option.chosen ? Tokens.ink : area.containsMouse ? Tokens.dim : Tokens.muted
                 font.family: root.mono ? Tokens.fontMono : Tokens.fontSans
                 font.pixelSize: 13
+
+                Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 2
+                color: option.chosen ? Tokens.ink : Tokens.off
+                opacity: option.chosen || area.containsMouse ? 1 : 0
+
+                Behavior on opacity { NumberAnimation { duration: Tokens.animFast } }
             }
 
             MouseArea {
                 id: area
                 anchors.fill: parent
-                anchors.margins: -4
+                anchors.margins: -6
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.picked(option.modelData.value)

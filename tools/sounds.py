@@ -79,15 +79,16 @@ SOUNDS = {
 }
 
 
-# The boot splash's sound (theme/plymouth.nix): soft ticks climbing as the
-# snowflake's LEDs switch on from the middle out, then the chord they
-# settle on, held while the band of light starts to sweep.
+# The boot splash's sound: three notes with the snowflake's LEDs as they
+# switch on (theme/plymouth.py), the first at once, the second as half of
+# them are on (0.5 s), the last with the last of them (1.05 s), and gone
+# as their flashes fade. The splash waits for it to open
+# (modules/boot-sound.nix).
 WAVS = {
-    "boot": place([(0.07 * k, tone(1400 + 160 * k, 0.05, 0.015, third=0.05), 0.22) for k in range(8)]
-                  + [(0.62, tone(E5, 1.2, 0.42, attack=0.02, third=0.04), 0.55),
-                     (0.66, tone(B5, 1.15, 0.38, attack=0.02, third=0.04), 0.45),
-                     (0.70, tone(E6, 1.1, 0.34, attack=0.02, third=0.03), 0.35),
-                     (0.70, tone(E6 * 2, 0.6, 0.12, third=0), 0.04)], 1.9),
+    "boot": place([(0.0, tone(E5, 0.42, 0.11, attack=0.006, third=0.05), 0.5),
+                   (0.5, tone(B5, 0.42, 0.11, attack=0.006, third=0.05), 0.45),
+                   (1.02, tone(E6, 0.45, 0.14, attack=0.006, third=0.04), 0.5),
+                   (1.02, tone(E6 * 2, 0.2, 0.05, third=0), 0.05)], 1.47),
 }
 
 

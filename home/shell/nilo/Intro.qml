@@ -163,9 +163,9 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 12
 
-                    Way { keys: ["SUPER", "I"]; text: Lang.introBind }
-                    Way { keys: ["COPILOT"]; text: Lang.introCopilot }
-                    Way { keys: ["SUPER", Lang.keySpace, "?"]; text: Lang.introLauncher }
+                    Way { keys: ["Super", "I"]; text: Lang.introBind }
+                    Way { keys: ["Copilot"]; text: Lang.introCopilot }
+                    Way { keys: ["Super", Lang.keySpace, "?"]; text: Lang.introLauncher }
                 }
 
                 Txt {

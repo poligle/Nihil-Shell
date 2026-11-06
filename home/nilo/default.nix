@@ -14,7 +14,8 @@ let
     {
         ollama = "http://${ollama.host}:${toString ollama.port}";
         inherit (nihil) language;
-        inherit (nihil.nilo) models contextLength searxng coauthor;
+        # Where the model runs: a big one stays off an integrated GPU (agent.py).
+        inherit (nihil.nilo) models contextLength searxng coauthor acceleration integratedGpu;
         ddgr = "${pkgs.ddgr}/bin/ddgr";
         git = "${pkgs.git}/bin/git";
         # run_command: bash for what Nilo runs, the terminal for what the user

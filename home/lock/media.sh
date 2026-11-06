@@ -101,13 +101,13 @@ duration() {
 
 # --- Parts --------------------------------------------------------------------------
 
-# Player (and "paused"), title, artist: three lines.
+# Player (and "paused"), title, artist: three lines, in sentence case.
 info() {
 	load
 	[[ -n $status ]] || return 0
-	local head=${name^^}
+	local head=${name^}
 	[[ -n $head ]] || head=MPRIS
-	[[ $status == Paused ]] && head="$head · $PAUSED"
+	[[ $status == Paused ]] && head="$head, ${PAUSED,}"
 	clean "$head" 40
 	span "$MONO" 8 "$DIM" "$REPLY" 1536
 	clean "${title:-$name}" 30

@@ -50,16 +50,17 @@ Flickable {
             }
         }
 
+        // The usual layouts in one row; any other, and a variant, typed
+        // under them (xkb's names).
         Setting {
             title: Lang.cfgKeyboard
-            sub: Lang.cfgKeyboardSub
 
             Column {
                 spacing: 8
 
                 Choice {
-                    width: 330
-                    options: page.layouts.map(name => ({ value: name, label: name }))
+                    mono: true
+                    options: page.layouts.map(name => ({ value: name, label: name.toUpperCase() }))
                     value: page.layout
                     onPicked: value => Machine.set("keyboard.layout", value)
                 }

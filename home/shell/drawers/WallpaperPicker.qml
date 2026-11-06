@@ -95,7 +95,7 @@ Item {
                 anchors.left: parent.left
                 anchors.bottom: parent.bottom
                 anchors.margins: 10
-                text: card.modelData
+                text: Case.sentence(card.modelData.replace(/[-_]/g, " "))
                 color: card.chosen ? Tokens.ink : Tokens.dim
             }
 

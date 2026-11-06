@@ -5,8 +5,13 @@
 # in the middle of every screen. Frames are rendered at build time
 # (theme/plymouth.py). The prompt, question and message handlers are the
 # ones from Stylix's Plymouth theme.
+#
+# With the boot sound (`waitForSound`, modules/boot-sound.nix), booting, the
+# LEDs wait unlit until it plays, and switch on with it: the sound says so
+# with `plymouth update --status=nihil-open`, and so does plymouth-quit if
+# it never came (modules/plymouth.nix). After 10 s they come on anyway.
 
-{ pkgs }:
+{ pkgs, waitForSound ? false }:
 let
   python = pkgs.python3.withPackages (ps: [ ps.pillow ]);
 
@@ -68,23 +73,63 @@ let
     logo.animated = 1;
     logo.tick = 0;
 
-    fun refresh_callback () {
-      layout();
-      if (logo.animated) {
-        step = Math.Int(logo.tick / 2);
-        if (step < ${toString intro}) {
-          frame_index = step;
-        } else {
-          frame_index = ${toString intro} + ((step - ${toString intro}) % ${toString loop});
-        }
-        logo.sprite.SetImage(logo.frames[frame_index]);
-        logo.tick++;
+    # Unlit (frame 0) until it opens: booting with the boot sound. GetMode
+    # says "boot" or "shutdown"; anything else (an older Plymouth) opens.
+    logo.opened = 1;
+    if (${if waitForSound then "1" else "0"}) {
+      if (Plymouth.GetMode() == "boot") {
+        logo.opened = 0;
+      }
+    }
+    logo.waited = 0;
+
+    fun open_logo () {
+      if (logo.opened == 0) {
+        logo.opened = 1;
+        logo.tick = 0;
       }
     }
 
+    fun status_callback (status) {
+      if (status == "nihil-open") {
+        open_logo();
+      }
+    }
+
+    Plymouth.SetUpdateStatusFunction(status_callback);
+
+    fun refresh_callback () {
+      layout();
+      if (logo.animated) {
+        if (logo.opened == 0) {
+          logo.waited++;
+          if (logo.waited > 500) {
+            open_logo();
+          }
+        }
+        if (logo.opened) {
+          step = Math.Int(logo.tick / 2);
+          if (step < ${toString intro}) {
+            frame_index = step;
+          } else {
+            frame_index = ${toString intro} + ((step - ${toString intro}) % ${toString loop});
+          }
+          logo.sprite.SetImage(logo.frames[frame_index]);
+          logo.tick++;
+        } else {
+          logo.sprite.SetImage(logo.frames[0]);
+        }
+      }
+    }
+
+    # Still: lit if it opened, unlit if not yet (a disk's password first).
     fun stop_animation () {
       logo.animated = 0;
-      logo.sprite.SetImage(logo.static);
+      if (logo.opened) {
+        logo.sprite.SetImage(logo.static);
+      } else {
+        logo.sprite.SetImage(logo.frames[0]);
+      }
     }
 
     fun start_animation () {

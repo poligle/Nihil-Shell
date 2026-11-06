@@ -160,13 +160,23 @@ Item {
         visible: root.view === "chat" || root.view === "settings"
 
         DotText {
-            text: "NILO"
+            text: "Nilo"
             font.pixelSize: 20
         }
 
-        Label {
-            text: (Nilo.settings.auto === true && Nilo.inUse !== "" ? Nilo.inUse + " (auto)" : (Nilo.settings.model ?? ""))
-                + ": " + root.status
+        // How it is, and the model, apart: the model's tag has a colon of
+        // its own (qwen3.5:9b).
+        Row {
+            spacing: 10
+
+            Label {
+                text: root.status
+                color: Tokens.dim
+            }
+
+            Label {
+                text: Nilo.settings.auto === true && Nilo.inUse !== "" ? Nilo.inUse + " (auto)" : (Nilo.settings.model ?? "")
+            }
         }
     }
 
