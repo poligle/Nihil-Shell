@@ -418,7 +418,7 @@ Item {
 
                     Label { text: Lang.notifications.arg(Notifs.history.length) }
                     Item { Layout.fillWidth: true }
-                    PillButton { text: Lang.clear; visible: Notifs.history.length > 0; onClicked: Notifs.clear() }
+                    KeyButton { text: Lang.clear; visible: Notifs.history.length > 0; onClicked: Notifs.clear() }
                 }
 
                 Repeater {
@@ -590,7 +590,7 @@ Item {
                             }
                         }
 
-                        PillButton {
+                        KeyButton {
                             accent: true
                             text: Lang.updUpdate
                             onClicked: root.update()

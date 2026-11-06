@@ -2,8 +2,9 @@ import QtQuick
 import QtQuick.Controls as QQC
 import qs.theme
 
-// A text field: hairline pill, mono text. `value` is shown while the field
-// does not have the focus; what is typed goes out through edited().
+// A text field: a hairline box with the corners of a key (KeyButton), mono
+// text. `value` is shown while the field does not have the focus; what is
+// typed goes out through edited().
 Rectangle {
     id: root
 
@@ -26,8 +27,8 @@ Rectangle {
     Component.onCompleted: input.text = value
 
     implicitWidth: 300
-    implicitHeight: 40
-    radius: height / 2
+    implicitHeight: 36
+    radius: 8
     color: Tokens.surface
     border.width: 1
     border.color: invalid ? Tokens.interrupt : input.activeFocus ? Tokens.muted : Tokens.line
@@ -35,8 +36,8 @@ Rectangle {
     QQC.TextField {
         id: input
         anchors.fill: parent
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
         background: null
         color: Tokens.ink
         placeholderText: root.placeholder

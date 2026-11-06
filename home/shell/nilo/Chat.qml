@@ -183,7 +183,7 @@ Item {
             value: Nilo.pull?.progress ?? 0
         }
 
-        PillButton {
+        KeyButton {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: !Nilo.installed && !parent.downloading && Nilo.known
             text: Lang.niloDownload
@@ -295,7 +295,7 @@ Item {
 
         Item { width: 1; height: 2 }
 
-        PillButton {
+        KeyButton {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: !Nilo.startingOllama
             text: Lang.niloStartOllama
@@ -751,7 +751,7 @@ Item {
                             spacing: 8
                             visible: card.open
 
-                            PillButton {
+                            KeyButton {
                                 text: Lang.confirmCancel
                                 onClicked: Nilo.answer(false)
                             }
@@ -809,7 +809,7 @@ Item {
                         font.pixelSize: 13
                     }
 
-                    PillButton {
+                    KeyButton {
                         id: download
                         visible: entry.name === "model-missing" && !Nilo.installed && Nilo.pull === null
                         text: Lang.niloDownload
@@ -817,7 +817,7 @@ Item {
                         onClicked: Nilo.download(Nilo.settings.model)
                     }
 
-                    PillButton {
+                    KeyButton {
                         id: start
                         visible: entry.name === "ollama-down" && !Nilo.ollama && !Nilo.startingOllama
                         text: Lang.niloStartOllama

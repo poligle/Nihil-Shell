@@ -144,7 +144,7 @@ Rectangle {
             Repeater {
                 model: root.actions
 
-                PillButton {
+                KeyButton {
                     required property var modelData
 
                     text: modelData.text

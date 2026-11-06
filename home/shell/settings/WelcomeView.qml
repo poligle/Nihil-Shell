@@ -259,13 +259,13 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 10
 
-            PillButton {
+            KeyButton {
                 visible: !root.last
                 text: Lang.welSkip
                 onClicked: Machine.endWelcome()
             }
 
-            PillButton {
+            KeyButton {
                 visible: root.step > 0 && !Machine.busy && !root.applied
                 text: Lang.welBack
                 onClicked: root.step--
@@ -280,7 +280,7 @@ Item {
                 onAccepted: root.finish()
             }
 
-            PillButton {
+            KeyButton {
                 accent: true
                 text: !root.last ? Lang.welNext
                     : root.asking ? Lang.welApplyStart

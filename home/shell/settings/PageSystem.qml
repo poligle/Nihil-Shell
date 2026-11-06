@@ -79,7 +79,7 @@ Flickable {
                     onPicked: value => Machine.set("clipboard", value)
                 }
 
-                PillButton {
+                KeyButton {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Clipboard.enabled
                     text: Lang.cfgClipboardWipe

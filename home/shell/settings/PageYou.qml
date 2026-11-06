@@ -91,7 +91,7 @@ Flickable {
         RowLayout {
             spacing: 14
 
-            PillButton {
+            KeyButton {
                 text: Lang.cfgChange
                 accent: page.ready
                 onClicked: page.change()
