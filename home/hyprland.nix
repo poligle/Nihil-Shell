@@ -66,13 +66,16 @@ let
 			(bindWith keys.screenshot (exec "hyprshot -m region --clipboard-only") { locked = true; });
 
 	# The clipboard history (home/clipboard.nix, services/Clipboard.qml): its
-	# key only brings it out, and the shell does the rest with the keyboard.
-	# The key again goes on to the next copy, and letting go of its modifier
-	# pastes the one chosen. A release bind can't see that modifier go up:
-	# Hyprland skips one whose key went down before its submap, or that took
-	# part in another bind, and the modifier is always both (ngrayson/nixos
-	# #228, on 0.55.4). Not bound when the history is off, or when an action
-	# or a program already has its key (a warning says so).
+	# key brings it out, and the shell does the rest with the keyboard: the
+	# key again goes on to the next copy, and letting go of its modifier
+	# pastes the one chosen. Neither can count on seeing that modifier go up:
+	# a release bind is skipped once its key took part in another bind
+	# (ngrayson/nixos #228, on 0.55.4), and the shell, which has the keyboard
+	# only once the modifier is down, may not get its release. So while the
+	# history is out, Hyprland looks at the modifier every 40 ms
+	# (clipboardWatch) and tells the shell when it is up. Not bound when the
+	# history is off, or when an action or a program already has its key (a
+	# warning says so).
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
 	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
@@ -81,8 +84,84 @@ let
 	clipboardTaken = clipboardKey != null && lib.elem (normal clipboardKey) (map normal (lib.filter (combo: combo != null)
 		(lib.mapAttrsToList (name: combo: if name == "clipboard" then null else combo) keys
 			++ map (program: program.keys) osConfig.nihil.programs)));
-	clipboardBinds = lib.optional (osConfig.nihil.clipboard > 0 && clipboardKey != null && !clipboardTaken)
-		(bind clipboardKey (exec "nihil-ipc clipboard open"));
+	clipboardOn = osConfig.nihil.clipboard > 0 && clipboardKey != null && !clipboardTaken;
+	clipboardBinds = lib.optional clipboardOn (bind clipboardKey ''
+		function()
+			if nihil_clipboard then
+				nihil_clipboard.open()
+			else
+				hl.exec_cmd("nihil-ipc clipboard open")
+			end
+		end
+	'');
+
+	# The keys of each modifier, by the names a bind gives it; a combination
+	# is held while each of its modifiers has one of them down.
+	modifierKeys =
+	{
+		SUPER = [ "Super_L" "Super_R" ];
+		CTRL = [ "Control_L" "Control_R" ];
+		ALT = [ "Alt_L" "Alt_R" ];
+		SHIFT = [ "Shift_L" "Shift_R" ];
+	};
+	modifierAlias = { WIN = "SUPER"; LOGO = "SUPER"; MOD4 = "SUPER"; META = "SUPER"; CONTROL = "CTRL"; MOD1 = "ALT"; };
+	clipboardHeld = lib.filter (names: names != [ ]) (map (part:
+		let up = lib.toUpper part; in modifierKeys.${modifierAlias.${up} or up} or [ ])
+		(lib.init (parts clipboardKey)));
+	luaList = items: "{ ${lib.concatStringsSep ", " items} }";
+	# hl.timer and hl.is_key_down came with the Lua config; each call in a
+	# pcall all the same: without them nothing is watched, and the shell's
+	# own release (drawers/ClipboardView.qml), or Enter, pastes.
+	clipboardWatch = ''
+		-- NIHIL: the clipboard history's modifier (home/hyprland.nix).
+		nihil_clipboard = {}
+		do
+			local held = ${luaList (map (names: luaList (map (name: ''"${name}"'') names)) clipboardHeld)}
+			local watch = nil
+			local function call(what)
+				pcall(hl.exec_cmd, "nihil-ipc clipboard " .. what)
+			end
+			local function down(names)
+				for _, name in ipairs(names) do
+					local ok, pressed = pcall(hl.is_key_down, name)
+					if ok and pressed then
+						return true
+					end
+				end
+				return false
+			end
+			local function stop()
+				if watch ~= nil then
+					pcall(function() watch:cancel() end)
+					watch = nil
+				end
+			end
+			function nihil_clipboard.open()
+				call("open")
+				if watch ~= nil or #held == 0 then
+					return
+				end
+				-- At most 20 s, as long as the history waits for a key.
+				local ticks = 0
+				local ok, timer = pcall(hl.timer, function()
+					ticks = ticks + 1
+					for _, names in ipairs(held) do
+						if not down(names) then
+							stop()
+							call("released")
+							return
+						end
+					end
+					if ticks >= 500 then
+						stop()
+					end
+				end, { timeout = 40, type = "repeat" })
+				if ok then
+					watch = timer
+				end
+			end
+		end
+	'';
 
 	fingers = osConfig.nihil.gestures;
 
@@ -179,6 +258,7 @@ in
 		package = null;
 		portalPackage = null;
 		configType = "lua";
+		extraConfig = lib.optionalString clipboardOn clipboardWatch;
 
 		settings =
 		{
