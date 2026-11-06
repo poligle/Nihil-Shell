@@ -4,7 +4,8 @@ import qs.theme
 
 // A text field: a hairline box with the corners of a key (KeyButton), mono
 // text. `value` is shown while the field does not have the focus; what is
-// typed goes out through edited().
+// typed goes out through edited(), and finished() says when it is done
+// (Enter, or the focus gone elsewhere).
 Rectangle {
     id: root
 
@@ -20,6 +21,7 @@ Rectangle {
     signal edited(string text)
     signal accepted()
     signal escaped()
+    signal finished()
 
     function grab(): void { input.forceActiveFocus(); }
     function clear(): void { input.text = ""; }
@@ -53,6 +55,7 @@ Rectangle {
         selectByMouse: true
         onTextEdited: root.edited(text)
         onAccepted: root.accepted()
+        onEditingFinished: root.finished()
         Keys.onEscapePressed: event => {
             root.escaped();
             event.accepted = root.catchEscape;

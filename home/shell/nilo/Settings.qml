@@ -1,22 +1,26 @@
 import QtQuick
-import QtQuick.Controls as QQC
 import qs.theme
 import qs.config
 import qs.services
 import qs.components
 
 // Behind the gear. Everything here applies at once, without a rebuild:
-// the agent keeps it in ~/.local/state/nihil/nilo.json.
+// the agent keeps it in ~/.local/state/nihil/nilo.json. Rows as the
+// drawers have them (GearRow.qml, SwitchRow.qml): what each is on the
+// left, its control on the right, the controls the whole shell has (a
+// switch, a choice, a field, a key). Turning Nilo on or off and CPU or GPU
+// need a rebuild: they are in Preferences, System, a key away.
 Item {
     id: root
 
-    property int cursor: -1     // keyboard: models, "auto", access, repositories, then "think"
+    property int cursor: -1     // keyboard: models, "auto", "think", access, then repositories
 
     readonly property int modelCount: models.count
     readonly property int autoIndex: modelCount
-    readonly property int accessStart: modelCount + 1
+    readonly property int thinkIndex: modelCount + 1
+    readonly property int accessStart: modelCount + 2
     readonly property int repoStart: accessStart + access.count
-    readonly property int total: repoStart + repos.count + 1
+    readonly property int total: repoStart + repos.count
     readonly property var sleepChoices: [1, 5, 15, 30]
     readonly property bool asking: access.asking !== ""
 
@@ -36,17 +40,26 @@ Item {
         return Number(value).toLocaleString(Qt.locale(Lang.locale), "f", 1);
     }
 
+    // Awake until when, how much and, on a GPU, how much of it there; or asleep.
+    function memory(): string {
+        if (!Nilo.loaded) return Lang.setAsleep;
+        const until = Nilo.expires > 0 ? Qt.formatTime(new Date(Nilo.expires * 1000), "HH:mm") : "—";
+        const awake = Lang.setAwakeUntil.arg(gb(Nilo.sizeGB)).arg(until);
+        return Nilo.gpu > 0 ? awake + " " + Lang.setOnGpu.arg(Nilo.gpu) : awake;
+    }
+
     function sync(): void {
         models.current = cursor >= 0 && cursor < modelCount ? cursor : -1;
         access.current = cursor >= accessStart && cursor < repoStart ? cursor - accessStart : -1;
-        repos.current = cursor >= repoStart && cursor < total - 1 ? cursor - repoStart : -1;
+        repos.current = cursor >= repoStart && cursor < total ? cursor - repoStart : -1;
         if (asking && (access.current < 0 || access.items[access.current].key !== access.asking)) access.asking = "";
-        keep(models.current >= 0 ? models : cursor === autoIndex ? autoRow : access.current >= 0 ? access
-            : repos.current >= 0 ? repos : think);
+        keep(models.current >= 0 ? models : cursor === autoIndex ? autoRow : cursor === thinkIndex ? thinkRow
+            : access.current >= 0 ? access.rowAt(access.current) : repos);
     }
 
     // Scroll just enough for `item` to be seen whole.
     function keep(item: Item): void {
+        if (!item) return;
         const y = item.mapToItem(content, 0, 0).y;
         if (y < flick.contentY) flick.contentY = Math.max(0, y - 40);
         else if (y + item.height > flick.contentY + flick.height)
@@ -58,13 +71,17 @@ Item {
         sync();
     }
 
+    function flip(key: string): void {
+        Nilo.set(key, !(Nilo.settings[key] === true));
+    }
+
     function activate(): void {
         if (cursor < 0) return;
         if (cursor < modelCount) models.choose(cursor);
-        else if (cursor === autoIndex) Nilo.set("auto", !(Nilo.settings.auto === true));
+        else if (cursor === autoIndex) flip("auto");
+        else if (cursor === thinkIndex) flip("think");
         else if (cursor < repoStart) access.toggle(cursor - accessStart);
-        else if (cursor < total - 1) repos.choose(cursor - repoStart);
-        else Nilo.set("think", !(Nilo.settings.think === true));
+        else if (cursor < total) repos.choose(cursor - repoStart);
     }
 
     function sleepStep(step: int): void {
@@ -72,8 +89,15 @@ Item {
         Nilo.set("keepAlive", sleepChoices[Math.max(0, Math.min(sleepChoices.length - 1, (i < 0 ? 1 : i) + step))]);
     }
 
+    // Another path, once typed: an empty field leaves the one there is.
+    function choosePath(path: string): void {
+        const typed = path.trim();
+        if (typed !== "" && typed !== (Nilo.settings.repo ?? "")) Nilo.set("repo", typed);
+    }
+
     component Section: Column {
         property alias title: heading.text
+
         width: parent ? parent.width : 0
         spacing: 8
         topPadding: 18
@@ -104,51 +128,24 @@ Item {
             }
 
             // Simple questions to the smallest model downloaded (agent.py, route).
-            Rectangle {
+            SwitchRow {
                 id: autoRow
                 width: content.width
-                height: 56
-                radius: 14
-                color: root.cursor === root.autoIndex || autoArea.containsMouse ? Tokens.raised : "transparent"
+                title: Lang.setAuto
+                sub: Nilo.settings.auto && Nilo.fast === "" ? Lang.setAutoNeedsTwo : Lang.setAutoSub
+                on: Nilo.settings.auto === true
+                current: root.cursor === root.autoIndex
+                onToggled: root.flip("auto")
+            }
 
-                MouseArea {
-                    id: autoArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Nilo.set("auto", !(Nilo.settings.auto === true))
-                }
-
-                Column {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: autoLed.left
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 3
-
-                    Txt {
-                        width: parent.width
-                        text: Lang.setAuto
-                        color: Nilo.settings.auto ? Tokens.ink : Tokens.dim
-                        font.pixelSize: 15
-                    }
-
-                    Txt {
-                        width: parent.width
-                        text: Nilo.settings.auto && Nilo.fast === "" ? Lang.setAutoNeedsTwo : Lang.setAutoSub
-                        color: Tokens.muted
-                        font.pixelSize: 12
-                    }
-                }
-
-                Led {
-                    id: autoLed
-                    anchors.right: parent.right
-                    anchors.rightMargin: 18
-                    anchors.verticalCenter: parent.verticalCenter
-                    on: Nilo.settings.auto === true
-                }
+            SwitchRow {
+                id: thinkRow
+                width: content.width
+                title: Lang.setThink
+                sub: Lang.setThinkSub
+                on: Nilo.settings.think === true
+                current: root.cursor === root.thinkIndex
+                onToggled: root.flip("think")
             }
 
             Section { title: Lang.setAccess }
@@ -166,38 +163,17 @@ Item {
                 width: content.width
             }
 
-            Row {
+            GearRow {
                 width: content.width
-                height: 44
-                spacing: 12
-                leftPadding: 16
+                title: Lang.setRepoPath
 
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Lang.setRepoPath
-                }
-
-                QQC.TextField {
-                    id: repo
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.min(320, content.width - 160)
-                    text: Nilo.settings.repo ?? ""
-                    color: Tokens.ink
-                    selectionColor: Tokens.ink
-                    selectedTextColor: Tokens.black
-                    font.family: Tokens.fontMono
-                    font.pixelSize: 12
-                    background: Rectangle {
-                        radius: 12
-                        color: Tokens.surface
-                        border.width: 1
-                        border.color: repo.activeFocus ? Tokens.muted : Tokens.line
-                    }
-                    leftPadding: 12
-                    rightPadding: 12
-                    onEditingFinished: if (text.trim() !== (Nilo.settings.repo ?? "")) Nilo.set("repo", text.trim())
-                    Keys.onEscapePressed: root.done()
+                Field {
+                    width: Math.min(320, content.width - 200)
+                    value: Nilo.settings.repo ?? ""
+                    catchEscape: true
+                    onFinished: root.choosePath(text)
                     onAccepted: root.done()
+                    onEscaped: root.done()
                 }
             }
 
@@ -214,116 +190,41 @@ Item {
 
             Section { title: Lang.setContext }
 
-            Row {
+            GearRow {
                 width: content.width
-                spacing: 16
-                leftPadding: 16
+                title: Lang.setNotes
+                sub: Lang.setContextNote
 
                 KeyButton {
-                    id: notes
-                    anchors.verticalCenter: parent.verticalCenter
                     text: Lang.setContextEdit
                     onClicked: Nilo.editNotes()
-                }
-
-                Txt {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: content.width - notes.width - 48
-                    text: Lang.setContextNote
-                    color: Tokens.muted
-                    wrapMode: Text.WordWrap
-                    elide: Text.ElideNone
-                    font.pixelSize: 12
                 }
             }
 
             Section { title: Lang.setMemory }
 
-            Txt {
+            GearRow {
                 width: content.width
-                leftPadding: 16
-                text: Nilo.loaded
-                    ? Lang.setAwakeUntil.arg(root.gb(Nilo.sizeGB)).arg(Nilo.gpu)
-                        .arg(Nilo.expires > 0 ? Qt.formatTime(new Date(Nilo.expires * 1000), "HH:mm") : "—")
-                    : Lang.setAsleep
-                color: Tokens.dim
-                font.pixelSize: 13
-            }
+                title: Lang.setSleepAfter
+                sub: root.memory()
 
-            Row {
-                height: 44
-                spacing: 8
-                leftPadding: 16
+                Row {
+                    spacing: 16
 
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Lang.setSleepAfter
-                    rightPadding: 4
-                }
-
-                Repeater {
-                    model: root.sleepChoices
+                    Choice {
+                        anchors.verticalCenter: parent.verticalCenter
+                        mono: true
+                        options: root.sleepChoices.map(minutes => ({ value: minutes, label: Lang.setMinutes.arg(minutes) }))
+                        value: Nilo.settings.keepAlive ?? 5
+                        onPicked: value => Nilo.set("keepAlive", value)
+                    }
 
                     KeyButton {
-                        required property int modelData
                         anchors.verticalCenter: parent.verticalCenter
-                        text: Lang.setMinutes.arg(modelData)
-                        accent: (Nilo.settings.keepAlive ?? 5) === modelData
-                        onClicked: Nilo.set("keepAlive", modelData)
+                        visible: Nilo.loaded
+                        text: Lang.setSleepNow
+                        onClicked: Nilo.sleep()
                     }
-                }
-
-                Item { width: 12; height: 1 }
-
-                KeyButton {
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: Nilo.loaded
-                    text: Lang.setSleepNow
-                    onClicked: Nilo.sleep()
-                }
-            }
-
-            Section { title: Lang.niloThinking }
-
-            Rectangle {
-                id: think
-                width: content.width
-                height: 56
-                radius: 14
-                color: root.cursor === root.total - 1 || thinkArea.containsMouse ? Tokens.raised : "transparent"
-
-                MouseArea {
-                    id: thinkArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Nilo.set("think", !(Nilo.settings.think === true))
-                }
-
-                Column {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 3
-
-                    Txt {
-                        text: Lang.setThink
-                        color: Nilo.settings.think ? Tokens.ink : Tokens.dim
-                        font.pixelSize: 15
-                    }
-
-                    Txt {
-                        text: Lang.setThinkSub
-                        color: Tokens.muted
-                        font.pixelSize: 12
-                    }
-                }
-
-                Led {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 18
-                    anchors.verticalCenter: parent.verticalCenter
-                    on: Nilo.settings.think === true
                 }
             }
 
@@ -334,13 +235,10 @@ Item {
             Item { width: 1; height: 10 }
 
             Row {
-                width: content.width
-                spacing: 16
-                leftPadding: 16
+                x: 16
+                spacing: 8
 
                 KeyButton {
-                    id: again
-                    anchors.verticalCenter: parent.verticalCenter
                     text: Lang.setIntro
                     onClicked: {
                         Nilo.set("onboarded", false);
@@ -348,15 +246,25 @@ Item {
                     }
                 }
 
-                Txt {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: content.width - again.width - 48
-                    text: Lang.setRebuild
-                    color: Tokens.muted
-                    wrapMode: Text.WordWrap
-                    elide: Text.ElideNone
-                    font.pixelSize: 12
+                KeyButton {
+                    text: Lang.setOpenPreferences
+                    onClicked: {
+                        Drawers.close();
+                        Machine.show("system", false);
+                    }
                 }
+            }
+
+            Txt {
+                width: content.width
+                leftPadding: 16
+                rightPadding: 16
+                topPadding: 6
+                text: Lang.setRebuild
+                color: Tokens.muted
+                wrapMode: Text.WordWrap
+                elide: Text.ElideNone
+                font.pixelSize: 12
             }
         }
     }
