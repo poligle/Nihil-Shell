@@ -192,7 +192,7 @@ Item {
         y: 24 + root.niloP * (root.height - height - 74)
         width: parent.width - 48
         height: 48
-        radius: 24
+        radius: 12
         color: Tokens.surface
         border.width: 1
         border.color: input.activeFocus ? Tokens.muted : Tokens.line

@@ -108,7 +108,7 @@ Item {
                 rightPadding: 14
                 maximumLength: Tasks.maxLength
                 background: Rectangle {
-                    radius: 15
+                    radius: 8
                     color: field.activeFocus ? Tokens.surface : "transparent"
                     border.width: 1
                     border.color: field.activeFocus ? Tokens.muted : Tokens.line
