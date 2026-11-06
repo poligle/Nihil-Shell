@@ -202,9 +202,10 @@ your old `configuration.nix`, and whatever this machine needed there, such as
 `hardware.amdgpu.initrd.enable = true;` with an AMD GPU, so the boot splash comes up early
 (the installer adds the GPU's by itself).
 
-A screen connected later, on any machine, goes into `outputs` from Preferences, Screens
-(its resolution, scale, rotation, place, bar and which one is the main one), or the same
-way by hand (`nihil settings`). One that is not there works anyway, with Hyprland's own
+A screen connected later, on any machine, goes into `outputs` from Preferences, Screens:
+the screens drawn as they sit on the desk, to be dragged beside each other, and for the one
+picked its resolution, refresh rate, scale, rotation, bar and whether it is the main one.
+Or the same by hand (`nihil settings`), with a `position` like `"2560x0"` in logical pixels. One that is not there works anyway, with Hyprland's own
 mode, no bar and the primary screen's wallpaper.
 
 Then point the flake at the clone and switch (flakes are turned on for this first time;
