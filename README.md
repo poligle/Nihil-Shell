@@ -59,8 +59,9 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   actions, `=` for a calculator, `?` for Nilo.
 - **Clipboard history.** `SUPER + V` brings out the last copies, text and pictures, from
   the top of the frame: with `SUPER` held, `V` again goes to the next one, and letting go
-  pastes it where you were. The one chosen is lit, its picture in colour. What a password
-  manager copies is never kept.
+  pastes it where you were. A quick press leaves it out, to pick one with the arrows and
+  `Enter`. The one chosen is lit, its picture in colour. What a password manager copies is
+  never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
@@ -108,7 +109,8 @@ Three rules come before everything else:
 1. **Hierarchy is made with greys.** Red is never decoration: it only interrupts — a
    failed login, a critical notification, the recording LED, a destructive action.
 2. **Dots are for display.** Doto draws the clock and the big numbers; text stays in
-   Space Grotesk, labels in uppercase Space Mono.
+   Space Grotesk, labels in Space Mono. All of it in sentence case: a capital to start,
+   and proper names their own (no lowercase-only lines, no capitals-only ones).
 3. **The frame is hardware.** Opaque, flat, no shadows; windows sit concentric with it.
 
 | Token     | Hex       | Use                                   |
@@ -165,9 +167,10 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: th
 4. The first login opens the welcome: what NIHIL is and how its frame works, then your
    name, language, keyboard, time zone, wallpaper and system. **Preferences** changes
    all of it later, and the shortcuts too: `SUPER + O`, the cog in quick settings or
-   the launcher. Changes wait until applied; applying asks for your password (or a
-   finger) and rebuilds the system on its own (`nihil apply`), which keeps going if the
-   shell restarts and puts the old settings back if the build fails.
+   the launcher. Changes wait until applied; applying asks once, for a finger if there is
+   a reader or for your password, never both, and rebuilds the system on its own
+   (`nihil apply`), which keeps going if the shell restarts and puts the old settings
+   back if the build fails.
 
 It finds the screens and the GPU on its own and installs over the network (almost all of
 NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
@@ -331,7 +334,7 @@ fingers of each one or `null` for none, which only change there.
 The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `clipboard`,
 `nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
 `toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history has the keyboard while
-it is out, and letting go of its key's first modifier pastes: any combination works
+it is out, and letting go of one of its key's modifiers pastes: any combination works
 (`CTRL + V` too, if you want it on the paste key itself, at the cost of `CTRL + V` in the
 terminal; one without a modifier waits for `Enter`). The gestures: `workspaces`, `close`,
 `launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
@@ -358,7 +361,7 @@ nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
-nihil-ipc clipboard open              # the history; also: next, previous, paste, cancel
+nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -460,10 +463,12 @@ repository turns Files and Git off again.
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
-by default. Asleep it takes no memory; Ollama itself stays as an idle service. A model
-that would leave the rest of the machine less than an eighth of its memory (2 GB at
-least) is not loaded: Nilo says there is no room for it. And should memory run out all
-the same, the kernel stops Ollama first, never the session.
+by default. Asleep it takes no memory; Ollama itself stays as an idle service. With an
+integrated GPU (`integratedGpu`), a model bigger than three quarters of the memory that GPU
+can map (its GTT, about half the RAM) runs on the CPU: Ollama would put it there whole, and
+take what the compositor needs to draw the screen (ollama#17748). A model bigger than the
+machine's memory is not loaded, and should memory run out, the kernel stops Ollama first,
+never the session.
 
 **History.** A conversation lives in the agent while the shell runs: closing the launcher
 keeps it, `ctrl + n` starts a new one, and nothing is written to disk. Nilo asks Ollama
@@ -589,8 +594,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   and `noatime`. Swap via zram.
 - **Boot:** UEFI + systemd-boot with a systemd initrd and the NIHIL Plymouth theme
   (frames rendered at build time from `theme/art/snowflake-29.txt`). Its sound
-  (`sounds/nihil/boot.wav`) plays through ALSA once the sound card is up and while the
-  splash is still there: PipeWire only starts with the session (`modules/boot-sound.nix`).
+  (`sounds/nihil/boot.wav`, three notes) plays through ALSA once the sound card is up and
+  while the splash is still there: PipeWire only starts with the session
+  (`modules/boot-sound.nix`). The snowflake's LEDs wait unlit for it and switch on with it
+  (`plymouth update --status=nihil-open`); without it, they don't wait.
 - **Login:** greetd + ReGreet in cage on the last connected monitor, themed by Stylix
   plus NIHIL CSS.
 - **Hyprland in Lua:** the whole configuration is declared in Nix and Home Manager

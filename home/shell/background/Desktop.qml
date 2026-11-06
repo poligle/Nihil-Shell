@@ -80,10 +80,10 @@ Scope {
 
                 Label {
                     Layout.alignment: Qt.AlignHCenter
-                    text: clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dayName)
+                    text: Case.sentence(clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dayName))
                     color: Tokens.dim
                     font.pixelSize: 12
-                    font.letterSpacing: 4
+                    font.letterSpacing: 1
                 }
 
                 Txt {
@@ -134,7 +134,7 @@ Scope {
                         Layout.fillWidth: true
                         spacing: 2
 
-                        Label { text: Media.player || Lang.media }
+                        Label { text: Case.sentence(Media.player) || Lang.media }
 
                         Txt {
                             Layout.fillWidth: true

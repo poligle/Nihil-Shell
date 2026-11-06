@@ -74,6 +74,9 @@ in
                 Let Ollama use an integrated GPU, like the Radeon of a Ryzen laptop
                 with `acceleration = "vulkan"`. Ollama leaves them out unless told
                 (`OLLAMA_IGPU_ENABLE`), since a weak one can be slower than the CPU.
+                Such a GPU works in a window of the RAM (its GTT): a model bigger
+                than three quarters of it runs on the CPU, so that the screen
+                always has its share.
             '';
         };
 
@@ -180,7 +183,20 @@ in
                 # Local only: no models that run on ollama.com.
                 OLLAMA_NO_CLOUD = "1";
             }
-            // lib.optionalAttrs cfg.integratedGpu { OLLAMA_IGPU_ENABLE = "1"; });
+            // lib.optionalAttrs cfg.integratedGpu
+            {
+                OLLAMA_IGPU_ENABLE = "1";
+                # Such a GPU works in a window of the RAM (its GTT), and the
+                # compositor draws the screen from it too. llama-server, which
+                # Ollama starts with its own environment, would put there the part
+                # of a model it keeps for the CPU as well (its host buffer, on an
+                # integrated GPU: ggml-org/llama.cpp#27360); --no-host sends that
+                # part to plain memory. And what it places on the GPU by itself
+                # (--fit) leaves 4 GB of the window free. A model that doesn't fit
+                # there at all, Nilo keeps on the CPU (home/nilo/agent.py).
+                LLAMA_ARG_NO_HOST = "1";
+                LLAMA_ARG_FIT_TARGET = "4096";
+            });
         };
 
         # The upstream unit has no Restart=: if Ollama stops on its own (a
@@ -192,9 +208,8 @@ in
             RestartSec = lib.mkDefault "2s";
             RestartSteps = lib.mkDefault 5;
             RestartMaxDelaySec = lib.mkDefault "1min";
-            # Nilo loads a model only if it leaves the machine room
-            # (home/nilo/agent.py), but if memory runs out anyway, the kernel
-            # stops Ollama first, never Hyprland or the shell.
+            # If memory runs out, the kernel stops Ollama first, never Hyprland
+            # or the shell.
             OOMScoreAdjust = lib.mkDefault 1000;
         };
 

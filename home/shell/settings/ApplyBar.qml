@@ -5,8 +5,9 @@ import qs.config
 import qs.services
 import qs.components
 
-// What is waiting to be applied, and applying it: the password goes to sudo
-// (services/Machine.qml); with a fingerprint reader, a finger works too.
+// What is waiting to be applied, and applying it, asked once: with a
+// fingerprint reader, a finger at once, or the password typed instead; without
+// one, the password (services/Machine.qml).
 Item {
     id: root
 
@@ -16,14 +17,32 @@ Item {
 
     implicitHeight: 56 + (showLog && hasLog ? logBox.height + 12 : 0)
 
+    // A finger is awaited: the field stays, for the password instead.
+    readonly property bool fingerWait: Machine.phase === "auth" && Machine.auth === "finger"
+
     function go(): void {
-        if (password.text === "" && !Machine.get("fingerprint", false)) {
+        if (password.text === "" && !Machine.fingerprint) {
             password.grab();
             return;
         }
         Machine.apply(password.text);
         password.clear();
-        root.asking = false;
+    }
+
+    // Neither the finger nor the password did it: the field again. Once it
+    // applies, the field goes.
+    Connections {
+        target: Machine
+        function onFailureChanged(): void {
+            if (Machine.failure === "finger" || Machine.failure === "password") {
+                root.asking = true;
+                password.grab();
+            }
+        }
+        function onPhaseChanged(): void {
+            if (Machine.phase === "applying")
+                root.asking = false;
+        }
     }
 
     // The end of /run/nihil/apply.log, following it while it applies.
@@ -102,7 +121,7 @@ Item {
 
         Field {
             id: password
-            visible: root.asking
+            visible: root.asking && (!Machine.busy || root.fingerWait)
             Layout.preferredWidth: 220
             password: true
             placeholder: Lang.cfgApplyPassword
@@ -110,9 +129,11 @@ Item {
         }
 
         KeyButton {
-            visible: Machine.changes > 0 && !Machine.busy
+            visible: Machine.changes > 0 && (!Machine.busy || root.fingerWait)
             text: root.asking ? Lang.cfgCancel : Lang.cfgDiscard
             onClicked: {
+                if (root.fingerWait)
+                    Machine.cancelFinger();
                 if (root.asking)
                     root.asking = false;
                 else
@@ -129,6 +150,9 @@ Item {
                     root.go();
                 } else {
                     root.asking = true;
+                    // With a reader, a finger at once; the field is there too.
+                    if (Machine.fingerprint)
+                        Machine.apply("");
                     password.grab();
                 }
             }

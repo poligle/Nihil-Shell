@@ -46,11 +46,11 @@ Item {
             event.accepted = true;
         }
 
-        // The modifier went down in the window that had the keyboard, so
-        // Hyprland passes its release on to whoever has it now: here.
+        // The modifier went down in the window that had the keyboard: its
+        // release may come here or not. Hyprland says so either way.
         Keys.onReleased: event => {
             if (Clipboard.isModifier(event.key)) {
-                Clipboard.paste();
+                Clipboard.released("view");
                 event.accepted = true;
             }
         }

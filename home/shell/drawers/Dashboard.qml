@@ -44,7 +44,7 @@ Item {
                 Layout.fillHeight: true
                 spacing: 4
 
-                Label { text: "ex nihilo" }
+                Label { text: "Ex nihilo" }
 
                 DotText {
                     text: Qt.formatDateTime(clock.date, "HH:mm")
@@ -53,7 +53,7 @@ Item {
 
                 Txt {
                     Layout.fillWidth: true
-                    text: clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dateLong)
+                    text: Case.sentence(clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dateLong))
                     color: Tokens.dim
                     font.pixelSize: 15
                 }
@@ -159,7 +159,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 4
 
-                        Label { text: Media.player || Lang.media }
+                        Label { text: Case.sentence(Media.player) || Lang.media }
 
                         Txt {
                             Layout.fillWidth: true
@@ -225,14 +225,14 @@ Item {
                 Row {
                     spacing: 6
 
-                    Dial { width: 82; height: 82; value: SysStats.cpu; text: String(Math.round(SysStats.cpu * 100)); label: "cpu" }
-                    Dial { width: 82; height: 82; value: SysStats.mem; text: String(Math.round(SysStats.mem * 100)); label: "ram" }
+                    Dial { width: 82; height: 82; value: SysStats.cpu; text: String(Math.round(SysStats.cpu * 100)); label: "CPU" }
+                    Dial { width: 82; height: 82; value: SysStats.mem; text: String(Math.round(SysStats.mem * 100)); label: "RAM" }
                     Dial {
                         width: 82
                         height: 82
                         value: Math.min(1, SysStats.temp / 100)
                         text: String(Math.round(SysStats.temp))
-                        label: "°c"
+                        label: "°C"
                         alert: SysStats.temp >= 90
                     }
                 }

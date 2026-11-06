@@ -57,7 +57,6 @@ Flickable {
         Heading {
             Layout.topMargin: 14
             title: Lang.cfgPassword
-            sub: Lang.cfgPasswordSub
         }
 
         Field {
