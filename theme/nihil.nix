@@ -24,7 +24,8 @@ let
 in
 {
 	name = "NIHIL";
-	motto = "Ex nihilo";
+	# Lowercase, and in italics wherever the text can be.
+	motto = "ex nihilo";
 
 	inherit palette;
 
