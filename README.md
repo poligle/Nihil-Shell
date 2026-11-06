@@ -61,7 +61,8 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   copies and `SUPER + V` pastes, in kitty too. Held a moment longer, `SUPER + V`
   brings out the last copies, text and pictures, from the top of the frame: `V` again goes
   to the next one, and letting go of `SUPER` pastes it where you were (`Esc`: none). The
-  one chosen is lit, its picture in colour. What a password manager copies is never kept.
+  window keeps the keyboard all along, so what was open in it stays open. The one chosen
+  is lit, its picture in colour. What a password manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type, answer, search the web if you let them and open apps. Asking
   you first, they change files, commit and push in a repository of yours and run commands.
