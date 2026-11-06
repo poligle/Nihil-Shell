@@ -1,4 +1,7 @@
 # regreet.nix by poligle
+#
+# ReGreet: what NIHIL's greeter falls back to (modules/greeter.nix), or the
+# greeter itself with nihil.greeter = "regreet".
 
 { config, lib, pkgs, ... }:
 let
