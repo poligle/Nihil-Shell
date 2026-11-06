@@ -109,7 +109,8 @@ networks, the track and the notifications are made up. App icons are Colloid's.<
 Three rules come before everything else:
 
 1. **Hierarchy is made with greys.** Red is never decoration: it only interrupts — a
-   failed login, a critical notification, the recording LED, a destructive action.
+   failed login, a critical notification, the recording LED, a destructive action — and
+   it is never small text: what went wrong is said in ink, with a red LED before it.
 2. **Dots are for display.** Doto draws the clock and the big numbers; text stays in
    Space Grotesk, labels in Space Mono. All of it in sentence case: a capital to start,
    and proper names their own (no lowercase-only lines, no capitals-only ones).
@@ -271,6 +272,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `clipboard`     | `8`        | How many copies the clipboard history keeps; `0` turns it off |
 | `bootSound`     | `true`     | A sound with the boot splash, unless the session was left muted |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
+| `greeter`       | `"nihil"`  | The login screen: NIHIL's own (`greeter/shell.qml`), with ReGreet in its place should it not start, or `"regreet"` alone |
 | `trayHidden`    | `[ "nm-applet" "blueman" ]` | Tray items to hide, by part of their id or title. The Wi-Fi and Bluetooth applets keep running for password and pairing prompts |
 | `nilo.enable`   | `false`    | Nilo, the assistant, and Ollama to run its model ([Nilo](#nilo)) |
 | `nilo.acceleration` | `"cpu"` | `"cpu"`, `"vulkan"`, `"rocm"` or `"cuda"`: what runs the model |
@@ -296,7 +298,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + D`                       | Dashboard (also by hovering the top edge)     |
 | `SUPER + P`                       | Settings panel (or rest the pointer in the top-right corner) |
 | `SUPER + K`                       | Lock                                          |
-| `SUPER + O`                       | Preferences (also the cog in quick settings)  |
+| `SUPER + O`                       | Preferences (also the cog in quick settings, and `>` in the launcher) |
 | `SUPER + W`                       | Wallpapers, out of the bottom edge: arrows to look, Enter to keep |
 | `SUPER` (alone)                   | Terminal (kitty), a program                   |
 | `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
@@ -333,12 +335,13 @@ fingers of each one or `null` for none, which only change there.
 "gestures": { "close": null, "special": 3 }
 ```
 
-The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `clipboard`,
-`nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`, `special`,
-`toSpecial`, `nextWorkspace`, `screenshot`. The clipboard history has the keyboard while
-it is out, and letting go of one of its key's modifiers pastes: any combination works
-(`CTRL + V` too, if you want it on the paste key itself, at the cost of `CTRL + V` in the
-terminal; one without a modifier waits for `Enter`). The gestures: `workspaces`, `close`,
+The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `copy`,
+`clipboard`, `nilo`, `colourPicker`, `lock`, `close`, `float`, `maximize`, `fullscreen`,
+`special`, `toSpecial`, `nextWorkspace`, `screenshot`. While the clipboard history is out
+the window keeps the keyboard and the history's keys come through Hyprland; letting go of
+one of its key's modifiers pastes: any combination works (`CTRL + V` too, if you want it
+on the paste key itself, at the cost of `CTRL + V` in the terminal; one without a
+modifier takes the keyboard and waits for `Enter`). The gestures: `workspaces`, `close`,
 `launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
 `terminal`, `files`, `browser`, `notes`, `code`, `music` and `pixels` were actions and
 are programs now: a `settings.json` that still names them under `binds` is read without
@@ -375,7 +378,7 @@ journalctl --user -u nihil-shell -f   # logs
 | `background/` | Desktop widgets                                                 |
 | `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`) |
 | `settings/`   | Preferences and the welcome                                     |
-| `components/` | LEDs, dials, segmented sliders, dot-matrix image, buttons, text |
+| `components/` | LEDs, dials, segmented sliders, dot-matrix image, keys and buttons, switches, choices, fields, text |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
 | `theme/`      | The shell's Nerd Font glyphs; `Tokens.qml` is generated here |
 
@@ -396,7 +399,8 @@ while they think and from side to side while they search. It answers, searches t
 looks at this computer and opens apps, and, if you allow it, changes files, commits and
 pushes in a repository and runs commands, each step confirmed by you first.
 
-It is off by default. In the host:
+It is off by default. Preferences, System turns it on and chooses what runs the model
+(CPU, Vulkan, ROCm or CUDA), applied with a rebuild; or, in the host:
 
 ```nix
 nihil.nilo =
@@ -493,13 +497,15 @@ instant; with 1, Ollama swaps them.
 | `qwen3.5:35b-a3b` | 22 GB | 25 GB | 56 GB |
 
 The model, the switches, the minutes and "think before answering" apply at once and live
-in `~/.local/state/nihil/nilo.json`; only the options above need a rebuild.
+in `~/.local/state/nihil/nilo.json`; only the options above need a rebuild. The gear and
+Preferences open each other: "Open Preferences" under the gear, and "Settings" beside
+Nilo's switch in Preferences, System.
 
 **What it knows.** [`home/nilo/nilo.md`](home/nilo/nilo.md) tells Nilo about this system
 and the rules it works by: one step per tool call, each one authorized, look before
 changing, nothing destructive unless asked. It goes into every prompt with only the
 sections of the switches that are on. After it come your own notes,
-`~/.config/nihil/nilo.md` ("edit my notes" in the settings), and, with Files or Git
+`~/.config/nihil/nilo.md` (your notes, "Edit" in the gear), and, with Files or Git
 authorized, the `NILO.md` of the repository if it has one.
 
 The agent behind it is [`home/nilo/agent.py`](home/nilo/agent.py), standard-library
@@ -526,16 +532,19 @@ Nihil-Shell/
 │   ├── i18n.nix      every string, per language
 │   ├── dotmatrix.py  photo → LED matrix (wallpapers.nix runs it per output)
 │   ├── plymouth.*    boot splash frames and theme
+│   ├── qml.nix       Tokens.qml and Lang.qml, for the shell and the greeter
 │   └── art/          LED maps of the NixOS snowflake (19 for fastfetch, 29 for boot)
 ├── modules/          system modules (default.nix gathers them; settings.nix reads settings.json)
 ├── installer/        the ISO and nihil-install
 ├── templates/        machine/: what the installer writes to /etc/nixos; example/: CI's machine
 ├── home/             Home Manager: shell/, nilo/ (Nilo's agent), lock/, hyprland, hyprlock, …
+├── greeter/          the login screen, in Quickshell under cage (modules/greeter.nix)
 ├── sounds/           interface sounds (nihil/ is the NIHIL pack)
 ├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
 ├── docs/             the website, served by GitHub Pages from this folder
-├── .github/          release.yml: the ISO in Releases; update.yml: the inputs, every week
+├── .github/          release.yml: the ISO in Releases; update.yml: the inputs, every week;
+│                     auto-pull-request.yml: a push to any other branch, as a pull request into nihil
 └── wallpapers/       source photos, rendered as dots at build time
 ```
 
@@ -611,7 +620,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   Stylix's Hyprland target is off: NIHIL sets the colours itself.
 - **Quickshell and Hyprland focus:** drawers that take the keyboard use
   `WlrKeyboardFocus.OnDemand` together with a `HyprlandFocusGrab`. `Exclusive` would not
-  work: Hyprland drops every focus grab when a layer becomes exclusive.
+  work: Hyprland drops every focus grab when a layer becomes exclusive. The clipboard
+  history takes none: while it is out its keys come through a Hyprland submap
+  (`nihil-clipboard`) and the window keeps the keyboard; only a paste key without a
+  modifier makes the frame `Exclusive` until it pastes.
 - **Charger:** plugging it in lights the frame from the bottom and plays `charge`, three
   climbing notes (`tools/sounds.py`; the classic pack uses freedesktop's `power-plug`).
 - **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables. At
