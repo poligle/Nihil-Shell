@@ -340,10 +340,10 @@ Item {
                     }
                 }
 
-                Label {
+                Alert {
+                    Layout.fillWidth: true
                     visible: Network.error !== ""
                     text: Network.error
-                    color: Tokens.interrupt
                 }
             }
 
@@ -498,10 +498,10 @@ Item {
                 // its own that is always there: the row of buttons never grows,
                 // which pushed the panel past the edge of the screen. With the
                 // pointer on the update button, how far behind NIHIL is.
-                Label {
+                Alert {
                     Layout.fillWidth: true
                     text: root.armed !== "" ? Lang.confirmAgain : Updates.summary
-                    color: root.armed !== "" ? Tokens.interrupt : Tokens.muted
+                    wrong: root.armed !== ""
                     opacity: root.armed !== "" || updateButton.hovered ? 1 : 0
                 }
 
@@ -548,11 +548,13 @@ Item {
                         text: Lang.updMore.arg(Updates.behind - 6)
                     }
 
-                    Txt {
+                    Alert {
                         Layout.fillWidth: true
                         visible: Machine.kind === "update" && Machine.phase !== ""
                         text: Machine.statusTitle
-                        color: Machine.phase === "failed" ? Tokens.interrupt : Tokens.ink
+                        wrong: Machine.phase === "failed"
+                        color: Tokens.ink
+                        font.family: Tokens.fontSans
                         font.pixelSize: 13
                     }
 

@@ -1,7 +1,7 @@
 import QtQuick
 import qs.theme
 
-// A switch as a single LED: lit when on, like the launcher on the phone.
+// An LED, lit for the one in use: a model, a repository.
 Rectangle {
     property bool on: false
 

@@ -196,10 +196,9 @@ Flickable {
             }
         }
 
-        Label {
+        Alert {
             visible: page.error !== ""
             text: page.error
-            color: Tokens.interrupt
         }
     }
 

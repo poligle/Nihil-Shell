@@ -65,6 +65,8 @@ Singleton {
     // The launcher on screen is in "?" mode (set by Launcher.qml).
     property bool shown: false
     property bool summon: false
+    // Opened from Preferences: its gear rather than the conversation.
+    property bool gear: false
     signal summoned()
 
     // The answer goes on with the launcher closed (esc, a click outside, an
@@ -120,6 +122,11 @@ Singleton {
     function toggle(): void {
         if (shown && Drawers.current === "launcher") Drawers.close();
         else open();
+    }
+
+    function openSettings(): void {
+        gear = true;
+        open();
     }
 
     // --- Away from the launcher -------------------------------------------------

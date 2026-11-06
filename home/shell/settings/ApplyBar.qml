@@ -100,10 +100,13 @@ Item {
             Layout.fillWidth: true
             spacing: 3
 
-            Txt {
+            Alert {
                 width: parent.width
                 text: Machine.statusTitle
-                color: Machine.phase === "failed" ? Tokens.interrupt : Tokens.ink
+                wrong: Machine.phase === "failed"
+                color: Tokens.ink
+                font.family: Tokens.fontSans
+                font.pixelSize: 14
             }
 
             Label {
