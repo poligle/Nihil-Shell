@@ -2,7 +2,8 @@
 #
 # What changes from one NIHIL machine to another: who uses it, its name,
 # language, keyboard, time zone, screens, whether Nilo runs, how long the
-# clipboard history is and whether the boot splash has its sound. It comes
+# clipboard history is, whether the boot splash has its sound, how long
+# generations stay and whether the phone is a deck for it. It comes
 # from the machine's settings.json (/etc/nixos, written by the installer
 # and the welcome screen) through nihil.lib.mkSystem, and becomes the
 # options below; a machine's local.nix can still set any of them.
@@ -87,6 +88,8 @@ in
         };
 
         services.openssh.enable = lib.mkDefault (get [ "ssh" ] false);
+        nihil.generations.days = lib.mkDefault (get [ "generations" "days" ] 7);
+        nihil.deck.enable = lib.mkDefault (get [ "deck" "enable" ] false);
 
         nihil.binds = get [ "binds" ] { };
         nihil.gestures = get [ "gestures" ] { };

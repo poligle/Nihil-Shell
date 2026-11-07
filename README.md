@@ -53,6 +53,14 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   the clipboard history, the boot sound, fingerprint and SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
   the widgets and the password change at once; the rest waits until applied, and applying
   rebuilds the system in the background.
+- **Generations, from Preferences.** Every rebuild is a whole system NixOS keeps. Each one
+  says when it was made, its NixOS, kernel and NIHIL, and which packages it changed;
+  one click goes back to it, now and at boot, or boots it just once. How long they stay,
+  and cleaning now, with what it frees.
+- **The phone as a deck.** With [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher) on Android, paired with a QR
+  from Preferences, the phone opens the computer's apps and web pages, plays and skips
+  its music, turns its volume and locks it. Nothing else, over HTTPS pinned to this
+  computer. See [The phone as a deck](#the-phone-as-a-deck).
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
@@ -94,13 +102,16 @@ home screen in the same language: the frame, an LED clock, the light on the edge
 
 | | |
 |:---:|:---:|
-| ![Dashboard](docs/assets/screens/dashboard.png) | ![Settings](docs/assets/screens/settings.png) |
-| Dashboard — hover the top edge or `SUPER + D` | Settings — `SUPER + P`, the status icons or the top-right corner |
+| ![Dashboard](docs/assets/screens/dashboard.png) | ![Quick settings](docs/assets/screens/settings.png) |
+| Dashboard — hover the top edge or `SUPER + D` | Quick settings — `SUPER + P`, the status icons or the top-right corner |
 | ![Launcher](docs/assets/screens/launcher.png) | ![Notification](docs/assets/screens/notification.png) |
-| Launcher — `SUPER + Space`, three fingers up or the bottom edge | A critical notification and its red light |
+| Launcher, its actions — `SUPER + Space`, three fingers up or the bottom edge | A notification, and its light around the frame |
+| ![Clipboard history](docs/assets/screens/clipboard.png) | ![Wallpapers](docs/assets/screens/wallpapers.png) |
+| Clipboard history — hold `SUPER + V` | Wallpapers in dots — `SUPER + W` |
+| ![Preferences, Desktop](docs/assets/screens/preferences.png) | ![Preferences, System](docs/assets/screens/preferences-system.png) |
+| Preferences — `SUPER + O` or the cog | The system, applied as a rebuild |
 
-<sub>The screenshots are the shell rendered in a test harness with sample data: the
-networks, the track and the notifications are made up. App icons are Colloid's.</sub>
+<sub>NIHIL as it runs on a ThinkPad, at 1920 × 1200. App icons are Colloid's.</sub>
 
 ---
 
@@ -231,7 +242,7 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 | File | What it holds |
 |------|---------------|
 | `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`, or `path:` to a clone), through `nihil.lib.mkSystem` |
-| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH |
+| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH, how long generations stay, the deck |
 | `hardware-configuration.nix` | disks and drivers, from `nixos-generate-config` |
 | `local.nix` | anything else for this machine: drivers, services, packages |
 | `home.nix` | its apps (NIHIL installs little beyond Zen) and anything else for its user, through Home Manager |
@@ -250,6 +261,11 @@ nihil settings    # edit settings.json, then rebuild
 nihil version     # the NIHIL this machine runs, and the one pinned
 nihil dev [path]  # NIHIL from a checkout instead, until nihil dev off or nihil update
 nihil apply FILE  # FILE as settings.json, rebuilt in the background (/run/nihil)
+nihil generations # the system's generations: NixOS, kernel, NIHIL, which one runs
+nihil generations changes N   # the packages generation N changed
+nihil generations switch N    # back to N, now and at boot
+nihil generations boot N      # N the next boot only
+nihil generations clean DAYS  # those older than DAYS days go, and what nothing needs
 ```
 
 ---
@@ -270,6 +286,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `programs`      | Terminal, Files, Zen | Programs with a key: a name, the command that opens it and its keys ([Keybindings](#keybindings)) |
 | `clipboard`     | `8`        | How many copies the clipboard history keeps; `0` turns it off |
+| `generations.days` | `7`     | How long generations stay: the weekly clean removes older ones, but the one in use and the one in use that many days ago |
 | `bootSound`     | `true`     | A sound with the boot splash, unless the session was left muted |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `greeter`       | `"nihil"`  | The login screen: NIHIL's own (`greeter/shell.qml`), with ReGreet in its place should it not start, or `"regreet"` alone |
@@ -282,6 +299,8 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `nilo.contextLength` | `16384` | Context window, in tokens |
 | `nilo.searxng`  | `null`     | A SearXNG instance for web searches instead of DuckDuckGo |
 | `nilo.coauthor` | [nilo-nihil](https://github.com/nilo-nihil) | Who Nilo signs its commits as (`Co-authored-by`); `null` for no trailer |
+| `deck.enable`   | `false`    | The phone as a deck ([The phone as a deck](#the-phone-as-a-deck)): its service, its port in the firewall, its name on the network (mDNS) |
+| `deck.port`     | `64445`    | The deck's HTTPS port ("NIHIL" on a phone's keypad) |
 
 Read-only: `tokens` (the design tokens), `strings` (the selected language), `sounds`,
 `wallpapers` and `fonts`. To add a language, add a block to
@@ -367,6 +386,8 @@ nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
 nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
+nihil-ipc apps list                   # the launcher's apps, as JSON; also: launch <id>, url <https://…>
+nihil-ipc media toggle                # also: next, previous, now (what plays, as JSON)
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -376,9 +397,9 @@ journalctl --user -u nihil-shell -f   # logs
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
 | `drawers/`    | Dashboard, settings panel, launcher, wallpapers, clipboard history, OSD, notifications |
 | `background/` | Desktop widgets                                                 |
-| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`) |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`), its generations, the deck |
 | `settings/`   | Preferences and the welcome                                     |
-| `components/` | LEDs, dials, segmented sliders, dot-matrix image, keys and buttons, switches, choices, fields, text |
+| `components/` | LEDs, dials, segmented sliders, dot-matrix image, keys and buttons, switches, choices, fields, text, a QR in dots |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
 | `theme/`      | The shell's Nerd Font glyphs; `Tokens.qml` is generated here |
 
@@ -387,11 +408,8 @@ journalctl --user -u nihil-shell -f   # logs
 ## Nilo
 
 <p align="center">
-  <img src="docs/assets/screens/nilo-loop.webp" width="720" alt="Nilo in the launcher: the eyes wake up while a question is typed, the answer arrives with Nix code, then a commit and push waits for enter twice and the eyes smile.">
+  <img src="docs/assets/screens/nilo.png" width="720" alt="Nilo in the launcher, thinking: its two eyes looking up, qwen3.5:9b chosen on its own, and the question under them.">
 </p>
-
-<sub>Rendered in the test harness: Nilo's real agent, answering a scripted model instead of
-a real one. The whole video is on [nihilshell.com](https://nihilshell.com/#nilo).</sub>
 
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
 on black: asleep while the model is unloaded, awake as soon as you type, looking up
@@ -463,9 +481,11 @@ with `sudo` opens in a kitty window, where you type the password; the rest run i
 background with their last lines under them, for two minutes at most. Choosing another
 repository turns Files and Git off again.
 
-| ![A change to README.md shown as a diff, waiting for confirmation](docs/assets/screens/nilo-change.png) | ![The files switch asking for authorization](docs/assets/screens/nilo-access.png) |
-|:---:|:---:|
-| A change to a file, as a diff first | Files and git, off until you authorize them |
+<p align="center">
+  <img src="docs/assets/screens/nilo-done.png" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it thought.">
+</p>
+
+<sub>Closed while it thinks, Nilo says when it's done, out of the bar.</sub>
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
@@ -522,6 +542,35 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 
 ---
 
+## The phone as a deck
+
+[NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
+its apps and web pages open here, its music plays and skips, its volume goes up and down
+and its screen locks, from the phone. That is all it can do: an app is one the launcher
+shows, a page is `http` or `https`, and there is no way to run a command or read a file.
+
+Preferences, Phone turns it on (a rebuild: the service, its port in the firewall and its
+name on the local network) and pairs a phone with a QR. The QR holds the computer's
+addresses, a one-time code (once, for five minutes) and the pin of its certificate: the
+phone talks HTTPS only to the computer whose public key it was shown, and pairing gives it
+a token of its own. The computer keeps only the token's hash, says when a phone pairs, and
+lists the phones, each to forget. When its address changes, the phone finds it again by
+mDNS (`_nihil-deck._tcp`).
+
+The service is [`home/deck/deck.py`](home/deck/deck.py), standard-library Python in the
+user's session, which opens what it is asked through the shell (`nihil-ipc apps`,
+`nihil-ipc media`) and the volume and lock as the keys do. The protocol, for the phone's
+side, is in [`docs/deck.md`](docs/deck.md). Its tests run a real HTTPS server on
+`127.0.0.1` with fake programs: `python3 -m unittest home/deck/test_deck.py`.
+
+```bash
+nihil-deck pair                       # the QR in the terminal, and its URI
+nihil-deck devices                    # the phones paired; forget ID|all
+systemctl --user status nihil-deck    # the service; journalctl --user -u nihil-deck
+```
+
+---
+
 ## Structure
 
 ```
@@ -537,12 +586,12 @@ Nihil-Shell/
 ├── modules/          system modules (default.nix gathers them; settings.nix reads settings.json)
 ├── installer/        the ISO and nihil-install
 ├── templates/        machine/: what the installer writes to /etc/nixos; example/: CI's machine
-├── home/             Home Manager: shell/, nilo/ (Nilo's agent), lock/, hyprland, hyprlock, …
+├── home/             Home Manager: shell/, nilo/ (Nilo's agent), deck/ (the phone's), hyprland, hyprlock, …
 ├── greeter/          the login screen, in Quickshell under cage (modules/greeter.nix)
 ├── sounds/           interface sounds (nihil/ is the NIHIL pack)
 ├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
-├── docs/             the website, served by GitHub Pages from this folder
+├── docs/             the website, served by GitHub Pages from this folder; deck.md, the deck's protocol
 ├── .github/          release.yml: the ISO in Releases; update.yml: the inputs, every week;
 │                     auto-pull-request.yml: a push to any other branch, as a pull request into nihil
 └── wallpapers/       source photos, rendered as dots at build time
@@ -560,7 +609,9 @@ sudo nix-collect-garbage --delete-older-than 7d     # (alias ngc)
 ```
 
 `nh os switch` does the same as `nihil rebuild` and prints the package diff between
-generations. Garbage collection also runs weekly on its own (`modules/nix.nix`).
+generations. Garbage collection also runs weekly on its own (`modules/nix.nix`), keeping
+the generations of the last `generations.days` days; Preferences, Generations cleans now
+too, and says what it freed.
 
 To try changes to NIHIL before pushing them: `nihil dev ~/Nihil-Shell` rebuilds with that
 checkout and keeps it, so `nihil rebuild` and Preferences use it too, until `nihil dev off`
@@ -593,6 +644,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
 
 - **System won't boot:** pick an earlier generation from the boot menu (systemd-boot).
   It's a system-level restore point.
+- **Something broke after applying or updating:** Preferences, Generations (or
+  `nihil generations switch N`) goes back to an earlier generation without restarting,
+  and "Boot it once" tries one at the next boot only, for what needs a restart (a kernel,
+  a driver). Your settings stay as they are: the next apply builds from them again.
 - **An update broke something:** boot the previous generation, then go back to the NIHIL
   you had: `/etc/nixos/flake.lock` holds the revision, so `git` on `/etc/nixos` (or a copy
   of the old lock) and `nihil rebuild` return to it.
