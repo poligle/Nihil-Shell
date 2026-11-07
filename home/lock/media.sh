@@ -18,7 +18,7 @@ glyph_next=$'\xf3\xb0\x92\xad'
 
 refresh() {
 	local stamp=0 shown="" out line st inst playing="" paused="" own_playing="" own_paused="" t
-	mkdir -p -m 700 "$dir" 2>/dev/null || return 0
+	(umask 077 && mkdir -p "$dir") 2>/dev/null || return 0
 	exec 9>"$dir/lock" || return 0
 	if ! flock -w 3 9; then
 		exec 9>&-

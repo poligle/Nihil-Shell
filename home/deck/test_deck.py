@@ -69,7 +69,7 @@ echo "Volume: 0.45"
 FAKE_IP = r'''#!/bin/sh
 case "$*" in
     *"route get"*) echo '[{"dst":"192.0.2.1","gateway":"192.168.1.1","dev":"wlan0","prefsrc":"192.168.1.20"}]' ;;
-    *"addr show"*) echo '[{"ifname":"wlan0","addr_info":[{"family":"inet","local":"192.168.1.20"}]},{"ifname":"tailscale0","addr_info":[{"family":"inet","local":"100.64.0.7"}]}]' ;;
+    *"addr show"*) echo '[{"ifname":"wlan0","addr_info":[{"family":"inet","local":"192.168.1.20"}]},{"ifname":"docker0","addr_info":[{"family":"inet","local":"172.17.0.1"}]},{"ifname":"virbr0","addr_info":[{"family":"inet","local":"192.168.122.1"}]},{"ifname":"tailscale0","addr_info":[{"family":"inet","local":"100.64.0.7"}]}]' ;;
 esac
 '''
 
@@ -118,6 +118,7 @@ class Phone:
             headers["Content-Type"] = "application/json"
         connection.request(method, path, body=data, headers=headers)
         response = connection.getresponse()
+        self.last = response
         payload = response.read()
         kind = response.getheader("Content-Type")
         connection.close()
@@ -269,9 +270,17 @@ class IconTest(unittest.TestCase):
         self.assertIsNone(deck.icon_file("../../etc/passwd", "Child", dirs))
         self.assertIsNone(deck.icon_file("/etc/passwd", "Child", dirs))
 
+    def test_the_size_closest_to_the_phones(self):
+        deck.theme_index.cache_clear()
+        big = self.theme("Big", "", ["48x48/apps/foot.png", "256x256/apps/foot.png", "512x512/apps/foot.png"])
+        small = self.theme("Small", "", ["32x32/apps/foot.png", "64x64/apps/foot.png"])
+        self.assertEqual(deck.icon_file("foot", "Big", [self.base]), os.path.join(big, "256x256/apps/foot.png"))
+        self.assertEqual(deck.icon_file("foot", "Small", [self.base]), os.path.join(small, "64x64/apps/foot.png"))
+
 
 class AddressesTest(Base):
     def test_the_default_route_first(self):
+        # docker0 and virbr0 are not where a phone finds it; Tailscale is.
         self.assertEqual(deck.addresses(self.config["ip"]), ["192.168.1.20", "100.64.0.7"])
 
 
@@ -388,11 +397,22 @@ class ServerTest(Base):
         for _ in range(deck.FAIL_LIMIT):
             self.assertEqual(self.phone.request("GET", "/v1/apps", token="nope")[0], 401)
         self.assertEqual(self.phone.request("GET", "/v1/hello")[0], 429)
+        self.assertEqual(self.phone.last.getheader("Connection"), "close")
 
     def test_a_body_too_big(self):
         self.pair()
         status, body = self.phone.request("POST", "/v1/open", {"url": "https://example.com/" + "a" * deck.MAX_BODY})
         self.assertEqual((status, body), (400, {"error": "body"}))
+        self.assertEqual(self.phone.last.getheader("Connection"), "close")
+        # An answer that keeps the connection doesn't say close.
+        self.assertEqual(self.phone.request("GET", "/v1/hello")[0], 200)
+        self.assertIsNone(self.phone.last.getheader("Connection"))
+
+    def test_whether_the_code_still_pairs(self):
+        self.deck.control({"op": "pair"})
+        self.assertTrue(self.deck.control({"op": "devices"})["pairing"])
+        self.pair()
+        self.assertFalse(self.deck.control({"op": "devices"})["pairing"])
 
     def test_forgetting_from_here(self):
         paired = self.pair()
@@ -417,7 +437,7 @@ class ControlTest(Base):
         self.assertTrue(deck.ask({"op": "status"}, path)["pairing"])
         self.assertEqual(deck.ask({"op": "cancel"}, path), {"ok": True})
         self.assertFalse(deck.ask({"op": "status"}, path)["pairing"])
-        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": []})
+        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": [], "pairing": False})
         self.assertEqual(deck.ask({"op": "nonsense"}, path), {"error": "unknown"})
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as raw:
             raw.connect(path)

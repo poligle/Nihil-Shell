@@ -51,7 +51,8 @@ Column {
         if (index >= 0) toggle(index);
     }
 
-    function move(step: int): void {
+    // Not move: a Column has that already (its Transition).
+    function moveBy(step: int): void {
         current = current < 0 ? 0 : Math.max(0, Math.min(count - 1, current + step));
         if (asking !== "" && items[current].key !== asking) asking = "";
     }

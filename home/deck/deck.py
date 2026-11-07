@@ -63,6 +63,9 @@ SEEN_EVERY = 60                 # seconds between writes of "last seen"
 ICON_SIZE = 128
 APPS_FOR = 20                   # seconds the shell's list of apps is kept
 APP_ID = re.compile(r"[A-Za-z0-9._+-]{1,160}")
+# Interfaces the phone can't reach this computer through: containers' and
+# virtual machines' bridges and their ends. A VPN (Tailscale, WireGuard) stays.
+VIRTUAL = re.compile(r"(docker|br-|virbr|veth|vnet|lxcbr|lxdbr|podman|cni|flannel)")
 ACTIONS = {
     "media": ("toggle", "next", "previous"),
     "volume": ("up", "down", "mute"),
@@ -461,8 +464,8 @@ def data_dirs():
 
 @functools.lru_cache(maxsize=64)
 def theme_index(root):
-    """index.theme's Inherits and its directories, the scalable ones and the
-    biggest first."""
+    """index.theme's Inherits and its directories: the scalable ones first,
+    then the sizes closest to the phone's 128 px, bigger before smaller."""
     inherits, directories, sizes, kinds = [], [], {}, {}
     section = None
     try:
@@ -484,7 +487,11 @@ def theme_index(root):
     except OSError:
         return (), ()
     unique = list(dict.fromkeys(directories))
-    unique.sort(key=lambda d: (0 if kinds.get(d) == "Scalable" or "scalable" in d else 1, -sizes.get(d, 0)))
+    def order(directory):
+        size = sizes.get(directory, 0)
+        scalable = kinds.get(directory) == "Scalable" or "scalable" in directory
+        return (0 if scalable else 1, size < ICON_SIZE, abs(size - ICON_SIZE))
+    unique.sort(key=order)
     return tuple(inherits), tuple(unique)
 
 
@@ -551,7 +558,8 @@ def icon_png(path, rsvg, cache):
 
 def addresses(ip):
     """This computer's IPv4 addresses on its networks, the one with the
-    default route first: where the phone looks for it."""
+    default route first: where the phone looks for it. Containers' and
+    virtual machines' bridges are left out (VIRTUAL)."""
     found = []
     if ip:
         try:
@@ -565,6 +573,8 @@ def addresses(ip):
             links = json.loads(subprocess.run([ip, "-j", "-4", "addr", "show", "up", "scope", "global"],
                                               capture_output=True, text=True, timeout=5).stdout or "[]")
             for link in links:
+                if VIRTUAL.match(str(link.get("ifname", ""))):
+                    continue
                 for info in link.get("addr_info", []):
                     if info.get("family") == "inet" and info.get("local"):
                         found.append(info["local"])
@@ -613,7 +623,9 @@ class Deck:
             self.pairing.close()
             return {"ok": True}
         if op == "devices":
-            return {"devices": self.devices.listing()}
+            # Whether the code still pairs, so Preferences knows when its QR
+            # stops being any use (used, expired, or five wrong codes).
+            return {"devices": self.devices.listing(), "pairing": self.pairing.open_now}
         if op == "forget":
             return {"ok": self.devices.forget(str(request.get("id", "")))}
         if op == "status":
@@ -645,6 +657,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        # When this answer ends the connection (429, a body it won't read),
+        # the phone hears it and doesn't send the next request down it.
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(data)
 
