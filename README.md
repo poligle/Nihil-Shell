@@ -94,13 +94,16 @@ home screen in the same language: the frame, an LED clock, the light on the edge
 
 | | |
 |:---:|:---:|
-| ![Dashboard](docs/assets/screens/dashboard.png) | ![Settings](docs/assets/screens/settings.png) |
-| Dashboard — hover the top edge or `SUPER + D` | Settings — `SUPER + P`, the status icons or the top-right corner |
+| ![Dashboard](docs/assets/screens/dashboard.png) | ![Quick settings](docs/assets/screens/settings.png) |
+| Dashboard — hover the top edge or `SUPER + D` | Quick settings — `SUPER + P`, the status icons or the top-right corner |
 | ![Launcher](docs/assets/screens/launcher.png) | ![Notification](docs/assets/screens/notification.png) |
-| Launcher — `SUPER + Space`, three fingers up or the bottom edge | A critical notification and its red light |
+| Launcher, its actions — `SUPER + Space`, three fingers up or the bottom edge | A notification, and its light around the frame |
+| ![Clipboard history](docs/assets/screens/clipboard.png) | ![Wallpapers](docs/assets/screens/wallpapers.png) |
+| Clipboard history — hold `SUPER + V` | Wallpapers in dots — `SUPER + W` |
+| ![Preferences, Desktop](docs/assets/screens/preferences.png) | ![Preferences, System](docs/assets/screens/preferences-system.png) |
+| Preferences — `SUPER + O` or the cog | The system, applied as a rebuild |
 
-<sub>The screenshots are the shell rendered in a test harness with sample data: the
-networks, the track and the notifications are made up. App icons are Colloid's.</sub>
+<sub>NIHIL as it runs on a ThinkPad, at 1920 × 1200. App icons are Colloid's.</sub>
 
 ---
 
@@ -387,11 +390,8 @@ journalctl --user -u nihil-shell -f   # logs
 ## Nilo
 
 <p align="center">
-  <img src="docs/assets/screens/nilo-loop.webp" width="720" alt="Nilo in the launcher: the eyes wake up while a question is typed, the answer arrives with Nix code, then a commit and push waits for enter twice and the eyes smile.">
+  <img src="docs/assets/screens/nilo.png" width="720" alt="Nilo in the launcher, thinking: its two eyes looking up, qwen3.5:9b chosen on its own, and the question under them.">
 </p>
-
-<sub>Rendered in the test harness: Nilo's real agent, answering a scripted model instead of
-a real one. The whole video is on [nihilshell.com](https://nihilshell.com/#nilo).</sub>
 
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
 on black: asleep while the model is unloaded, awake as soon as you type, looking up
@@ -463,9 +463,11 @@ with `sudo` opens in a kitty window, where you type the password; the rest run i
 background with their last lines under them, for two minutes at most. Choosing another
 repository turns Files and Git off again.
 
-| ![A change to README.md shown as a diff, waiting for confirmation](docs/assets/screens/nilo-change.png) | ![The files switch asking for authorization](docs/assets/screens/nilo-access.png) |
-|:---:|:---:|
-| A change to a file, as a diff first | Files and git, off until you authorize them |
+<p align="center">
+  <img src="docs/assets/screens/nilo-done.png" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it thought.">
+</p>
+
+<sub>Closed while it thinks, Nilo says when it's done, out of the bar.</sub>
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5
