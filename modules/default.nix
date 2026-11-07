@@ -29,5 +29,6 @@
         ./nihil.nix
         ./nihil-cli.nix
         ./binds.nix
+        ./deck.nix
     ];
 }

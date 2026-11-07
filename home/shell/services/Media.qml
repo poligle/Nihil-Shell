@@ -2,9 +2,13 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs.config
 
+// What plays (MPRIS): the one playing, or the first. The dashboard shows
+// it; the media keys and the phone's deck (home/deck) play and skip it.
+//   nihil-ipc media toggle | next | previous | now
 Singleton {
     id: root
 
@@ -22,6 +26,20 @@ Singleton {
     function toggle(): void { active?.togglePlaying(); }
     function next(): void { active?.next(); }
     function previous(): void { active?.previous(); }
+
+    IpcHandler {
+        target: "media"
+
+        function toggle(): void { root.toggle(); }
+        function next(): void { root.next(); }
+        function previous(): void { root.previous(); }
+        // As JSON: null when nothing plays.
+        function now(): string {
+            const player = root.active;
+            return JSON.stringify(player === null ? null
+                : { title: player.trackTitle ?? "", artist: player.trackArtist ?? "", player: player.identity ?? "", playing: player.isPlaying });
+        }
+    }
 
     function clock(seconds: real): string {
         const s = Math.max(0, Math.floor(seconds));

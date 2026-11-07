@@ -32,6 +32,15 @@ let
 		agent = lib.optionalString nihil.nilo.enable "${import ./nilo { inherit pkgs lib osConfig; inherit (commands) terminal; }}/bin/nilo-agent";
 	};
 
+	# The phone as a deck (home/deck.nix): Preferences, Phone pairs one
+	# through its command.
+	deck =
+	{
+		enabled = nihil.deck.enable;
+		command = "${profile}/nihil-deck";
+		inherit (nihil.deck) port;
+	};
+
 	# Tokens.qml and Lang.qml, as the greeter has them too (theme/qml.nix).
 	qml = import ../theme/qml.nix { inherit pkgs lib nihil; };
 	tokensQml = qml.tokens;
@@ -112,6 +121,7 @@ let
 		    readonly property var sounds: (${builtins.toJSON sounds})
 		    readonly property var cmd: (${builtins.toJSON commands})
 		    readonly property var nilo: (${builtins.toJSON nilo})
+		    readonly property var deck: (${builtins.toJSON deck})
 
 		    // Preferences (settings/): the machine's settings.json, the wallpaper
 		    // renders, and the keys and fingers as built and as NIHIL has them.
