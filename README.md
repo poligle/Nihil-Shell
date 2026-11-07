@@ -57,6 +57,10 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   says when it was made, its NixOS, kernel and NIHIL, and which packages it changed;
   one click goes back to it, now and at boot, or boots it just once. How long they stay,
   and cleaning now, with what it frees.
+- **The phone as a deck.** With [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher) on Android, paired with a QR
+  from Preferences, the phone opens the computer's apps and web pages, plays and skips
+  its music, turns its volume and locks it. Nothing else, over HTTPS pinned to this
+  computer. See [The phone as a deck](#the-phone-as-a-deck).
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
@@ -238,7 +242,7 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 | File | What it holds |
 |------|---------------|
 | `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`, or `path:` to a clone), through `nihil.lib.mkSystem` |
-| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH, how long generations stay |
+| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH, how long generations stay, the deck |
 | `hardware-configuration.nix` | disks and drivers, from `nixos-generate-config` |
 | `local.nix` | anything else for this machine: drivers, services, packages |
 | `home.nix` | its apps (NIHIL installs little beyond Zen) and anything else for its user, through Home Manager |
@@ -295,6 +299,8 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `nilo.contextLength` | `16384` | Context window, in tokens |
 | `nilo.searxng`  | `null`     | A SearXNG instance for web searches instead of DuckDuckGo |
 | `nilo.coauthor` | [nilo-nihil](https://github.com/nilo-nihil) | Who Nilo signs its commits as (`Co-authored-by`); `null` for no trailer |
+| `deck.enable`   | `false`    | The phone as a deck ([The phone as a deck](#the-phone-as-a-deck)): its service, its port in the firewall, its name on the network (mDNS) |
+| `deck.port`     | `64445`    | The deck's HTTPS port ("NIHIL" on a phone's keypad) |
 
 Read-only: `tokens` (the design tokens), `strings` (the selected language), `sounds`,
 `wallpapers` and `fonts`. To add a language, add a block to
@@ -380,6 +386,8 @@ nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
 nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
+nihil-ipc apps list                   # the launcher's apps, as JSON; also: launch <id>, url <https://…>
+nihil-ipc media toggle                # also: next, previous, now (what plays, as JSON)
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -389,9 +397,9 @@ journalctl --user -u nihil-shell -f   # logs
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
 | `drawers/`    | Dashboard, settings panel, launcher, wallpapers, clipboard history, OSD, notifications |
 | `background/` | Desktop widgets                                                 |
-| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`) |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`), its generations, the deck |
 | `settings/`   | Preferences and the welcome                                     |
-| `components/` | LEDs, dials, segmented sliders, dot-matrix image, keys and buttons, switches, choices, fields, text |
+| `components/` | LEDs, dials, segmented sliders, dot-matrix image, keys and buttons, switches, choices, fields, text, a QR in dots |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
 | `theme/`      | The shell's Nerd Font glyphs; `Tokens.qml` is generated here |
 
@@ -534,6 +542,35 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 
 ---
 
+## The phone as a deck
+
+[NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
+its apps and web pages open here, its music plays and skips, its volume goes up and down
+and its screen locks, from the phone. That is all it can do: an app is one the launcher
+shows, a page is `http` or `https`, and there is no way to run a command or read a file.
+
+Preferences, Phone turns it on (a rebuild: the service, its port in the firewall and its
+name on the local network) and pairs a phone with a QR. The QR holds the computer's
+addresses, a one-time code (once, for five minutes) and the pin of its certificate: the
+phone talks HTTPS only to the computer whose public key it was shown, and pairing gives it
+a token of its own. The computer keeps only the token's hash, says when a phone pairs, and
+lists the phones, each to forget. When its address changes, the phone finds it again by
+mDNS (`_nihil-deck._tcp`).
+
+The service is [`home/deck/deck.py`](home/deck/deck.py), standard-library Python in the
+user's session, which opens what it is asked through the shell (`nihil-ipc apps`,
+`nihil-ipc media`) and the volume and lock as the keys do. The protocol, for the phone's
+side, is in [`docs/deck.md`](docs/deck.md). Its tests run a real HTTPS server on
+`127.0.0.1` with fake programs: `python3 -m unittest home/deck/test_deck.py`.
+
+```bash
+nihil-deck pair                       # the QR in the terminal, and its URI
+nihil-deck devices                    # the phones paired; forget ID|all
+systemctl --user status nihil-deck    # the service; journalctl --user -u nihil-deck
+```
+
+---
+
 ## Structure
 
 ```
@@ -549,12 +586,12 @@ Nihil-Shell/
 ├── modules/          system modules (default.nix gathers them; settings.nix reads settings.json)
 ├── installer/        the ISO and nihil-install
 ├── templates/        machine/: what the installer writes to /etc/nixos; example/: CI's machine
-├── home/             Home Manager: shell/, nilo/ (Nilo's agent), lock/, hyprland, hyprlock, …
+├── home/             Home Manager: shell/, nilo/ (Nilo's agent), deck/ (the phone's), hyprland, hyprlock, …
 ├── greeter/          the login screen, in Quickshell under cage (modules/greeter.nix)
 ├── sounds/           interface sounds (nihil/ is the NIHIL pack)
 ├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
-├── docs/             the website, served by GitHub Pages from this folder
+├── docs/             the website, served by GitHub Pages from this folder; deck.md, the deck's protocol
 ├── .github/          release.yml: the ISO in Releases; update.yml: the inputs, every week;
 │                     auto-pull-request.yml: a push to any other branch, as a pull request into nihil
 └── wallpapers/       source photos, rendered as dots at build time

@@ -238,7 +238,7 @@ footer a:hover { color: var(--ink); }
   .hero .shot { box-shadow: none; }
   .split { gap: 32px; }
   .steps > li { grid-template-columns: 40px minmax(0, 1fr); }
-  td code { white-space: normal; }
+  td code { white-space: normal; overflow-wrap: anywhere; }
   footer { padding: 0 calc(var(--t) + 16px) 48px calc(var(--left) + 16px); }
 }
 
@@ -266,6 +266,8 @@ footer a:hover { color: var(--ink); }
       <li><a href="#top" aria-current="true"><span class="tip">Overview</span></a></li>
       <li><a href="#tour"><span class="tip">Tour</span></a></li>
       <li><a href="#nilo"><span class="tip">Nilo</span></a></li>
+      <li><a href="#generations"><span class="tip">Generations</span></a></li>
+      <li><a href="#deck"><span class="tip">Deck</span></a></li>
       <li><a href="#rules"><span class="tip">Design</span></a></li>
       <li><a href="#boot"><span class="tip">Boot</span></a></li>
       <li><a href="#language"><span class="tip">Language</span></a></li>
@@ -376,7 +378,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/preferences.png"><img src="assets/screens/preferences.png" width="1920" height="1200" loading="lazy" alt="Preferences open on Desktop: the wallpapers in dots, Night framed in white, and the widgets under them."></a>
           <figcaption>
             <h3>Preferences</h3>
-            <p>One sheet for the whole system: you, language and region, the desktop, screens, shortcuts and the system. Applying is a NixOS rebuild in the background, with a fingerprint or the password.</p>
+            <p>One sheet for the whole system: you, language and region, the desktop, screens, shortcuts, the system, its generations and the phone. Applying is a NixOS rebuild in the background, with a fingerprint or the password.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>O</kbd><span>or the cog in quick settings</span></div>
           </figcaption>
         </figure>
@@ -420,6 +422,41 @@ nihil.nilo =
     enable = true;
     acceleration = "vulkan";   <span class="c"># or "cpu", "rocm", "cuda"</span>
 };</code></pre>
+      </div>
+    </section>
+
+    <section id="generations" aria-labelledby="generations-title">
+      <div class="prose">
+        <h2 id="generations-title">Every generation, a click away</h2>
+        <p class="quiet">Each rebuild is a whole system NixOS keeps, and Preferences lists them, newest first: when each was made, its NixOS, kernel and NIHIL, which one runs and which one boots.</p>
+      </div>
+      <div class="rules">
+        <div>
+          <h3>What it changed</h3>
+          <p>Opened, a generation says which packages it brought against the one before, version by version, or that only their settings changed.</p>
+        </div>
+        <div>
+          <h3>Back to it, or once</h3>
+          <p>Now and at boot without restarting, or the next boot only, for a kernel or a driver. Your settings stay: the next apply builds from them again.</p>
+        </div>
+        <div>
+          <h3>Room on the disk</h3>
+          <p>How long they stay, 7, 30 or 90 days, which the weekly clean keeps. Cleaning now says what it freed.</p>
+        </div>
+      </div>
+      <div class="code nilo-code">
+        <pre><code>nihil generations              <span class="c"># the same, in a terminal</span>
+nihil generations changes 212
+nihil generations switch 211   <span class="c"># or boot 211, the next boot only</span>
+nihil generations clean 7</code></pre>
+      </div>
+    </section>
+
+    <section id="deck" aria-labelledby="deck-title">
+      <div class="prose">
+        <h2 id="deck-title">The phone as a deck</h2>
+        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume and locks it. Nothing else: no commands, no files.</p>
+        <p class="quiet">The QR holds a code that pairs once, for five minutes, and the pin of the computer's own certificate: the phone talks HTTPS only to the computer whose key it was shown, with a token of its own, and finds it again on the network by mDNS. The protocol is in <a href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/deck.md"><code>docs/deck.md</code></a>.</p>
       </div>
     </section>
 
@@ -560,9 +597,11 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
             <tr><td><code>nilo.<wbr>contextLength</code></td><td><code>16384</code></td><td>Tokens of conversation Nilo keeps in view: more remembers more and takes more memory.</td></tr>
             <tr><td><code>nilo.<wbr>loadedModels</code></td><td><code>1</code></td><td>Models Ollama keeps in memory at once. With <code>2</code>, the automatic choice of model switches without loading again.</td></tr>
             <tr><td><code>nilo.<wbr>coauthor</code></td><td><a href="https://github.com/nilo-nihil">nilo-nihil</a></td><td>Who Nilo signs its commits as, so GitHub shows its face next to yours. <code>null</code> for none.</td></tr>
+            <tr><td><code>generations.<wbr>days</code></td><td><code>7</code></td><td>How long generations stay: the weekly clean removes the older ones, never the one in use.</td></tr>
+            <tr><td><code>deck.<wbr>enable</code></td><td><code>false</code></td><td>The phone as a deck: its service, its port in the firewall and its name on the local network.</td></tr>
           </tbody>
         </table>
-        <p class="note">Screenshots on this page are the shell rendered in a test harness with sample data: the networks, the track and the notifications are made up, and Nilo is its real agent answering a scripted model.</p>
+        <p class="note">Screenshots on this page are NIHIL as it runs on a ThinkPad, at 1920 × 1200. App icons are Colloid's.</p>
       </div>
     </section>
 

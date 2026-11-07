@@ -474,6 +474,22 @@
 		genBootFailed = "No se ha podido preparar el arranque";
 		genNotInMenu = "El menú de arranque ya no la tiene";
 		genGone = "Esa generación ya no está";
+		# Preferences, Phone: the phone as a deck (settings/PagePhone.qml, home/deck)
+		cfgPhone = "Móvil";
+		deckSub = "Con NIHIL Launcher, tu Android abre apps y webs en este ordenador, pone y pasa la música, sube y baja el volumen y lo bloquea. Nada más.";
+		deckUse = "Usar el móvil";
+		deckUseSub = "Abre el puerto %1 en la red local, solo para los móviles emparejados.";
+		deckApply = "Se enciende al aplicar.";
+		deckDown = "El servicio no responde: systemctl --user status nihil-deck";
+		deckPairTitle = "Emparejar";
+		deckPair = "Emparejar un móvil";
+		deckScan = "Escanéalo con NIHIL Launcher. Sirve una vez, durante cinco minutos.";
+		deckPairFailed = "No se ha podido sacar el código";
+		deckPhones = "Móviles emparejados";
+		deckNone = "Ningún móvil emparejado.";
+		deckForget = "Olvidar";
+		deckPaired = "%1 ya es un deck de este ordenador";
+		deckPairedBody = "Si no has sido tú, olvídalo en Preferencias, Móvil.";
 		# Preferences, Screens (settings/PageScreens.qml)
 		cfgScreens = "Pantallas";
 		cfgScreenNone = "Hyprland no dice que haya pantallas.";
@@ -946,6 +962,21 @@
 		genBootFailed = "Could not set the next boot";
 		genNotInMenu = "The boot menu no longer has it";
 		genGone = "That generation is gone";
+		cfgPhone = "Phone";
+		deckSub = "With NIHIL Launcher, your Android opens apps and web pages on this computer, plays and skips the music, turns the volume up and down and locks it. Nothing else.";
+		deckUse = "Use the phone";
+		deckUseSub = "Opens port %1 on the local network, for the paired phones only.";
+		deckApply = "It turns on when applied.";
+		deckDown = "The service doesn't answer: systemctl --user status nihil-deck";
+		deckPairTitle = "Pairing";
+		deckPair = "Pair a phone";
+		deckScan = "Scan it with NIHIL Launcher. It works once, for five minutes.";
+		deckPairFailed = "The code could not be made";
+		deckPhones = "Paired phones";
+		deckNone = "No phone paired.";
+		deckForget = "Forget";
+		deckPaired = "%1 is now a deck for this computer";
+		deckPairedBody = "If it wasn't you, forget it in Preferences, Phone.";
 		cfgScreens = "Screens";
 		cfgScreenNone = "Hyprland says there are no screens.";
 		cfgScreensDrag = "Drag them into place";
