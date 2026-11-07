@@ -2,9 +2,14 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
 
-// Desktop entries and a small fuzzy search for the launcher.
+// Desktop entries and a small fuzzy search for the launcher. The phone's
+// deck (home/deck) opens the same ones, and web pages, through here, and
+// locks the screen as the launcher's action does:
+//   nihil-ipc apps list | launch <id> | url <https://…>
+//   nihil-ipc session lock
 Singleton {
     id: root
 
@@ -44,6 +49,38 @@ Singleton {
         } else {
             e.execute();
         }
+    }
+
+    // What the deck asks for: the apps as JSON; one opened as from the
+    // launcher ("ok" or "unknown"); a web page in the browser, only http
+    // and https ("ok" or "invalid").
+    IpcHandler {
+        target: "apps"
+
+        function list(): string {
+            return JSON.stringify(root.all.map(e => ({ id: e.id, name: e.name, icon: e.icon ?? "" })));
+        }
+        function launch(id: string): string {
+            const entry = root.all.find(e => e.id === id);
+            if (!entry)
+                return "unknown";
+            root.launch(entry);
+            return "ok";
+        }
+        function url(address: string): string {
+            if (!/^https?:\/\/[^\s\/?#]+[^\s]*$/i.test(address))
+                return "invalid";
+            Qt.openUrlExternally(address);
+            return "ok";
+        }
+    }
+
+    // The lock screen, started from here as the launcher starts it: it
+    // outlives whoever asked (the shell keeps what it starts).
+    IpcHandler {
+        target: "session"
+
+        function lock(): void { Quickshell.execDetached([Config.cmd.lock]); }
     }
 
     function iconFor(appClass: string): string {

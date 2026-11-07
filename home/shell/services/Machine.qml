@@ -14,7 +14,10 @@ import qs.config
 // system in a unit of its own: the rebuild restarts this shell and the unit
 // goes on; /run/nihil says how it went, and the shell tells when it is done.
 // Updating NIHIL (the panel, Updates.qml) goes the same way, through `nihil
-// update --unit`: /run/nihil/apply.kind says which.
+// update --unit`, and so do going to another generation and cleaning them
+// (Preferences, Generations: `nihil generations switch|clean --unit`);
+// /run/nihil/apply.kind says which. Booting one the next time only is at
+// once (`nihil generations boot`).
 //   nihil-ipc settings open | toggle | close | welcome | page <name>
 Singleton {
     id: root
@@ -31,7 +34,8 @@ Singleton {
 
     // Applying: "", "auth", "applying", "done", "warning" or "failed"; when it
     // failed, why: "password", "finger", "invalid", "busy", "start" (nihil
-    // apply could not start the rebuild) or "rebuild" (the rebuild failed).
+    // apply could not start the rebuild), "rebuild" (the rebuild failed) or
+    // "menu" (the boot menu has no such generation).
     property string phase: ""
     property string failure: ""
     // How sudo is being asked: "finger" (nothing typed: the reader, or
@@ -46,9 +50,14 @@ Singleton {
     property string log: ""
     property real since: 0
     readonly property bool busy: phase === "auth" || phase === "applying"
-    // What is applied: "settings" (Preferences) or "update" (a newer NIHIL).
+    // What is applied: "settings" (Preferences), "update" (a newer NIHIL),
+    // "generation" (another one, now and at boot), "clean" (the old ones
+    // gone) or "boot" (one, the next boot only).
     property string kind: "settings"
     readonly property bool updating: kind === "update" && busy
+    // Which generation, and what a clean left free, as the log says it.
+    property int target: 0
+    property real freed: 0
 
     // Changing the password: "", "busy", "done" or "wrong".
     property string passwordState: ""
@@ -67,14 +76,20 @@ Singleton {
         const seconds = Math.max(0, Math.round((root.now - root.since) / 1000));
         return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
     }
+    readonly property bool generational: kind === "generation" || kind === "clean" || kind === "boot"
     readonly property string statusTitle: phase === "auth" ? (auth === "finger" ? Lang.cfgFingerAsk : Lang.cfgChecking)
-        : phase === "applying" ? (kind === "update" ? Lang.updApplying : Lang.cfgApplying).arg(elapsed)
+        : phase === "applying" ? (kind === "update" ? Lang.updApplying : kind === "generation" ? Lang.genSwitching
+            : kind === "clean" ? Lang.genCleaning : Lang.cfgApplying).arg(elapsed)
         : phase === "failed" ? (failure === "password" ? Lang.cfgWrongPassword : failure === "finger" ? Lang.cfgFingerFailed
-            : failure === "invalid" ? Lang.cfgInvalid
-            : failure === "busy" ? Lang.cfgBusy : kind === "update" ? Lang.updFailed : Lang.cfgApplyFailed)
+            : failure === "menu" ? Lang.genNotInMenu
+            : failure === "invalid" ? (generational ? Lang.genGone : Lang.cfgInvalid)
+            : failure === "busy" ? Lang.cfgBusy : kind === "update" ? Lang.updFailed
+            : kind === "generation" ? Lang.genSwitchFailed : kind === "clean" ? Lang.genCleanFailed
+            : kind === "boot" ? Lang.genBootFailed : Lang.cfgApplyFailed)
         : changes > 0 ? (changes === 1 ? Lang.cfgPendingOne : Lang.cfgPending.arg(changes))
-        : phase === "done" ? (kind === "update" ? Lang.updDone : Lang.cfgApplied)
-        : phase === "warning" ? Lang.cfgAppliedWarn
+        : phase === "done" ? (kind === "update" ? Lang.updDone : kind === "generation" ? Lang.genSwitched.arg(target)
+            : kind === "clean" ? Lang.genCleaned.arg(Dates.bytes(freed)) : kind === "boot" ? Lang.genBootSet.arg(target) : Lang.cfgApplied)
+        : phase === "warning" ? (kind === "generation" ? Lang.genSwitchedWarn.arg(target) : Lang.cfgAppliedWarn)
         : Lang.cfgSaved
     // Under it, only what says something: the line the rebuild is on, why
     // it failed, where to look.
@@ -207,6 +222,18 @@ Singleton {
         root.ask(updater, password, "");
     }
 
+    // A generation: "switch" to it (now and at boot) or "boot" it the next
+    // time only; or "clean" those older than `value` days.
+    function generation(action: string, value: int, password: string): void {
+        if (root.switching(generator, password))
+            return;
+        root.kind = action === "switch" ? "generation" : action;
+        root.target = action === "clean" ? 0 : value;
+        generator.action = action;
+        generator.value = value;
+        root.ask(generator, password, "");
+    }
+
     function ask(process: var, password: string, input: string): void {
         root.auth = password === "" && root.fingerprint ? "finger" : "password";
         root.phase = "auth";
@@ -232,7 +259,7 @@ Singleton {
 
     // No finger after all (Cancel while it is awaited).
     function cancelFinger(): void {
-        for (const process of [applier, updater]) {
+        for (const process of [applier, updater, generator]) {
             if (root.phase === "auth" && root.auth === "finger" && process.running) {
                 root.instead = { process: process, password: null };
                 process.running = false;
@@ -297,14 +324,36 @@ Singleton {
             poll.stop();
             root.log = lines.join("\n");
             root.detail = status === "failed" ? root.cause(lines) : (lines.length > 0 ? lines[lines.length - 1].trim() : "");
+            root.facts(lines);
             root.phase = status;
             root.failure = status === "failed" ? "rebuild" : "";
             if (status === "failed")
-                root.notify(root.kind === "update" ? Lang.updNotifyFailed : Lang.cfgNotifyFailed, Lang.cfgLogHint);
+                root.notify(root.kind === "update" ? Lang.updNotifyFailed : root.kind === "generation" ? Lang.genSwitchFailed
+                    : root.kind === "clean" ? Lang.genCleanFailed : Lang.cfgNotifyFailed, Lang.cfgLogHint);
+            else if (root.kind === "generation")
+                root.notify((status === "warning" ? Lang.genSwitchedWarn : Lang.genSwitched).arg(root.target), "");
+            else if (root.kind === "clean")
+                root.notify(Lang.genCleaned.arg(Dates.bytes(root.freed)), "");
             else
                 root.notify(root.kind === "update" ? Lang.updDone : Lang.cfgNotifyApplied, status === "warning" ? Lang.cfgAppliedWarn : "");
             if (root.kind === "update")
                 Updates.check();
+            if (root.generational)
+                Generations.refresh(root.kind === "clean");
+        }
+    }
+
+    // What the log of a switch or a clean says (modules/nihil-cli.nix): the
+    // generation it went to, and what the clean left free; the shell may
+    // have been restarted in between.
+    function facts(lines: var): void {
+        for (let i = 0; i < lines.length; i++) {
+            const to = /^nihil: generation ([0-9]+)$/.exec(lines[i].trim());
+            if (to)
+                root.target = Number(to[1]);
+            const freed = /^nihil: freed ([0-9]+)$/.exec(lines[i].trim());
+            if (freed)
+                root.freed = Number(freed[1]);
         }
     }
 
@@ -457,6 +506,50 @@ Singleton {
             } else {
                 root.phase = "failed";
                 root.failure = code === 1 ? root.auth : code === 3 ? "busy" : "start";
+            }
+        }
+    }
+
+    // The same, for a generation: switching to one and cleaning in the
+    // unit; booting one once at once (5: the boot menu has no such one).
+    Process {
+        id: generator
+
+        property string input: ""
+        property string mode: "password"
+        property string action: "boot"
+        property int value: 0
+
+        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", mode, "",
+            Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "generations", action, String(value)]
+            .concat(action === "boot" ? [] : ["--unit"])
+        stdinEnabled: true
+        onStarted: {
+            write(input);
+            input = "";
+            stdinEnabled = false;
+        }
+        stderr: SplitParser {
+            onRead: line => {
+                if (line.trim() !== "")
+                    root.detail = line.trim();
+            }
+        }
+        onExited: code => {
+            stdinEnabled = true;
+            if (root.replaced(generator))
+                return;
+            if (code === 0 && generator.action === "boot") {
+                root.phase = "done";
+                root.detail = "";
+                Generations.refresh(false);
+            } else if (code === 0) {
+                root.phase = "applying";
+                root.since = Date.now();
+                poll.start();
+            } else {
+                root.phase = "failed";
+                root.failure = code === 1 ? root.auth : code === 2 ? "invalid" : code === 3 ? "busy" : code === 5 ? "menu" : "start";
             }
         }
     }

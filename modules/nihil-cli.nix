@@ -19,26 +19,50 @@
 #                     is rebuilt in a unit of its own (Preferences uses it)
 #   nihil passwd      change a password: the last line of stdin, user:password
 #   nihil welcome     open the welcome again (to try it)
+#   nihil generations [--json]
+#                     the system's generations, newest first: when, which
+#                     NixOS, kernel and NIHIL, which one runs and which boots
+#   nihil generations changes N
+#                     the packages generation N changed, against the one before
+#   nihil generations boot N
+#                     the next boot only with generation N (systemd-boot)
+#   nihil generations switch N [--unit]
+#                     back (or on) to generation N, now and at boot
+#   nihil generations clean DAYS [--unit]
+#                     remove the generations older than DAYS days but the one
+#                     in use, as the weekly clean does (nihil.generations.days),
+#                     and what nothing needs any more
 #
-# nihil apply's unit (and nihil update --unit's, the same one) outlives
-# whoever asked: the rebuild restarts the shell. /run/nihil tells how it
-# goes: apply.status (running, done, warning or failed), apply.kind
-# (settings or update) and apply.log. A failed build puts the old
-# settings.json back.
+# nihil apply's unit (and that of nihil update --unit and nihil generations
+# switch and clean --unit, the same one) outlives whoever asked: the rebuild
+# restarts the shell. /run/nihil tells how it goes: apply.status (running,
+# done, warning or failed), apply.kind (settings, update, generation or
+# clean) and apply.log. A failed build puts the old settings.json back; a
+# failed switch, the generation that ran.
 
 { config, lib, pkgs, ... }:
 let
     flake = config.nihil.flake;
 
+    # The generations the boot menu has: the last ones, as many as
+    # systemd-boot keeps (modules/boot.nix); none without it.
+    loader = config.boot.loader.systemd-boot;
+    menu = if !loader.enable then 0 else if loader.configurationLimit == null then 100000 else loader.configurationLimit;
+
     nihil = pkgs.writeShellApplication
     {
         name = "nihil";
-        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnutar pkgs.curl pkgs.shadow config.systemd.package ];
+        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnused pkgs.gnutar pkgs.curl pkgs.shadow config.systemd.package config.nix.package ];
         text = ''
             flake=''${NIHIL_FLAKE:-${flake}}
             run=/run/nihil
             dev=/var/lib/nihil/dev
             tree=/var/lib/nihil/dev-tree
+            # The system's generations (system-N-link next to it), and the
+            # systemd-boot variable that boots one the next time only.
+            profile=''${NIHIL_PROFILE:-/nix/var/nix/profiles/system}
+            menu=${toString menu}
+            oneshot=''${NIHIL_ONESHOT:-/sys/firmware/efi/efivars/LoaderEntryOneShot-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f}
 
             as_root() {
                 if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi
@@ -114,6 +138,174 @@ let
                     }' <<< "$compare"
                 else
                     jq -n --arg dev "$from" --arg rev "$rev" '{ state: "offline", pinned: $rev[0:7], dev: $dev }'
+                fi
+            }
+
+            # The generations' numbers, oldest first.
+            numbers() {
+                local link n
+                for link in "$profile"-*-link; do
+                    n=''${link#"$profile"-}
+                    n=''${n%-link}
+                    case $n in
+                        "" | *[!0-9]*) continue ;;
+                    esac
+                    echo "$n"
+                done | sort -n
+            }
+
+            # The number in a generation's link (system-212-link).
+            number_of() {
+                local name
+                name=$(basename "$1")
+                name=''${name#"$(basename "$profile")"-}
+                echo "''${name%-link}"
+            }
+
+            is_generation() {
+                case ''${1:-} in
+                    "" | *[!0-9]*) return 1 ;;
+                esac
+                [ -L "$profile-$1-link" ]
+            }
+
+            # Newest first: its number, when it was made (the link's own
+            # time, as Nix counts it), its NixOS, kernel and NIHIL, whether
+            # it runs, whether it boots by default, whether it boots the next
+            # time only, and whether the boot menu has it. With the room
+            # left where the store is.
+            generations() {
+                local current default next n link path date version kernel revision dir free size
+                current=$(readlink -f /run/current-system 2> /dev/null || true)
+                default=$(number_of "$(readlink "$profile" 2> /dev/null || echo none)")
+                next=""
+                if [ -r "$oneshot" ]; then
+                    # UTF-16 after four bytes of attributes: nixos-generation-N.conf
+                    next=$(tail -c +5 "$oneshot" | tr -d '\0' | sed -n 's/^nixos-generation-\([0-9]*\)\(\.conf\)\{0,1\}$/\1/p')
+                fi
+                read -r free size < <(df -B1 --output=avail,size /nix/store | tail -n 1) || true
+                for n in $(numbers | sort -rn); do
+                    link="$profile-$n-link"
+                    path=$(readlink -f "$link")
+                    date=$(stat -c %Y "$link")
+                    version=$(cat "$path/nixos-version" 2> /dev/null || true)
+                    kernel=""
+                    for dir in "$path"/kernel-modules/lib/modules/*; do
+                        if [ -d "$dir" ]; then
+                            kernel=$(basename "$dir")
+                            break
+                        fi
+                    done
+                    revision=$(cat "$path/etc/nihil/revision" 2> /dev/null || true)
+                    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$n" "$date" "$version" "$kernel" "$revision" "$path"
+                done | jq -R -s --arg current "$current" --arg default "$default" --arg next "$next" \
+                    --argjson menu "$menu" --argjson free "''${free:-0}" --argjson size "''${size:-0}" '
+                    split("\n") | map(select(length > 0) | split("\t")) | to_entries | map(.key as $i | .value | {
+                        number: (.[0] | tonumber),
+                        date: (.[1] | tonumber),
+                        nixos: .[2],
+                        kernel: .[3],
+                        nihil: (.[4] | split(" ")[0] // ""),
+                        current: (.[5] == $current),
+                        default: (.[0] == $default),
+                        next: (.[0] == $next),
+                        menu: ($i < $menu)
+                    }) | { generations: ., bootMenu: ($menu > 0), free: $free, size: $size }'
+            }
+
+            # What a generation changed: diff-closures against the one before
+            # it that is still there, a line per package, without colour.
+            changes() {
+                local before="" n
+                for n in $(numbers); do
+                    if [ "$n" -lt "$1" ]; then
+                        before=$n
+                    fi
+                done
+                if [ -z "$before" ]; then
+                    jq -n --argjson n "$1" '{ number: $n, before: null, lines: [] }'
+                    return
+                fi
+                nix --extra-experimental-features nix-command store diff-closures "$profile-$before-link" "$profile-$1-link" \
+                    | sed 's/\x1b\[[0-9;]*m//g' \
+                    | jq -R -s --argjson n "$1" --argjson before "$before" '{ number: $n, before: $before, lines: (split("\n") | map(select(length > 0))) }'
+            }
+
+            # The next boot only, from systemd-boot's own list (it names the
+            # entries); 5 when it has no such entry.
+            boot_once() {
+                local id
+                id=$({ bootctl list --json=short 2> /dev/null || echo '[]'; } | jq -r --arg want "nixos-generation-$1" '
+                    [ (if type == "array" then .[] else empty end) | .id // empty | select(ascii_downcase == $want or ascii_downcase == $want + ".conf") ][0] // empty')
+                if [ -z "$id" ]; then
+                    echo "The boot menu has no generation $1." >&2
+                    exit 5
+                fi
+                bootctl set-oneshot "$id"
+                echo "The next boot only, generation $1."
+            }
+
+            # The profile to it, and switch to it: now, and at boot. When
+            # nothing switched, the profile as it was.
+            switch_to() {
+                local previous before status=0
+                previous=$(number_of "$(readlink "$profile")")
+                before=$(readlink -f /run/current-system)
+                echo "Generation $1, in place of $previous."
+                if ! nix-env --profile "$profile" --switch-generation "$1"; then
+                    return 1
+                fi
+                "$profile/bin/switch-to-configuration" switch || status=$?
+                if [ "$status" != 0 ] && [ "$(readlink -f /run/current-system)" = "$before" ]; then
+                    nix-env --profile "$profile" --switch-generation "$previous" || true
+                fi
+                return "$status"
+            }
+
+            # As the weekly clean (modules/nix.nix), now: generations older
+            # than DAYS days go, but the one in use and the one that was in
+            # use DAYS days ago, and so does what nothing needs any more.
+            # Then the boot menu without them, booting what it booted. The
+            # last line, what the disk has free now that it had not.
+            clean() {
+                local before after status=0
+                before=$(df -B1 --output=avail /nix/store | tail -n 1 | tr -d ' ')
+                if ! nix-collect-garbage --delete-older-than "$1"d; then
+                    return 1
+                fi
+                "$profile/bin/switch-to-configuration" boot || status=$?
+                sync -f /nix/store || true
+                after=$(df -B1 --output=avail /nix/store | tail -n 1 | tr -d ' ')
+                echo "nihil: freed $(( after > before ? after - before : 0 ))"
+                return "$status"
+            }
+
+            # In nihil-apply.service, as nihil apply: 3 busy, 4 could not start.
+            in_unit() {
+                local kind=$1
+                shift
+                if systemctl is-active --quiet nihil-apply.service; then
+                    echo "Something is being applied already." >&2
+                    exit 3
+                fi
+                mkdir -p "$run"
+                echo running > "$run/apply.status"
+                echo "$kind" > "$run/apply.kind"
+                : > "$run/apply.log"
+                chmod 0644 "$run/apply.status" "$run/apply.kind" "$run/apply.log"
+                systemd-run --unit nihil-apply --collect --quiet -E HOME=/root -- "$(readlink -f "$0")" "$@"
+                echo "In nihil-apply.service: $run/apply.log tells how it goes."
+            }
+
+            # How a unit's run ended, for whoever watches /run/nihil.
+            finish() {
+                local status=$1 before=$2
+                if [ "$status" = 0 ]; then
+                    echo "done" > "$run/apply.status"
+                elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
+                    echo warning > "$run/apply.status"
+                else
+                    echo failed > "$run/apply.status"
                 fi
             }
 
@@ -205,6 +397,81 @@ let
                     as_root mkdir -p "$(dirname "$dev")"
                     echo "$from" | as_root tee "$dev" > /dev/null
                     rebuild "$@"
+                    ;;
+                generations)
+                    shift
+                    what=''${1:-list}
+                    n=''${2:-}
+                    case $what in
+                        list | --json)
+                            if [ "$what" = --json ] || [ "$n" = --json ]; then
+                                generations
+                                exit 0
+                            fi
+                            generations | jq -r '.generations[] | [
+                                    "\(.number)",
+                                    (.date | strflocaltime("%Y-%m-%d %H:%M")),
+                                    (if .nixos != "" then "NixOS \(.nixos)" else empty end),
+                                    (if .kernel != "" then "Linux \(.kernel)" else empty end),
+                                    (if .nihil != "" then "NIHIL \(.nihil)" else empty end),
+                                    ([ (if .current then "running" else empty end), (if .default then "boots" else empty end),
+                                        (if .next then "the next boot" else empty end) ] | join(", "))
+                                ] | map(select(. != "")) | join("  ")'
+                            ;;
+                        changes)
+                            if ! is_generation "$n"; then
+                                echo "There is no generation $n." >&2
+                                exit 2
+                            fi
+                            changes "$n"
+                            ;;
+                        boot | switch | clean)
+                            if [ "$(id -u)" != 0 ]; then
+                                exec sudo "$(readlink -f "$0")" generations "$what" "$n" "''${3:-}"
+                            fi
+                            # As nihil apply: 2 not valid, 3 busy, 4 could not
+                            # start, also from inside a function.
+                            set -o errtrace
+                            trap 'exit 4' ERR
+                            if [ "$what" = clean ]; then
+                                case $n in
+                                    "" | *[!0-9]*) n=0 ;;
+                                esac
+                                if [ "$n" -lt 1 ] || [ "$n" -gt 3650 ]; then
+                                    echo "Days, from 1 to 3650." >&2
+                                    exit 2
+                                fi
+                            elif ! is_generation "$n"; then
+                                echo "There is no generation $n." >&2
+                                exit 2
+                            fi
+                            case $what:''${3:-} in
+                                boot:*) boot_once "$n" ;;
+                                switch:--unit) in_unit generation generations switch-run "$n" ;;
+                                switch:*) switch_to "$n" ;;
+                                clean:--unit) in_unit clean generations clean-run "$n" ;;
+                                clean:*) clean "$n" ;;
+                            esac
+                            ;;
+                        switch-run | clean-run)
+                            export PATH="/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
+                            exec >> "$run/apply.log" 2>&1
+                            before=$(readlink -f /run/current-system)
+                            status=0
+                            if [ "$what" = switch-run ]; then
+                                switch_to "$n" || status=$?
+                                # The last line, the one in place now (the shell reads it).
+                                echo "nihil: generation $(number_of "$(readlink "$profile")")"
+                            else
+                                clean "$n" || status=$?
+                            fi
+                            finish "$status" "$before"
+                            ;;
+                        *)
+                            echo "usage: nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]" >&2
+                            exit 2
+                            ;;
+                    esac
                     ;;
                 apply)
                     shift
@@ -305,6 +572,7 @@ let
                     ;;
                 *)
                     echo "usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | passwd | welcome"
+                    echo "       nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]"
                     echo "the machine's flake: $flake"
                     ;;
             esac

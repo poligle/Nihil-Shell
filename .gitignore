@@ -23,5 +23,5 @@ result-*
 # Logs
 *.log
 
-# Python (the tests of home/nilo)
+# Python (the tests of home/nilo and home/deck)
 __pycache__/
