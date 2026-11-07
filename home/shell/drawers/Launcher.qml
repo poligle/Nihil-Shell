@@ -45,7 +45,7 @@ Item {
         { id: "night", name: Lang.actNight, hint: Toggles.night ? Lang.hintOn : Lang.hintOff, keys: "night light", glyph: Icons.night },
         { id: "caffeine", name: Lang.actCaffeine, hint: Caffeine.on ? Lang.hintOn : Lang.hintOff, keys: "caffeine cafeina coffee awake screen", glyph: Icons.coffee },
         { id: "settings", name: Lang.bindSettings, hint: Lang.hintSystem, keys: "settings preferences ajustes preferencias configuracion", glyph: Icons.cog },
-        { id: "terminal", name: Lang.actTerminal, hint: "kitty", glyph: Icons.terminal, command: [Config.cmd.terminal] }
+        { id: "terminal", name: Lang.actTerminal, hint: Config.cmd.terminal.split("/").pop(), glyph: Icons.terminal, command: [Config.cmd.terminal] }
     ]
 
     readonly property var actions: mode !== "actions" ? [] : allActions.filter(a =>

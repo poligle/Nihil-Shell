@@ -46,7 +46,8 @@ Column {
     }
 
     // The first press shows where the selection is; the next ones move it.
-    function move(step: int): void {
+    // Not move: a Column has that already (its Transition).
+    function moveBy(step: int): void {
         if (current < 0) current = Math.max(0, Nilo.models.findIndex(m => m.tag === Nilo.settings.model));
         else current = Math.max(0, Math.min(count - 1, current + step));
     }

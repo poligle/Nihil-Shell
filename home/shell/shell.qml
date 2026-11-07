@@ -20,9 +20,10 @@ import qs.settings
 ShellRoot {
     // Singletons are created on first use; touch the ones that must run from
     // the start: notification server, IPC handlers, the battery watcher, the
-    // clipboard history, the settings (the welcome, the first time) and the
-    // check for a newer NIHIL.
-    readonly property var services: [Drawers, Osd, Glyph, Notifs, Battery, Audio, Network, Bt, Nilo, Machine, Clipboard, Updates]
+    // clipboard history, the settings (the welcome, the first time), the
+    // check for a newer NIHIL, and the apps, the session and the music the
+    // phone's deck asks for (home/deck).
+    readonly property var services: [Drawers, Osd, Glyph, Notifs, Battery, Audio, Network, Bt, Nilo, Machine, Clipboard, Updates, Apps, Media]
 
     Variants {
         model: Quickshell.screens

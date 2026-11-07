@@ -44,9 +44,9 @@ Item {
     }
 
     function move(step: int): bool {
-        if (page === 2) { models.move(step); return true; }
+        if (page === 2) { models.moveBy(step); return true; }
         if (page === 3) {
-            access.move(step);
+            access.moveBy(step);
             const row = access.rowAt(access.current);
             if (row) reveal(row);
             return true;
