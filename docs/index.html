@@ -172,16 +172,7 @@ kbd {
 .boot-screen img { width: 46%; image-rendering: auto; }
 
 /* ---------- language ---------- */
-.toggle { display: inline-flex; padding: 4px; gap: 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--void); margin: 8px 0 24px; }
-.toggle button {
-  appearance: none; border: 0; cursor: pointer; min-width: 96px; min-height: 38px; padding: 0 18px; border-radius: 999px;
-  background: transparent; color: var(--dim); font: 500 15px/1 var(--sans);
-}
-.toggle button[aria-pressed="true"] { background: var(--ink); color: var(--void); }
-.lang-shot { position: relative; max-width: 864px; }
-.lang-shot img { transition: opacity 240ms, visibility 240ms; }
-.lang-shot img + img { position: absolute; inset: 0; }
-.lang-shot img[hidden] { display: block; opacity: 0; visibility: hidden; }
+.lang-shot { max-width: 864px; margin-top: 24px; }
 
 /* ---------- code, steps, table ---------- */
 .code {
@@ -212,8 +203,8 @@ td { color: var(--dim); }
 
 /* ---------- Nilo ---------- */
 .nilo-split { align-items: start; }
-.shot video { display: block; width: 100%; height: auto; background: var(--void); }
-.tour.trio { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 28px; }
+.nilo-done { margin-top: 64px; }
+.nilo-done h3 + p { margin-bottom: 22px; }
 .nilo-code { max-width: 640px; margin-top: 64px; }
 .plug {
   appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
@@ -240,7 +231,7 @@ footer a:hover { color: var(--ink); }
   .bar-end { flex-direction: row; }
   main { padding: calc(var(--top) + 36px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
   section { padding-bottom: 96px; }
-  .tour, .tour.trio, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
+  .tour, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
   .rules { gap: 28px; }
   .motto { margin-bottom: 44px; letter-spacing: 0.45em; }
   .actions { margin-bottom: 52px; }
@@ -253,7 +244,7 @@ footer a:hover { color: var(--ink); }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .leds a::before, .lang-shot img { transition: none; }
+  .leds a::before { transition: none; }
 }
 </style>
 </head>
@@ -319,7 +310,7 @@ footer a:hover { color: var(--ink); }
         </a>
       </div>
       <figure class="shot">
-        <img src="assets/screens/desktop.png" width="1920" height="1200" alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper of a night sky over mountains, the bar on the left with workspace LEDs, and clock, network and music widgets.">
+        <img src="assets/screens/desktop.png" width="1920" height="1200" alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper of a starry sky, the bar on the left with workspace LEDs, widgets with the clock, the network and what is playing, fastfetch in dots in a terminal and a file manager.">
       </figure>
     </section>
 
@@ -330,27 +321,23 @@ footer a:hover { color: var(--ink); }
       </div>
       <div class="tour">
         <figure>
-          <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/dashboard.png" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: dot-matrix clock and the caffeine switch, a track with its cover and a spectrum in LED columns, CPU, RAM and temperature dials, a network scope, and a kanban with tasks to do, doing and done."></a>
+          <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/dashboard.png" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: the motto and a dot-matrix clock, the caffeine switch, a track with its cover and a spectrum in LED columns, CPU, RAM and temperature dials, a network scope, and a kanban with tasks to do and doing."></a>
           <figcaption>
             <h3>Dashboard</h3>
             <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a small kanban and caffeine to keep the screen awake.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or hover the top edge</span></div>
-            <div class="keys"><kbd>SUPER</kbd><kbd>C</kbd><span>copy</span></div>
-            <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>paste; held, the clipboard history, out of the same edge</span></div>
           </figcaption>
         </figure>
         <figure>
-          <a class="shot" href="assets/screens/settings.png"><img src="assets/screens/settings.png" width="1920" height="1200" loading="lazy" alt="The settings panel on the right: round toggles for Wi-Fi, Bluetooth, output, mic, silent and night, segmented sliders, the list of Wi-Fi networks and the notification history."></a>
+          <a class="shot" href="assets/screens/settings.png"><img src="assets/screens/settings.png" width="1920" height="1200" loading="lazy" alt="Quick settings on the right: round toggles for Wi-Fi, Bluetooth, output, mic, silent and night, segmented sliders for volume, mic and brightness, the notifications, and the session keys with power off in red."></a>
           <figcaption>
-            <h3>Settings</h3>
-            <p>Wi&#8209;Fi with passwords, Bluetooth, audio output, segmented sliders and the notification history.</p>
+            <h3>Quick settings</h3>
+            <p>Wi&#8209;Fi with passwords, Bluetooth, audio output, segmented sliders, the notification history and the session.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>P</kbd><span>or rest the pointer in the top-right corner</span></div>
-            <div class="keys"><kbd>SUPER</kbd><kbd>O</kbd><span>Preferences, or the cog</span></div>
-            <div class="keys"><kbd>SUPER</kbd><kbd>W</kbd><span>wallpapers: arrows to look, Enter to keep</span></div>
           </figcaption>
         </figure>
         <figure>
-          <a class="shot" href="assets/screens/launcher.png"><img src="assets/screens/launcher.png" width="1920" height="1200" loading="lazy" alt="The launcher drawer at the bottom: a search field and a grid of grey app icons, the selected one in colour."></a>
+          <a class="shot" href="assets/screens/launcher.png"><img src="assets/screens/launcher.png" width="1920" height="1200" loading="lazy" alt="The launcher at the bottom with its actions: lock, suspend, restart, power off in red, log out, next and previous wallpaper, and its keys at the foot."></a>
           <figcaption>
             <h3>Launcher</h3>
             <p>Apps stay grey until you select them. Type <code>&gt;</code> for actions, <code>=</code> to calculate and <code>?</code> to ask <a href="#nilo">Nilo</a>.</p>
@@ -358,7 +345,7 @@ footer a:hover { color: var(--ink); }
           </figcaption>
         </figure>
         <figure>
-          <a class="shot" href="assets/screens/notification.png"><img src="assets/screens/notification.png" width="1920" height="1200" loading="lazy" alt="A critical battery notification at the top right, and a red segment of light running along the bottom edge of the frame."></a>
+          <a class="shot" href="assets/screens/notification.png"><img src="assets/screens/notification.png" width="1920" height="1200" loading="lazy" alt="A notification at the top right: nixos-rebuild, build finished, generation 214 is ready."></a>
           <figcaption>
             <h3>Light on the edge</h3>
             <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red, like the battery warnings at 15, 10 and 5&nbsp;%. Plug in the charger and two lights climb both sides from the bottom until they meet at the top.</p>
@@ -366,6 +353,38 @@ footer a:hover { color: var(--ink); }
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2.5 5.5 13.5h6l-1 8 8-11.5h-6z"/></svg>
               Plug in
             </button>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/clipboard.png"><img src="assets/screens/clipboard.png" width="1920" height="1200" loading="lazy" alt="The clipboard history out of the top edge: a picture with its size, a colour as a red LED, a command lit as the one chosen, and older copies under it."></a>
+          <figcaption>
+            <h3>Clipboard history</h3>
+            <p>Copy and paste with the same keys in every app. Hold the paste key and the history comes out; let go and the one lit is pasted. Pictures and colours too, and nothing a password manager copies.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>C</kbd><span>copy</span></div>
+            <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>paste; held, the history</span></div>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/wallpapers.png"><img src="assets/screens/wallpapers.png" width="1920" height="1200" loading="lazy" alt="The wallpapers out of the bottom edge, each one in dots, Sisyphus framed in white, and the desktop already showing it."></a>
+          <figcaption>
+            <h3>Wallpapers</h3>
+            <p>Every picture drawn as an LED matrix for each screen. The arrows show them on the desktop as you go; Enter keeps one and Escape goes back.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>W</kbd><span>or the launcher's actions</span></div>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/preferences.png"><img src="assets/screens/preferences.png" width="1920" height="1200" loading="lazy" alt="Preferences open on Desktop: the wallpapers in dots, Night framed in white, and the widgets under them."></a>
+          <figcaption>
+            <h3>Preferences</h3>
+            <p>One sheet for the whole system: you, language and region, the desktop, screens, shortcuts and the system. Applying is a NixOS rebuild in the background, with a fingerprint or the password.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>O</kbd><span>or the cog in quick settings</span></div>
+          </figcaption>
+        </figure>
+        <figure>
+          <a class="shot" href="assets/screens/preferences-system.png"><img src="assets/screens/preferences-system.png" width="1920" height="1200" loading="lazy" alt="Preferences open on System: the computer's name, Nilo's switch with a Settings key, the acceleration chosen as Vulkan, the clipboard history at 8, and switches for the sound at boot, the fingerprint and SSH."></a>
+          <figcaption>
+            <h3>The system, too</h3>
+            <p>The computer's name, Nilo and what runs its model, how much the clipboard keeps, the sound at boot, the fingerprint and SSH: every switch an option of the flake.</p>
           </figcaption>
         </figure>
       </div>
@@ -379,32 +398,20 @@ footer a:hover { color: var(--ink); }
           <p class="quiet">It answers, searches the web if you let it, looks at this computer and opens apps: <code>abre zen</code> opens it at once. Once you authorize it, it changes files, commits and pushes in one repository of yours and runs commands, and each of those waits for your confirmation. Close the launcher while it answers and it tells you when it's done, in a panel that comes out of the bar next to its eyes. Simple questions can go to a smaller, faster model, and after a few minutes without questions it falls asleep and the model leaves memory.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>I</kbd><span>the Copilot key, or <code>?</code> in the launcher</span></div>
         </div>
-        <figure class="shot">
-          <video id="nilo-video" src="assets/screens/nilo.mp4" poster="assets/screens/nilo-poster.png" width="900" height="730" muted loop playsinline preload="metadata" aria-label="Nilo in the launcher: its eyes wake up while a question is typed, the answer arrives with a block of Nix code, then a commit and push waits for confirmation and the eyes smile."></video>
+        <figure>
+          <a class="shot" href="assets/screens/nilo.png"><img src="assets/screens/nilo.png" width="1920" height="1200" loading="lazy" alt="Nilo in the launcher, thinking: its two eyes looking up, the model qwen3.5:9b chosen on its own, and the question asked under them."></a>
         </figure>
       </div>
-      <div class="tour trio">
+      <div class="split nilo-done">
         <figure>
-          <a class="shot" href="assets/screens/nilo-intro.png"><img src="assets/screens/nilo-intro.png" width="900" height="730" loading="lazy" alt="Nilo's first page: two eyes curved in a smile and the words Hi. I'm Nilo., in dots."></a>
-          <figcaption>
-            <h3>It introduces itself</h3>
-            <p>The first time, it says hello, shows how to call it, offers the models that fit your memory and asks what it may do.</p>
-          </figcaption>
+          <a class="shot" href="assets/screens/nilo-done.png"><img src="assets/screens/nilo-done.png" width="1920" height="1200" loading="lazy" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it thought: Nilo is done, the question and the answer in two points."></a>
         </figure>
-        <figure>
-          <a class="shot" href="assets/screens/nilo-change.png"><img src="assets/screens/nilo-change.png" width="900" height="730" loading="lazy" alt="A change to README.md waiting for confirmation: the removed line struck through, the two new lines in white, and cancel and confirm buttons."></a>
-          <figcaption>
-            <h3>Every change, as a diff first</h3>
-            <p>A file waits for enter twice or a click before it is written, like a commit. Escape leaves it as it was.</p>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/nilo-access.png"><img src="assets/screens/nilo-access.png" width="900" height="730" loading="lazy" alt="Nilo's access switches. The one for files is outlined in red and explains what it allows, above cancel and a red authorize button."></a>
-          <figcaption>
-            <h3>Nothing without your say</h3>
-            <p>Files, git and the terminal stay off until you authorize them. Commands that delete or change the system come in a red card, and anything with sudo opens in a terminal for your password.</p>
-          </figcaption>
-        </figure>
+        <div class="prose">
+          <h3>It says when it's done</h3>
+          <p class="quiet">Close the launcher while it thinks and it carries on. The answer comes out of the bar, next to its eyes, and a click takes you back to the conversation.</p>
+          <h3>Nothing without your say</h3>
+          <p class="quiet">Files, git and the terminal stay off until you authorize them. Every change to a file comes as a diff first and waits for enter twice or a click; commands that delete or change the system come in a red card, and anything with sudo opens in a terminal for your password.</p>
+        </div>
       </div>
       <div class="code nilo-code">
         <pre><code><span class="c"># off by default: Preferences, System turns it on; or in /etc/nixos/local.nix</span>
@@ -466,17 +473,12 @@ nihil.nilo =
         <h2 id="language-title">Spanish or English</h2>
         <p class="quiet">One option sets every string of the shell, the lock screen and the greeter, and the language of their dates.</p>
       </div>
-      <div class="toggle" role="group" aria-label="Language of the screenshot">
-        <button type="button" data-lang="en" aria-pressed="true">English</button>
-        <button type="button" data-lang="es" aria-pressed="false">Español</button>
-      </div>
       <div class="lang-shot">
-        <img class="shot" data-lang="en" src="assets/screens/actions-en.png" width="864" height="480" loading="lazy" alt="Launcher actions in English: Lock, Suspend, Restart, Power off, Log out, Next wallpaper.">
-        <img class="shot" data-lang="es" src="assets/screens/actions-es.png" width="864" height="480" loading="lazy" alt="Launcher actions in Spanish: Bloquear, Suspender, Reiniciar, Apagar, Cerrar sesión, Siguiente fondo." hidden>
+        <img class="shot" src="assets/screens/actions-en.png" width="860" height="478" loading="lazy" alt="Launcher actions in English: Lock, Suspend, Restart, Power off, Log out, Next wallpaper, Previous wallpaper.">
       </div>
       <div class="code" style="max-width:864px">
         <pre><code><span class="c">/etc/nixos/settings.json</span>
-"language": "<span id="lang-value">en</span>"</code></pre>
+"language": "en"   <span class="c">// or "es"</span></code></pre>
       </div>
     </section>
 
@@ -659,17 +661,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     battery.addEventListener("chargingchange", () => { if (battery.charging) rise(); });
   }).catch(() => {});
 
-  // ---- Nilo's video plays while it is on screen; with reduced motion, on demand
-  const video = document.getElementById("nilo-video");
-  if (reduce) {
-    video.controls = true;
-  } else {
-    new IntersectionObserver(entries => entries.forEach(e => {
-      if (e.isIntersecting) video.play().catch(() => { video.controls = true; });
-      else video.pause();
-    }), { threshold: 0.35 }).observe(video);
-  }
-
   // ---- The wordmark lights up from nothing: the snowflake from its centre, then the letters
   const mark = document.getElementById("wordmark");
   fetch("assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
@@ -717,15 +708,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     });
     block.append(button);
   });
-
-  // ---- Language toggle for the screenshot and the snippet
-  const buttons = document.querySelectorAll(".toggle button");
-  buttons.forEach(button => button.addEventListener("click", () => {
-    const lang = button.dataset.lang;
-    buttons.forEach(b => b.setAttribute("aria-pressed", String(b === button)));
-    document.querySelectorAll(".lang-shot img").forEach(img => { img.hidden = img.dataset.lang !== lang; });
-    document.getElementById("lang-value").textContent = lang;
-  }));
 
   // ---- Section LEDs follow the scroll, like the workspaces in the bar
   const leds = [...document.querySelectorAll(".leds a")];
