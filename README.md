@@ -53,6 +53,10 @@ home screen in the same language: the frame, an LED clock, the light on the edge
   the clipboard history, the boot sound, fingerprint and SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
   the widgets and the password change at once; the rest waits until applied, and applying
   rebuilds the system in the background.
+- **Generations, from Preferences.** Every rebuild is a whole system NixOS keeps. Each one
+  says when it was made, its NixOS, kernel and NIHIL, and which packages it changed;
+  one click goes back to it, now and at boot, or boots it just once. How long they stay,
+  and cleaning now, with what it frees.
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
@@ -234,7 +238,7 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 | File | What it holds |
 |------|---------------|
 | `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`, or `path:` to a clone), through `nihil.lib.mkSystem` |
-| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH |
+| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH, how long generations stay |
 | `hardware-configuration.nix` | disks and drivers, from `nixos-generate-config` |
 | `local.nix` | anything else for this machine: drivers, services, packages |
 | `home.nix` | its apps (NIHIL installs little beyond Zen) and anything else for its user, through Home Manager |
@@ -253,6 +257,11 @@ nihil settings    # edit settings.json, then rebuild
 nihil version     # the NIHIL this machine runs, and the one pinned
 nihil dev [path]  # NIHIL from a checkout instead, until nihil dev off or nihil update
 nihil apply FILE  # FILE as settings.json, rebuilt in the background (/run/nihil)
+nihil generations # the system's generations: NixOS, kernel, NIHIL, which one runs
+nihil generations changes N   # the packages generation N changed
+nihil generations switch N    # back to N, now and at boot
+nihil generations boot N      # N the next boot only
+nihil generations clean DAYS  # those older than DAYS days go, and what nothing needs
 ```
 
 ---
@@ -273,6 +282,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `programs`      | Terminal, Files, Zen | Programs with a key: a name, the command that opens it and its keys ([Keybindings](#keybindings)) |
 | `clipboard`     | `8`        | How many copies the clipboard history keeps; `0` turns it off |
+| `generations.days` | `7`     | How long generations stay: the weekly clean removes older ones, but the one in use and the one in use that many days ago |
 | `bootSound`     | `true`     | A sound with the boot splash, unless the session was left muted |
 | `soundPack`     | `"nihil"`  | `"nihil"` (`sounds/nihil`) or `"classic"` (the earlier sounds)  |
 | `greeter`       | `"nihil"`  | The login screen: NIHIL's own (`greeter/shell.qml`), with ReGreet in its place should it not start, or `"regreet"` alone |
@@ -562,7 +572,9 @@ sudo nix-collect-garbage --delete-older-than 7d     # (alias ngc)
 ```
 
 `nh os switch` does the same as `nihil rebuild` and prints the package diff between
-generations. Garbage collection also runs weekly on its own (`modules/nix.nix`).
+generations. Garbage collection also runs weekly on its own (`modules/nix.nix`), keeping
+the generations of the last `generations.days` days; Preferences, Generations cleans now
+too, and says what it freed.
 
 To try changes to NIHIL before pushing them: `nihil dev ~/Nihil-Shell` rebuilds with that
 checkout and keeps it, so `nihil rebuild` and Preferences use it too, until `nihil dev off`
@@ -595,6 +607,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
 
 - **System won't boot:** pick an earlier generation from the boot menu (systemd-boot).
   It's a system-level restore point.
+- **Something broke after applying or updating:** Preferences, Generations (or
+  `nihil generations switch N`) goes back to an earlier generation without restarting,
+  and "Boot it once" tries one at the next boot only, for what needs a restart (a kernel,
+  a driver). Your settings stay as they are: the next apply builds from them again.
 - **An update broke something:** boot the previous generation, then go back to the NIHIL
   you had: `/etc/nixos/flake.lock` holds the revision, so `git` on `/etc/nixos` (or a copy
   of the old lock) and `nihil rebuild` return to it.

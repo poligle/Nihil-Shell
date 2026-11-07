@@ -29,12 +29,13 @@ Item {
         password.clear();
     }
 
-    // Neither the finger nor the password did it: the field again. Once it
+    // Neither the finger nor the password did it: the field again, when it
+    // was these settings (a generation asks on its own page). Once it
     // applies, the field goes.
     Connections {
         target: Machine
         function onFailureChanged(): void {
-            if (Machine.failure === "finger" || Machine.failure === "password") {
+            if (Machine.kind === "settings" && (Machine.failure === "finger" || Machine.failure === "password")) {
                 root.asking = true;
                 password.grab();
             }
