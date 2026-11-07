@@ -87,6 +87,7 @@ in
         };
 
         services.openssh.enable = lib.mkDefault (get [ "ssh" ] false);
+        nihil.generations.days = lib.mkDefault (get [ "generations" "days" ] 7);
 
         nihil.binds = get [ "binds" ] { };
         nihil.gestures = get [ "gestures" ] { };
