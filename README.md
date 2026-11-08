@@ -32,7 +32,7 @@ screen, greeter, boot splash and the shell — is generated from it.
 > declaration.
 
 **On the phone, too:** [NIHIL for Android](https://github.com/poligle/Nihil-Launcher) is a
-home screen in the same language: the frame, an LED clock, the light on the edge, with no internet permission ([nihilshell.com/android](https://nihilshell.com/android/)).
+home screen in the same language: the frame, the desktop's clock, its light and its launcher, and the phone as a deck for this computer ([nihilshell.com/android](https://nihilshell.com/android/)).
 
 ---
 
@@ -556,6 +556,14 @@ phone talks HTTPS only to the computer whose public key it was shown, and pairin
 a token of its own. The computer keeps only the token's hash, says when a phone pairs, and
 lists the phones, each to forget. When its address changes, the phone finds it again by
 mDNS (`_nihil-deck._tcp`).
+
+On the phone the deck is one landscape screen in workspaces: the music, the volume and the
+lock in one; the apps and the webs in the other, each with its icon. The apps' come from this
+computer's icon theme; the webs' (`GET /v1/favicon`) are found by this computer on each site,
+only at public addresses and kept a week, so the phone talks to no one else. The phone reads
+the QR with a reader of its own, and sharing a web to *Open on the computer* opens it here.
+
+![Preferences, Phone](docs/assets/screens/preferences-phone.png)
 
 The service is [`home/deck/deck.py`](home/deck/deck.py), standard-library Python in the
 user's session, which opens what it is asked through the shell (`nihil-ipc apps`,

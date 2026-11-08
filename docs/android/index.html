@@ -188,8 +188,12 @@ p { margin: 0 0 16px; }
 .ledclock .off { fill: rgba(255, 255, 255, 0.18); }
 .ledclock .on { fill: var(--ink); opacity: 0; transition: opacity 480ms cubic-bezier(0.2, 0, 0, 1); }
 .ledclock .on.lit { opacity: 1; }
-.pdate { margin: 12px 0 0; font: 400 10.5px/1 var(--mono); letter-spacing: 0.08em; color: var(--ink); text-transform: uppercase; text-shadow: 0 0 6px #000; }
-.pbatt { display: flex; align-items: center; gap: 3px; margin-top: 10px; }
+/* the desktop's clock widget: a black card with a hairline, the time in dots, the day and the date */
+.pclock { width: 100%; box-sizing: border-box; padding: 14px 12px 12px; border-radius: 16px; background: var(--void); border: 1px solid var(--line); text-align: center; }
+.ptime { margin: 0; font: 700 40px/1 var(--dot); color: var(--ink); letter-spacing: 0.02em; }
+.pday { margin: 8px 0 0; font: 400 9.5px/1 var(--mono); color: var(--dim); }
+.pdate { margin: 5px 0 0; font: 400 11px/1 var(--sans); color: var(--muted); }
+.pbatt { display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(42, 42, 42, 0.6); }
 .pbatt i { width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
 .pbatt i.o { transform: scale(0.62); background: rgba(255, 255, 255, 0.22); }
 .pbatt span { margin-left: 7px; font: 400 9.5px/1 var(--mono); letter-spacing: 0.06em; color: var(--dim); }
@@ -198,6 +202,11 @@ p { margin: 0 0 16px; }
 .pglyph { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .pglyph circle { fill: var(--ink); opacity: 0; }
 .pglyph path { fill: none; stroke: none; }
+.pglyph path.sweep { stroke: var(--ink); stroke-linecap: round; }
+.deck-shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; margin-top: 48px; max-width: 980px; }
+.deck-shots figure { margin: 0; }
+.deck-shots a { display: block; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
+.deck-shots img { display: block; width: 100%; height: auto; }
 
 /* ---------- screens ---------- */
 .phones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 48px; max-width: 980px; }
@@ -339,7 +348,7 @@ footer a:hover { color: var(--ink); }
           <div class="wordmark" id="wordmark"><img src="../assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
           <p class="motto"><i>ex nihilo</i></p>
           <h1 id="title">A dot&#8209;matrix launcher for Android</h1>
-          <p class="lede">The same language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. Open source, no ads, no tracking.</p>
+          <p class="lede">The same language on the phone: the wallpaper set into a black frame, the desktop's clock, its light and its launcher, and the phone as a deck for your computer. Open source, no ads, no tracking.</p>
           <div class="actions">
             <a class="pill primary" href="https://github.com/poligle/Nihil-Launcher/releases/latest">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8.5M4.5 7.2 8 10.7l3.5-3.5M2.5 13.8h11"/></svg>
@@ -357,13 +366,16 @@ footer a:hover { color: var(--ink); }
           <p class="meta">Android 12 or newer. Kotlin, no libraries. MIT</p>
         </div>
 
-        <div class="phone" id="phone" role="img" aria-label="Drawing of the NIHIL home screen: an LED clock with the time, the date, the battery as ten LEDs and the favourites at the bottom, over a dot-matrix wallpaper.">
+        <div class="phone" id="phone" role="img" aria-label="Drawing of the NIHIL home screen: a black card with the time in dots, the day, the date and the battery as ten LEDs, and the favourites at the bottom, over a dot-matrix wallpaper.">
           <div class="status" aria-hidden="true"><span id="p-time">00:00</span><i></i><span>72%</span></div>
           <div class="card" aria-hidden="true"><i class="l3"></i><i class="l2"></i><i class="l1"></i></div>
           <div class="home" aria-hidden="true">
-            <svg class="ledclock" id="ledclock" viewBox="-5 -5 260 80"></svg>
-            <p class="pdate" id="p-date">&nbsp;</p>
-            <div class="pbatt"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><span>72 %</span></div>
+            <div class="pclock">
+              <p class="ptime" id="p-big">00:00</p>
+              <p class="pday" id="p-day">&nbsp;</p>
+              <p class="pdate" id="p-date">&nbsp;</p>
+              <div class="pbatt"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><span>72 %</span></div>
+            </div>
             <ul class="pfavs"><li>Phone</li><li>Messages</li><li>Camera</li><li>Browser</li><li>Music</li></ul>
           </div>
           <svg class="pglyph" id="pglyph" aria-hidden="true"></svg>
@@ -379,23 +391,23 @@ footer a:hover { color: var(--ink); }
 
       <div class="phones" id="phones">
         <figure data-optional>
-          <a href="../assets/screens/android-home.png"><img src="../assets/screens/android-home.png" width="1080" height="2340" decoding="async" alt="A render of NIHIL's home screen at a Galaxy A35's size: the LED clock, the date, the battery LEDs, the next alarm and unread apps, and the favourites over a dot-matrix night sky."></a>
+          <a href="../assets/screens/android-home.png"><img src="../assets/screens/android-home.png" width="1080" height="2340" decoding="async" alt="NIHIL's home screen: the clock's card with the time in dots, the day, the date, the battery LEDs, the next alarm and unread apps, and the favourites over a dot-matrix night sky."></a>
           <figcaption>Home</figcaption>
         </figure>
         <figure data-optional>
-          <a href="../assets/screens/android-drawer.png"><img src="../assets/screens/android-drawer.png" width="1080" height="2340" decoding="async" alt="A render of the drawer: ca in the search field, Camera, Calendar, Calculator and Contacts with icons in ink, Camera ready for enter, and a web search last."></a>
+          <a href="../assets/screens/android-drawer.png"><img src="../assets/screens/android-drawer.png" width="1080" height="2340" decoding="async" alt="The drawer: the apps in a monochrome grid, the first result raised and in colour, the search field at the bottom with how many apps there are, and the keys for actions and the calculator."></a>
           <figcaption>Drawer</figcaption>
         </figure>
         <figure data-optional>
-          <a href="../assets/screens/android-menu.png"><img src="../assets/screens/android-menu.png" width="1080" height="2340" decoding="async" alt="A render of an app's menu over the home screen: its shortcuts, then remove from home, move up, hide, app info and uninstall in red."></a>
-          <figcaption>App menu</figcaption>
+          <a href="../assets/screens/android-settings.png"><img src="../assets/screens/android-settings.png" width="1080" height="2340" decoding="async" alt="Settings as the desktop's Preferences: NIHIL in dots, a heading for each section, each setting with its name on the left and its toggle on the right."></a>
+          <figcaption>Settings</figcaption>
         </figure>
       </div>
 
       <div class="rules">
         <div>
-          <h3>A clock made of LEDs</h3>
-          <p>A 25&nbsp;×&nbsp;7 panel where every LED is there, the unlit ones faintly. When the minute changes it refreshes column by column, like the one above.</p>
+          <h3>The desktop's clock</h3>
+          <p>A black card with the time in dots, the day and the date; under a hairline, the battery as ten LEDs, the next alarm and the apps with something unread.</p>
         </div>
         <div>
           <h3>Red only to interrupt</h3>
@@ -403,7 +415,7 @@ footer a:hover { color: var(--ink); }
         </div>
         <div>
           <h3>Light on the frame</h3>
-          <p>With notification access, a run of LEDs goes round the frame for every notification: twice and in red for a call or an alarm, up from the bottom when the charger goes in.</p>
+          <p>With notification access, the desktop's light runs once round the card for every notification, twice and in red for a call or an alarm, and climbs from the bottom when the charger goes in. With the accessibility service, round the screen's own corners over any app. Tap the phone above.</p>
         </div>
       </div>
     </section>
@@ -411,12 +423,13 @@ footer a:hover { color: var(--ink); }
     <section id="drawer" aria-labelledby="drawer-title">
       <div class="prose">
         <h2 id="drawer-title">One field</h2>
-        <p class="quiet">Apps, actions and sums share a single search. Accents and case don't matter, package names count, and <kbd>enter</kbd> runs the first result.</p>
+        <p class="quiet">Apps, actions and sums share a single search, at the bottom by your thumb, over the apps in a monochrome grid as the desktop's launcher. Accents and case don't matter, package names count, and <kbd>enter</kbd> runs the first result, raised and in colour.</p>
       </div>
       <ul class="examples">
         <li><kbd>camara</kbd><span>finds Cámara; <code>settings</code> finds Ajustes, by its package name.</span></li>
         <li><kbd>&gt;</kbd><span>lists the actions: torch, the Wi&#8209;Fi and sound panels, Bluetooth, battery, alarms, lock, the wallpaper studio and the settings. They also turn up in normal search: <code>lin</code> is the torch.</span></li>
-        <li><kbd>=</kbd><span>is the calculator: <code>+ − × ÷ ^ % !</code>, <code>sqrt sin cos ln log</code>, <code>pi</code>, <code>2pi</code>, <code>3(4+1)</code>. Enter copies the result.</span></li>
+        <li><kbd>=</kbd><span>is a calculator near the desktop's qalc: percentages (<code>200 + 15%</code>), units (<code>10 km to mi</code>, <code>100 °F a °C</code>), hex and binary, and calculus: <code>diff(x^2)</code>, <code>integrate(x^2; 0; 3)</code>, <code>solve(x^2 = 4)</code>. Enter copies the result.</span></li>
+        <li><kbd>10 km to mi</kbd><span>converts without the <code>=</code>, as a sum is worked out.</span></li>
         <li><kbd>no match</kbd><span>offers a web search, in your own browser.</span></li>
       </ul>
 
@@ -432,6 +445,35 @@ footer a:hover { color: var(--ink); }
             <tr><td class="what">Hold an app</td><td>Its shortcuts; add to home, move, hide, info, uninstall</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="deck" aria-labelledby="deck-title">
+      <div class="prose">
+        <h2 id="deck-title">The phone as a deck</h2>
+        <p class="quiet">Paired with <a href="../#deck">NIHIL on your computer</a> by the QR in its Preferences, the phone opens the computer's apps and webs, plays and skips its music, turns its volume and locks it. In landscape, on one screen, in workspaces as the desktop's: the music in one, the apps and the webs in the other. Share a web from the browser to open it there.</p>
+      </div>
+      <div class="deck-shots" id="deck-shots">
+        <figure data-optional>
+          <a href="../assets/screens/android-deck-music.png"><img src="../assets/screens/android-deck-music.png" width="2340" height="1080" loading="lazy" alt="The deck in landscape, its first workspace: what plays on the computer with its keys, and the volume in dots with the lock beside it."></a>
+        </figure>
+        <figure data-optional>
+          <a href="../assets/screens/android-deck-apps.png"><img src="../assets/screens/android-deck-apps.png" width="2340" height="1080" loading="lazy" alt="The deck's second workspace: the computer's apps with their icons, and the webs kept on the phone with their favicons."></a>
+        </figure>
+      </div>
+      <div class="rules">
+        <div>
+          <h3>Only your computer</h3>
+          <p>HTTPS that trusts one certificate, the one whose key the QR pinned, checked before anything is sent; a token of its own, in the Android Keystore.</p>
+        </div>
+        <div>
+          <h3>Its own QR reader</h3>
+          <p>The camera's frames go to NIHIL's own reader and nowhere else: no libraries, no services.</p>
+        </div>
+        <div>
+          <h3>Icons for everything</h3>
+          <p>The apps with the computer's icon theme; the webs with icons the computer finds for them, so the phone talks to no one else.</p>
+        </div>
       </div>
     </section>
 
@@ -451,8 +493,8 @@ footer a:hover { color: var(--ink); }
 
     <section id="privacy" aria-labelledby="privacy-title">
       <div class="prose">
-        <h2 id="privacy-title">Nothing leaves the phone</h2>
-        <p class="quiet">NIHIL doesn't ask for the internet permission, so it couldn't send anything anywhere even if it wanted to. No ads, no analytics, no account.</p>
+        <h2 id="privacy-title">Only your computer</h2>
+        <p class="quiet">NIHIL talks to nothing but your own computer, and only once you pair it as a deck: that is all its internet permission is for. No ads, no analytics, no account.</p>
       </div>
       <div class="table">
         <table>
@@ -461,8 +503,10 @@ footer a:hover { color: var(--ink); }
             <tr><td><code>SET_<wbr>WALLPAPER</code></td><td>The studio</td></tr>
             <tr><td><code>EXPAND_<wbr>STATUS_<wbr>BAR</code></td><td>Swipe down for the notifications</td></tr>
             <tr><td><code>REQUEST_<wbr>DELETE_<wbr>PACKAGES</code></td><td>“Uninstall” in the app menu</td></tr>
+            <tr><td><code>INTERNET</code></td><td>The deck, only ever to the computer it was paired with</td></tr>
+            <tr><td><code>CAMERA</code></td><td>The deck, to read the computer's pairing QR. The frames never leave the phone</td></tr>
             <tr><td class="what">Notification access<br><span class="meta">optional</span></td><td>The light on the frame and the unread icons. NIHIL looks at which app posted, the flags and the category, never the text. Silent notifications and anything Do Not Disturb holds back stay dark.</td></tr>
-            <tr><td class="what">Accessibility<br><span class="meta">optional</span></td><td>Only to lock the phone on a double tap. It reads nothing on the screen.</td></tr>
+            <tr><td class="what">Accessibility<br><span class="meta">optional</span></td><td>To lock the phone on a double tap, and to draw the light over other apps. It reads nothing on the screen.</td></tr>
           </tbody>
         </table>
       </div>
@@ -495,7 +539,7 @@ footer a:hover { color: var(--ink); }
 cd nihil-launcher
 nix develop
 ./gradlew installDebug</code></pre></div>
-        <p class="note">The phone at the top of this page is drawn by the page itself, with the launcher's LED digits<span id="shots-note">; the three screens are renders of the launcher's own layout, with generic app icons</span>.</p>
+        <p class="note">The phone at the top of this page is drawn by the page itself<span id="shots-note">; the screens are screenshots from a Galaxy A35</span>. NIHIL's icon is the Android robot in dots: the Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</p>
       </div>
     </section>
 
@@ -580,66 +624,53 @@ nix develop
     }
     return out;
   }
-  const clockSvg = document.getElementById("ledclock");
-  const lit = [];
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      const cx = col * 10 + 5, cy = row * 10 + 5;
-      const off = document.createElementNS(NS, "circle");
-      off.setAttribute("class", "off"); off.setAttribute("cx", cx); off.setAttribute("cy", cy); off.setAttribute("r", 1.7);
-      const on = document.createElementNS(NS, "circle");
-      on.setAttribute("class", "on"); on.setAttribute("cx", cx); on.setAttribute("cy", cy); on.setAttribute("r", 4.2);
-      on.style.transitionDelay = `${col * 12}ms`;
-      clockSvg.append(off, on);
-      lit.push(on);
-    }
-  }
   const pad = n => String(n).padStart(2, "0");
-  let shown = "";
   function phoneTick() {
     const d = new Date();
     const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const locale = navigator.language || "en";
     document.getElementById("p-time").textContent = time;
-    const date = new Intl.DateTimeFormat(navigator.language || "en", { weekday: "short", day: "numeric", month: "short" }).format(d);
-    document.getElementById("p-date").textContent = date.replace(/\./g, "").toUpperCase();
-    if (time === shown) return;
-    shown = time;
-    const m = matrix(time);
-    lit.forEach((led, i) => led.classList.toggle("lit", m[i] === 1));
+    document.getElementById("p-big").textContent = time;
+    document.getElementById("p-day").textContent =
+      new Intl.DateTimeFormat(locale, { weekday: "long" }).format(d).replace(/^./, c => c.toUpperCase());
+    document.getElementById("p-date").textContent = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }).format(d);
   }
 
-  // ---- The phone's own Glyph light: LEDs just outside its card, from the top both ways
+  // ---- The phone's Glyph light, as the desktop's: a segment with its glow that runs once
+  // round the card, clockwise from the top-right corner
   const pglyph = document.getElementById("pglyph");
   const phone = document.getElementById("phone");
-  let leds = [];
+  let sweep = [];
+  let ringLength = 0;
   function layoutPhoneGlyph() {
     pglyph.replaceChildren();
+    sweep = [];
     const w = phone.clientWidth, h = phone.clientHeight;
     if (!w || !h) return;
     pglyph.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    const out = 3, x0 = 6 - out, y0 = 30 - out, x1 = w - 6 + out, y1 = h - 16 + out, r = 26 + out;
-    const outline = document.createElementNS(NS, "path");
-    outline.setAttribute("d",
-      `M ${(x0 + x1) / 2} ${y0} L ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} ` +
-      `A ${r} ${r} 0 0 1 ${x1 - r} ${y1} L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
-    pglyph.append(outline);
-    const length = outline.getTotalLength();
-    const count = Math.max(24, Math.floor(length / 7));
-    leds = [];
-    for (let i = 0; i < count; i++) {
-      const d = i * length / count;
-      const p = outline.getPointAtLength(d);
-      const c = document.createElementNS(NS, "circle");
-      c.setAttribute("cx", p.x.toFixed(1)); c.setAttribute("cy", p.y.toFixed(1)); c.setAttribute("r", 1.5);
-      pglyph.append(c);
-      leds.push({ c, from: Math.min(d, length - d) / (length / 2) });
+    const x0 = 6, y0 = 30, x1 = w - 6, y1 = h - 16, r = 26;
+    const d = `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
+      `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`;
+    for (const [width, alpha] of [[7, 0.22], [2, 1]]) {
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", d);
+      p.setAttribute("class", "sweep");
+      p.style.strokeWidth = width;
+      p.style.opacity = 0;
+      p.dataset.alpha = alpha;
+      pglyph.append(p);
+      sweep.push(p);
     }
+    ringLength = sweep[0].getTotalLength();
   }
   function phoneGlyph() {
-    if (reduce || !leds.length || !leds[0].c.animate) return;
-    leds.forEach(({ c, from }) => c.animate(
-      [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0.2, offset: 0.55 }, { opacity: 0 }],
-      { duration: 1100, delay: 120 + from * 950, easing: "ease-out" }));
+    if (reduce || !sweep.length || !sweep[0].animate) return;
+    const segment = Math.max(18, ringLength * 0.0325);
+    for (const p of sweep) {
+      p.style.strokeDasharray = `${segment} ${ringLength + segment}`;
+      p.animate([{ strokeDashoffset: segment, opacity: p.dataset.alpha }, { strokeDashoffset: -ringLength, opacity: p.dataset.alpha }],
+        { duration: 1100, easing: "cubic-bezier(0.65, 0, 0.35, 1)" });
+    }
   }
   layoutPhoneGlyph();
   let resizing;
@@ -692,6 +723,13 @@ nix develop
       document.getElementById("shots-note")?.remove();
     }
   }
+  const deckShots = document.getElementById("deck-shots");
+  deckShots?.querySelectorAll("figure[data-optional]").forEach(figure => {
+    const img = figure.querySelector("img");
+    const gone = () => { figure.remove(); if (!deckShots.querySelector("figure")) deckShots.remove(); };
+    if (img.complete && img.naturalWidth === 0) gone();
+    else img.addEventListener("error", gone);
+  });
   gallery.querySelectorAll("figure[data-optional]").forEach(figure => {
     const img = figure.querySelector("img");
     if (img.complete && img.naturalWidth === 0) drop(figure);
