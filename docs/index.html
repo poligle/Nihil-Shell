@@ -139,6 +139,8 @@ p { margin: 0 0 16px; }
   margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void);
 }
 .hero .shot { box-shadow: 0 0 0 10px var(--void); }
+.deck-shot { margin-top: 40px; max-width: 980px; }
+.deck-shot a, .deck-shot img { display: block; width: 100%; height: auto; }
 
 /* ---------- tour ---------- */
 .tour { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 44px 32px; margin-top: 48px; }
@@ -455,9 +457,12 @@ nihil generations clean 7</code></pre>
     <section id="deck" aria-labelledby="deck-title">
       <div class="prose">
         <h2 id="deck-title">The phone as a deck</h2>
-        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume and locks it. Nothing else: no commands, no files.</p>
+        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume and locks it. Nothing else: no commands, no files. On the phone it is one landscape screen in workspaces, the music in one, the apps and the webs in the other, each with its icon: the apps' from this computer's icon theme, the webs' found by this computer, so the phone talks to no one else.</p>
         <p class="quiet">The QR holds a code that pairs once, for five minutes, and the pin of the computer's own certificate: the phone talks HTTPS only to the computer whose key it was shown, with a token of its own, and finds it again on the network by mDNS. The protocol is in <a href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/deck.md"><code>docs/deck.md</code></a>.</p>
       </div>
+      <figure class="shot deck-shot">
+        <a href="assets/screens/preferences-phone.png"><img src="assets/screens/preferences-phone.png" width="1920" height="1200" loading="lazy" alt="Preferences open on Phone: the switch to use the phone, the QR in dots to pair one, and the phones already paired, each with when it was last seen and a key to forget it."></a>
+      </figure>
     </section>
 
     <section id="rules" aria-labelledby="rules-title">
