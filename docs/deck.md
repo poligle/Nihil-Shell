@@ -135,6 +135,17 @@ The app's icon as PNG (`Content-Type: image/png`), from the computer's icon them
 when the theme draws it (SVG), or the theme's own PNG closest to 128, bigger ones first, so
 scale it to fit. `404` when it has none. `{id}` percent-encoded. They change rarely: keep them.
 
+### `GET /v1/favicon?url={url}`
+
+The icon of a web's site, for the webs the phone keeps: the computer looks for it, so the
+phone talks to no one else. `{url}` percent-encoded, http or https. On the site's home page
+it takes an SVG (drawn at 128 px), the `apple-touch-icon` or the biggest icon it names, and
+then `/favicon.ico` (the biggest PNG inside it). Only at public addresses, redirects too:
+never this computer's network. `200` with the picture as it comes (`image/png`,
+`image/jpeg`, `image/gif` or `image/webp`; scale it to fit), `404` when the site has none
+the phone can draw (draw its letter), `400` for a URL that isn't one. The computer keeps
+each site's icon, and each miss, a week: ask freely.
+
 ### `POST /v1/open`
 
 An app, by its id:
