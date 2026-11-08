@@ -408,7 +408,7 @@ journalctl --user -u nihil-shell -f   # logs
 ## Nilo
 
 <p align="center">
-  <img src="docs/assets/screens/nilo.png" width="720" alt="Nilo in the launcher, thinking: its two eyes looking up, qwen3.5:9b chosen on its own, and the question under them.">
+  <img src="docs/assets/screens/nilo.png" width="720" alt="Nilo in the launcher, writing: its two eyes, qwen3.5:9b chosen on its own, the question and the start of the answer.">
 </p>
 
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
@@ -482,7 +482,7 @@ background with their last lines under them, for two minutes at most. Choosing a
 repository turns Files and Git off again.
 
 <p align="center">
-  <img src="docs/assets/screens/nilo-done.png" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it thought.">
+  <img src="docs/assets/screens/nilo-done.png" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, fastfetch in dots.">
 </p>
 
 <sub>Closed while it thinks, Nilo says when it's done, out of the bar.</sub>
@@ -562,8 +562,6 @@ lock in one; the apps and the webs in the other, each with its icon. The apps' c
 computer's icon theme; the webs' (`GET /v1/favicon`) are found by this computer on each site,
 only at public addresses and kept a week, so the phone talks to no one else. The phone reads
 the QR with a reader of its own, and sharing a web to *Open on the computer* opens it here.
-
-![Preferences, Phone](docs/assets/screens/preferences-phone.png)
 
 The service is [`home/deck/deck.py`](home/deck/deck.py), standard-library Python in the
 user's session, which opens what it is asked through the shell (`nihil-ipc apps`,
