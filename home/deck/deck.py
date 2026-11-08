@@ -33,7 +33,10 @@ import base64
 import functools
 import hashlib
 import hmac
+import html.parser
+import http.client
 import http.server
+import ipaddress
 import json
 import os
 import re
@@ -43,12 +46,15 @@ import signal
 import socket
 import socketserver
 import ssl
+import struct
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 
 API = 1
 PORT = 64445                    # NIHIL on a phone's keypad
@@ -63,6 +69,9 @@ SEEN_EVERY = 60                 # seconds between writes of "last seen"
 ICON_SIZE = 128
 APPS_FOR = 20                   # seconds the shell's list of apps is kept
 APP_ID = re.compile(r"[A-Za-z0-9._+-]{1,160}")
+# Interfaces the phone can't reach this computer through: containers' and
+# virtual machines' bridges and their ends. A VPN (Tailscale, WireGuard) stays.
+VIRTUAL = re.compile(r"(docker|br-|virbr|veth|vnet|lxcbr|lxdbr|podman|cni|flannel)")
 ACTIONS = {
     "media": ("toggle", "next", "previous"),
     "volume": ("up", "down", "mute"),
@@ -461,8 +470,8 @@ def data_dirs():
 
 @functools.lru_cache(maxsize=64)
 def theme_index(root):
-    """index.theme's Inherits and its directories, the scalable ones and the
-    biggest first."""
+    """index.theme's Inherits and its directories: the scalable ones first,
+    then the sizes closest to the phone's 128 px, bigger before smaller."""
     inherits, directories, sizes, kinds = [], [], {}, {}
     section = None
     try:
@@ -484,7 +493,11 @@ def theme_index(root):
     except OSError:
         return (), ()
     unique = list(dict.fromkeys(directories))
-    unique.sort(key=lambda d: (0 if kinds.get(d) == "Scalable" or "scalable" in d else 1, -sizes.get(d, 0)))
+    def order(directory):
+        size = sizes.get(directory, 0)
+        scalable = kinds.get(directory) == "Scalable" or "scalable" in directory
+        return (0 if scalable else 1, size < ICON_SIZE, abs(size - ICON_SIZE))
+    unique.sort(key=order)
     return tuple(inherits), tuple(unique)
 
 
@@ -547,11 +560,176 @@ def icon_png(path, rsvg, cache):
     return out
 
 
+# --- The webs' icons ------------------------------------------------------------
+#
+# The phone keeps its own webs, and asks here for their icons: so it talks to
+# no one but this computer. A site's icon is looked for on its home page (an
+# SVG, the apple-touch-icon, the biggest one it names) and then at
+# /favicon.ico; only at public addresses, redirects included, and kept a
+# week by site, the misses too.
+
+FAVICON_DAYS = 7
+PAGE_MAX = 512 * 1024
+FAVICON_MAX = 256 * 1024
+FETCH_TIMEOUT = 5
+PUBLIC_ONLY = True  # the tests turn it off, to serve their sites from 127.0.0.1
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
+def public(host):
+    """Whether every address of [host] is on the internet: never this
+    computer, its network, or anything reserved."""
+    if not PUBLIC_ONLY:
+        return True
+    try:
+        found = socket.getaddrinfo(host, None)
+    except (OSError, UnicodeError):
+        return False
+    return bool(found) and all(ipaddress.ip_address(item[4][0].split("%")[0]).is_global for item in found)
+
+
+class PublicRedirects(urllib.request.HTTPRedirectHandler):
+    """A few redirects, each to a public web page."""
+
+    max_redirections = 3
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not valid_url(newurl) or not public(urllib.parse.urlsplit(newurl).hostname):
+            raise urllib.error.URLError("redirected somewhere not public")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def fetch(url, limit, whole=True):
+    """[url]'s body and where it ended up: [limit] bytes at most, or (not
+    [whole]) its first [limit] bytes, enough for a page's <head>."""
+    if not valid_url(url) or not public(urllib.parse.urlsplit(url).hostname):
+        raise ValueError("not a public web page")
+    opener = urllib.request.build_opener(PublicRedirects())
+    request = urllib.request.Request(url, headers={"User-Agent": "NIHIL deck (icons)", "Accept": "*/*"})
+    with opener.open(request, timeout=FETCH_TIMEOUT) as response:
+        data = response.read(limit + 1)
+        if len(data) > limit:
+            if whole:
+                raise ValueError("too big")
+            data = data[:limit]
+        return response.geturl(), data
+
+
+class IconLinks(html.parser.HTMLParser):
+    """The icons a page names before its <body>, with how good each is."""
+
+    def __init__(self, base):
+        super().__init__()
+        self.base = base
+        self.found = []
+        self.done = False
+
+    def handle_starttag(self, tag, attrs):
+        if self.done or tag == "body":
+            self.done = True
+            return
+        if tag != "link":
+            return
+        attrs = {key: value or "" for key, value in attrs}
+        rel = set(attrs.get("rel", "").lower().split())
+        href = attrs.get("href", "").strip()
+        touch = bool(rel & {"apple-touch-icon", "apple-touch-icon-precomposed"})
+        if not href or not (touch or "icon" in rel):
+            return
+        sizes = [int(size) for size in re.findall(r"(\d+)x\d+", attrs.get("sizes", "").lower())]
+        if "svg" in attrs.get("type", "").lower() or href.lower().split("?")[0].endswith(".svg"):
+            score = 1024
+        else:
+            score = max(sizes or [180 if touch else 32])
+        self.found.append((score, urllib.parse.urljoin(self.base, href)))
+
+    def handle_endtag(self, tag):
+        if tag == "head":
+            self.done = True
+
+
+def ico_png(data):
+    """The biggest PNG inside an .ico (Windows Vista's and later), or None."""
+    try:
+        best = None
+        for index in range(min(struct.unpack_from("<H", data, 4)[0], 64)):
+            width, height, _, _, _, _, size, offset = struct.unpack_from("<BBBBHHII", data, 6 + 16 * index)
+            chunk = data[offset:offset + size]
+            if chunk.startswith(PNG_MAGIC) and (best is None or (width or 256) * (height or 256) > best[0]):
+                best = ((width or 256) * (height or 256), chunk)
+        return (best[1], "image/png") if best else None
+    except struct.error:
+        return None
+
+
+def as_image(data, rsvg):
+    """What the phone can draw, as (bytes, type): PNG, JPEG, GIF and WebP as
+    they come, an SVG drawn at 128 px, the biggest PNG inside an .ico. None
+    for anything else (an .ico of bitmaps): the phone draws its letter."""
+    head = data[:16]
+    if head.startswith(PNG_MAGIC):
+        return data, "image/png"
+    if head.startswith(b"\xff\xd8\xff"):
+        return data, "image/jpeg"
+    if head[:6] in (b"GIF87a", b"GIF89a"):
+        return data, "image/gif"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return data, "image/webp"
+    if head[:4] == b"\x00\x00\x01\x00":
+        return ico_png(data)
+    if b"<svg" in data[:2048].lower():
+        try:
+            drawn = subprocess.run([rsvg, "-w", str(ICON_SIZE), "-h", str(ICON_SIZE), "-a", "-f", "png"],
+                                   input=data, check=True, capture_output=True, timeout=10).stdout
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return (drawn, "image/png") if drawn.startswith(PNG_MAGIC) else None
+    return None
+
+
+def favicon(url, rsvg, cache):
+    """The icon of [url]'s site as (bytes, type), or None."""
+    parts = urllib.parse.urlsplit(url)
+    origin = f"{parts.scheme}://{parts.netloc}".lower()
+    path = os.path.join(cache, hashlib.sha256(origin.encode()).hexdigest()[:24])
+    try:
+        if time.time() - os.path.getmtime(path) < FAVICON_DAYS * 86400:
+            with open(path, "rb") as file:
+                kept = file.read()
+            return as_image(kept, rsvg) if kept else None
+    except OSError:
+        pass
+    failed = (OSError, ValueError, urllib.error.URLError, http.client.HTTPException)
+    candidates = []
+    try:
+        where, page = fetch(origin + "/", PAGE_MAX, whole=False)
+        links = IconLinks(where)
+        links.feed(page.decode("utf-8", "replace"))
+        candidates = [href for _, href in sorted(links.found, key=lambda item: -item[0])]
+    except failed:
+        pass
+    found = None
+    for href in candidates[:4] + [origin + "/favicon.ico"]:
+        try:
+            found = as_image(fetch(href, FAVICON_MAX)[1], rsvg)
+        except failed:
+            continue
+        if found:
+            break
+    os.makedirs(cache, mode=0o700, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(dir=cache, prefix=".icon-")
+    with os.fdopen(fd, "wb") as file:
+        file.write(found[0] if found else b"")
+    os.replace(temporary, path)
+    return found
+
+
 # --- Where it is -----------------------------------------------------------------
 
 def addresses(ip):
     """This computer's IPv4 addresses on its networks, the one with the
-    default route first: where the phone looks for it."""
+    default route first: where the phone looks for it. Containers' and
+    virtual machines' bridges are left out (VIRTUAL)."""
     found = []
     if ip:
         try:
@@ -565,6 +743,8 @@ def addresses(ip):
             links = json.loads(subprocess.run([ip, "-j", "-4", "addr", "show", "up", "scope", "global"],
                                               capture_output=True, text=True, timeout=5).stdout or "[]")
             for link in links:
+                if VIRTUAL.match(str(link.get("ifname", ""))):
+                    continue
                 for info in link.get("addr_info", []):
                     if info.get("family") == "inet" and info.get("local"):
                         found.append(info["local"])
@@ -613,7 +793,9 @@ class Deck:
             self.pairing.close()
             return {"ok": True}
         if op == "devices":
-            return {"devices": self.devices.listing()}
+            # Whether the code still pairs, so Preferences knows when its QR
+            # stops being any use (used, expired, or five wrong codes).
+            return {"devices": self.devices.listing(), "pairing": self.pairing.open_now}
         if op == "forget":
             return {"ok": self.devices.forget(str(request.get("id", "")))}
         if op == "status":
@@ -645,14 +827,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        # When this answer ends the connection (429, a body it won't read),
+        # the phone hears it and doesn't send the next request down it.
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(data)
 
     def png(self, path):
         with open(path, "rb") as file:
-            data = file.read()
+            self.image(file.read(), "image/png")
+
+    def image(self, data, kind):
         self.send_response(200)
-        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "private, max-age=86400")
         self.end_headers()
@@ -735,6 +923,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.reply(404, {"error": "icon"})
             else:
                 self.png(picture)
+        elif method == "GET" and path == "/v1/favicon":
+            url = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("url", [""])[0]
+            if not valid_url(url):
+                self.reply(400, {"error": "invalid"})
+                return
+            found = favicon(url, deck.config.get("rsvg", "rsvg-convert"), os.path.join(cache_dir(), "favicons"))
+            if found is None:
+                self.reply(404, {"error": "icon"})
+            else:
+                self.image(*found)
         elif method == "GET" and path == "/v1/state":
             self.reply(200, {"media": session.playing(), "volume": session.volume()})
         elif method == "POST" and path == "/v1/open":

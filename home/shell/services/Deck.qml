@@ -8,8 +8,9 @@ import qs.config
 // The phone as a deck (home/deck, docs/deck.md): the phones paired, and the
 // QR that pairs one more, from the service's own command, nihil-deck. The
 // service runs on its own; Preferences, Phone asks it while it is open.
-// While the QR is out, who paired every two seconds: one more, and it goes;
-// a new code before this one runs out.
+// While the QR is out, who paired every two seconds: a phone that wasn't
+// there before, and it goes; a new code before this one runs out, or as soon
+// as it stops pairing some other way (five wrong codes, a suspend).
 Singleton {
     id: root
 
@@ -22,7 +23,8 @@ Singleton {
     property bool pairFailed: false
     property var rows: []           // the QR's modules: strings of 0 and 1
     property real expires: 0
-    property int known: 0           // phones when the QR came out
+    property var known: []          // ids of the phones when the QR came out
+    property real opened: 0         // when it came out, ms
 
     function refresh(): void {
         if (root.enabled && !lister.running)
@@ -33,7 +35,7 @@ Singleton {
         if (!root.enabled || pairer.running)
             return;
         if (!root.pairing)
-            root.known = root.devices.length;
+            root.known = root.devices.map(device => device.id);
         root.pairFailed = false;
         pairer.running = true;
     }
@@ -70,10 +72,13 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const found = JSON.parse(text).devices ?? [];
-                    if (root.pairing && found.length > root.known) {
+                    const reply = JSON.parse(text);
+                    const found = reply.devices ?? [];
+                    if (root.pairing && found.some(device => root.known.indexOf(device.id) < 0)) {
                         root.pairing = false;
                         root.rows = [];
+                    } else if (root.pairing && reply.pairing === false && Date.now() - root.opened > 3000) {
+                        root.pair();
                     }
                     root.devices = found;
                     root.running = true;
@@ -96,6 +101,7 @@ Singleton {
                         throw new Error(found.error ?? "no QR");
                     root.rows = found.qr;
                     root.expires = found.expires;
+                    root.opened = Date.now();
                     root.pairing = true;
                     root.running = true;
                 } catch (error) {

@@ -11,17 +11,20 @@
 import base64
 import hashlib
 import http.client
+import http.server
 import json
 import os
 import shutil
 import socket
 import ssl
+import struct
 import subprocess
 import sys
 import tempfile
 import threading
 import time
 import unittest
+import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -69,7 +72,7 @@ echo "Volume: 0.45"
 FAKE_IP = r'''#!/bin/sh
 case "$*" in
     *"route get"*) echo '[{"dst":"192.0.2.1","gateway":"192.168.1.1","dev":"wlan0","prefsrc":"192.168.1.20"}]' ;;
-    *"addr show"*) echo '[{"ifname":"wlan0","addr_info":[{"family":"inet","local":"192.168.1.20"}]},{"ifname":"tailscale0","addr_info":[{"family":"inet","local":"100.64.0.7"}]}]' ;;
+    *"addr show"*) echo '[{"ifname":"wlan0","addr_info":[{"family":"inet","local":"192.168.1.20"}]},{"ifname":"docker0","addr_info":[{"family":"inet","local":"172.17.0.1"}]},{"ifname":"virbr0","addr_info":[{"family":"inet","local":"192.168.122.1"}]},{"ifname":"tailscale0","addr_info":[{"family":"inet","local":"100.64.0.7"}]}]' ;;
 esac
 '''
 
@@ -118,6 +121,7 @@ class Phone:
             headers["Content-Type"] = "application/json"
         connection.request(method, path, body=data, headers=headers)
         response = connection.getresponse()
+        self.last = response
         payload = response.read()
         kind = response.getheader("Content-Type")
         connection.close()
@@ -269,9 +273,17 @@ class IconTest(unittest.TestCase):
         self.assertIsNone(deck.icon_file("../../etc/passwd", "Child", dirs))
         self.assertIsNone(deck.icon_file("/etc/passwd", "Child", dirs))
 
+    def test_the_size_closest_to_the_phones(self):
+        deck.theme_index.cache_clear()
+        big = self.theme("Big", "", ["48x48/apps/foot.png", "256x256/apps/foot.png", "512x512/apps/foot.png"])
+        small = self.theme("Small", "", ["32x32/apps/foot.png", "64x64/apps/foot.png"])
+        self.assertEqual(deck.icon_file("foot", "Big", [self.base]), os.path.join(big, "256x256/apps/foot.png"))
+        self.assertEqual(deck.icon_file("foot", "Small", [self.base]), os.path.join(small, "64x64/apps/foot.png"))
+
 
 class AddressesTest(Base):
     def test_the_default_route_first(self):
+        # docker0 and virbr0 are not where a phone finds it; Tailscale is.
         self.assertEqual(deck.addresses(self.config["ip"]), ["192.168.1.20", "100.64.0.7"])
 
 
@@ -384,21 +396,146 @@ class ServerTest(Base):
         self.assertEqual(self.phone.request("GET", "/v1/apps/zen-beta/icon")[0], 404)
         self.assertEqual(self.phone.request("GET", "/v1/apps/..%2F..%2Fetc/icon")[0], 404)
 
+    def test_the_icon_of_a_web(self):
+        site = Site({"/": (200, "text/html", b'<link rel="icon" href="/i.png" sizes="64x64">'),
+                     "/i.png": (200, "image/png", PNG + b"64")})
+        self.addCleanup(site.stop)
+        deck.PUBLIC_ONLY = False
+        self.addCleanup(setattr, deck, "PUBLIC_ONLY", True)
+        old = os.environ.get("XDG_CACHE_HOME")
+        os.environ["XDG_CACHE_HOME"] = os.path.join(self.folder, "cache")
+        self.addCleanup(lambda: os.environ.__setitem__("XDG_CACHE_HOME", old) if old is not None else os.environ.pop("XDG_CACHE_HOME", None))
+        self.pair()
+        quoted = urllib.parse.quote(site.url + "/blog/post", safe="")
+        self.assertEqual(self.phone.request("GET", "/v1/favicon?url=" + quoted), (200, PNG + b"64"))
+        self.assertEqual(self.phone.last.getheader("Content-Type"), "image/png")
+        self.assertEqual(self.phone.request("GET", "/v1/favicon?url=" + urllib.parse.quote("file:///etc/passwd", safe=""))[0], 400)
+        self.assertEqual(self.phone.request("GET", "/v1/favicon")[0], 400)
+        self.assertEqual(self.phone.request("GET", "/v1/favicon?url=x", token="nope")[0], 401)
+
     def test_wrong_tokens_wait(self):
         for _ in range(deck.FAIL_LIMIT):
             self.assertEqual(self.phone.request("GET", "/v1/apps", token="nope")[0], 401)
         self.assertEqual(self.phone.request("GET", "/v1/hello")[0], 429)
+        self.assertEqual(self.phone.last.getheader("Connection"), "close")
 
     def test_a_body_too_big(self):
         self.pair()
         status, body = self.phone.request("POST", "/v1/open", {"url": "https://example.com/" + "a" * deck.MAX_BODY})
         self.assertEqual((status, body), (400, {"error": "body"}))
+        self.assertEqual(self.phone.last.getheader("Connection"), "close")
+        # An answer that keeps the connection doesn't say close.
+        self.assertEqual(self.phone.request("GET", "/v1/hello")[0], 200)
+        self.assertIsNone(self.phone.last.getheader("Connection"))
+
+    def test_whether_the_code_still_pairs(self):
+        self.deck.control({"op": "pair"})
+        self.assertTrue(self.deck.control({"op": "devices"})["pairing"])
+        self.pair()
+        self.assertFalse(self.deck.control({"op": "devices"})["pairing"])
 
     def test_forgetting_from_here(self):
         paired = self.pair()
         self.assertEqual(self.deck.control({"op": "forget", "id": "nope"}), {"ok": False})
         self.assertEqual(self.deck.control({"op": "forget", "id": paired["device"]}), {"ok": True})
         self.assertEqual(self.phone.request("GET", "/v1/apps")[0], 401)
+
+
+PNG = deck.PNG_MAGIC + b"an icon"
+
+
+def ico(*entries):
+    """An .ico whose entries are (size, data)."""
+    head = struct.pack("<HHH", 0, 1, len(entries))
+    offset = 6 + 16 * len(entries)
+    table, body = b"", b""
+    for size, data in entries:
+        table += struct.pack("<BBBBHHII", size % 256, size % 256, 0, 0, 1, 32, len(data), offset + len(body))
+        body += data
+    return head + table + body
+
+
+class Site:
+    """A web site on 127.0.0.1: path -> (status, type, body); counts requests."""
+
+    def __init__(self, pages):
+        site = self
+        self.pages = pages
+        self.asked = []
+
+        class Pages(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                site.asked.append(self.path)
+                status, kind, body = site.pages.get(self.path, (404, "text/plain", b"no"))
+                self.send_response(status)
+                self.send_header("Content-Type", kind)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Pages)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.url = "http://127.0.0.1:%d" % self.server.server_address[1]
+
+    def stop(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+
+class FaviconTest(unittest.TestCase):
+    def setUp(self):
+        self.cache = tempfile.mkdtemp(prefix="deck-icons-")
+        self.addCleanup(shutil.rmtree, self.cache, True)
+        deck.PUBLIC_ONLY = False
+        self.addCleanup(setattr, deck, "PUBLIC_ONLY", True)
+
+    def site(self, pages):
+        site = Site(pages)
+        self.addCleanup(site.stop)
+        return site
+
+    def test_the_best_icon_the_home_page_names(self):
+        page = (b'<html><head><link rel="icon" href="/small.png" sizes="16x16">'
+                b'<link rel="apple-touch-icon" href="/touch.png"></head><body>'
+                b'<link rel="icon" href="/late.png" sizes="512x512"></body></html>')
+        site = self.site({"/": (200, "text/html", page), "/small.png": (200, "image/png", PNG + b"16"),
+                          "/touch.png": (200, "image/png", PNG + b"180"), "/late.png": (200, "image/png", PNG + b"late")})
+        self.assertEqual(deck.favicon(site.url + "/some/page?q=1", "rsvg-convert", self.cache), (PNG + b"180", "image/png"))
+        # A week from here, without asking the site again.
+        asked = len(site.asked)
+        self.assertEqual(deck.favicon(site.url + "/other", "rsvg-convert", self.cache), (PNG + b"180", "image/png"))
+        self.assertEqual(len(site.asked), asked)
+
+    def test_the_png_inside_the_ico_when_the_page_names_none(self):
+        site = self.site({"/": (200, "text/html", b"<html><head></head></html>"),
+                          "/favicon.ico": (200, "image/x-icon", ico((16, b"BM bitmap"), (32, PNG + b"32"), (24, PNG + b"24")))})
+        self.assertEqual(deck.favicon(site.url, "rsvg-convert", self.cache), (PNG + b"32", "image/png"))
+
+    def test_none_and_it_is_remembered(self):
+        site = self.site({"/favicon.ico": (200, "image/x-icon", ico((16, b"BM only bitmaps")))})
+        self.assertIsNone(deck.favicon(site.url + "/", "rsvg-convert", self.cache))
+        asked = len(site.asked)
+        self.assertIsNone(deck.favicon(site.url + "/", "rsvg-convert", self.cache))
+        self.assertEqual(len(site.asked), asked)
+
+    def test_jpeg_and_webp_as_they_come_and_nothing_else(self):
+        self.assertEqual(deck.as_image(b"\xff\xd8\xffjpeg", "x"), (b"\xff\xd8\xffjpeg", "image/jpeg"))
+        self.assertEqual(deck.as_image(b"RIFF\x00\x00\x00\x00WEBPVP8 ", "x")[1], "image/webp")
+        self.assertIsNone(deck.as_image(b"<html>not an icon</html>", "x"))
+
+    def test_only_public_addresses(self):
+        deck.PUBLIC_ONLY = True
+        for host in ("127.0.0.1", "localhost", "10.0.0.7", "192.168.1.1", "169.254.169.254", "::1"):
+            self.assertFalse(deck.public(host), host)
+        site = self.site({"/": (200, "text/html", b"")})
+        with self.assertRaises(ValueError):
+            deck.fetch(site.url + "/", 100)
+        redirect = deck.PublicRedirects()
+        with self.assertRaises(deck.urllib.error.URLError):
+            redirect.redirect_request(None, None, 302, "Found", {}, "http://192.168.1.1/admin")
 
 
 class ControlTest(Base):
@@ -417,7 +554,7 @@ class ControlTest(Base):
         self.assertTrue(deck.ask({"op": "status"}, path)["pairing"])
         self.assertEqual(deck.ask({"op": "cancel"}, path), {"ok": True})
         self.assertFalse(deck.ask({"op": "status"}, path)["pairing"])
-        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": []})
+        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": [], "pairing": False})
         self.assertEqual(deck.ask({"op": "nonsense"}, path), {"error": "unknown"})
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as raw:
             raw.connect(path)

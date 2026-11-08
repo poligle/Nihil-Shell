@@ -24,7 +24,7 @@ nihil-deck://pair?v=1&name=thinkpad&hosts=192.168.1.20,100.64.0.7&port=64445&cod
 |-----------|------------|
 | `v`       | The protocol, `1` |
 | `name`    | The computer's name (its host name) |
-| `hosts`   | Its IPv4 addresses, comma-separated, the one with the default route first |
+| `hosts`   | Its IPv4 addresses, comma-separated, the one with the default route first; not those of containers' and virtual machines' bridges (Docker, libvirt), which a phone can't reach. A VPN's (Tailscale) stays |
 | `port`    | Its port, `64445` unless the machine sets `nihil.deck.port` |
 | `code`    | The one-time code: 8 characters of `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` |
 | `pin`     | SHA-256 of the certificate's public key (SubjectPublicKeyInfo, DER), base64url without padding |
@@ -89,7 +89,8 @@ Whatever it finds, the pin still decides whether it is the right computer.
 ## Requests
 
 HTTPS, HTTP/1.1, JSON in and out (`Content-Type: application/json`, a body of 4 KB at
-most). Connections may be kept open; the computer closes them after 15 s idle.
+most). Connections may be kept open; the computer closes them after 15 s idle, and after an
+answer that ends one (a `429`, a body too big), which then says `Connection: close`.
 
 Everything but `hello` and `pair` needs the token:
 
@@ -130,8 +131,20 @@ The apps the launcher shows, by name.
 
 ### `GET /v1/apps/{id}/icon`
 
-The app's icon as PNG, 128 px (`Content-Type: image/png`), from the computer's icon
-theme; `404` when it has none. `{id}` percent-encoded. They change rarely: keep them.
+The app's icon as PNG (`Content-Type: image/png`), from the computer's icon theme: 128 px
+when the theme draws it (SVG), or the theme's own PNG closest to 128, bigger ones first, so
+scale it to fit. `404` when it has none. `{id}` percent-encoded. They change rarely: keep them.
+
+### `GET /v1/favicon?url={url}`
+
+The icon of a web's site, for the webs the phone keeps: the computer looks for it, so the
+phone talks to no one else. `{url}` percent-encoded, http or https. On the site's home page
+it takes an SVG (drawn at 128 px), the `apple-touch-icon` or the biggest icon it names, and
+then `/favicon.ico` (the biggest PNG inside it). Only at public addresses, redirects too:
+never this computer's network. `200` with the picture as it comes (`image/png`,
+`image/jpeg`, `image/gif` or `image/webp`; scale it to fit), `404` when the site has none
+the phone can draw (draw its letter), `400` for a URL that isn't one. The computer keeps
+each site's icon, and each miss, a week: ask freely.
 
 ### `POST /v1/open`
 
