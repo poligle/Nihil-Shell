@@ -1,0 +1,16 @@
+# Every push and pull request: the deck's and Nilo's tests (standard library
+# Python, with openssl for the deck's certificate). The ISO workflow builds
+# and evaluates NIHIL; these run the services themselves.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: The deck and Nilo
+        run: python3 -m unittest home/deck/test_deck.py home/nilo/test_agent.py
