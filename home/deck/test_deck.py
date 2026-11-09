@@ -53,7 +53,14 @@ elif args[:2] == ["apps", "launch"]:
 elif args[:2] == ["apps", "url"]:
     print("ok")
 elif args[:2] == ["media", "now"]:
-    print(json.dumps({"title": "Song", "artist": "Someone", "player": "Spotify", "playing": True}))
+    print(json.dumps({"title": "Song", "artist": "Someone", "player": "Spotify", "playing": True, "art": os.environ.get("DECK_ART", "")}))
+elif args[:2] == ["tasks", "state"]:
+    print(json.dumps({"cards": [{"id": "a", "text": "Desk", "column": 0, "textStamp": 1, "placeStamp": 1}], "removed": {}, "now": 5}))
+elif args[:2] == ["tasks", "sync"]:
+    board = json.loads(args[2])
+    board["cards"].append({"id": "a", "text": "Desk", "column": 0, "textStamp": 1, "placeStamp": 1})
+    board["now"] = 5
+    print(json.dumps(board))
 elif args[0] == "media" or args == ["session", "lock"]:
     pass
 else:
@@ -412,6 +419,39 @@ class ServerTest(Base):
         self.assertEqual(self.phone.request("GET", "/v1/favicon?url=" + urllib.parse.quote("file:///etc/passwd", safe=""))[0], 400)
         self.assertEqual(self.phone.request("GET", "/v1/favicon")[0], 400)
         self.assertEqual(self.phone.request("GET", "/v1/favicon?url=x", token="nope")[0], 401)
+
+    def test_the_kanban(self):
+        self.pair()
+        status, body = self.phone.request("GET", "/v1/tasks")
+        self.assertEqual((status, body["cards"][0]["text"], body["now"]), (200, "Desk", 5))
+        phone = {"cards": [{"id": "p", "text": "  Phone   card ", "column": 1, "textStamp": 3, "placeStamp": 4}], "removed": {"z": 2}}
+        status, body = self.phone.request("POST", "/v1/tasks", phone)
+        self.assertEqual(status, 200)
+        self.assertEqual([c["id"] for c in body["cards"]], ["p", "a"])
+        self.assertEqual(body["cards"][0]["text"], "Phone card")
+        self.assertEqual(body["removed"], {"z": 2})
+        for bad in ({"cards": [{"id": "x", "text": "No column", "textStamp": 1, "placeStamp": 1}]},
+                    {"cards": "nope"}, {"removed": {"x": "yesterday"}}):
+            self.assertEqual(self.phone.request("POST", "/v1/tasks", bad)[0], 400)
+        # A whole kanban is more than other requests may carry.
+        many = {"cards": [{"id": "c%d" % i, "text": "Task %d" % i, "column": 0, "textStamp": i, "placeStamp": i} for i in range(80)]}
+        self.assertEqual(self.phone.request("POST", "/v1/tasks", many)[0], 200)
+
+    def test_the_cover(self):
+        art = os.path.join(self.folder, "cover.png")
+        with open(art, "wb") as file:
+            file.write(deck.PNG_MAGIC + b"cover")
+        old = os.environ.get("DECK_ART")
+        os.environ["DECK_ART"] = "file://" + art
+        self.addCleanup(lambda: os.environ.__setitem__("DECK_ART", old) if old is not None else os.environ.pop("DECK_ART", None))
+        self.pair()
+        status, body = self.phone.request("GET", "/v1/state")
+        token = body["media"]["cover"]
+        self.assertNotIn("art", body["media"])
+        self.assertEqual(len(token), 16)
+        self.assertEqual(self.phone.request("GET", "/v1/cover?c=" + token), (200, deck.PNG_MAGIC + b"cover"))
+        self.assertEqual(self.phone.request("GET", "/v1/cover?c=0123456789abcdef")[0], 404)
+        self.assertEqual(self.phone.request("GET", "/v1/cover?c=../../etc")[0], 404)
 
     def test_wrong_tokens_wait(self):
         for _ in range(deck.FAIL_LIMIT):

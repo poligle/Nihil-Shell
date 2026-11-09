@@ -227,3 +227,28 @@ A status and `{ "error": "…" }`:
 - No pin, no request: a certificate that doesn't match is not the computer.
 - A `401` means the computer forgot the phone: forget the token too.
 - Several computers can be paired, each with its own name, pin and token.
+
+## The cover
+
+`GET /v1/state` gives what plays a `cover`: a token that changes with its cover (empty
+without one); the address stays on the computer. `GET /v1/cover?c=<token>` answers with the
+image while that token is still the current one (404 otherwise): a local file the player
+names, or an image fetched from a public address, 4 MB at most.
+
+## The kanban
+
+The dashboard's kanban (`services/Tasks.qml`, `~/.local/state/nihil/tasks.json`, version 2)
+and the phone's are replicas of the same board. Each card is
+`{ id, text, column, textStamp, placeStamp }`, the stamps when its text and its column were
+last set, in the computer's milliseconds; a removed card leaves `removed: { id: when }`, kept
+60 days. Two boards merge (`services/TaskMerge.js`, the same rules as the launcher's
+`core/TaskBoard.kt`): for each card the text set last and the column set last win, a removal
+wins over everything set before it, and the order in a column is the order the cards got
+there. The merge gives the same board whichever way round and however often, so two sides that
+both changed while apart each keep what the other did.
+
+- `GET /v1/tasks`: the board, and `now`, the computer's clock.
+- `POST /v1/tasks` with the phone's whole board (256 KB, 1000 cards at most): the shell merges
+  it in and answers with the result and `now`. The phone merges that again (for what changed
+  meanwhile) and stamps its own changes in the computer's time from then on.
+

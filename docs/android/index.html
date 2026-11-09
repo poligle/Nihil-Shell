@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://nihilshell.com/android/">
-<link rel="icon" href="../favicon.ico" sizes="48x48">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <meta property="og:type" content="website">
@@ -202,6 +202,7 @@ p { margin: 0 0 16px; }
 .pglyph { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .pglyph circle { fill: var(--ink); opacity: 0; }
 .pglyph path { fill: none; stroke: none; }
+.appicon { display: block; width: 72px; height: 72px; margin: 0 0 22px; }
 .pglyph path.sweep { stroke: var(--ink); stroke-linecap: round; }
 .deck-shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; margin-top: 48px; max-width: 980px; }
 .deck-shots figure { margin: 0; }
@@ -348,7 +349,8 @@ footer a:hover { color: var(--ink); }
           <div class="wordmark" id="wordmark"><img src="../assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
           <p class="motto"><i>ex nihilo</i></p>
           <h1 id="title">A dot&#8209;matrix launcher for Android</h1>
-          <p class="lede">The same language on the phone: the wallpaper set into a black frame, the desktop's clock, its light and its launcher, and the phone as a deck for your computer. Open source, no ads, no tracking.</p>
+          <img class="appicon" src="icon.svg" width="72" height="72" alt="NIHIL Launcher's icon: the Android robot in white dots on black.">
+        <p class="lede">The same language on the phone: the wallpaper set into a black frame, the desktop's clock, its light and its launcher, and the phone as a deck for your computer. Open source, no ads, no tracking.</p>
           <div class="actions">
             <a class="pill primary" href="https://github.com/poligle/Nihil-Launcher/releases/latest">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8.5M4.5 7.2 8 10.7l3.5-3.5M2.5 13.8h11"/></svg>
@@ -451,14 +453,14 @@ footer a:hover { color: var(--ink); }
     <section id="deck" aria-labelledby="deck-title">
       <div class="prose">
         <h2 id="deck-title">The phone as a deck</h2>
-        <p class="quiet">Paired with <a href="../#deck">NIHIL on your computer</a> by the QR in its Preferences, the phone opens the computer's apps and webs, plays and skips its music, turns its volume and locks it. In landscape, on one screen, in workspaces as the desktop's: the music in one, the apps and the webs in the other. Share a web from the browser to open it there.</p>
+        <p class="quiet">Paired with <a href="../#deck">NIHIL on your computer</a> by the QR in its Preferences, the phone opens the computer's apps and webs, plays and skips its music with its cover, turns its volume and locks it, and keeps the desktop's kanban in sync, even after days apart. In landscape, on one screen, in workspaces as the desktop's: the music in one, the apps and the webs in the other, put in order by holding them. Share a web from the browser to open it there.</p>
       </div>
       <div class="deck-shots" id="deck-shots">
         <figure data-optional>
-          <a href="../assets/screens/android-deck-music.png"><img src="../assets/screens/android-deck-music.png" width="2340" height="1080" loading="lazy" alt="The deck in landscape, its first workspace: what plays on the computer with its keys, and the volume in dots with the lock beside it."></a>
+          <a href="../assets/screens/android-deck-music.webp"><img src="../assets/screens/small/android-deck-music-1000.webp" srcset="../assets/screens/small/android-deck-music-1000.webp 1000w, ../assets/screens/android-deck-music.webp 2340w" sizes="(max-width: 900px) 100vw, 480px" width="2340" height="1080" loading="lazy" alt="The deck in landscape, its first workspace: what plays on the computer with its keys, and the volume in dots with the lock beside it."></a>
         </figure>
         <figure data-optional>
-          <a href="../assets/screens/android-deck-apps.png"><img src="../assets/screens/android-deck-apps.png" width="2340" height="1080" loading="lazy" alt="The deck's second workspace: the computer's apps with their icons, and the webs kept on the phone with their favicons."></a>
+          <a href="../assets/screens/android-deck-apps.webp"><img src="../assets/screens/small/android-deck-apps-1000.webp" srcset="../assets/screens/small/android-deck-apps-1000.webp 1000w, ../assets/screens/android-deck-apps.webp 2340w" sizes="(max-width: 900px) 100vw, 480px" width="2340" height="1080" loading="lazy" alt="The deck's second workspace: the computer's apps with their icons, and the webs kept on the phone with their favicons."></a>
         </figure>
       </div>
       <div class="rules">
