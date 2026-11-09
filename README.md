@@ -5,13 +5,15 @@
   </picture>
 </p>
 
-<p align="center"><i>ex nihilo</i><br>a monochrome, dot-matrix desktop for NixOS</p>
+<p align="center"><i>ex nihilo</i></p>
+
+<p align="center">A monochrome, dot-matrix desktop for NixOS</p>
 
 <p align="center">
-  <a href="https://nihilshell.com/">Website</a> &nbsp;·&nbsp;
-  <a href="#install">Install</a> &nbsp;·&nbsp;
-  <a href="#options">Options</a> &nbsp;·&nbsp;
-  <a href="#keybindings">Keybindings</a> &nbsp;·&nbsp;
+  <a href="https://nihilshell.com/">Website</a> &nbsp;&nbsp;&nbsp;
+  <a href="#install">Install</a> &nbsp;&nbsp;&nbsp;
+  <a href="#options">Options</a> &nbsp;&nbsp;&nbsp;
+  <a href="#keybindings">Keybindings</a> &nbsp;&nbsp;&nbsp;
   <a href="https://github.com/poligle/Nihil-Launcher">Launcher for Android</a>
 </p>
 
@@ -242,10 +244,10 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 | File | What it holds |
 |------|---------------|
 | `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`, or `path:` to a clone), through `nihil.lib.mkSystem` |
-| `settings.json` | user, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH, how long generations stay, the deck |
-| `hardware-configuration.nix` | disks and drivers, from `nixos-generate-config` |
-| `local.nix` | anything else for this machine: drivers, services, packages |
-| `home.nix` | its apps (NIHIL installs little beyond Zen) and anything else for its user, through Home Manager |
+| `settings.json` | User, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH, how long generations stay, the deck |
+| `hardware-configuration.nix` | Disks and drivers, from `nixos-generate-config` |
+| `local.nix` | Anything else for this machine: drivers, services, packages |
+| `home.nix` | Its apps (NIHIL installs little beyond Zen) and anything else for its user, through Home Manager |
 
 **Updates** come from the repository: `nihil update` moves the machine's flake to the
 latest NIHIL (and the NixOS it pins) and rebuilds. Nothing of yours is in the repository,
@@ -282,8 +284,8 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `outputs`       | —          | Screens of the host: logical size, whether it has the bar, dot pitch |
 | `primaryOutput` | —          | Screen for the desktop widgets, lock and login backgrounds      |
 | `wallpaper`     | `"night"`  | Default wallpaper, by name: its file's without the extension, with spaces and accents made plain (`Captura de pantalla.png` is `Captura-de-pantalla`) |
-| `extraWallpapers` | none    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
-| `binds`, `gestures` | see [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
+| `extraWallpapers` | None    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
+| `binds`, `gestures` | See [Keybindings](#keybindings) | Keys and touchpad fingers for NIHIL's actions; `null` turns one off |
 | `programs`      | Terminal, Files, Zen | Programs with a key: a name, the command that opens it and its keys ([Keybindings](#keybindings)) |
 | `clipboard`     | `8`        | How many copies the clipboard history keeps; `0` turns it off |
 | `generations.days` | `7`     | How long generations stay: the weekly clean removes older ones, but the one in use and the one in use that many days ago |
@@ -435,12 +437,12 @@ models that suit the RAM and asks what it may do.
 
 | | |
 |---|---|
-| `SUPER + I`, the Copilot key | open or close Nilo |
-| `?` in the launcher | the same, typed: `?what's a flake` |
-| enter / esc | ask / close (an answer goes on) |
-| `ctrl + c` | stop the answer |
-| `ctrl + n` | new conversation |
-| the eyes in the bar | the model is in memory; click to open |
+| `SUPER + I`, the Copilot key | Open or close Nilo |
+| `?` in the launcher | The same, typed: `?what's a flake` |
+| Enter / Esc | Ask / close (an answer goes on) |
+| `ctrl + c` | Stop the answer |
+| `ctrl + n` | New conversation |
+| The eyes in the bar | The model is in memory; click to open |
 
 **Away from the launcher.** Close it while Nilo answers and the answer goes on. When it
 ends, or when Nilo needs a confirmation, it sends a notification: the light runs round
@@ -510,7 +512,7 @@ instant; with 1, Ollama swaps them.
 
 | Model | Download | RAM, roughly | Recommended from |
 |---|---|---|---|
-| `qwen3.5:0.8b` | 1.3 GB | 2 GB | any |
+| `qwen3.5:0.8b` | 1.3 GB | 2 GB | Any |
 | `qwen3.5:2b` | 2.7 GB | 3.5 GB | 8 GB |
 | `qwen3.5:4b` | 3.4 GB | 5 GB | 12 GB |
 | `qwen3.5:9b` | 6.6 GB | 8.5 GB | 20 GB |
