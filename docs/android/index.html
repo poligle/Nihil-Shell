@@ -8,14 +8,14 @@
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://nihilshell.com/android/">
+<link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="icon" href="../favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="NIHIL for Android">
 <meta property="og:description" content="A monochrome, dot-matrix launcher for Android.">
 <meta property="og:url" content="https://nihilshell.com/android/">
-<meta property="og:image" content="https://nihilshell.com/assets/og.png">
+<meta property="og:image" content="https://nihilshell.com/assets/og-android.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
@@ -121,7 +121,7 @@ p { margin: 0 0 16px; }
 /* ---------- hero ---------- */
 .hero { padding-bottom: 120px; }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 56px; align-items: center; }
-.wordmark { width: min(560px, 100%); margin: 0 0 14px -4px; }
+.wordmark { width: min(628px, 100%); margin: 0 0 14px -4px; }
 .wordmark svg, .wordmark img { display: block; width: 100%; height: auto; }
 .motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 64px; text-transform: lowercase; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 22px; }
@@ -202,7 +202,6 @@ p { margin: 0 0 16px; }
 .pglyph { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .pglyph circle { fill: var(--ink); opacity: 0; }
 .pglyph path { fill: none; stroke: none; }
-.appicon { display: block; width: 72px; height: 72px; margin: 0 0 22px; }
 .pglyph path.sweep { stroke: var(--ink); stroke-linecap: round; }
 .deck-shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; margin-top: 48px; max-width: 980px; }
 .deck-shots figure { margin: 0; }
@@ -346,10 +345,9 @@ footer a:hover { color: var(--ink); }
     <section class="hero" aria-labelledby="title">
       <div class="hero-grid">
         <div>
-          <div class="wordmark" id="wordmark"><img src="../assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
+          <div class="wordmark" id="wordmark"><img src="nihil-logo-dark.svg" alt="NIHIL" width="370" height="90"></div>
           <p class="motto"><i>ex nihilo</i></p>
           <h1 id="title">A dot&#8209;matrix launcher for Android</h1>
-          <img class="appicon" src="icon.svg" width="72" height="72" alt="NIHIL Launcher's icon: the Android robot in white dots on black.">
         <p class="lede">The same language on the phone: the wallpaper set into a black frame, the desktop's clock, its light and its launcher, and the phone as a deck for your computer. Open source, no ads, no tracking.</p>
           <div class="actions">
             <a class="pill primary" href="https://github.com/poligle/Nihil-Launcher/releases/latest">
@@ -541,7 +539,7 @@ footer a:hover { color: var(--ink); }
 cd nihil-launcher
 nix develop
 ./gradlew installDebug</code></pre></div>
-        <p class="note">The phone at the top of this page is drawn by the page itself<span id="shots-note">; the screens are screenshots from a Galaxy A35</span>. NIHIL's icon is the Android robot in dots: the Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</p>
+        <p class="note">The phone at the top of this page is drawn by the page itself<span id="shots-note">; the screens are screenshots from a Galaxy A35</span>. NIHIL's icon and logo are the Android robot in dots: the Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</p>
       </div>
     </section>
 
@@ -558,7 +556,7 @@ nix develop
       <p><a href="https://github.com/poligle/Nihil-Launcher">github.com/poligle/Nihil-Launcher</a></p>
       <p><a href="https://github.com/poligle/Nihil-Launcher/releases">Releases</a>, <a href="https://github.com/poligle/Nihil-Launcher#readme">README</a></p>
       <p><a href="../">NIHIL for NixOS</a></p>
-      <p><a href="mailto:ceo@nihilshell.com">Contact Mail</a></p>
+      <p><a href="mailto:ceo@nihilshell.com">Contact mail</a></p>
     </div>
   </div>
 </footer>
@@ -685,9 +683,9 @@ nix develop
   setTimeout(phoneGlyph, 1400);
   phone.addEventListener("click", phoneGlyph);
 
-  // ---- The wordmark lights up from nothing: the snowflake from its centre, then the letters
+  // ---- The wordmark lights up from nothing: the robot from the bottom up, then the letters
   const mark = document.getElementById("wordmark");
-  fetch("../assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
+  fetch("nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
     const doc = new DOMParser().parseFromString(text, "image/svg+xml");
     const svg = doc.documentElement;
     if (svg.nodeName !== "svg") return;
@@ -698,21 +696,18 @@ nix develop
     mark.replaceChildren(document.importNode(svg, true));
     if (reduce) { glyph(); return; }
     const live = mark.querySelector("svg");
-    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle, g[fill="#8A8A8A"] circle')];
-    const box = live.viewBox.baseVal;
-    const markSize = box.height;
-    const ring = ink.filter(c => +c.getAttribute("cx") < markSize);
-    const letters = ink.filter(c => +c.getAttribute("cx") >= markSize);
-    const centre = live.querySelector('g[fill="#D71921"] circle');
-    const cx = markSize / 2;
-    ring.sort((a, b) => far(a) - far(b));
-    function far(c) { return Math.hypot(+c.getAttribute("cx") - cx, +c.getAttribute("cy") - cx); }
+    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle')];
+    const markWidth = +live.getAttribute("data-mark") || live.viewBox.baseVal.height;
+    const x = c => +c.getAttribute("cx");
+    const y = c => +c.getAttribute("cy");
+    const robot = ink.filter(c => x(c) < markWidth);
+    const letters = ink.filter(c => x(c) >= markWidth);
+    robot.sort((a, b) => (y(b) - y(a)) || (Math.abs(x(a) - markWidth / 2) - Math.abs(x(b) - markWidth / 2)));
     const on = (el, delay) => el.animate([{ opacity: 0.08 }, { opacity: 1 }], { duration: 180, delay, fill: "backwards", easing: "ease-out" });
-    const step = 1200 / Math.max(1, ring.length);
-    ring.forEach((c, i) => on(c, 120 + i * step));
-    const done = 120 + ring.length * step;
-    if (centre) on(centre, done + 60);
-    letters.forEach(c => on(c, done + 220 + (+c.getAttribute("cx") - markSize) * 2.2));
+    const step = 1000 / Math.max(1, robot.length);
+    robot.forEach((c, i) => on(c, 120 + i * step));
+    const done = 120 + robot.length * step;
+    letters.forEach(c => on(c, done + 220 + (x(c) - markWidth) * 2.2));
     setTimeout(glyph, done + 520);
   }).catch(() => setTimeout(glyph, 300));
 
