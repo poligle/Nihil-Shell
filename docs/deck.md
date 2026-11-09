@@ -191,14 +191,31 @@ The output's volume, as the computer's keys turn it (with its OSD and sound):
 
 Locks the screen. `{ "ok": true }`. Unlocking is only on the computer.
 
+### `POST /v1/caffeine`, `POST /v1/night`
+
+Caffeine (the screen stays awake) and night light, as the quick settings turn them:
+
+```json
+{ "action": "toggle" }
+```
+
+`on`, `off` or `toggle`. It answers with whether it is on after:
+
+```json
+{ "on": true }
+```
+
 ### `GET /v1/state`
 
-What plays and the volume, for the deck to show (each `null` when there is none):
+What plays and the volume, for the deck to show (each `null` when there is none), and
+whether caffeine and night light are on (left out when the shell doesn't say):
 
 ```json
 {
   "media": { "title": "Song", "artist": "Someone", "player": "Spotify", "playing": true },
-  "volume": { "level": 45, "muted": false }
+  "volume": { "level": 45, "muted": false },
+  "caffeine": false,
+  "night": true
 }
 ```
 
