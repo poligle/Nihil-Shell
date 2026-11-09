@@ -1613,11 +1613,16 @@ class Agent:
         if not model or self.state["loading"]:
             return
         self.ensure_ollama()
+        # Not if it doesn't fit, and without waking the eyes for it: the question
+        # will say so. (Saying "loading" first raced the question's own refusal.)
+        try:
+            self.room(model)
+        except OllamaError as e:
+            log("warm:", e.detail or e.code)
+            return
         if not self.state["loaded"]:
             self.set_state(loading=True)
         try:
-            # Not if it doesn't fit: the question will say so.
-            self.room(model)
             self.ollama.load(model, self.keep_alive(), self.options())
             # Straight from "loading" to "loaded", without looking asleep in between.
             self.refresh_state()
