@@ -14,3 +14,5 @@ jobs:
       - uses: actions/checkout@v7
       - name: The deck and Nilo
         run: python3 -m unittest home/deck/test_deck.py home/nilo/test_agent.py
+      - name: The kanban's merge
+        run: node home/shell/tests/task-merge.test.js
