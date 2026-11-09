@@ -78,6 +78,8 @@ VIRTUAL = re.compile(r"(docker|br-|virbr|veth|vnet|lxcbr|lxdbr|podman|cni|flanne
 ACTIONS = {
     "media": ("toggle", "next", "previous"),
     "volume": ("up", "down", "mute"),
+    "caffeine": ("on", "off", "toggle"),
+    "night": ("on", "off", "toggle"),
 }
 
 
@@ -490,6 +492,24 @@ class Session:
 
     def lock_screen(self):
         return self.ipc("session", "lock") is not None
+
+    def toggles(self):
+        """Caffeine and night light as the quick settings have them:
+        { caffeine, night }, empty when the shell can't say."""
+        try:
+            found = json.loads(self.ipc("toggles", "state") or "")
+        except ValueError:
+            return {}
+        if not isinstance(found, dict):
+            return {}
+        return {key: found[key] for key in ("caffeine", "night") if isinstance(found.get(key), bool)}
+
+    def switch(self, kind, action):
+        """Caffeine or night light on, off or over; whether it is on now, None
+        when the shell didn't answer."""
+        if self.ipc(kind, action) is None:
+            return None
+        return self.toggles().get(kind)
 
     def notify(self, title, body):
         command = [self.config["notify"], "-a", "NIHIL", title]
@@ -1034,7 +1054,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 self.reply(200, merged)
         elif method == "GET" and path == "/v1/state":
-            self.reply(200, {"media": session.playing(), "volume": session.volume()})
+            self.reply(200, {"media": session.playing(), "volume": session.volume(), **session.toggles()})
         elif method == "POST" and path == "/v1/open":
             if "app" in body:
                 result = session.launch(body.get("app"))
@@ -1044,11 +1064,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 result = "invalid"
             status = {"ok": 200, "unknown": 404, "invalid": 400, "shell": 503}[result]
             self.reply(status, {"ok": True} if result == "ok" else {"error": result})
-        elif method == "POST" and path in ("/v1/media", "/v1/volume"):
+        elif method == "POST" and path in ("/v1/media", "/v1/volume", "/v1/caffeine", "/v1/night"):
             kind = path[len("/v1/"):]
             action = body.get("action")
             if action not in ACTIONS[kind]:
                 self.reply(400, {"error": "action"})
+            elif kind in ("caffeine", "night"):
+                on = session.switch(kind, action)
+                if on is None:
+                    self.reply(503, {"error": "shell"})
+                else:
+                    self.reply(200, {"on": on})
             elif kind == "media":
                 if session.media(action):
                     self.reply(200, {"ok": True})
