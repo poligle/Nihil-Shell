@@ -597,7 +597,7 @@ class AgentTest(unittest.TestCase):
 
     def test_no_room(self):
         # A model bigger than the machine is not loaded: the question says so,
-        # and Ollama is never asked.
+        # Ollama is never asked and the eyes don't wake up for it.
         with open(self.meminfo, "w") as f:
             f.write("MemTotal:       16000000 kB\nMemAvailable:   12000000 kB\n")
         self.ollama.installed["qwen3.5:35b-a3b"] = 22_000_000_000
@@ -609,8 +609,7 @@ class AgentTest(unittest.TestCase):
         self.assertEqual([e["code"] for e in events if e["ev"] == "error"], ["memory"])
         self.assertTrue(events[-1]["failed"])
         self.assertEqual((self.ollama.chats, self.ollama.loads), ([], []))
-        states = [e for e in self.agent.log if e["ev"] == "state"]
-        self.assertFalse(states[-1]["loading"])
+        self.assertFalse(any(e["loading"] for e in self.agent.log if e["ev"] == "state"))
 
     def test_every_model_where_the_machine_says(self):
         # The 35B as the 9B, with an integrated GPU too: the same options
