@@ -91,10 +91,12 @@ Flickable {
                     onPicked: value => Machine.set("clipboard", value)
                 }
 
-                KeyButton {
+                CircleButton {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Clipboard.enabled
-                    text: Lang.cfgClipboardWipe
+                    glyph: Icons.broom
+                    label: Lang.cfgClipboardWipe
+                    size: 30
                     onClicked: Clipboard.wipe()
                 }
             }
