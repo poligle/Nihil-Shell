@@ -61,6 +61,14 @@ elif args[:2] == ["tasks", "sync"]:
     board["cards"].append({"id": "a", "text": "Desk", "column": 0, "textStamp": 1, "placeStamp": 1})
     board["now"] = 5
     print(json.dumps(board))
+elif args[:2] == ["toggles", "state"] or (args[:1] in (["caffeine"], ["night"]) and args[1:] in (["on"], ["off"], ["toggle"])):
+    path = os.environ["DECK_LOG"] + ".toggles"
+    state = json.load(open(path)) if os.path.exists(path) else {"caffeine": False, "night": False}
+    if args[0] == "toggles":
+        print(json.dumps(state))
+    else:
+        state[args[0]] = {"on": True, "off": False}.get(args[1], not state[args[0]])
+        json.dump(state, open(path, "w"))
 elif args[0] == "media" or args == ["session", "lock"]:
     pass
 else:
@@ -360,11 +368,16 @@ class ServerTest(Base):
         self.assertEqual(self.phone.request("POST", "/v1/media", {"action": "shutdown"})[0], 400)
         self.assertEqual(self.phone.request("POST", "/v1/volume", {"action": "up"}), (200, {"level": 45, "muted": False}))
         self.assertEqual(self.phone.request("POST", "/v1/lock", {}), (200, {"ok": True}))
+        self.assertEqual(self.phone.request("POST", "/v1/caffeine", {"action": "toggle"}), (200, {"on": True}))
+        self.assertEqual(self.phone.request("POST", "/v1/night", {"action": "on"}), (200, {"on": True}))
+        self.assertEqual(self.phone.request("POST", "/v1/night", {"action": "toggle"}), (200, {"on": False}))
+        self.assertEqual(self.phone.request("POST", "/v1/caffeine", {"action": "sudo"})[0], 400)
 
         status, body = self.phone.request("GET", "/v1/state")
         self.assertEqual(status, 200)
         self.assertEqual(body["media"]["title"], "Song")
         self.assertEqual(body["volume"], {"level": 45, "muted": False})
+        self.assertEqual((body["caffeine"], body["night"]), (True, False))
 
         calls = self.logged()
         self.assertIn("ipc apps launch zen-beta", calls)
@@ -373,6 +386,8 @@ class ServerTest(Base):
         self.assertIn("ipc media toggle", calls)
         self.assertIn("osd-volume up", calls)
         self.assertIn("ipc session lock", calls)
+        self.assertIn("ipc caffeine toggle", calls)
+        self.assertNotIn("ipc caffeine sudo", calls)
         self.assertFalse(any("shadow" in call or "rm -rf" in call for call in calls))
 
         self.assertEqual(self.phone.request("GET", "/v1/nothing")[0], 404)
@@ -385,6 +400,8 @@ class ServerTest(Base):
         self.deck.session.cached = None
         self.assertEqual(self.phone.request("GET", "/v1/apps")[0], 503)
         self.assertEqual(self.phone.request("POST", "/v1/media", {"action": "next"})[0], 503)
+        self.assertEqual(self.phone.request("POST", "/v1/night", {"action": "toggle"})[0], 503)
+        self.assertNotIn("caffeine", self.phone.request("GET", "/v1/state")[1])
 
     def test_icons(self):
         theme = os.path.join(self.folder, "share", "icons", "Test-Theme", "48x48", "apps")

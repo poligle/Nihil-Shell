@@ -17,6 +17,25 @@ Singleton {
         settle.restart();
     }
 
+    // Night light from outside, as caffeine has it; and both at once for the
+    // deck (home/deck), which shows them lit on the phone.
+    //   qs -c nihil ipc call night toggle|on|off|status
+    //   qs -c nihil ipc call toggles state
+    IpcHandler {
+        target: "night"
+
+        function toggle(): void { root.night = !root.night; }
+        function on(): void { root.night = true; }
+        function off(): void { root.night = false; }
+        function status(): string { return root.night ? "on" : "off"; }
+    }
+
+    IpcHandler {
+        target: "toggles"
+
+        function state(): string { return JSON.stringify({ caffeine: Caffeine.on, night: root.night }); }
+    }
+
     // hyprsunset runs while night light is on; stopping the process restores colours.
     Process {
         command: [Config.cmd.hyprsunset, "-t", "4300"]
