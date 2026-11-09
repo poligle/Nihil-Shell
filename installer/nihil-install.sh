@@ -194,6 +194,23 @@ has_windows() {
     return "$present"
 }
 
+# Windows on another disk: its boot manager is on that disk's EFI partition,
+# and systemd-boot only lists what is on its own. The first such disk.
+windows_elsewhere() {
+    local other part
+    while read -r other; do
+        [ "$other" != "$disk" ] || continue
+        while read -r part; do
+            if [ "$(blkid -p -o value -s PART_ENTRY_TYPE "$part" 2>/dev/null | tr '[:upper:]' '[:lower:]')" = c12a7328-f81f-11d2-ba4b-00a0c93ec93b ] \
+                    && has_windows "$part"; then
+                echo "$other"
+                return 0
+            fi
+        done < <(lsblk -pnro NAME,TYPE "$other" | awk '$2 == "part" { print $1 }')
+    done < <(lsblk -dpnro NAME,TYPE | awk '$2 == "disk" { print $1 }')
+    return 0
+}
+
 # The first and last sector of each stretch of free space of at least $1
 # bytes, aligned to 1 MiB.
 free_stretches() {
@@ -595,7 +612,14 @@ else
     gum style --foreground 1 --margin "1 0" "$(t "$root will be formatted" "Se formateará $root")$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")$(t "; the rest of $disk stays as it is." "; el resto de $disk se queda como está.")"
 fi
 if [ "$mode" != whole ] && [ "$windows" = yes ]; then
-    dim "$(t "The boot menu will offer Windows too." "El menú de arranque ofrecerá también Windows.")"
+    dim "$(t "The boot menu will offer Windows too. If Windows uses BitLocker, it may ask for its recovery key the first time: keep it at hand." \
+             "El menú de arranque ofrecerá también Windows. Si Windows usa BitLocker, puede pedir su clave de recuperación la primera vez: tenla a mano.")"
+else
+    elsewhere=$(windows_elsewhere)
+    if [ -n "$elsewhere" ]; then
+        dim "$(t "Windows, on $elsewhere, stays in the computer's own boot menu (the key it shows as it starts: F12, F11, Esc…): NIHIL's lists what is on its own disk." \
+                 "Windows, en $elsewhere, sigue en el menú de arranque del propio ordenador (la tecla que indica al encenderse: F12, F11, Esc…): el de NIHIL muestra lo que hay en su disco.")"
+    fi
 fi
 gum confirm "$(t "Install NIHIL?" "¿Instalar NIHIL?")" --affirmative "$(t "Install" "Instalar")" --negative "$(t "Cancel" "Cancelar")" \
     --default=false || exit 1

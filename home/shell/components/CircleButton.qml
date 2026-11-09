@@ -1,11 +1,13 @@
 import QtQuick
 import qs.theme
 
-// Round icon button with a hairline border.
+// Round icon button with a hairline border. `label` names it for screen
+// readers, as the word it stands for.
 Rectangle {
     id: root
 
     property string glyph: ""
+    property string label: ""
     property int size: 36
     property bool danger: false
     property bool filled: false
@@ -15,6 +17,8 @@ Rectangle {
 
     implicitWidth: size
     implicitHeight: size
+    Accessible.role: Accessible.Button
+    Accessible.name: root.label
     radius: size / 2
     color: filled ? Tokens.ink : (area.containsMouse ? Tokens.raised : "transparent")
     border.width: filled ? 0 : 1
