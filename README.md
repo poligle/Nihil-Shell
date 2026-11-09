@@ -559,8 +559,9 @@ a token of its own. The computer keeps only the token's hash, says when a phone 
 lists the phones, each to forget. When its address changes, the phone finds it again by
 mDNS (`_nihil-deck._tcp`).
 
-On the phone the deck is one landscape screen in workspaces: the music, the volume and the
-lock in one; the apps and the webs in the other, each with its icon. The apps' come from this
+On the phone the deck is one landscape screen in workspaces: the music and the volume in one;
+the apps and the webs in the other, each with its icon. Above them, this computer's caffeine,
+night light and lock, with the desktop's own icons and lit while on. The apps' come from this
 computer's icon theme; the webs' (`GET /v1/favicon`) are found by this computer on each site,
 only at public addresses and kept a week, so the phone talks to no one else. The phone reads
 the QR with a reader of its own, and sharing a web to *Open on the computer* opens it here. It
