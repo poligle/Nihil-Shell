@@ -10,24 +10,26 @@
 	{
 		nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-		home-manager = 
+		home-manager =
 		{
 			url = "github:nix-community/home-manager/release-26.05";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
 
-        stylix = 
+		stylix =
 		{
 			url = "github:nix-community/stylix/release-26.05";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
 
-        zen-browser = {
-            url = "github:0xc000022070/zen-browser-flake";
-            inputs = {
-                home-manager.follows = "home-manager";
-            };
-        };
+		# Zen on this nixpkgs too: its own (nixos-unstable) was a second nixpkgs
+		# to fetch and evaluate, and a second set of libraries in every machine.
+		zen-browser =
+		{
+			url = "github:0xc000022070/zen-browser-flake";
+			inputs.nixpkgs.follows = "nixpkgs";
+			inputs.home-manager.follows = "home-manager";
+		};
 	};
 	outputs = inputs@{ self, nixpkgs, home-manager, stylix, zen-browser, ... }:
 	let
