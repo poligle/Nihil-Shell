@@ -561,7 +561,9 @@ On the phone the deck is one landscape screen in workspaces: the music, the volu
 lock in one; the apps and the webs in the other, each with its icon. The apps' come from this
 computer's icon theme; the webs' (`GET /v1/favicon`) are found by this computer on each site,
 only at public addresses and kept a week, so the phone talks to no one else. The phone reads
-the QR with a reader of its own, and sharing a web to *Open on the computer* opens it here.
+the QR with a reader of its own, and sharing a web to *Open on the computer* opens it here. It
+shows the cover of what plays, and keeps the dashboard's kanban in sync with its own: each side
+goes on when they are apart, and the next sync keeps what both did (`docs/deck.md`).
 
 The service is [`home/deck/deck.py`](home/deck/deck.py), standard-library Python in the
 user's session, which opens what it is asked through the shell (`nihil-ipc apps`,
