@@ -37,7 +37,7 @@ Singleton {
         function now(): string {
             const player = root.active;
             return JSON.stringify(player === null ? null
-                : { title: player.trackTitle ?? "", artist: player.trackArtist ?? "", player: player.identity ?? "", playing: player.isPlaying });
+                : { title: player.trackTitle ?? "", artist: player.trackArtist ?? "", player: player.identity ?? "", playing: player.isPlaying, art: player.trackArtUrl ?? "" });
         }
     }
 

@@ -63,6 +63,9 @@ CODE_LENGTH = 8
 CODE_LIFETIME = 300             # seconds a code pairs
 CODE_ATTEMPTS = 5               # wrong codes before it stops pairing
 MAX_BODY = 4096
+TASKS_MAX = 256 * 1024     # a phone's whole kanban
+COVER_MAX = 4 * 1024 * 1024
+CARDS_MAX = 1000
 FAIL_WINDOW = 60                # seconds, and how many failures in them
 FAIL_LIMIT = 10
 SEEN_EVERY = 60                 # seconds between writes of "last seen"
@@ -366,6 +369,8 @@ class Session:
             return None
         return done.stdout.strip() if done.returncode == 0 else None
 
+    cover_cache = None
+
     def ipc(self, *arguments):
         return self.run([self.config["ipc"], *arguments])
 
@@ -427,6 +432,47 @@ class Session:
             return None
         try:
             found = json.loads(text)
+        except ValueError:
+            return None
+        if not isinstance(found, dict):
+            return None
+        # The cover's address stays here: the phone gets a token that changes with it.
+        art = str(found.pop("art", "") or "")
+        found["cover"] = hashlib.sha256(art.encode()).hexdigest()[:16] if art else ""
+        return found
+
+    def cover(self, token):
+        """The cover of what plays as (bytes, type), when [token] is still its token."""
+        text = self.ipc("media", "now")
+        try:
+            art = str(json.loads(text or "null").get("art") or "")
+        except (ValueError, AttributeError):
+            return None
+        if not art or hashlib.sha256(art.encode()).hexdigest()[:16] != token:
+            return None
+        with self.lock:
+            if self.cover_cache and self.cover_cache[0] == art:
+                return self.cover_cache[1]
+        found = None
+        try:
+            if art.startswith("file://"):
+                local = urllib.parse.unquote(urllib.parse.urlsplit(art).path)
+                if os.path.getsize(local) <= COVER_MAX:
+                    with open(local, "rb") as file:
+                        found = as_image(file.read(), self.config.get("rsvg", "rsvg-convert"))
+            elif valid_url(art):
+                found = as_image(fetch(art, COVER_MAX)[1], self.config.get("rsvg", "rsvg-convert"))
+        except (OSError, ValueError, urllib.error.URLError, http.client.HTTPException):
+            found = None
+        with self.lock:
+            self.cover_cache = (art, found)
+        return found
+
+    def tasks(self, board=None):
+        """The desktop's kanban (Tasks.qml); with a phone's [board], merged first."""
+        text = self.ipc("tasks", "state") if board is None else self.ipc("tasks", "sync", json.dumps(board))
+        try:
+            found = json.loads(text or "")
         except ValueError:
             return None
         return found if isinstance(found, dict) else None
@@ -558,6 +604,36 @@ def icon_png(path, rsvg, cache):
             pass
         return None
     return out
+
+
+# --- The kanban ------------------------------------------------------------------
+
+def clean_board(body):
+    """A phone's kanban, its shape checked: { cards: [...], removed: { id: when } }."""
+    cards = body.get("cards", [])
+    removed = body.get("removed", {})
+    if not isinstance(cards, list) or not isinstance(removed, dict) or len(cards) > CARDS_MAX or len(removed) > 10 * CARDS_MAX:
+        return None
+    clean = []
+    for card in cards:
+        if not isinstance(card, dict):
+            return None
+        ident, text, column = card.get("id"), card.get("text"), card.get("column")
+        stamps = (card.get("textStamp"), card.get("placeStamp"))
+        if not isinstance(ident, str) or not 0 < len(ident) <= 64 or not isinstance(text, str) or not text.strip():
+            return None
+        if not isinstance(column, int) or isinstance(column, bool) or not 0 <= column <= 2:
+            return None
+        if not all(isinstance(t, int) and not isinstance(t, bool) and t >= 0 for t in stamps):
+            return None
+        clean.append({"id": ident, "text": " ".join(text.split())[:160], "column": column,
+                      "textStamp": stamps[0], "placeStamp": stamps[1]})
+    gone = {}
+    for ident, when in removed.items():
+        if not isinstance(ident, str) or not 0 < len(ident) <= 64 or not isinstance(when, int) or isinstance(when, bool) or when < 0:
+            return None
+        gone[ident] = when
+    return {"cards": clean, "removed": gone}
 
 
 # --- The webs' icons ------------------------------------------------------------
@@ -846,12 +922,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def read_body(self):
+    def read_body(self, limit=MAX_BODY):
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             length = -1
-        if length < 0 or length > MAX_BODY:
+        if length < 0 or length > limit:
             self.close_connection = True
             return None
         data = self.rfile.read(length) if length else b""
@@ -867,7 +943,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.route("GET", {})
 
     def do_POST(self):
-        body = self.read_body()
+        # A phone's kanban can be more than any other request.
+        body = self.read_body(TASKS_MAX if urllib.parse.urlsplit(self.path).path == "/v1/tasks" else MAX_BODY)
         if body is None:
             self.reply(400, {"error": "body"})
             return
@@ -933,6 +1010,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.reply(404, {"error": "icon"})
             else:
                 self.image(*found)
+        elif method == "GET" and path == "/v1/cover":
+            token = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("c", [""])[0]
+            found = session.cover(token) if re.fullmatch(r"[0-9a-f]{16}", token) else None
+            if found is None:
+                self.reply(404, {"error": "cover"})
+            else:
+                self.image(*found)
+        elif method == "GET" and path == "/v1/tasks":
+            board = session.tasks()
+            if board is None:
+                self.reply(503, {"error": "shell"})
+            else:
+                self.reply(200, board)
+        elif method == "POST" and path == "/v1/tasks":
+            board = clean_board(body)
+            if board is None:
+                self.reply(400, {"error": "invalid"})
+                return
+            merged = session.tasks(board)
+            if merged is None:
+                self.reply(503, {"error": "shell"})
+            else:
+                self.reply(200, merged)
         elif method == "GET" and path == "/v1/state":
             self.reply(200, {"media": session.playing(), "volume": session.volume()})
         elif method == "POST" and path == "/v1/open":
