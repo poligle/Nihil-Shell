@@ -156,7 +156,7 @@ button.pill, label.pill { cursor: pointer; }
 .handle span {
   position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%);
   padding: 4px 10px; border-radius: 999px; background: var(--ink); color: var(--void);
-  font: 400 11px/1.3 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  font: 400 11px/1.3 var(--mono); letter-spacing: 0.04em; white-space: nowrap;
 }
 .empty {
   position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center; padding: 24px;
@@ -165,7 +165,7 @@ button.pill, label.pill { cursor: pointer; }
 .empty[hidden] { display: none; }
 .empty p { margin: 0; }
 .empty .big { font: 700 clamp(26px, 4vw, 40px)/1.1 var(--dot); color: var(--dim); }
-.busy { position: absolute; right: 14px; bottom: 12px; font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.busy { position: absolute; right: 14px; bottom: 12px; font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em; }
 .busy[hidden] { display: none; }
 
 .controls { display: grid; gap: 14px; margin-top: 18px; }
@@ -180,7 +180,7 @@ button.pill, label.pill { cursor: pointer; }
 select { padding-right: 36px; appearance: none; cursor: pointer;
   background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%), linear-gradient(135deg, var(--dim) 50%, transparent 50%);
   background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
-.label { font: 400 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.label { font: 400 11px/1 var(--mono); letter-spacing: 0.04em; color: var(--muted); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
 .seg button {
   appearance: none; border: 0; border-radius: 999px; min-height: 38px; padding: 0 16px; cursor: pointer;
@@ -315,12 +315,12 @@ footer a:hover { color: var(--ink); }
           <canvas id="leds" aria-label="The picture as an LED matrix" role="img"></canvas>
           <canvas id="original" aria-hidden="true"></canvas>
           <svg id="frame" aria-hidden="true" preserveAspectRatio="none"><path fill="#000" fill-rule="evenodd" d=""/></svg>
-          <div class="handle" aria-hidden="true"><span>photo / LEDs</span></div>
+          <div class="handle" aria-hidden="true"><span>Photo / LEDs</span></div>
           <div class="empty" id="empty">
             <p class="big">Drop a picture</p>
             <p class="meta">or paste one (ctrl&nbsp;+&nbsp;v), choose a file, give its address below, or <a href="#" id="sample">try a night sky</a></p>
           </div>
-          <div class="busy" id="busy" hidden>drawing</div>
+          <div class="busy" id="busy" hidden>Drawing</div>
         </div>
       </div>
 
@@ -892,7 +892,7 @@ nihil-wallpaper set night</code></pre></div>
     if (!source) return;
     const ticket = ++drawing;
     playing++;
-    busy.textContent = "drawing";
+    busy.textContent = "Drawing";
     busy.hidden = false;
     download.disabled = true;
     // Let the page show "drawing" before the work starts.
@@ -917,7 +917,7 @@ nihil-wallpaper set night</code></pre></div>
             frames.push({ d, delay: delay > 10 ? delay : 100 });
             if (keep) thumbs.push(await createImageBitmap(image));
             if (k === 0) drawDots(ctx, width, height, pitch, d);
-            busy.textContent = `drawing ${k + 1} / ${source.count}`;
+            busy.textContent = `Drawing ${k + 1} / ${source.count}`;
             await new Promise(next => setTimeout(next, 0));
           });
           if (frames.length === 0) throw new Error("no frames");
@@ -1151,7 +1151,7 @@ nihil-wallpaper set night</code></pre></div>
       for (let i = 0; i < indices.length; i++) indices[i] = rgba[i * 4];
       return { indices, delay: frames[k].delay };
     }, (k, n) => {
-      busy.textContent = `gif ${k} / ${n}`;
+      busy.textContent = `GIF ${k} / ${n}`;
       return new Promise(next => setTimeout(next, 0));
     });
     busy.hidden = true;
@@ -1165,11 +1165,11 @@ nihil-wallpaper set night</code></pre></div>
     const button = document.createElement("button");
     button.className = "copy";
     button.type = "button";
-    button.textContent = "copy";
+    button.textContent = "Copy";
     button.addEventListener("click", () => navigator.clipboard.writeText(block.querySelector("code").textContent).then(() => {
-      button.textContent = "copied";
+      button.textContent = "Copied";
       glyph();
-      setTimeout(() => (button.textContent = "copy"), 1400);
+      setTimeout(() => (button.textContent = "Copy"), 1400);
     }));
     block.append(button);
   });
