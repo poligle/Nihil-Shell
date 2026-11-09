@@ -158,8 +158,9 @@ have, from a clone of this repository. Either way the machine keeps what is its 
 
 [Releases](https://github.com/poligle/Nihil-Shell/releases) has the ISO: `latest`, built
 from every push, or a tagged version; it installs the NIHIL of the commit it was built from.
-Check it against `SHA256SUMS`, next to it, write it to a USB stick, boot it (UEFI) and the
-installer starts on its own:
+Check it against `SHA256SUMS`, next to it, write it to a USB stick, boot it (UEFI, with
+Secure Boot off in the firmware: NixOS isn't signed for it) and the installer starts on
+its own:
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
@@ -187,6 +188,13 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: th
    a reader or for your password, never both, and rebuilds the system on its own
    (`nihil apply`), which keeps going if the shell restarts and puts the old settings
    back if the build fails.
+
+Next to Windows, three things to know. NIHIL's menu, the first thing that starts, shows
+for 5 seconds what is on its own disk: Windows on another disk stays in the computer's own
+boot menu (the key it shows as it starts: F12, F11, Esc…), and the installer says so. A
+Windows update can put Windows first again: choose Linux Boot Manager first in the
+firmware. And a Windows with BitLocker asks for its recovery key when Secure Boot changes,
+or the first time it starts from another menu: have it at hand before you begin.
 
 It finds the screens and the GPU on its own and installs over the network (almost all of
 NIHIL comes from cache.nixos.org; its wallpapers, splash and fonts are made on the spot).
