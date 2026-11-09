@@ -536,13 +536,13 @@ nihil generations clean 7</code></pre>
       <ol class="steps">
         <li>
           <h3>Download the installer</h3>
-          <p>The ISO is in <a href="https://github.com/poligle/Nihil-Shell/releases">Releases</a>: <code>latest</code>, built from every push, or a tagged version. Check it against <code>SHA256SUMS</code>, write it to a USB stick and boot it (UEFI).</p>
+          <p>The ISO is in <a href="https://github.com/poligle/Nihil-Shell/releases">Releases</a>: <code>latest</code>, built from every push, or a tagged version. Check it against <code>SHA256SUMS</code>, write it to a USB stick and boot it (UEFI, with Secure Boot off: NixOS isn't signed for it).</p>
           <div class="code"><pre><code>sha256sum -c SHA256SUMS --ignore-missing
 sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync</code></pre></div>
         </li>
         <li>
           <h3>Answer a few questions</h3>
-          <p>Language, network, keyboard, time zone, your name and password, and where it goes: a whole disk, or next to Windows or another system, in room it makes by shrinking it safely, and the rest stays as it is. It finds your screens and GPU on its own.</p>
+          <p>Language, network, keyboard, time zone, your name and password, and where it goes: a whole disk, or next to Windows or another system, in room it makes by shrinking it safely, and the rest stays as it is. Its boot menu offers the other system too; Windows on another disk stays in the computer's own (F12, F11, Esc…), and a Windows with BitLocker asks for its recovery key once: have it at hand. It finds your screens and GPU on its own.</p>
         </li>
         <li>
           <h3>Make it yours</h3>
