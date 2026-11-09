@@ -421,7 +421,7 @@ Item {
 
                     Label { text: Lang.notifications.arg(Notifs.history.length) }
                     Item { Layout.fillWidth: true }
-                    KeyButton { text: Lang.clear; visible: Notifs.history.length > 0; onClicked: Notifs.clear() }
+                    CircleButton { glyph: Icons.broom; label: Lang.clear; size: 28; visible: Notifs.history.length > 0; onClicked: Notifs.clear() }
                 }
 
                 Repeater {
