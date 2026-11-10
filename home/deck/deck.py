@@ -38,6 +38,7 @@ import http.client
 import http.server
 import ipaddress
 import json
+import math
 import os
 import re
 import secrets
@@ -629,7 +630,8 @@ def icon_png(path, rsvg, cache):
 # --- The kanban ------------------------------------------------------------------
 
 def clean_board(body):
-    """A phone's kanban, its shape checked: { cards: [...], removed: { id: when } }."""
+    """A phone's kanban, its shape checked: { cards: [...], removed: { id: when } };
+    a card's rank, when it has one, a finite number."""
     cards = body.get("cards", [])
     removed = body.get("removed", {})
     if not isinstance(cards, list) or not isinstance(removed, dict) or len(cards) > CARDS_MAX or len(removed) > 10 * CARDS_MAX:
@@ -646,8 +648,14 @@ def clean_board(body):
             return None
         if not all(isinstance(t, int) and not isinstance(t, bool) and t >= 0 for t in stamps):
             return None
-        clean.append({"id": ident, "text": " ".join(text.split())[:160], "column": column,
-                      "textStamp": stamps[0], "placeStamp": stamps[1]})
+        kept = {"id": ident, "text": " ".join(text.split())[:160], "column": column,
+                "textStamp": stamps[0], "placeStamp": stamps[1]}
+        rank = card.get("rank")
+        if rank is not None:
+            if not isinstance(rank, (int, float)) or isinstance(rank, bool) or not math.isfinite(rank):
+                return None
+            kept["rank"] = rank
+        clean.append(kept)
     gone = {}
     for ident, when in removed.items():
         if not isinstance(ident, str) or not 0 < len(ident) <= 64 or not isinstance(when, int) or isinstance(when, bool) or when < 0:

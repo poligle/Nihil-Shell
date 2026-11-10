@@ -447,6 +447,12 @@ class ServerTest(Base):
         self.assertEqual([c["id"] for c in body["cards"]], ["p", "a"])
         self.assertEqual(body["cards"][0]["text"], "Phone card")
         self.assertEqual(body["removed"], {"z": 2})
+        # A card's rank in its column goes as it came; one that isn't a number is no rank.
+        ranked = {"cards": [{"id": "r", "text": "Ranked", "column": 0, "textStamp": 1, "placeStamp": 1, "rank": 2.5}]}
+        status, body = self.phone.request("POST", "/v1/tasks", ranked)
+        self.assertEqual((status, body["cards"][0]["rank"]), (200, 2.5))
+        self.assertNotIn("rank", body["cards"][1])
+        self.assertEqual(self.phone.request("POST", "/v1/tasks", {"cards": [dict(ranked["cards"][0], rank="first")]})[0], 400)
         for bad in ({"cards": [{"id": "x", "text": "No column", "textStamp": 1, "placeStamp": 1}]},
                     {"cards": "nope"}, {"removed": {"x": "yesterday"}}):
             self.assertEqual(self.phone.request("POST", "/v1/tasks", bad)[0], 400)
