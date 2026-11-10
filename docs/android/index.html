@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NIHIL Launcher</title>
-<meta name="description" content="The NIHIL language on the phone: the wallpaper set into a black frame, a clock made of LEDs and a drawer that grows out of the frame. Open source, no ads, no tracking.">
+<meta name="description" content="The NIHIL language on the phone: the wallpaper set into a black frame, a clock made of LEDs, a drawer that grows out of the frame, and the phone as a deck and a trackpad for your computer. Open source, no ads, no tracking.">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://nihilshell.com/android/">
@@ -207,6 +207,9 @@ p { margin: 0 0 16px; }
 .deck-shots figure { margin: 0; }
 .deck-shots a { display: block; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
 .deck-shots img { display: block; width: 100%; height: auto; }
+.deck-shots .wide { grid-column: 1 / -1; }
+.deck-shots figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--muted); }
+#tasks { margin-top: 88px; }
 
 /* ---------- screens ---------- */
 .phones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 48px; max-width: 980px; }
@@ -348,7 +351,7 @@ footer a:hover { color: var(--ink); }
           <div class="wordmark" id="wordmark"><img src="nihil-logo-dark.svg" alt="NIHIL" width="370" height="90"></div>
           <p class="motto"><i>ex nihilo</i></p>
           <h1 id="title">A dot&#8209;matrix launcher for Android</h1>
-        <p class="lede">The same language on the phone: the wallpaper set into a black frame, the desktop's clock, its light and its launcher, and the phone as a deck for your computer. Open source, no ads, no tracking.</p>
+        <p class="lede">The same language on the phone: the wallpaper set into a black frame, the desktop's clock, its light and its launcher, and the phone as a deck and a trackpad for your computer. Open source, no ads, no tracking.</p>
           <div class="actions">
             <a class="pill primary" href="https://github.com/poligle/Nihil-Launcher/releases/latest">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8.5M4.5 7.2 8 10.7l3.5-3.5M2.5 13.8h11"/></svg>
@@ -427,6 +430,7 @@ footer a:hover { color: var(--ink); }
       </div>
       <ul class="examples">
         <li><kbd>camara</kbd><span>finds Cámara; <code>settings</code> finds Ajustes, by its package name.</span></li>
+        <li><kbd>yout</kbd><span>finds a web you keep on the phone, by its name or its address.</span></li>
         <li><kbd>&gt;</kbd><span>lists the actions: torch, the Wi&#8209;Fi and sound panels, Bluetooth, battery, alarms, lock, the wallpaper studio and the settings. They also turn up in normal search: <code>lin</code> is the torch.</span></li>
         <li><kbd>=</kbd><span>is a calculator near the desktop's qalc: percentages (<code>200 + 15%</code>), units (<code>10 km to mi</code>, <code>100 °F a °C</code>), hex and binary, and calculus: <code>diff(x^2)</code>, <code>integrate(x^2; 0; 3)</code>, <code>solve(x^2 = 4)</code>. Enter copies the result.</span></li>
         <li><kbd>10 km to mi</kbd><span>converts without the <code>=</code>, as a sum is worked out.</span></li>
@@ -441,17 +445,32 @@ footer a:hover { color: var(--ink); }
             <tr><td class="what">Swipe up</td><td>The drawer, following your finger</td></tr>
             <tr><td class="what">Swipe down</td><td>The notification shade</td></tr>
             <tr><td class="what">Double tap</td><td>Locks the phone (optional)</td></tr>
-            <tr><td class="what">Hold empty space</td><td>Wallpaper and settings</td></tr>
+            <tr><td class="what">Hold empty space</td><td>The wallpaper studio, a new web and the settings</td></tr>
             <tr><td class="what">Hold an app</td><td>Its shortcuts; add to home, move, hide, info, uninstall</td></tr>
+            <tr><td class="what">Hold a web</td><td>Add to home, move, write it again with the pencil, remove</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="webs" aria-labelledby="webs-title">
+      <div class="split">
+        <div class="prose">
+          <h2 id="webs-title">Webs, as apps</h2>
+          <p class="quiet">Hold the home screen and add a web, or share a page from a browser to NIHIL: its address and, if you like, a name. It waits in the drawer among the apps, search finds it by its name or its address, and it goes on the home screen like them.</p>
+          <p class="quiet">It opens in Chrome, each web in a tab of its own that opening it again goes back to. Its icon comes from your computer, as the deck's webs' do, so the phone still talks to no one else.</p>
+        </div>
+        <figure class="studio-shot">
+          <img src="../assets/screens/android-menu.webp" width="1080" height="1415" loading="lazy" alt="The home screen held: over the clock's card, the menu with NIHIL wallpaper, Add a web and NIHIL settings, each with its icon.">
+          <figcaption>Hold the home screen.</figcaption>
+        </figure>
       </div>
     </section>
 
     <section id="deck" aria-labelledby="deck-title">
       <div class="prose">
         <h2 id="deck-title">The phone as a deck</h2>
-        <p class="quiet">Paired with <a href="../#deck">NIHIL on your computer</a> by the QR in its Preferences, the phone opens the computer's apps and webs, plays and skips its music with its cover, turns its volume, its caffeine and its night light, locks it, and keeps the desktop's kanban in sync, even after days apart. In landscape, on one screen, in workspaces as the desktop's: the music in one, the apps and the webs in the other, put in order by holding them. Share a web from the browser to open it there.</p>
+        <p class="quiet">Paired with <a href="../#deck">NIHIL on your computer</a> by the QR in its Preferences, the phone opens the computer's apps and webs, plays and skips its music with its cover, turns its volume, its caffeine and its night light, locks it, is its trackpad, and keeps the desktop's kanban in sync, even after days apart. In landscape, on one screen, in workspaces as the desktop's: the music, the apps and the webs, and the trackpad; swipe the header or tap the dots to go from one to another. Share a web from the browser to open it there.</p>
       </div>
       <div class="deck-shots" id="deck-shots">
         <figure data-optional>
@@ -460,6 +479,15 @@ footer a:hover { color: var(--ink); }
         <figure data-optional>
           <a href="../assets/screens/android-deck-apps.webp"><img src="../assets/screens/small/android-deck-apps-1000.webp" srcset="../assets/screens/small/android-deck-apps-1000.webp 1000w, ../assets/screens/android-deck-apps.webp 2340w" sizes="(max-width: 900px) 100vw, 480px" width="2340" height="1080" loading="lazy" alt="The deck's second workspace: the computer's apps with their icons, and the webs kept on the phone with their favicons."></a>
         </figure>
+      </div>
+      <div class="deck-shots">
+        <figure class="wide">
+          <a href="../assets/screens/android-deck-trackpad.webp"><img src="../assets/screens/small/android-deck-trackpad-1000.webp" srcset="../assets/screens/small/android-deck-trackpad-1000.webp 1000w, ../assets/screens/android-deck-trackpad.webp 2340w" sizes="(max-width: 900px) 100vw, 980px" width="2340" height="1080" loading="lazy" alt="The deck's trackpad full screen: a field of dim dots from edge to edge, lit white around a finger, and the key to leave full screen in its corner."></a>
+          <figcaption>The trackpad, full screen. The dots light up under your fingers.</figcaption>
+        </figure>
+      </div>
+      <div class="prose">
+        <p class="quiet">The trackpad is the computer's own touchpad: the fingers go as they are, and its driver reads them as it reads the laptop's, with its settings. A tap clicks, two fingers right-click and scroll, three middle-click, a pinch zooms, and the desktop's gestures run: workspaces, closing a window, the launcher. Full screen from its corner, and back.</p>
       </div>
       <div class="rules">
         <div>
@@ -474,6 +502,18 @@ footer a:hover { color: var(--ink); }
           <h3>Icons for everything</h3>
           <p>The apps with the computer's icon theme; the webs with icons the computer finds for them, so the phone talks to no one else.</p>
         </div>
+      </div>
+
+      <div class="split" id="tasks">
+        <div class="prose">
+          <h2>The desktop's tasks</h2>
+          <p class="quiet">The dashboard's kanban, on the phone: to do, doing and done, the same cards in the same order. Hold a card and move it to put it in order, tap its pencil to write it again; done ones are struck through, and the broom clears them.</p>
+          <p class="quiet">Every change stays on the phone at once and goes to the computer when it answers. Apart for days, each side goes on, and the next sync keeps what both did.</p>
+        </div>
+        <figure class="studio-shot">
+          <img src="../assets/screens/android-tasks.webp" width="1080" height="2198" loading="lazy" alt="Tasks on the phone, synced with the computer: To do, Doing and Done as tabs with how many cards each has, two cards to do with a pencil each, and the field for a new task at the bottom.">
+          <figcaption>Synced with the computer.</figcaption>
+        </figure>
       </div>
     </section>
 
