@@ -476,7 +476,7 @@
 		genGone = "Esa generación ya no está";
 		# Preferences, Phone: the phone as a deck (settings/PagePhone.qml, home/deck)
 		cfgPhone = "Móvil";
-		deckSub = "Con NIHIL Launcher, tu Android abre apps y webs en este ordenador, pone y pasa la música, sube y baja el volumen y lo bloquea. Nada más.";
+		deckSub = "Con NIHIL Launcher, tu Android abre apps y webs en este ordenador, pone y pasa la música, sube y baja el volumen, lo bloquea y le hace de trackpad.";
 		deckUse = "Usar el móvil";
 		deckUseSub = "Abre el puerto %1 en la red local, solo para los móviles emparejados.";
 		deckApply = "Se enciende al aplicar.";
@@ -963,7 +963,7 @@
 		genNotInMenu = "The boot menu no longer has it";
 		genGone = "That generation is gone";
 		cfgPhone = "Phone";
-		deckSub = "With NIHIL Launcher, your Android opens apps and web pages on this computer, plays and skips the music, turns the volume up and down and locks it. Nothing else.";
+		deckSub = "With NIHIL Launcher, your Android opens apps and web pages on this computer, plays and skips the music, turns the volume up and down, locks it and is its trackpad.";
 		deckUse = "Use the phone";
 		deckUseSub = "Opens port %1 on the local network, for the paired phones only.";
 		deckApply = "It turns on when applied.";

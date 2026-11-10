@@ -2,13 +2,13 @@
 #
 # The phone as a deck for this computer (docs/deck.md): NIHIL Launcher, on
 # Android, opens apps and web pages here, plays and skips the music, turns
-# the volume and locks the screen. Its service is the user's, in the session
-# (home/deck.nix); here, its port in the firewall and its name on the local
-# network (mDNS, through Avahi), so the phone finds it again when its
-# address changes. settings.json's "deck": { "enable": true } turns it on
+# the volume, locks the screen and is its trackpad. Its service is the
+# user's, in the session (home/deck.nix); here, its port in the firewall, its
+# name on the local network (mDNS, through Avahi), so the phone finds it
+# again when its address changes, and uinput for the trackpad. settings.json's "deck": { "enable": true } turns it on
 # (Preferences, Phone).
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
     cfg = config.nihil.deck;
 in
@@ -34,6 +34,25 @@ in
     config = lib.mkIf cfg.enable
     {
         networking.firewall.allowedTCPPorts = [ cfg.port ];
+
+        # The trackpad (docs/deck.md): while the phone is one, the deck makes a
+        # touchpad here with uinput, as whoever is at the computer may (uaccess,
+        # as with Steam's controllers). It is a phone's screen and not the
+        # laptop's own, so libinput leaves it on with the lid closed and while
+        # typing.
+        boot.kernelModules = [ "uinput" ];
+        services.udev.packages =
+        [
+            (pkgs.writeTextFile
+            {
+                name = "nihil-deck-udev-rules";
+                destination = "/etc/udev/rules.d/72-nihil-deck.rules";
+                text = ''
+                    KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"
+                    SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="NIHIL deck trackpad", ENV{ID_INPUT_TOUCHPAD_INTEGRATION}="external"
+                '';
+            })
+        ];
 
         # Its own address too, so the phone can resolve where the service is.
         services.avahi =
