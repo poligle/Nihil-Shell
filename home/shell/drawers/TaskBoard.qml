@@ -48,13 +48,20 @@ Item {
     property int dropIndex: -1
     property rect dropLine: Qt.rect(0, 0, 0, 0)
     property point dragAt: Qt.point(0, 0)
-    // The card whose text the pencil is writing again.
+    // The card whose text the pencil is writing again, and its field.
     property string editingId: ""
+    property Item editor: null
 
     onActiveChanged: if (!active) {
         field.text = "";
         field.focus = false;
         dragId = "";
+        stopEditing();
+    }
+
+    // Ends the pencil keeping what was written: a click elsewhere, the drawer closing.
+    function stopEditing(): void {
+        if (editor) editor.finish();
         editingId = "";
     }
 
@@ -258,19 +265,13 @@ Item {
 
                         Item { Layout.fillWidth: true }
 
-                        Label {
+                        // The done ones away, with the notifications' broom.
+                        CircleButton {
                             visible: lane.column === 2 && lane.cards.length > 0
-                            text: Lang.tasksClear
-                            color: clearArea.containsMouse ? Tokens.ink : Tokens.muted
-
-                            MouseArea {
-                                id: clearArea
-                                anchors.fill: parent
-                                anchors.margins: -6
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: Tasks.clearDone()
-                            }
+                            glyph: Icons.broom
+                            label: Lang.tasksClear
+                            size: 22
+                            onClicked: Tasks.clearDone()
                         }
                     }
 
@@ -372,7 +373,7 @@ Item {
                             }
 
                             // The pencil: the text written again where it is. Enter keeps
-                            // it, and so does leaving it; Escape leaves it as it was.
+                            // it, and so does a click anywhere else; Escape leaves it as it was.
                             QQC.TextArea {
                                 id: editor
                                 visible: card.editing
@@ -394,6 +395,7 @@ Item {
                                 property bool keeping: true
 
                                 onVisibleChanged: if (visible) {
+                                    root.editor = editor;
                                     keeping = true;
                                     text = card.modelData.text;
                                     forceActiveFocus();
@@ -404,6 +406,7 @@ Item {
                                 function finish(): void {
                                     if (!card.editing) return;
                                     const id = card.modelData.id, typed = text;
+                                    root.editor = null;
                                     root.editingId = "";
                                     if (keeping) Tasks.edit(id, typed);
                                 }
@@ -414,7 +417,7 @@ Item {
                                 onActiveFocusChanged: if (!activeFocus) finish()
                             }
 
-                            // Pencil, back, on, delete: on hover, over the end of the first
+                            // Back, on, pencil, delete: on hover, over the end of the first
                             // line (moving the text aside would wrap it again under the pointer).
                             Rectangle {
                                 anchors.right: parent.right
@@ -434,9 +437,9 @@ Item {
 
                                     Repeater {
                                         model: [
-                                            { glyph: Icons.pencil, show: true, step: 2 },
                                             { glyph: Icons.chevronLeft, show: card.modelData.column > 0, step: -1 },
                                             { glyph: Icons.chevron, show: card.modelData.column < 2, step: 1 },
+                                            { glyph: Icons.pencil, show: true, step: 2 },
                                             { glyph: Icons.close, show: true, step: 0 }
                                         ].filter(t => t.show)
 
@@ -488,6 +491,23 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    // While a card is written again, a click anywhere else on the board keeps it and ends
+    // there; one on the card's own text goes through, to the text.
+    MouseArea {
+        id: outside
+        anchors.fill: parent
+        z: 20
+        visible: root.editingId !== ""
+        onPressed: mouse => {
+            const field = root.editor;
+            if (field && field.contains(field.mapFromItem(outside, mouse.x, mouse.y))) {
+                mouse.accepted = false;
+                return;
+            }
+            root.stopEditing();
         }
     }
 
