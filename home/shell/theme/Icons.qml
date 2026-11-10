@@ -52,6 +52,7 @@ Singleton {
     readonly property string copy: g(0xF018F)
     readonly property string broom: g(0xF00E2)
     readonly property string download: g(0xF01DA)
+    readonly property string pencil: g(0xF03EB)
 
     function volume(level: real, muted: bool): string {
         if (muted || level <= 0) return volMute;

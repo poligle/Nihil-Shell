@@ -8,7 +8,8 @@ import qs.components
 
 // The dashboard's kanban (services/Tasks.qml): to do, doing, done. The field
 // adds to "to do"; a click on a card moves it on, its arrows move it either
-// way and the cross deletes it; a card can also be dragged to a column.
+// way, the pencil writes it again where it is and the cross deletes it. A card
+// dragged goes where it is dropped, in its column or another: a line shows where.
 //
 // A card is as tall as its text: a long task wraps instead of ending in
 // "…". The board is as tall as its fullest column, up to `maxList` (the
@@ -39,25 +40,49 @@ Item {
         : laneProbe.implicitHeight + 10 + Math.min(maxList, tallest) + (tallest > maxList + 1 ? 14 : 0))
 
     // A card being dragged: its id and text, the column under the pointer and
-    // where the pointer is, in this item.
+    // where in it the card would end up (counted without it), the line that
+    // shows that place, and where the pointer is, in this item.
     property string dragId: ""
     property string dragText: ""
     property int dropColumn: -1
+    property int dropIndex: -1
+    property rect dropLine: Qt.rect(0, 0, 0, 0)
     property point dragAt: Qt.point(0, 0)
+    // The card whose text the pencil is writing again.
+    property string editingId: ""
 
     onActiveChanged: if (!active) {
         field.text = "";
         field.focus = false;
         dragId = "";
+        editingId = "";
     }
 
-    // Ends a drag on the column under the pointer, if any. Clears the drag
-    // first: the move destroys the card whose handler calls this.
+    // Ends a drag where it is aimed, if anywhere. Clears the drag first: the
+    // move destroys the card whose handler calls this.
     function drop(): void {
-        const id = dragId, to = dropColumn;
+        const id = dragId, to = dropColumn, at = dropIndex;
         dragId = "";
         dropColumn = -1;
-        if (id !== "" && to >= 0) Tasks.move(id, to);
+        dropIndex = -1;
+        if (id !== "" && to >= 0) Tasks.place(id, to, at >= 0 ? at : Tasks.inColumn(to).length);
+    }
+
+    // Where in the column under the pointer the dragged card would end up, and
+    // the line between two cards that shows it.
+    function aim(y: real): void {
+        const lane = laneOf(dropColumn);
+        const slot = lane ? lane.slot(y) : null;
+        dropIndex = slot ? slot.index : -1;
+        if (slot) dropLine = Qt.rect(slot.x, slot.y, slot.width, 2);
+    }
+
+    function laneOf(column: int): var {
+        for (let i = 0; i < columnsRow.children.length; i++) {
+            const lane = columnsRow.children[i];
+            if (lane.column === column) return lane;
+        }
+        return null;
     }
 
     function columnAt(x: real): int {
@@ -156,6 +181,33 @@ Item {
                     readonly property bool target: root.dragId !== "" && root.dropColumn === index
                     readonly property real needed: list.contentHeight
 
+                    // Where a card dropped at [y] (in the board) ends up among this
+                    // column's cards, counted without the one dragged, and the line
+                    // for it, in the board: between two cards, or at an end.
+                    function slot(y: real): var {
+                        const at = list.contentItem.mapFromItem(root, 0, y).y;
+                        let index = 0, line = 0, seen = false;
+                        for (let i = 0; i < lane.shown.length; i++) {
+                            if (lane.shown[i].id === root.dragId) continue;
+                            const item = list.itemAtIndex(i);
+                            if (!item) {
+                                if (seen) break;
+                                index++;
+                                continue;
+                            }
+                            seen = true;
+                            if (at < item.y + item.height / 2) {
+                                line = item.y - list.spacing / 2;
+                                break;
+                            }
+                            index++;
+                            line = item.y + item.height + list.spacing / 2;
+                        }
+                        const top = list.mapToItem(root, 0, 0);
+                        const y2 = list.contentItem.mapToItem(root, 0, line).y;
+                        return { index: index, x: top.x, y: Math.min(Math.max(y2, top.y), top.y + list.height) - 1, width: list.width };
+                    }
+
                     // What the list shows: replaced only when this column changes,
                     // so the others keep their scroll; a card added or moved here
                     // scrolls into view.
@@ -240,9 +292,10 @@ Item {
 
                             required property var modelData
                             readonly property bool done: modelData.column === 2
+                            readonly property bool editing: root.editingId === modelData.id
 
                             width: ListView.view.width
-                            height: Math.max(30, label.implicitHeight + 14)
+                            height: Math.max(30, (editing ? editor.implicitHeight : label.implicitHeight) + 14)
                             radius: 10
                             color: hover.hovered ? Tokens.raised : Tokens.surface
                             border.width: 1
@@ -254,6 +307,7 @@ Item {
                             // A click moves it on; done ones go back to "to do".
                             MouseArea {
                                 anchors.fill: parent
+                                enabled: !card.editing
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: Tasks.move(card.modelData.id, card.done ? 0 : card.modelData.column + 1)
                             }
@@ -261,6 +315,7 @@ Item {
                             DragHandler {
                                 id: drag
                                 target: null
+                                enabled: !card.editing
                                 onActiveChanged: {
                                     if (active) {
                                         root.dragId = card.modelData.id;
@@ -274,6 +329,7 @@ Item {
                                     const p = card.mapToItem(root, centroid.position.x, centroid.position.y);
                                     root.dragAt = p;
                                     root.dropColumn = root.columnAt(p.x);
+                                    root.aim(p.y);
                                 }
                             }
 
@@ -300,6 +356,7 @@ Item {
                                 anchors.rightMargin: 10
                                 anchors.top: parent.top
                                 anchors.topMargin: 7
+                                visible: !card.editing
                                 text: card.modelData.text
                                 color: card.done ? Tokens.muted : Tokens.ink
                                 wrapMode: Text.Wrap
@@ -314,8 +371,51 @@ Item {
                                 font: label.font
                             }
 
-                            // Back, on, delete: on hover, over the end of the first line
-                            // (moving the text aside would wrap it again under the pointer).
+                            // The pencil: the text written again where it is. Enter keeps
+                            // it, and so does leaving it; Escape leaves it as it was.
+                            QQC.TextArea {
+                                id: editor
+                                visible: card.editing
+                                anchors.left: led.right
+                                anchors.leftMargin: 10
+                                anchors.right: parent.right
+                                anchors.rightMargin: 10
+                                anchors.top: parent.top
+                                anchors.topMargin: 7
+                                padding: 0
+                                background: null
+                                wrapMode: TextEdit.Wrap
+                                color: Tokens.ink
+                                selectionColor: Tokens.ink
+                                selectedTextColor: Tokens.black
+                                font.family: Tokens.fontSans
+                                font.pixelSize: 13
+
+                                property bool keeping: true
+
+                                onVisibleChanged: if (visible) {
+                                    keeping = true;
+                                    text = card.modelData.text;
+                                    forceActiveFocus();
+                                    cursorPosition = length;
+                                }
+
+                                // Clears the pencil first: the edit makes the card again.
+                                function finish(): void {
+                                    if (!card.editing) return;
+                                    const id = card.modelData.id, typed = text;
+                                    root.editingId = "";
+                                    if (keeping) Tasks.edit(id, typed);
+                                }
+
+                                Keys.onReturnPressed: event => { event.accepted = true; finish(); }
+                                Keys.onEnterPressed: event => { event.accepted = true; finish(); }
+                                Keys.onEscapePressed: event => { event.accepted = true; keeping = false; finish(); }
+                                onActiveFocusChanged: if (!activeFocus) finish()
+                            }
+
+                            // Pencil, back, on, delete: on hover, over the end of the first
+                            // line (moving the text aside would wrap it again under the pointer).
                             Rectangle {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 4
@@ -325,7 +425,7 @@ Item {
                                 height: tools.height
                                 radius: 8
                                 color: card.color
-                                visible: hover.hovered && root.dragId === ""
+                                visible: hover.hovered && root.dragId === "" && !card.editing
 
                                 Row {
                                     id: tools
@@ -334,6 +434,7 @@ Item {
 
                                     Repeater {
                                         model: [
+                                            { glyph: Icons.pencil, show: true, step: 2 },
                                             { glyph: Icons.chevronLeft, show: card.modelData.column > 0, step: -1 },
                                             { glyph: Icons.chevron, show: card.modelData.column < 2, step: 1 },
                                             { glyph: Icons.close, show: true, step: 0 }
@@ -353,8 +454,10 @@ Item {
                                                 hoverEnabled: true
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    if (parent.modelData.step === 0) Tasks.remove(card.modelData.id);
-                                                    else Tasks.move(card.modelData.id, card.modelData.column + parent.modelData.step);
+                                                    const step = parent.modelData.step;
+                                                    if (step === 2) root.editingId = card.modelData.id;
+                                                    else if (step === 0) Tasks.remove(card.modelData.id);
+                                                    else Tasks.move(card.modelData.id, card.modelData.column + step);
                                                 }
                                             }
                                         }
@@ -386,6 +489,18 @@ Item {
                 }
             }
         }
+    }
+
+    // Where the dragged card would land: a line between two, in its column or another.
+    Rectangle {
+        visible: root.dragId !== "" && root.dropIndex >= 0
+        x: root.dropLine.x
+        y: root.dropLine.y
+        width: root.dropLine.width
+        height: 2
+        radius: 1
+        color: Tokens.ink
+        z: 9
     }
 
     // The card under the pointer while it is dragged.
