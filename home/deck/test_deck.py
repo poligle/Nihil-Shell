@@ -9,11 +9,13 @@
 #   python3 -m unittest home/deck/test_deck.py
 
 import base64
+import errno
 import hashlib
 import http.client
 import http.server
 import json
 import os
+import re
 import shutil
 import socket
 import ssl
@@ -460,6 +462,81 @@ class ServerTest(Base):
         many = {"cards": [{"id": "c%d" % i, "text": "Task %d" % i, "column": 0, "textStamp": i, "placeStamp": i} for i in range(80)]}
         self.assertEqual(self.phone.request("POST", "/v1/tasks", many)[0], 200)
 
+    def upgrade(self, path, protocol="nihil-trackpad"):
+        """The trackpad's request as the phone makes it: the status, the body
+        of an answer that isn't 101, and the connection."""
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        connection = context.wrap_socket(socket.create_connection(("127.0.0.1", self.deck.port), timeout=10))
+        connection.sendall((f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {self.phone.token}\r\n"
+                            f"Connection: Upgrade\r\nUpgrade: {protocol}\r\n\r\n").encode())
+        head = b""
+        while b"\r\n\r\n" not in head:
+            chunk = connection.recv(1)
+            if not chunk:
+                break
+            head += chunk
+        text = head.decode()
+        length = re.search(r"Content-Length: (\d+)", text)
+        body = b""
+        while length and len(body) < int(length.group(1)):
+            body += connection.recv(4096)
+        return int(text.split(" ", 2)[1]), (json.loads(body) if body else None), connection
+
+    def test_the_trackpad(self):
+        self.pair()
+        made = []
+
+        class Pad:
+            def __init__(self, width, height, resolution):
+                self.width, self.height, self.resolution = width, height, resolution
+                self.events = []
+                self.closed = threading.Event()
+                made.append(self)
+
+            def write(self, events):
+                self.events += events
+
+            def close(self):
+                self.closed.set()
+
+        self.deck.make_trackpad = Pad
+        status, _, connection = self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")
+        self.assertEqual(status, 101)
+        self.assertEqual((made[0].width, made[0].height, made[0].resolution), (2800, 1200, 20))
+
+        def frame(millis, *fingers):
+            return struct.pack("!BIB", 1, millis, len(fingers)) + b"".join(struct.pack("!BHH", *finger) for finger in fingers)
+
+        connection.sendall(frame(1000, (0, 100, 200)) + frame(1008, (0, 120, 200)) + frame(1016, (0, 9000, 200)) + frame(1024))
+        connection.sendall(struct.pack("!BI", 2, 1030))
+        self.assertEqual(connection.recv(1), b"\x02")
+        connection.close()
+        self.assertTrue(made[0].closed.wait(5))
+        xs = [value for kind, code, value in made[0].events if (kind, code) == (deck.EV_ABS, deck.ABS_MT_POSITION_X)]
+        self.assertEqual(xs, [100, 120, 2800])          # past the edge: at the edge
+        self.assertEqual(made[0].events[-2:], [(deck.EV_KEY, deck.BTN_TOUCH, 0), (deck.EV_SYN, deck.SYN_REPORT, 0)])
+
+        # A new stream from the same phone ends the one before.
+        _, _, first = self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")
+        _, _, second = self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")
+        self.assertTrue(made[1].closed.wait(5))
+        self.assertFalse(made[2].closed.is_set())
+        first.close()
+        second.close()
+        self.assertTrue(made[2].closed.wait(5))
+
+        # A size it doesn't take, another protocol, and a session that may not make one.
+        self.assertEqual(self.upgrade("/v1/trackpad?w=20&h=1200&r=20")[:2], (400, {"error": "invalid"}))
+        self.assertEqual(self.upgrade("/v1/trackpad?w=2800&h=1200&r=20", protocol="websocket")[:2], (400, {"error": "invalid"}))
+
+        def denied(width, height, resolution):
+            raise PermissionError(errno.EACCES, "denied")
+
+        self.deck.make_trackpad = denied
+        self.assertEqual(self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")[:2], (503, {"error": "access"}))
+
     def test_the_cover(self):
         art = os.path.join(self.folder, "cover.png")
         with open(art, "wb") as file:
@@ -599,6 +676,50 @@ class FaviconTest(unittest.TestCase):
         redirect = deck.PublicRedirects()
         with self.assertRaises(deck.urllib.error.URLError):
             redirect.redirect_request(None, None, 302, "Found", {}, "http://192.168.1.1/admin")
+
+
+class TrackpadTest(unittest.TestCase):
+    def test_the_kernels_numbers(self):
+        # As <linux/uinput.h> has them on x86 and ARM (asm-generic).
+        self.assertEqual((deck.UI_DEV_CREATE, deck.UI_DEV_DESTROY, deck.UI_DEV_SETUP, deck.UI_ABS_SETUP),
+                         (0x5501, 0x5502, 0x405C5503, 0x401C5504))
+        self.assertEqual((deck.UI_SET_EVBIT, deck.UI_SET_KEYBIT, deck.UI_SET_ABSBIT, deck.UI_SET_PROPBIT),
+                         (0x40045564, 0x40045565, 0x40045567, 0x4004556E))
+        self.assertEqual(len(struct.pack("@llHHi", 0, 0, 0, 0, 0)), 24 if struct.calcsize("l") == 8 else 16)
+
+    def test_fingers_in_slots(self):
+        fingers = deck.Fingers()
+        A, K, S, ID = deck.EV_ABS, deck.EV_KEY, deck.ABS_MT_SLOT, deck.ABS_MT_TRACKING_ID
+        X, Y, tools, sync = deck.ABS_MT_POSITION_X, deck.ABS_MT_POSITION_Y, deck.FINGER_TOOLS, (deck.EV_SYN, deck.SYN_REPORT, 0)
+        self.assertEqual(fingers.frame([(3, 100, 200)]),
+                         [(A, S, 0), (A, ID, 0), (A, X, 100), (A, Y, 200), (K, tools[0], 1), (K, deck.BTN_TOUCH, 1),
+                          (A, deck.ABS_X, 100), (A, deck.ABS_Y, 200), sync])
+        self.assertEqual(fingers.frame([(3, 100, 200), (5, 300, 400)]),
+                         [(A, S, 1), (A, ID, 1), (A, X, 300), (A, Y, 400), (K, tools[0], 0), (K, tools[1], 1), sync])
+        # The second goes up and the first moves: the first is still where the pointer is.
+        self.assertEqual(fingers.frame([(3, 110, 200)]),
+                         [(A, ID, -1), (A, S, 0), (A, X, 110), (K, tools[1], 0), (K, tools[0], 1), (A, deck.ABS_X, 110), sync])
+        self.assertEqual(fingers.release(), [(A, ID, -1), (K, tools[0], 0), (K, deck.BTN_TOUCH, 0), sync])
+        self.assertEqual(fingers.release(), [])
+        # Five fingers at most, as a touchpad has.
+        many = fingers.frame([(i, i, i) for i in range(6)])
+        self.assertEqual(sum(1 for event in many if event[:2] == (A, ID)), 5)
+        self.assertIn((K, tools[4], 1), many)
+
+    def test_the_phones_pace(self):
+        pace = deck.Pace(delay=0.025)
+        # Frames 8 ms apart on the phone: two on time, then three the network bunched.
+        times = [(0.000, 10.010), (0.008, 10.018), (0.016, 10.060), (0.024, 10.060), (0.032, 10.061)]
+        due = [pace.due(phone, arrived) for phone, arrived in times]
+        self.assertAlmostEqual(due[0], 10.035)
+        self.assertAlmostEqual(due[1], 10.043)
+        self.assertAlmostEqual(due[2], 10.060)          # late: as soon as it came
+        for before, after in zip(due, due[1:]):
+            self.assertGreaterEqual(after - before, 0.9 * 0.008 - 1e-9)
+        self.assertLess(due[4], 10.061 + 0.025)
+        # Its milliseconds wrap at 32 bits and go on.
+        clock = deck.Pace()
+        self.assertAlmostEqual(clock.seconds(2 ** 32 - 6) + 0.011, clock.seconds(5))
 
 
 class ControlTest(Base):

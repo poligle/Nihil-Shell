@@ -3,9 +3,11 @@
 #
 # The phone as a deck for this computer (docs/deck.md): NIHIL Launcher, on
 # Android, opens apps and web pages here, plays and skips the music, turns
-# the volume and locks the screen. Nothing else: there is no command line
-# from the phone, only these, and they go through the shell (nihil-ipc) and
-# the volume's own script, as the launcher and the keys would.
+# the volume, locks the screen and is its trackpad. Nothing else: there is no
+# command line from the phone, only these, and they go through the shell
+# (nihil-ipc) and the volume's own script, as the launcher and the keys
+# would; the trackpad is a touchpad here, made with uinput, that libinput
+# reads as it reads the laptop's.
 #
 # The phone talks HTTPS to it on the local network. The certificate is this
 # computer's own, made the first time (openssl), and the phone pins it: the
@@ -30,6 +32,9 @@
 
 import argparse
 import base64
+import collections
+import errno
+import fcntl
 import functools
 import hashlib
 import hmac
@@ -664,6 +669,284 @@ def clean_board(body):
     return {"cards": clean, "removed": gone}
 
 
+# --- The trackpad -----------------------------------------------------------------
+#
+# GET /v1/trackpad turns the connection into a stream of the phone's fingers
+# (docs/deck.md, The trackpad), and here they touch a touchpad of their own,
+# made with /dev/uinput as wide and tall as the phone's screen. libinput takes
+# it as any touchpad, with the laptop's settings: a tap clicks, two fingers
+# right-click and scroll, three middle-click, a pinch zooms, and Hyprland's
+# gestures run. It goes when the stream does.
+
+EV_SYN, EV_KEY, EV_ABS = 0, 1, 3
+SYN_REPORT = 0
+BTN_TOUCH = 330
+# BTN_TOOL_FINGER, DOUBLETAP, TRIPLETAP, QUADTAP and QUINTTAP: one to five fingers.
+FINGER_TOOLS = (325, 333, 334, 335, 328)
+ABS_X, ABS_Y = 0, 1
+ABS_MT_SLOT, ABS_MT_POSITION_X, ABS_MT_POSITION_Y, ABS_MT_TRACKING_ID = 47, 53, 54, 57
+INPUT_PROP_POINTER = 0
+BUS_VIRTUAL = 6
+TRACKPAD_NAME = "NIHIL deck trackpad"   # modules/deck.nix's udev rule knows it by it
+TRACKPAD_PROTOCOL = "nihil-trackpad"
+TRACKPAD_SLOTS = 5
+TRACKPAD_IDLE = 4               # seconds without a frame or a keepalive: the phone is gone
+TRACKPAD_SETTLE = 0.25          # seconds for libinput to open a new touchpad
+TRACKPAD_DELAY = 0.025          # seconds the fingers wait here, to keep the phone's pace
+TOUCH_FRAME, KEEPALIVE = 1, 2
+MAX_FINGERS = 10
+
+
+def _ioc(number, size=0):
+    """_IOW('U', number, size), or _IO('U', number) without one (asm-generic)."""
+    return ((1 << 30) if size else 0) | (size << 16) | (ord("U") << 8) | number
+
+
+UI_DEV_CREATE = _ioc(1)
+UI_DEV_DESTROY = _ioc(2)
+UI_DEV_SETUP = _ioc(3, 92)      # struct uinput_setup
+UI_ABS_SETUP = _ioc(4, 28)      # struct uinput_abs_setup
+UI_SET_EVBIT = _ioc(100, 4)
+UI_SET_KEYBIT = _ioc(101, 4)
+UI_SET_ABSBIT = _ioc(103, 4)
+UI_SET_PROPBIT = _ioc(110, 4)
+
+
+class Uinput:
+    """A touchpad made with /dev/uinput: [width] by [height] units, [resolution]
+    of them a millimetre, five fingers and nothing to press, so libinput taps
+    to click on its own. It goes with close(), or with this process."""
+
+    def __init__(self, path, width, height, resolution):
+        self.width, self.height = width, height
+        self.fd = os.open(path, os.O_WRONLY | os.O_NONBLOCK | os.O_CLOEXEC)
+        try:
+            for kind in (EV_KEY, EV_ABS):
+                fcntl.ioctl(self.fd, UI_SET_EVBIT, kind)
+            for key in (BTN_TOUCH, *FINGER_TOOLS):
+                fcntl.ioctl(self.fd, UI_SET_KEYBIT, key)
+            fcntl.ioctl(self.fd, UI_SET_PROPBIT, INPUT_PROP_POINTER)
+            for code, top in ((ABS_X, width), (ABS_Y, height), (ABS_MT_POSITION_X, width), (ABS_MT_POSITION_Y, height)):
+                self.axis(code, top, resolution)
+            self.axis(ABS_MT_SLOT, TRACKPAD_SLOTS - 1, 0)
+            self.axis(ABS_MT_TRACKING_ID, 65535, 0)
+            setup = struct.pack("=4H80sI", BUS_VIRTUAL, 0x6E69, 0x6C64, 1, TRACKPAD_NAME.encode(), 0)
+            fcntl.ioctl(self.fd, UI_DEV_SETUP, setup)
+            fcntl.ioctl(self.fd, UI_DEV_CREATE)
+        except OSError:
+            os.close(self.fd)
+            raise
+
+    def axis(self, code, top, resolution):
+        fcntl.ioctl(self.fd, UI_SET_ABSBIT, code)
+        # struct uinput_abs_setup: the code, then input_absinfo's value,
+        # minimum, maximum, fuzz, flat and resolution.
+        fcntl.ioctl(self.fd, UI_ABS_SETUP, struct.pack("=HH6i", code, 0, 0, 0, top, 0, 0, resolution))
+
+    def write(self, events):
+        os.write(self.fd, b"".join(struct.pack("@llHHi", 0, 0, kind, code, value) for kind, code, value in events))
+
+    def close(self):
+        try:
+            fcntl.ioctl(self.fd, UI_DEV_DESTROY)
+        except OSError:
+            pass
+        os.close(self.fd)
+
+
+class Fingers:
+    """The phone's fingers as the kernel's multitouch protocol (type B): a slot
+    each, the first five, with a tracking id while it touches; and, for readers
+    without slots, how many touch and where the first of them is."""
+
+    def __init__(self):
+        self.slots = [None] * TRACKPAD_SLOTS    # [finger, tracking id, x, y]
+        self.slot = -1
+        self.next_id = 0
+        self.count = 0
+        self.primary = None
+
+    def frame(self, contacts):
+        """The events of a frame: [(finger, x, y)], every finger touching now."""
+        events = []
+        touching = {finger for finger, _, _ in contacts}
+        for index, held in enumerate(self.slots):
+            if held is not None and held[0] not in touching:
+                self.select(events, index)
+                events.append((EV_ABS, ABS_MT_TRACKING_ID, -1))
+                self.slots[index] = None
+        for finger, x, y in contacts:
+            index = next((i for i, held in enumerate(self.slots) if held is not None and held[0] == finger), None)
+            if index is None:
+                index = next((i for i, held in enumerate(self.slots) if held is None), None)
+                if index is None:
+                    continue        # a sixth finger: a touchpad has five
+                self.select(events, index)
+                events += [(EV_ABS, ABS_MT_TRACKING_ID, self.next_id), (EV_ABS, ABS_MT_POSITION_X, x), (EV_ABS, ABS_MT_POSITION_Y, y)]
+                self.slots[index] = [finger, self.next_id, x, y]
+                self.next_id = (self.next_id + 1) % 65536
+                continue
+            held = self.slots[index]
+            if held[2] != x or held[3] != y:
+                self.select(events, index)
+                if held[2] != x:
+                    events.append((EV_ABS, ABS_MT_POSITION_X, x))
+                if held[3] != y:
+                    events.append((EV_ABS, ABS_MT_POSITION_Y, y))
+                held[2], held[3] = x, y
+        self.legacy(events)
+        events.append((EV_SYN, SYN_REPORT, 0))
+        return events
+
+    def release(self):
+        """Every finger up, as events; none when none was down."""
+        return self.frame([]) if self.count else []
+
+    def select(self, events, index):
+        if self.slot != index:
+            events.append((EV_ABS, ABS_MT_SLOT, index))
+            self.slot = index
+
+    def legacy(self, events):
+        held = [slot for slot in self.slots if slot is not None]
+        count = len(held)
+        if count != self.count:
+            if self.count:
+                events.append((EV_KEY, FINGER_TOOLS[self.count - 1], 0))
+            if count:
+                events.append((EV_KEY, FINGER_TOOLS[count - 1], 1))
+            if bool(count) != bool(self.count):
+                events.append((EV_KEY, BTN_TOUCH, 1 if count else 0))
+            self.count = count
+        if not held:
+            self.primary = None
+            return
+        # The finger down longest: its tracking id the furthest behind the next one.
+        first = max(held, key=lambda slot: (self.next_id - slot[1]) % 65536)
+        if (first[2], first[3]) != self.primary:
+            if self.primary is None or self.primary[0] != first[2]:
+                events.append((EV_ABS, ABS_X, first[2]))
+            if self.primary is None or self.primary[1] != first[3]:
+                events.append((EV_ABS, ABS_Y, first[3]))
+            self.primary = (first[2], first[3])
+
+
+class Pace:
+    """When each frame of fingers reaches the touchpad: as far apart as the
+    phone saw them, a little later than they left it. libinput reads speed from
+    those times, and takes frames the network bunched together for jumps. So a
+    frame waits until its time on the phone, plus the quickest any frame came
+    lately, plus [delay]; one later still goes as soon as it comes, and those
+    after it keep their spacing, at most a tenth shorter, until they are back
+    on time."""
+
+    WINDOW = 2.0
+    SQUEEZE = 0.9
+
+    def __init__(self, delay=TRACKPAD_DELAY):
+        self.delay = delay
+        self.quickest = collections.deque()     # (arrived, offset), the offsets rising
+        self.last = None                        # (phone, due) of the last frame
+        self.raw = None
+        self.wraps = 0
+
+    def seconds(self, millis):
+        """The phone's milliseconds (32 bits, they wrap) as seconds that go on."""
+        if self.raw is not None and millis < self.raw and self.raw - millis > 1 << 31:
+            self.wraps += 1
+        self.raw = millis
+        return (self.wraps * (1 << 32) + millis) / 1000
+
+    def heard(self, phone, arrived):
+        """How long the way takes, from a frame or a keepalive: the quickest lately."""
+        offset = arrived - phone
+        while self.quickest and self.quickest[-1][1] >= offset:
+            self.quickest.pop()
+        self.quickest.append((arrived, offset))
+        while self.quickest[0][0] < arrived - self.WINDOW:
+            self.quickest.popleft()
+
+    def due(self, phone, arrived):
+        """When a frame the phone made at [phone] and that came at [arrived] goes."""
+        self.heard(phone, arrived)
+        due = phone + self.quickest[0][1] + self.delay
+        if self.last is not None and 0 <= phone - self.last[0] < 0.1:
+            due = max(due, self.last[1] + self.SQUEEZE * (phone - self.last[0]))
+        due = max(due, arrived)
+        self.last = (phone, due)
+        return due
+
+
+def stream(reader, writer, pad, clock=time.monotonic):
+    """A phone's frames from [reader] to [pad] at their pace (Pace), its
+    keepalives answered on [writer], until it stops or goes quiet; then every
+    finger up."""
+    fingers = Fingers()
+    pace = Pace()
+    queue = collections.deque()
+    ready = threading.Condition()
+    finished = []
+
+    def emit():
+        try:
+            while True:
+                with ready:
+                    while not queue and not finished:
+                        ready.wait()
+                    if not queue:
+                        break
+                    due, contacts = queue.popleft()
+                wait = due - clock()
+                if wait > 0:
+                    time.sleep(wait)
+                pad.write(fingers.frame(contacts))
+        except OSError:
+            pass
+        finally:
+            try:
+                events = fingers.release()
+                if events:
+                    pad.write(events)
+            except OSError:
+                pass
+
+    worker = threading.Thread(target=emit, daemon=True)
+    worker.start()
+    try:
+        while True:
+            head = reader.read(5)
+            if len(head) < 5:
+                break
+            arrived = clock()
+            kind, millis = struct.unpack("!BI", head)
+            phone = pace.seconds(millis)
+            if kind == KEEPALIVE:
+                pace.heard(phone, arrived)
+                writer.write(bytes([KEEPALIVE]))
+                continue
+            count = reader.read(1) if kind == TOUCH_FRAME else b""
+            if len(count) < 1 or count[0] > MAX_FINGERS:
+                break
+            body = reader.read(5 * count[0])
+            if len(body) < 5 * count[0]:
+                break
+            contacts = []
+            for index in range(count[0]):
+                finger, x, y = struct.unpack_from("!BHH", body, 5 * index)
+                contacts.append((finger, min(x, pad.width), min(y, pad.height)))
+            due = pace.due(phone, arrived)
+            with ready:
+                queue.append((due, contacts))
+                ready.notify()
+    except (OSError, ValueError):
+        pass
+    finally:
+        with ready:
+            finished.append(True)
+            ready.notify()
+        worker.join(timeout=2)
+
+
 # --- The webs' icons ------------------------------------------------------------
 #
 # The phone keeps its own webs, and asks here for their icons: so it talks to
@@ -885,6 +1168,9 @@ class Deck:
         self.throttle = Throttle()
         self.session = Session(config)
         self.strings = config.get("strings", {})
+        self.make_trackpad = lambda width, height, resolution: Uinput(config.get("uinput", "/dev/uinput"), width, height, resolution)
+        self.streams = {}
+        self.streams_lock = threading.Lock()
 
     def control(self, request):
         op = request.get("op") if isinstance(request, dict) else None
@@ -906,6 +1192,22 @@ class Deck:
             return {"port": self.port, "pin": self.pin, "devices": len(self.devices.listing()),
                     "pairing": self.pairing.open_now}
         return {"error": "unknown"}
+
+    def claim(self, device, connection):
+        """[connection] is [device]'s trackpad now: a stream it had before ends."""
+        with self.streams_lock:
+            before = self.streams.get(device)
+            self.streams[device] = connection
+        if before is not None and before is not connection:
+            try:
+                socket.socket.shutdown(before, socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+    def unclaim(self, device, connection):
+        with self.streams_lock:
+            if self.streams.get(device) is connection:
+                del self.streams[device]
 
     def paired(self, name):
         title = self.strings.get("deckPaired", "%1 can now use this computer as a deck").replace("%1", name)
@@ -1012,6 +1314,41 @@ class Handler(http.server.BaseHTTPRequestHandler):
         deck.paired(name)
         self.reply(200, {"token": token, "device": device, "name": deck.name})
 
+    def trackpad(self, deck, device):
+        """The phone's fingers on a touchpad here, for as long as it streams
+        them (docs/deck.md, The trackpad)."""
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+        try:
+            width, height, resolution = (int(query.get(key, ["0"])[0]) for key in ("w", "h", "r"))
+        except ValueError:
+            width = height = resolution = 0
+        sized = 5 <= resolution <= 100 and all(10 * resolution <= side <= min(500 * resolution, 65535) for side in (width, height))
+        if not sized or self.headers.get("Upgrade", "").strip().lower() != TRACKPAD_PROTOCOL:
+            self.reply(400, {"error": "invalid"})
+            return
+        try:
+            pad = deck.make_trackpad(width, height, resolution)
+        except OSError as error:
+            self.reply(503, {"error": "access" if error.errno in (errno.EACCES, errno.EPERM) else "trackpad"})
+            return
+        deck.claim(device["id"], self.connection)
+        try:
+            time.sleep(TRACKPAD_SETTLE)
+            self.send_response(101)
+            self.send_header("Upgrade", TRACKPAD_PROTOCOL)
+            self.send_header("Connection", "Upgrade")
+            self.end_headers()
+            self.close_connection = True
+            self.connection.settimeout(TRACKPAD_IDLE)
+            try:
+                self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            except OSError:
+                pass
+            stream(self.rfile, self.wfile, pad)
+        finally:
+            deck.unclaim(device["id"], self.connection)
+            pad.close()
+
     def paired_route(self, deck, device, method, path, body):
         session = deck.session
         if method == "GET" and path == "/v1/apps":
@@ -1099,6 +1436,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.reply(200, {"ok": True})
             else:
                 self.reply(503, {"error": "lock"})
+        elif method == "GET" and path == "/v1/trackpad":
+            self.trackpad(deck, device)
         elif method == "POST" and path == "/v1/unpair":
             deck.devices.forget(device["id"])
             self.reply(200, {"ok": True})
