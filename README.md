@@ -46,8 +46,9 @@ home screen in the same language: the frame, the desktop's clock, its light and 
 - **Drawers.** The dashboard, the settings panel and the launcher are bumps of the frame
   itself, with concave joints, so they look like part of the hardware.
 - **Dashboard.** Time, music with the cover rendered as a dot matrix and a spectrum in
-  LED columns, CPU/RAM/temperature dials, a network oscilloscope, a small kanban (to do,
-  doing, done) and caffeine, which keeps the screen from dimming, locking or sleeping.
+  LED columns, CPU/RAM/temperature dials, a network oscilloscope, a kanban (to do, doing,
+  done: drag a card where it goes, its pencil writes it again, a broom clears the done ones)
+  and caffeine, which keeps the screen from dimming, locking or sleeping.
 - **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
@@ -61,8 +62,9 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   and cleaning now, with what it frees.
 - **The phone as a deck.** With [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher) on Android, paired with a QR
   from Preferences, the phone opens the computer's apps and web pages, plays and skips
-  its music, turns its volume and locks it. Nothing else, over HTTPS pinned to this
-  computer. See [The phone as a deck](#the-phone-as-a-deck).
+  its music, turns its volume, locks it and is its trackpad, with this desktop's gestures;
+  the dashboard's kanban stays in sync with it. Over HTTPS pinned to this computer. See
+  [The phone as a deck](#the-phone-as-a-deck).
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](#install).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
@@ -309,7 +311,7 @@ them from its `settings.json` ([`modules/settings.nix`](modules/settings.nix)), 
 | `nilo.contextLength` | `16384` | Context window, in tokens |
 | `nilo.searxng`  | `null`     | A SearXNG instance for web searches instead of DuckDuckGo |
 | `nilo.coauthor` | [nilo-nihil](https://github.com/nilo-nihil) | Who Nilo signs its commits as (`Co-authored-by`); `null` for no trailer |
-| `deck.enable`   | `false`    | The phone as a deck ([The phone as a deck](#the-phone-as-a-deck)): its service, its port in the firewall, its name on the network (mDNS) |
+| `deck.enable`   | `false`    | The phone as a deck ([The phone as a deck](#the-phone-as-a-deck)): its service, its port in the firewall, its name on the network (mDNS), uinput for the trackpad |
 | `deck.port`     | `64445`    | The deck's HTTPS port ("NIHIL" on a phone's keypad) |
 
 Read-only: `tokens` (the design tokens), `strings` (the selected language), `sounds`,
@@ -555,9 +557,10 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 ## The phone as a deck
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
-its apps and web pages open here, its music plays and skips, its volume goes up and down
-and its screen locks, from the phone. That is all it can do: an app is one the launcher
-shows, a page is `http` or `https`, and there is no way to run a command or read a file.
+its apps and web pages open here, its music plays and skips, its volume goes up and down,
+its screen locks and its pointer moves, from the phone. That is all it can do: an app is one
+the launcher shows, a page is `http` or `https`, the trackpad points and clicks as a touchpad
+here would, and there is no way to run a command or read a file.
 
 Preferences, Phone turns it on (a rebuild: the service, its port in the firewall and its
 name on the local network) and pairs a phone with a QR. The QR holds the computer's
@@ -568,13 +571,23 @@ lists the phones, each to forget. When its address changes, the phone finds it a
 mDNS (`_nihil-deck._tcp`).
 
 On the phone the deck is one landscape screen in workspaces: the music and the volume in one;
-the apps and the webs in the other, each with its icon. Above them, this computer's caffeine,
+the apps and the webs in the next, each with its icon; the trackpad in the last. Above them, this computer's caffeine,
 night light and lock, with the desktop's own icons and lit while on. The apps' come from this
 computer's icon theme; the webs' (`GET /v1/favicon`) are found by this computer on each site,
 only at public addresses and kept a week, so the phone talks to no one else. The phone reads
 the QR with a reader of its own, and sharing a web to *Open on the computer* opens it here. It
-shows the cover of what plays, and keeps the dashboard's kanban in sync with its own: each side
-goes on when they are apart, and the next sync keeps what both did (`docs/deck.md`).
+shows the cover of what plays, and keeps the dashboard's kanban in sync with its own, the
+order of each column too: each side goes on when they are apart, and the next sync keeps what
+both did (`docs/deck.md`).
+
+The trackpad is a touchpad here (`GET /v1/trackpad`). The phone streams its fingers, every
+sample with its time, and the deck writes them to a touchpad it makes with uinput (`NIHIL deck
+trackpad`), as wide and tall as the phone's screen: libinput reads it as it reads the laptop's,
+with the same settings, so a tap clicks, two fingers right-click and scroll, three
+middle-click, a pinch zooms and the touchpad gestures run. The frames keep the phone's pace,
+25 ms late, and the touchpad goes when the stream does. With the deck on, uinput is the
+session's to use (a udev rule, `uaccess`), and libinput takes the touchpad as an external one,
+so it works with the lid closed.
 
 The service is [`home/deck/deck.py`](home/deck/deck.py), standard-library Python in the
 user's session, which opens what it is asked through the shell (`nihil-ipc apps`,
@@ -716,7 +729,8 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   `home/hyprland.nix`). A machine changes it in `local.nix`, for instance
   `services.logind.settings.Login.HandleLidSwitchExternalPower = "lock";`.
 - **Tasks:** the kanban lives in `~/.local/state/nihil/tasks.json`; edit it by hand and the
-  board follows.
+  board follows. Each card keeps when its text and its place (its column and its rank there)
+  were last set: that is how it merges with the phone's.
 - **Lock screen media:** [`home/lock/media.sh`](home/lock/media.sh) asks the players
   (playerctl) at most once a second and hyprlock's labels read the result; covers are
   drawn as dot matrices by [`home/lock/cover.py`](home/lock/cover.py) and cached in
