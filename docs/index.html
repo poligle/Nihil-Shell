@@ -328,7 +328,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/small/dashboard-1200.webp" srcset="assets/screens/small/dashboard-640.webp 640w, assets/screens/small/dashboard-1200.webp 1200w, assets/screens/dashboard.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: the motto and a dot-matrix clock, the caffeine switch, the player with its spectrum in LED columns, CPU, RAM and temperature dials, a network scope, and a kanban with tasks to do and doing."></a>
           <figcaption>
             <h3>Dashboard</h3>
-            <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a small kanban and caffeine to keep the screen awake.</p>
+            <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a kanban you drag into order, in sync with the phone, and caffeine to keep the screen awake.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or hover the top edge</span></div>
           </figcaption>
         </figure>
@@ -457,11 +457,12 @@ nihil generations clean 7</code></pre>
     <section id="deck" aria-labelledby="deck-title">
       <div class="prose">
         <h2 id="deck-title">The phone as a deck</h2>
-        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume and locks it. Nothing else: no commands, no files. On the phone it is one landscape screen in workspaces, the music in one, the apps and the webs in the other, each with its icon: the apps' from this computer's icon theme, the webs' found by this computer, so the phone talks to no one else.</p>
+        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume, locks it and is its trackpad. That is all: no commands, no files. On the phone it is one landscape screen in workspaces: the music in one; the apps and the webs in the next, each with its icon (the apps' from this computer's icon theme, the webs' found by this computer, so the phone talks to no one else); the trackpad in the last. The dashboard's kanban stays in sync with the phone's, its order too.</p>
+        <p class="quiet">The trackpad is a touchpad here: the phone streams its fingers, and libinput reads them as it reads the laptop's, with its settings. A tap clicks, two fingers right-click and scroll, three middle-click, a pinch zooms, and the gestures run.</p>
         <p class="quiet">The QR holds a code that pairs once, for five minutes, and the pin of the computer's own certificate: the phone talks HTTPS only to the computer whose key it was shown, with a token of its own, and finds it again on the network by mDNS. The protocol is in <a href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/deck.md"><code>docs/deck.md</code></a>.</p>
       </div>
       <figure class="shot deck-shot">
-        <a href="assets/screens/preferences-phone.png"><img src="assets/screens/preferences-phone.png" width="1920" height="1200" loading="lazy" onerror="this.closest('figure').remove()" alt="Preferences open on Phone: the switch to use the phone, the QR in dots to pair one, and the phones already paired, each with when it was last seen and a key to forget it."></a>
+        <a href="assets/screens/android-deck-trackpad.webp"><img src="assets/screens/small/android-deck-trackpad-1000.webp" srcset="assets/screens/small/android-deck-trackpad-1000.webp 1000w, assets/screens/android-deck-trackpad.webp 2340w" sizes="(max-width: 900px) 100vw, 980px" width="2340" height="1080" loading="lazy" alt="The phone as this computer's trackpad, full screen: a field of dim dots from edge to edge, lit white around a finger."></a>
       </figure>
     </section>
 
@@ -603,7 +604,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
             <tr><td><code>nilo.<wbr>loadedModels</code></td><td><code>1</code></td><td>Models Ollama keeps in memory at once. With <code>2</code>, the automatic choice of model switches without loading again.</td></tr>
             <tr><td><code>nilo.<wbr>coauthor</code></td><td><a href="https://github.com/nilo-nihil">nilo-nihil</a></td><td>Who Nilo signs its commits as, so GitHub shows its face next to yours. <code>null</code> for none.</td></tr>
             <tr><td><code>generations.<wbr>days</code></td><td><code>7</code></td><td>How long generations stay: the weekly clean removes the older ones, never the one in use.</td></tr>
-            <tr><td><code>deck.<wbr>enable</code></td><td><code>false</code></td><td>The phone as a deck: its service, its port in the firewall and its name on the local network.</td></tr>
+            <tr><td><code>deck.<wbr>enable</code></td><td><code>false</code></td><td>The phone as a deck: its service, its port in the firewall, its name on the local network and uinput for the trackpad.</td></tr>
           </tbody>
         </table>
 
