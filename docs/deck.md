@@ -1,16 +1,16 @@
 # The deck: the phone opens things on the computer
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), on Android, can be a deck for a NIHIL computer: it opens the computer's
-apps and web pages, plays and skips its music, turns its volume and locks it. This is what
-the computer offers, for whoever writes the phone's side.
+apps and web pages, plays and skips its music, turns its volume, locks it and is its
+trackpad. This is what the computer offers, for whoever writes the phone's side.
 
 The computer's side is `nihil-deck` ([`home/deck/deck.py`](../home/deck/deck.py)), a
 service in the user's session. Preferences, Phone turns it on (`settings.json`'s
 `"deck": { "enable": true }`, a rebuild) and pairs phones with a QR.
 
 It does only what is listed here. There is no way to run a command, read a file or type
-on the computer: an app can only be one the launcher shows, and a page only `http` or
-`https`.
+on the computer: an app can only be one the launcher shows, a page only `http` or
+`https`, and the trackpad points and clicks as a touchpad there would, nothing more.
 
 ## Pairing
 
@@ -236,7 +236,8 @@ A status and `{ "error": "…" }`:
 | 409 | `closed` | No code open: show the QR again |
 | 410 | `expired` | The code ran out: show the QR again |
 | 429 | `wait` | Ten failures (a token, a code) from that address in a minute: wait one |
-| 503 | `shell`, `volume`, `lock` | The shell (or the sound, or the lock) is not answering |
+| 503 | `shell`, `volume`, `lock`, `trackpad` | The shell (or the sound, the lock, the trackpad) is not answering |
+| 503 | `access` | This session may not make the trackpad yet: log out and in once |
 
 ## On the phone
 
@@ -254,18 +255,58 @@ names, or an image fetched from a public address, 4 MB at most.
 
 ## The kanban
 
-The dashboard's kanban (`services/Tasks.qml`, `~/.local/state/nihil/tasks.json`, version 2)
+The dashboard's kanban (`services/Tasks.qml`, `~/.local/state/nihil/tasks.json`, version 3)
 and the phone's are replicas of the same board. Each card is
-`{ id, text, column, textStamp, placeStamp }`, the stamps when its text and its column were
-last set, in the computer's milliseconds; a removed card leaves `removed: { id: when }`, kept
-60 days. Two boards merge (`services/TaskMerge.js`, the same rules as the launcher's
-`core/TaskBoard.kt`): for each card the text set last and the column set last win, a removal
-wins over everything set before it, and the order in a column is the order the cards got
-there. The merge gives the same board whichever way round and however often, so two sides that
-both changed while apart each keep what the other did.
+`{ id, text, column, textStamp, placeStamp, rank }`: the stamps say when its text and its
+place were last set, in the computer's milliseconds, and its place is its column and its
+`rank` there, the number a column is in order by. A card put somewhere gets a rank between
+its neighbours' (one less than the first, one more than the last); when two are too close for
+one between, the whole column gets new ranks, as if moved then. A side from before ranks
+leaves `rank` out, and its cards count as ranked by when they got to their column
+(`placeStamp`). A removed card leaves `removed: { id: when }`, kept 60 days. Two boards merge
+(`services/TaskMerge.js`, the same rules as the launcher's `core/TaskBoard.kt`): for each card
+the text set last and the place set last win, and a removal wins over everything set before
+it. With the same stamp, a place with a rank wins over one without, so a side from before
+ranks doesn't undo an order. The merge gives the same board whichever way round and however
+often, so two sides that both changed while apart each keep what the other did.
 
 - `GET /v1/tasks`: the board, and `now`, the computer's clock.
-- `POST /v1/tasks` with the phone's whole board (256 KB, 1000 cards at most): the shell merges
+- `POST /v1/tasks` with the phone's whole board (256 KB, 1000 cards at most; a `rank`, when
+  there is one, a finite number): the shell merges
   it in and answers with the result and `now`. The phone merges that again (for what changed
   meanwhile) and stamps its own changes in the computer's time from then on.
+
+## The trackpad
+
+`GET /v1/trackpad?w=<width>&h=<height>&r=<resolution>`, with `Connection: Upgrade` and
+`Upgrade: nihil-trackpad`, makes a touchpad on the computer (uinput, `NIHIL deck trackpad`)
+`w` by `h` units, `r` of them a millimetre: the phone's screen as it is. `r` from 5 to 100,
+each side from 10 to 500 mm. The computer's libinput takes it as any touchpad, with the
+settings the laptop's has: a tap clicks, two fingers right-click and scroll, three
+middle-click, a pinch zooms, and Hyprland's gestures run.
+
+It answers `101 Switching Protocols` a quarter of a second later (libinput opens the new
+touchpad meanwhile), and the connection is then the phone's frames, big-endian:
+
+| Bytes | What |
+|-------|------|
+| 1 | The kind: `1` the fingers, `2` a keepalive |
+| 4 | The phone's time, in milliseconds (a clock that only goes forward; it may wrap) |
+| 1 | The fingers: how many touch now, 10 at most (kind `1` only) |
+| 5 each | A finger: its id (Android's pointer id), then x and y in units, two bytes each |
+
+A frame names every finger that touches: one it leaves out is up, and with none, all are.
+The computer answers each keepalive with one byte, `2`. The phone sends one every second,
+frames or not, so each side knows the other is there: after 4 s without either, the
+computer lifts every finger and the touchpad goes, as when the connection closes. A new
+stream from the same phone ends the one before.
+
+The frames reach the touchpad 25 ms after the quickest of them came, as far apart as the
+phone saw them: libinput reads speed from those times, and takes frames the network bunched
+together for jumps. One that comes later still goes at once, and the ones after it close up
+to their time again.
+
+`400` `invalid` for a size it doesn't take or another protocol, `503` `access` when this
+session may not make the touchpad yet (once after turning the deck on, until logging in
+again), `503` `trackpad` when it can't.
 
