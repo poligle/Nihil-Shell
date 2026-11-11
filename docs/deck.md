@@ -310,3 +310,11 @@ to their time again.
 session may not make the touchpad yet (once after turning the deck on, until logging in
 again), `503` `trackpad` when it can't.
 
+## The watch
+
+A watch has no camera for the QR. [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear)
+takes the same invitation from `nihil-deck pair --json`, handed to it by adb (its
+`tools/watch invite`), and pairs with `POST /v1/pair` as the phone does: to this
+computer it is one more device, listed and forgotten as a phone is. It reaches the
+computer over the phone's Bluetooth when that gets here, over Wi-Fi asked for when it
+doesn't.

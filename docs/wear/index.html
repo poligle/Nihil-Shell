@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIHIL for Wear OS</title>
+<meta name="description" content="The NIHIL language on the wrist: a watch face with the time in dots and light on the edge, a list grey until one is chosen, and the watch as a deck for your computer. Open source, no ads, no tracking.">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://nihilshell.com/wear/">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NIHIL for Wear OS">
+<meta property="og:description" content="A monochrome, dot-matrix launcher for Wear OS.">
+<meta property="og:url" content="https://nihilshell.com/wear/">
+<meta property="og:image" content="https://nihilshell.com/assets/og-wear.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="../assets/fonts/space-grotesk.woff" as="font" type="font/woff" crossorigin>
+<style>
+@font-face { font-family: "Space Grotesk"; src: url("../assets/fonts/space-grotesk.woff") format("woff"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-400.woff") format("woff"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Doto"; src: url("../assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
+
+/* NIHIL tokens: the same as the desktop page */
+:root {
+  --void: #000000;
+  --surface: #0E0E0E;
+  --raised: #1A1A1A;
+  --line: #2A2A2A;
+  --off: #333333;
+  --muted: #7A7A7A;
+  --dim: #A3A3A3;
+  --ink: #F2F2F2;
+  --signal: #D71921;
+
+  --sans: "Space Grotesk", system-ui, sans-serif;
+  --mono: "Space Mono", ui-monospace, monospace;
+  --dot: "Doto", "Space Mono", monospace;
+
+  --t: 8px;
+  --top: 8px;
+  --left: 44px;
+  --r: 20px;
+  --pitch: 9px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  color: var(--ink);
+  font: 400 18px/1.55 var(--sans);
+  background-color: var(--void);
+  background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px);
+  background-size: var(--pitch) var(--pitch);
+  background-attachment: fixed;
+}
+::selection { background: var(--ink); color: var(--void); }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+img { display: block; max-width: 100%; height: auto; }
+code, kbd, pre { font-family: var(--mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
+
+/* ---------- frame, bar and Glyph light ---------- */
+.frame {
+  position: fixed; z-index: 40; pointer-events: none;
+  top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
+  border-radius: var(--r);
+  box-shadow: 0 0 0 200vmax var(--void);
+}
+.glyph { position: fixed; inset: 0; z-index: 45; pointer-events: none; width: 100%; height: 100%; }
+.glyph path { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(242, 242, 242, 0.75)); }
+
+.bar {
+  position: fixed; z-index: 50; left: 0; top: 0; bottom: 0; width: var(--left);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 16px 0 14px;
+}
+.bar .mark { display: block; width: 26px; height: 26px; border-radius: 50%; }
+.bar .mark svg { display: block; width: 26px; height: 26px; }
+.leds { display: flex; flex-direction: column; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.leds a { position: relative; display: grid; place-items: center; width: 20px; height: 22px; }
+.leds a::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transition: height 240ms, background-color 240ms; }
+.leds a[aria-current="true"]::before { height: 20px; background: var(--ink); }
+.leds a:hover::before { background: var(--ink); }
+.leds .tip {
+  position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+  padding: 3px 9px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line);
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--dim); white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 140ms;
+}
+.leds a:hover .tip, .leds a:focus-visible .tip { opacity: 1; }
+.bar-end { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.bar-end .gh { display: grid; place-items: center; width: 26px; height: 26px; color: var(--dim); }
+.bar-end .gh:hover { color: var(--ink); }
+.clock { font: 700 17px/0.95 var(--dot); color: var(--dim); text-align: center; letter-spacing: 0.02em; }
+.clock[hidden] { display: none; }
+.bar .word { display: none; }
+
+/* ---------- layout ---------- */
+main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
+.wrap { max-width: 1180px; margin: 0 auto; }
+section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
+.prose { max-width: 62ch; }
+h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(36px, 5.2vw, 62px); line-height: 1.04; max-width: 15ch; }
+h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; margin-bottom: 18px; }
+h3 { font-size: 21px; line-height: 1.3; margin-bottom: 6px; }
+p { margin: 0 0 16px; }
+.lede { color: var(--dim); font-size: 21px; line-height: 1.5; max-width: 50ch; margin-top: 22px; }
+.quiet { color: var(--dim); }
+.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
+
+/* ---------- hero ---------- */
+.hero { padding-bottom: 120px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 56px; align-items: center; }
+.wordmark { width: min(628px, 100%); margin: 0 0 14px -4px; }
+.wordmark svg, .wordmark img { display: block; width: 100%; height: auto; }
+.motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 64px; text-transform: lowercase; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 22px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 24px;
+  border-radius: 999px; border: 1px solid var(--line); text-decoration: none;
+  font: 500 16px/1 var(--sans); color: var(--ink); background: var(--void);
+  transition: border-color 140ms, background-color 140ms;
+}
+.pill:hover { border-color: var(--muted); }
+.pill.primary { background: var(--ink); color: var(--void); border-color: var(--ink); }
+.pill.primary:hover { background: #ffffff; }
+.pill svg { width: 18px; height: 18px; }
+.shot { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
+
+/* ---------- the phone, drawn by this page ---------- */
+.phone {
+  position: relative; width: min(300px, 78vw); aspect-ratio: 9 / 19.5;
+  border-radius: 46px; background: var(--void); border: 1px solid var(--line);
+  box-shadow: 0 0 0 10px var(--void);
+}
+.phone .status {
+  position: absolute; top: 11px; left: 26px; right: 26px; display: flex; justify-content: space-between; align-items: center;
+  font: 400 10px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
+}
+.phone .status i { display: block; width: 9px; height: 9px; border-radius: 50%; background: #111; box-shadow: inset 0 0 0 1px #222; }
+.phone .card {
+  position: absolute; top: 30px; left: 6px; right: 6px; bottom: 16px; border-radius: 26px; overflow: hidden;
+  background-color: var(--void);
+  background-image: radial-gradient(circle, #191919 0 1.1px, transparent 1.5px);
+  background-size: 8px 8px;
+}
+/* a dot-matrix wallpaper: LEDs that grow towards a bright horizon, a few stars */
+.phone .card i, .phone .card::after { content: ""; position: absolute; inset: 0; }
+.phone .card i { background-size: 8px 8px; }
+.phone .card .l3 {
+  background-image: radial-gradient(circle, rgba(242, 242, 242, 0.5) 0 1.3px, transparent 1.7px);
+  -webkit-mask-image: radial-gradient(ellipse 125% 46% at 64% 104%, #000 0 55%, transparent 80%);
+          mask-image: radial-gradient(ellipse 125% 46% at 64% 104%, #000 0 55%, transparent 80%);
+}
+.phone .card .l2 {
+  background-image: radial-gradient(circle, rgba(242, 242, 242, 0.72) 0 2px, transparent 2.4px);
+  -webkit-mask-image: radial-gradient(ellipse 100% 35% at 64% 104%, #000 0 55%, transparent 82%);
+          mask-image: radial-gradient(ellipse 100% 35% at 64% 104%, #000 0 55%, transparent 82%);
+}
+.phone .card .l1 {
+  background-image: radial-gradient(circle, rgba(242, 242, 242, 0.95) 0 2.9px, transparent 3.3px);
+  -webkit-mask-image: radial-gradient(ellipse 72% 23% at 62% 104%, #000 0 55%, transparent 85%);
+          mask-image: radial-gradient(ellipse 72% 23% at 62% 104%, #000 0 55%, transparent 85%);
+}
+.phone .card::after {
+  background:
+    radial-gradient(circle at 76px 252px, #cfcfcf 0 1.8px, transparent 2.3px),
+    radial-gradient(circle at 196px 220px, #9a9a9a 0 1.5px, transparent 2px),
+    radial-gradient(circle at 228px 300px, #e6e6e6 0 2px, transparent 2.5px),
+    radial-gradient(circle at 124px 332px, #8a8a8a 0 1.4px, transparent 1.9px),
+    radial-gradient(circle at 44px 380px, #bdbdbd 0 1.7px, transparent 2.2px),
+    radial-gradient(circle at 252px 404px, #a8a8a8 0 1.5px, transparent 2px),
+    radial-gradient(circle at 164px 428px, #dadada 0 1.9px, transparent 2.4px),
+    linear-gradient(rgba(0, 0, 0, 0.55), transparent 44%, transparent 50%, rgba(0, 0, 0, 0.62));
+}
+.phone .home { position: absolute; z-index: 1; inset: 0; padding: 22px 16px 14px; display: flex; flex-direction: column; }
+.ledclock { display: block; width: 78%; height: auto; border-radius: 8px; background: rgba(0, 0, 0, 0.82); }
+.ledclock .off { fill: rgba(255, 255, 255, 0.18); }
+.ledclock .on { fill: var(--ink); opacity: 0; transition: opacity 480ms cubic-bezier(0.2, 0, 0, 1); }
+.ledclock .on.lit { opacity: 1; }
+/* the desktop's clock widget: a black card with a hairline, the time in dots, the day and the date */
+.pclock { width: 100%; box-sizing: border-box; padding: 14px 12px 12px; border-radius: 16px; background: var(--void); border: 1px solid var(--line); text-align: center; }
+.ptime { margin: 0; font: 700 40px/1 var(--dot); color: var(--ink); letter-spacing: 0.02em; }
+.pday { margin: 8px 0 0; font: 400 9.5px/1 var(--mono); color: var(--dim); }
+.pdate { margin: 5px 0 0; font: 400 11px/1 var(--sans); color: var(--muted); }
+.pbatt { display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(42, 42, 42, 0.6); }
+.pbatt i { width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+.pbatt i.o { transform: scale(0.62); background: rgba(255, 255, 255, 0.22); }
+.pbatt span { margin-left: 7px; font: 400 9.5px/1 var(--mono); letter-spacing: 0.06em; color: var(--dim); }
+.pfavs { margin: auto 0 0; padding: 0 0 0 2px; list-style: none; }
+.pfavs li { font: 400 19px/2.1 var(--sans); color: var(--ink); text-shadow: 0 0 8px #000; }
+.pglyph { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.pglyph circle { fill: var(--ink); opacity: 0; }
+.pglyph path { fill: none; stroke: none; }
+.pglyph path.sweep { stroke: var(--ink); stroke-linecap: round; }
+.deck-shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; margin-top: 48px; max-width: 980px; }
+.deck-shots figure { margin: 0; }
+.deck-shots a { display: block; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
+.deck-shots img { display: block; width: 100%; height: auto; }
+.deck-shots .wide { grid-column: 1 / -1; }
+.deck-shots figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--muted); }
+#tasks { margin-top: 88px; }
+
+/* ---------- screens ---------- */
+.phones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 48px; max-width: 980px; }
+.phones figure { margin: 0; }
+.phones a { display: block; border-radius: 28px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
+.phones a:hover { border-color: var(--muted); }
+.phones figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--muted); }
+
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 56px 0 0; }
+.rules p { color: var(--dim); margin: 0; }
+
+/* ---------- drawer ---------- */
+.examples { display: grid; gap: 16px; margin: 36px 0 0; padding: 0; list-style: none; max-width: 860px; }
+.examples li { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: baseline; color: var(--dim); }
+.examples kbd { justify-self: start; }
+.examples code { font-size: 15px; color: var(--ink); }
+kbd {
+  display: inline-block; padding: 5px 8px 4px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface);
+  font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
+}
+
+/* ---------- studio ---------- */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+.studio-shot { justify-self: center; width: min(300px, 78vw); margin: 0; }
+.studio-shot img { border-radius: 28px; border: 1px solid var(--line); }
+.studio-shot figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--muted); }
+
+/* ---------- code, steps, table ---------- */
+.code {
+  display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
+}
+.code pre { flex: 1 1 auto; min-width: 0; margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.65; color: var(--ink); }
+.code .c { color: var(--muted); }
+.copy {
+  flex: none; margin: 10px 10px 0 0; appearance: none; cursor: pointer;
+  border: 1px solid var(--line); background: var(--void); color: var(--dim); border-radius: 999px;
+  min-height: 30px; padding: 0 12px; font: 400 12px/1 var(--mono);
+}
+.copy:hover { color: var(--ink); border-color: var(--muted); }
+.steps { margin: 40px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; max-width: 860px; }
+.steps > li { counter-increment: step; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 14px; min-width: 0; }
+.steps > li::before {
+  content: counter(step); grid-row: span 3; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--line); display: grid; place-items: center; font: 700 15px/1 var(--dot); color: var(--dim);
+}
+.steps p { color: var(--dim); margin: 0; }
+.table { margin-top: 48px; max-width: 860px; }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+th, td { text-align: left; vertical-align: top; padding: 13px 14px 13px 0; border-bottom: 1px solid var(--line); }
+th { font: 400 12px/1.4 var(--mono); color: var(--muted); font-weight: 400; }
+td code { font-size: 14px; color: var(--ink); white-space: nowrap; }
+td { color: var(--dim); }
+td.what { color: var(--ink); }
+.note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
+.source { margin-top: 64px; max-width: 860px; }
+
+/* ---------- footer ---------- */
+/* the same side padding as main, so the frame and the bar never cover it */
+footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
+footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
+footer p { margin: 0 0 10px; max-width: 70ch; }
+footer a { color: var(--dim); }
+footer a:hover { color: var(--ink); }
+
+/* ---------- narrow screens: the bar moves to the top ---------- */
+@media (max-width: 860px) {
+  :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
+  .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
+  .bar .leds, .bar .clock { display: none; }
+  .bar-start { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .bar .word { display: block; font: 400 13px/1 var(--mono); letter-spacing: 0.4em; color: var(--dim); }
+  .bar-end { flex-direction: row; }
+  main { padding: calc(var(--top) + 36px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
+  section { padding-bottom: 96px; }
+  .hero-grid, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
+  .hero-grid { gap: 48px; }
+  .phone { justify-self: center; }
+  .rules { gap: 28px; }
+  .motto { margin-bottom: 44px; letter-spacing: 0.45em; }
+  .phones { gap: 12px; }
+  .phones a { border-radius: 16px; }
+  .phones figcaption { font-size: 10px; letter-spacing: 0.04em; }
+  .examples li { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .split { gap: 32px; }
+  .steps > li { grid-template-columns: 40px minmax(0, 1fr); }
+  td code { white-space: normal; }
+  footer { padding: 0 calc(var(--t) + 16px) 48px calc(var(--left) + 16px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .leds a::before, .ledclock .on { transition: none; }
+}
+</style>
+<style>
+  /* The watch: its screens are round, black on black, with a hairline round them. */
+  .watch { display: flex; justify-content: center; align-items: center; }
+  .watch img, .watches img { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; border-radius: 50%; background: #000; box-shadow: 0 0 0 1px #2A2A2A; }
+  .watches { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 28px; margin: 32px 0 8px; }
+  .watches figure { margin: 0; text-align: center; }
+  .watches figcaption { margin-top: 12px; }
+  pre.steps { margin: 20px 0; padding: 16px 18px; overflow-x: auto; background: #0E0E0E; border: 1px solid #2A2A2A; border-radius: 12px; color: #F2F2F2; font: 13px/1.7 "Space Mono", ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<a class="sr-only skip" href="#title">Skip to content</a>
+
+<div class="frame" aria-hidden="true"></div>
+<svg class="glyph" aria-hidden="true"><path id="glyph-path" d=""/></svg>
+
+<header class="bar">
+  <a class="bar-start" href="#top" aria-label="NIHIL for Wear OS, back to the top">
+    <span class="mark">
+      <svg viewBox="0 0 80 70" aria-hidden="true"><g fill="#F2F2F2"><circle cx="25" cy="5" r="3.6"/><circle cx="35" cy="5" r="3.6"/><circle cx="45" cy="5" r="3.6"/><circle cx="15" cy="15" r="3.6"/><circle cx="25" cy="15" r="3.6"/><circle cx="35" cy="15" r="3.6"/><circle cx="45" cy="15" r="3.6"/><circle cx="55" cy="15" r="3.6"/><circle cx="5" cy="25" r="3.6"/><circle cx="35" cy="25" r="3.6"/><circle cx="65" cy="25" r="3.6"/><circle cx="5" cy="35" r="3.6"/><circle cx="35" cy="35" r="3.6"/><circle cx="45" cy="35" r="3.6"/><circle cx="65" cy="35" r="3.6"/><circle cx="75" cy="35" r="3.6"/><circle cx="5" cy="45" r="3.6"/><circle cx="65" cy="45" r="3.6"/><circle cx="15" cy="55" r="3.6"/><circle cx="25" cy="55" r="3.6"/><circle cx="35" cy="55" r="3.6"/><circle cx="45" cy="55" r="3.6"/><circle cx="55" cy="55" r="3.6"/><circle cx="25" cy="65" r="3.6"/><circle cx="35" cy="65" r="3.6"/><circle cx="45" cy="65" r="3.6"/></g></svg>
+    </span>
+    <span class="word" aria-hidden="true">NIHIL</span>
+  </a>
+  <nav aria-label="Sections">
+    <ul class="leds">
+      <li><a href="#top" aria-current="true"><span class="tip">Overview</span></a></li>
+      <li><a href="#face"><span class="tip">Face</span></a></li>
+      <li><a href="#home"><span class="tip">Home</span></a></li>
+      <li><a href="#deck"><span class="tip">Deck</span></a></li>
+      <li><a href="#privacy"><span class="tip">Privacy</span></a></li>
+      <li><a href="#install"><span class="tip">Install</span></a></li>
+    </ul>
+  </nav>
+  <div class="bar-end">
+    <a class="gh" href="../" aria-label="NIHIL for NixOS" title="NIHIL for NixOS">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="9" rx="1.6"/><path d="M5.5 14.2h5M8 11.6v2.6"/></svg>
+    </a>
+    <a class="gh" href="../android/" aria-label="NIHIL for Android" title="NIHIL for Android">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.4h2"/></svg>
+    </a>
+    <a class="gh" href="https://github.com/poligle/Nihil-Wear" aria-label="Source code on GitHub" title="Source code on GitHub">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <div class="clock" hidden aria-hidden="true"><span id="hh">00</span><br><span id="mm">00</span></div>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap">
+
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-grid">
+        <div>
+          <div class="wordmark" id="wordmark"><img src="nihil-logo-dark.svg" alt="NIHIL" width="320" height="90"></div>
+          <p class="motto"><i>ex nihilo</i></p>
+          <h1 id="title">A dot&#8209;matrix launcher for Wear OS</h1>
+          <p class="lede">The same language on the wrist: the time in dots, light on the edge, the apps grey until one is chosen, and the watch as a deck for your computer. Open source, no ads, no tracking.</p>
+          <div class="actions">
+            <a class="pill primary" href="#install">Install</a>
+            <a class="pill" href="https://github.com/poligle/Nihil-Wear">
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+              View the code
+            </a>
+            <a class="pill" href="../">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="9" rx="1.6"/><path d="M5.5 14.2h5M8 11.6v2.6"/></svg>
+              Desktop for NixOS
+            </a>
+            <a class="pill" href="../android/">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.4h2"/></svg>
+              Launcher for Android
+            </a>
+          </div>
+          <p class="meta">Wear OS 4 or newer. Kotlin, no libraries. MIT</p>
+        </div>
+
+        <figure class="watch">
+          <img src="face.png" width="600" height="600" alt="NIHIL's watch face: the time in dots, the day under it, the battery as ten LEDs, a LED over the time for something unread, and sixty dim LEDs round the edge, one of them lit for the seconds.">
+        </figure>
+      </div>
+    </section>
+
+    <section id="face" aria-labelledby="face-title">
+      <div class="prose">
+        <h2 id="face-title">The face</h2>
+        <p class="quiet">NIHIL's watch face is in Watch Face Format, as Wear OS wants faces now: no code, a file the watch draws itself, in ambient too. The time is in dots, the day under it in Space Mono; sixty LEDs go round the edge, every one there and the unlit faintly. Tap the time and NIHIL opens.</p>
+      </div>
+      <div class="rules">
+        <div>
+          <h3>The time in dots</h3>
+          <p>Doto, the desktop's dot matrix, as big as the face allows. In ambient, the time and the day alone, dimmed.</p>
+        </div>
+        <div>
+          <h3>Light on the edge</h3>
+          <p>The seconds' LED runs round the edge as the desktop's light runs round its frame; a LED over the time stays lit while something is unread.</p>
+        </div>
+        <div>
+          <h3>Red only to interrupt</h3>
+          <p>The battery is ten LEDs under the day. They turn red at 15&nbsp;% or less, the only red on the face.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="home" aria-labelledby="home-title">
+      <div class="prose">
+        <h2 id="home-title">Grey until it's chosen</h2>
+        <p class="quiet">NIHIL on the watch is a list: the computer's deck first, then the watch's apps by name. The bezel or the crown turns it, a rotating bezel, a touch bezel or a crown alike, with a tick as each one passes; what stands in the middle is lit in ink and the rest stays grey, as the desktop's apps do. Over it, the time in dots.</p>
+        <p class="quiet">Wear OS keeps its own launcher, so NIHIL opens from its face, from its icon, or from a button where the watch lets you choose one.</p>
+      </div>
+      <div class="watches">
+        <figure>
+          <img src="home.png" width="600" height="600" loading="lazy" alt="NIHIL's list on the watch: the time in dots at the top, the computer's deck in the middle, lit, with a LED before its name, and the watch's apps under it in grey.">
+          <figcaption>Home</figcaption>
+        </figure>
+        <figure>
+          <img src="deck.png" width="600" height="600" loading="lazy" alt="The deck on the watch: the computer's name with a lit LED, what plays and who plays it, the keys for previous, pause and next, the volume in dots, and the keys for caffeine, night light and lock; the LEDs round the edge lit to the volume.">
+          <figcaption>Deck</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="deck" aria-labelledby="deck-title">
+      <div class="prose">
+        <h2 id="deck-title">The watch as a deck</h2>
+        <p class="quiet">Paired with <a href="../#deck">NIHIL on your computer</a>, the watch plays and skips its music, turns its volume with the bezel or the crown, which the LEDs round its edge show, turns its caffeine and its night light, and locks it. While the deck shows, it asks the computer what plays every few seconds, as the phone does; the phone, a tablet and the watch can all be decks of the same computer at once.</p>
+        <p class="quiet">A watch has two ways to the computer: the phone's Bluetooth, which Wear OS uses on its own, and Wi&#8209;Fi, which it brings up when an app asks for it. NIHIL tries the first; when the computer isn't there, it asks for Wi&#8209;Fi, and lets it go when the deck closes. Its network test measures both, and how long the computer takes to answer on each.</p>
+      </div>
+    </section>
+
+    <section id="privacy" aria-labelledby="privacy-title">
+      <div class="prose">
+        <h2 id="privacy-title">Nothing else</h2>
+        <p class="quiet">NIHIL talks to the computer it was paired with, on your own network, and to nothing else. The computer reaches the watch only through adb: the pairing goes in through a door that answers adb's shell and no app on the watch. The token is the watch's own, encrypted with a key that never leaves the Android Keystore, and out of backups.</p>
+      </div>
+      <div class="table">
+        <h3>What it asks for</h3>
+        <table>
+          <thead><tr><th scope="col">Permission</th><th scope="col">For</th></tr></thead>
+          <tbody>
+            <tr><td class="what">Internet</td><td>The deck: the computer it was paired with, and nothing else</td></tr>
+            <tr><td class="what">Network state</td><td>Which way the computer is: Bluetooth through the phone, or Wi&#8209;Fi</td></tr>
+            <tr><td class="what">Change network state</td><td>Asking for Wi&#8209;Fi when Bluetooth doesn't reach the computer</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="install-title">
+      <div class="prose">
+        <h2 id="install-title">Install</h2>
+        <p class="quiet">There is no store: the APKs go on the watch with adb over Wi&#8209;Fi, as any app from outside Google Play does. On the watch, Settings, About watch, and tap the build number until the developer options appear; in them, ADB debugging and Wireless debugging, on the computer's Wi&#8209;Fi. Then, from <a href="https://github.com/poligle/Nihil-Wear">NIHIL for Wear OS</a> on the computer, with the deck on in Preferences, Phone:</p>
+      </div>
+      <pre class="steps"><code>nix develop
+tools/watch pair IP:PORT CODE    # Wireless debugging, Pair new device
+tools/watch connect IP:PORT      # the address on Wireless debugging's screen
+tools/watch install              # NIHIL and its watch face
+tools/watch invite               # the watch pairs with this computer</code></pre>
+      <div class="prose">
+        <p class="quiet">Then hold the watch's face and choose NIHIL's. Wear OS 4 or newer, on any watch: a crown, a rotating bezel or a touch bezel turn it alike.</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p>NIHIL is a personal project and is not affiliated with Nothing Technology. NIHIL for Wear OS is written in Kotlin on the Android framework alone: no AndroidX, no libraries; its face is Watch Face Format, no code at all.</p>
+      <p>Doto, Space Grotesk and Space Mono are under the <a href="../assets/fonts/OFL.txt">SIL Open Font License 1.1</a>. The code is MIT licensed.</p>
+    </div>
+    <div>
+      <p><a href="https://github.com/poligle/Nihil-Wear">github.com/poligle/Nihil-Wear</a></p>
+      <p><a href="https://github.com/poligle/Nihil-Wear#readme">README</a></p>
+      <p><a href="../">NIHIL for NixOS</a></p>
+      <p><a href="../android/">NIHIL for Android</a></p>
+      <p><a href="mailto:dev@nihilshell.com">Contact mail</a></p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- Light around the page's frame, as on the other pages
+  const path = document.getElementById("glyph-path");
+  function frameMetrics() {
+    const css = getComputedStyle(document.documentElement);
+    const px = name => parseFloat(css.getPropertyValue(name));
+    return { t: px("--t"), top: px("--top"), left: px("--left"), r: px("--r") };
+  }
+  function layoutGlyph() {
+    const m = frameMetrics(), w = innerWidth, h = innerHeight;
+    const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r;
+    if ([x0, y0, x1, y1, r].some(Number.isNaN)) return;
+    path.setAttribute("d",
+      `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
+      `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
+  }
+  function glyph() {
+    if (reduce || !path.animate || !path.getAttribute("d")) return;
+    const length = path.getTotalLength();
+    const segment = Math.min(360, length * 0.16);
+    path.style.strokeDasharray = `${segment} ${length}`;
+    path.animate([
+      { strokeDashoffset: 0, opacity: 0 },
+      { opacity: 1, offset: 0.12 },
+      { opacity: 1, offset: 0.82 },
+      { strokeDashoffset: -(length - segment), opacity: 0 }
+    ], { duration: 1500, easing: "cubic-bezier(0.45, 0, 0.25, 1)" });
+  }
+  layoutGlyph();
+  addEventListener("resize", layoutGlyph);
+  addEventListener("load", () => setTimeout(glyph, 400));
+
+  // ---- The section in view lights its LED in the bar
+  const links = [...document.querySelectorAll(".leds a")];
+  const sections = links.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
+  if ("IntersectionObserver" in window) {
+    const seen = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const i = sections.indexOf(entry.target);
+        links.forEach((a, j) => j === i ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"));
+      }
+    }, { rootMargin: "-45% 0px -50% 0px" });
+    sections.forEach(section => section && seen.observe(section));
+  }
+
+  // ---- The bar's clock
+  const clock = document.querySelector(".bar .clock");
+  const pad = n => String(n).padStart(2, "0");
+  function tick() {
+    const d = new Date();
+    document.getElementById("hh").textContent = pad(d.getHours());
+    document.getElementById("mm").textContent = pad(d.getMinutes());
+  }
+  if (clock) {
+    clock.hidden = false;
+    tick();
+    setInterval(tick, 15000);
+  }
+})();
+</script>
+</body>
+</html>
