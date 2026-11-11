@@ -4,7 +4,7 @@
 # with its configuration: the port, the computer's name, and what it runs
 # for the phone, by store path or from the user's profile (the shell through
 # nihil-ipc, which also locks, and the volume as its keys turn it).
-# home/deck.nix runs the service; the shell runs the command to pair a phone
+# home/deck.nix runs the service; the shell runs the command to pair a device
 # and list them (Config.deck). Tests: python3 -m unittest home/deck/test_deck.py
 
 { pkgs, lib, osConfig, profile, iconTheme }:

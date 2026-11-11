@@ -566,7 +566,7 @@ On the wrist, [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear) makes t
 music, its volume on the bezel or the crown, its caffeine, night light and lock, from a watch face
 in dots. It pairs over adb with the same code the QR holds.
 
-Preferences, Phone turns it on (a rebuild: the service, its port in the firewall and its
+Preferences, Devices turns it on (a rebuild: the service, its port in the firewall and its
 name on the local network) and pairs a phone with a QR. The QR holds the computer's
 addresses, a one-time code (once, for five minutes) and the pin of its certificate: the
 phone talks HTTPS only to the computer whose public key it was shown, and pairing gives it
