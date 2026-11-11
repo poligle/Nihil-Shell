@@ -537,6 +537,56 @@ class ServerTest(Base):
         self.deck.make_trackpad = denied
         self.assertEqual(self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")[:2], (503, {"error": "access"}))
 
+    def test_several_devices_at_once(self):
+        # A phone, a tablet and a watch, each with a token of its own, asking at
+        # the same time; two of them trackpads together; one forgotten, the rest not.
+        made = []
+
+        class Pad:
+            def __init__(self, width, height, resolution):
+                self.closed = threading.Event()
+                made.append(self)
+
+            def write(self, events):
+                pass
+
+            def close(self):
+                self.closed.set()
+
+        self.deck.make_trackpad = Pad
+        tokens = {name: self.pair(name)["token"] for name in ("Phone", "Tablet", "Watch")}
+        devices = self.deck.control({"op": "devices"})["devices"]
+        self.assertEqual(sorted(device["name"] for device in devices), ["Phone", "Tablet", "Watch"])
+
+        answers = []
+
+        def ask(token):
+            for _ in range(5):
+                answers.append(self.phone.request("GET", "/v1/state", token=token)[0])
+
+        threads = [threading.Thread(target=ask, args=(token,)) for token in tokens.values()]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(answers, [200] * 15)
+
+        self.phone.token = tokens["Phone"]
+        first, _, phone = self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")
+        self.phone.token = tokens["Tablet"]
+        second, _, tablet = self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")
+        self.assertEqual((first, second), (101, 101))
+        self.assertEqual(self.phone.request("GET", "/v1/state", token=tokens["Watch"])[0], 200)
+        time.sleep(0.3)
+        self.assertFalse(made[0].closed.is_set() or made[1].closed.is_set())
+        phone.close()
+        tablet.close()
+        self.assertTrue(made[0].closed.wait(5) and made[1].closed.wait(5))
+
+        self.deck.control({"op": "forget", "id": next(d["id"] for d in devices if d["name"] == "Tablet")})
+        statuses = {name: self.phone.request("GET", "/v1/state", token=token)[0] for name, token in tokens.items()}
+        self.assertEqual(statuses, {"Phone": 200, "Tablet": 401, "Watch": 200})
+
     def test_the_cover(self):
         art = os.path.join(self.folder, "cover.png")
         with open(art, "wb") as file:
