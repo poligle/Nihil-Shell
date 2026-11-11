@@ -5,7 +5,7 @@ apps and web pages, plays and skips its music, turns its volume, locks it and is
 trackpad. This is what the computer offers, for whoever writes the phone's side.
 
 The computer's side is `nihil-deck` ([`home/deck/deck.py`](../home/deck/deck.py)), a
-service in the user's session. Preferences, Phone turns it on (`settings.json`'s
+service in the user's session. Preferences, Devices turns it on (`settings.json`'s
 `"deck": { "enable": true }`, a rebuild) and pairs phones with a QR.
 
 It does only what is listed here. There is no way to run a command, read a file or type
@@ -14,7 +14,7 @@ on the computer: an app can only be one the launcher shows, a page only `http` o
 
 ## Pairing
 
-Preferences, Phone, "Pair a phone" shows a QR with this URI:
+Preferences, Devices, "Pair a device" shows a QR with this URI:
 
 ```
 nihil-deck://pair?v=1&name=thinkpad&hosts=192.168.1.20,100.64.0.7&port=64445&code=7JTX39F4&pin=8-eMVPli0fpzjeUBe-b_bmRtjDMwo1bNYXaVTyPSbVc
@@ -38,7 +38,7 @@ QR in Preferences makes a new one before it runs out, and goes away once a phone
 3. Keep what it returns, the token above all, with the pin, the name, the port and the
    address that answered.
 
-The computer shows a notification when a phone pairs, and lists it in Preferences, Phone,
+The computer shows a notification when a phone pairs, and lists it in Preferences, Devices,
 where it can be forgotten.
 
 ## TLS and the pin

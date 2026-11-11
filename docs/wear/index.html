@@ -306,12 +306,12 @@ footer a:hover { color: var(--ink); }
 </style>
 <style>
   /* The watch: its screens are round, black on black, with a hairline round them. */
-  .watch { display: flex; justify-content: center; align-items: center; }
-  .watch img, .watches img { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; border-radius: 50%; background: #000; box-shadow: 0 0 0 1px #2A2A2A; }
+  .watch-live { width: min(340px, 78vw); aspect-ratio: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .watch-live svg { display: block; width: 100%; height: 100%; }
+  .watches img { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; border-radius: 50%; background: #000; box-shadow: 0 0 0 1px #2A2A2A; }
   .watches { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 28px; margin: 32px 0 8px; }
   .watches figure { margin: 0; text-align: center; }
   .watches figcaption { margin-top: 12px; }
-  pre.steps { margin: 20px 0; padding: 16px 18px; overflow-x: auto; background: #0E0E0E; border: 1px solid #2A2A2A; border-radius: 12px; color: #F2F2F2; font: 13px/1.7 "Space Mono", ui-monospace, monospace; }
 </style>
 </head>
 <body>
@@ -379,9 +379,16 @@ footer a:hover { color: var(--ink); }
           <p class="meta">Wear OS 4 or newer. Kotlin, no libraries. MIT</p>
         </div>
 
-        <figure class="watch">
-          <img src="face.png" width="600" height="600" alt="NIHIL's watch face: the time in dots, the day under it, the battery as ten LEDs, a LED over the time for something unread, and sixty dim LEDs round the edge, one of them lit for the seconds.">
-        </figure>
+        <div class="watch-live" id="watch" role="img" aria-label="NIHIL's watch face, live: the time in dots, the day, the battery as ten LEDs and sixty dim LEDs round the edge, one lit for the seconds. Tap it and the light runs round the edge.">
+          <svg viewBox="0 0 450 450" aria-hidden="true">
+            <circle cx="225" cy="225" r="224" fill="#000000" stroke="#2A2A2A" stroke-width="1.5"/>
+            <g id="w-edge"><circle cx="225.0" cy="14.0" r="3.5" fill="#333333"/><circle cx="247.1" cy="15.2" r="3.5" fill="#333333"/><circle cx="268.9" cy="18.6" r="3.5" fill="#333333"/><circle cx="290.2" cy="24.3" r="3.5" fill="#333333"/><circle cx="310.8" cy="32.2" r="3.5" fill="#333333"/><circle cx="330.5" cy="42.3" r="3.5" fill="#333333"/><circle cx="349.0" cy="54.3" r="3.5" fill="#333333"/><circle cx="366.2" cy="68.2" r="3.5" fill="#333333"/><circle cx="381.8" cy="83.8" r="3.5" fill="#333333"/><circle cx="395.7" cy="101.0" r="3.5" fill="#333333"/><circle cx="407.7" cy="119.5" r="3.5" fill="#333333"/><circle cx="417.8" cy="139.2" r="3.5" fill="#333333"/><circle cx="425.7" cy="159.8" r="3.5" fill="#333333"/><circle cx="431.4" cy="181.1" r="3.5" fill="#333333"/><circle cx="434.8" cy="202.9" r="3.5" fill="#333333"/><circle cx="436.0" cy="225.0" r="3.5" fill="#333333"/><circle cx="434.8" cy="247.1" r="3.5" fill="#333333"/><circle cx="431.4" cy="268.9" r="3.5" fill="#333333"/><circle cx="425.7" cy="290.2" r="3.5" fill="#333333"/><circle cx="417.8" cy="310.8" r="3.5" fill="#333333"/><circle cx="407.7" cy="330.5" r="3.5" fill="#333333"/><circle cx="395.7" cy="349.0" r="3.5" fill="#333333"/><circle cx="381.8" cy="366.2" r="3.5" fill="#333333"/><circle cx="366.2" cy="381.8" r="3.5" fill="#333333"/><circle cx="349.0" cy="395.7" r="3.5" fill="#333333"/><circle cx="330.5" cy="407.7" r="3.5" fill="#333333"/><circle cx="310.8" cy="417.8" r="3.5" fill="#333333"/><circle cx="290.2" cy="425.7" r="3.5" fill="#333333"/><circle cx="268.9" cy="431.4" r="3.5" fill="#333333"/><circle cx="247.1" cy="434.8" r="3.5" fill="#333333"/><circle cx="225.0" cy="436.0" r="3.5" fill="#333333"/><circle cx="202.9" cy="434.8" r="3.5" fill="#333333"/><circle cx="181.1" cy="431.4" r="3.5" fill="#333333"/><circle cx="159.8" cy="425.7" r="3.5" fill="#333333"/><circle cx="139.2" cy="417.8" r="3.5" fill="#333333"/><circle cx="119.5" cy="407.7" r="3.5" fill="#333333"/><circle cx="101.0" cy="395.7" r="3.5" fill="#333333"/><circle cx="83.8" cy="381.8" r="3.5" fill="#333333"/><circle cx="68.2" cy="366.2" r="3.5" fill="#333333"/><circle cx="54.3" cy="349.0" r="3.5" fill="#333333"/><circle cx="42.3" cy="330.5" r="3.5" fill="#333333"/><circle cx="32.2" cy="310.8" r="3.5" fill="#333333"/><circle cx="24.3" cy="290.2" r="3.5" fill="#333333"/><circle cx="18.6" cy="268.9" r="3.5" fill="#333333"/><circle cx="15.2" cy="247.1" r="3.5" fill="#333333"/><circle cx="14.0" cy="225.0" r="3.5" fill="#333333"/><circle cx="15.2" cy="202.9" r="3.5" fill="#333333"/><circle cx="18.6" cy="181.1" r="3.5" fill="#333333"/><circle cx="24.3" cy="159.8" r="3.5" fill="#333333"/><circle cx="32.2" cy="139.2" r="3.5" fill="#333333"/><circle cx="42.3" cy="119.5" r="3.5" fill="#333333"/><circle cx="54.3" cy="101.0" r="3.5" fill="#333333"/><circle cx="68.2" cy="83.8" r="3.5" fill="#333333"/><circle cx="83.8" cy="68.2" r="3.5" fill="#333333"/><circle cx="101.0" cy="54.3" r="3.5" fill="#333333"/><circle cx="119.5" cy="42.3" r="3.5" fill="#333333"/><circle cx="139.2" cy="32.2" r="3.5" fill="#333333"/><circle cx="159.8" cy="24.3" r="3.5" fill="#333333"/><circle cx="181.1" cy="18.6" r="3.5" fill="#333333"/><circle cx="202.9" cy="15.2" r="3.5" fill="#333333"/></g>
+            <circle cx="225" cy="116" r="5" fill="#F2F2F2"/>
+            <text id="w-time" x="225" y="206" text-anchor="middle" dominant-baseline="central" font-family="Doto" font-weight="700" font-size="112" fill="#F2F2F2">10:08</text>
+            <text id="w-date" x="225" y="302" text-anchor="middle" dominant-baseline="central" font-family="Space Mono" font-size="24" fill="#A3A3A3">Wed 11</text>
+            <g id="w-battery"><circle cx="153.0" cy="338" r="4" fill="#333333"/><circle cx="169.0" cy="338" r="4" fill="#333333"/><circle cx="185.0" cy="338" r="4" fill="#333333"/><circle cx="201.0" cy="338" r="4" fill="#333333"/><circle cx="217.0" cy="338" r="4" fill="#333333"/><circle cx="233.0" cy="338" r="4" fill="#333333"/><circle cx="249.0" cy="338" r="4" fill="#333333"/><circle cx="265.0" cy="338" r="4" fill="#333333"/><circle cx="281.0" cy="338" r="4" fill="#333333"/><circle cx="297.0" cy="338" r="4" fill="#333333"/></g>
+          </svg>
+        </div>
       </div>
     </section>
 
@@ -397,7 +404,7 @@ footer a:hover { color: var(--ink); }
         </div>
         <div>
           <h3>Light on the edge</h3>
-          <p>The seconds' LED runs round the edge as the desktop's light runs round its frame; a LED over the time stays lit while something is unread.</p>
+          <p>The seconds' LED runs round the edge as the desktop's light runs round its frame; a LED over the time stays lit while something is unread. Tap the watch above.</p>
         </div>
         <div>
           <h3>Red only to interrupt</h3>
@@ -453,13 +460,13 @@ footer a:hover { color: var(--ink); }
     <section id="install" aria-labelledby="install-title">
       <div class="prose">
         <h2 id="install-title">Install</h2>
-        <p class="quiet">There is no store: the APKs go on the watch with adb over Wi&#8209;Fi, as any app from outside Google Play does. On the watch, Settings, About watch, and tap the build number until the developer options appear; in them, ADB debugging and Wireless debugging, on the computer's Wi&#8209;Fi. Then, from <a href="https://github.com/poligle/Nihil-Wear">NIHIL for Wear OS</a> on the computer, with the deck on in Preferences, Phone:</p>
+        <p class="quiet">There is no store: the APKs go on the watch with adb over Wi&#8209;Fi, as any app from outside Google Play does. On the watch, Settings, About watch, and tap the build number until the developer options appear; in them, ADB debugging and Wireless debugging, on the computer's Wi&#8209;Fi. Then, from <a href="https://github.com/poligle/Nihil-Wear">NIHIL for Wear OS</a> on the computer, with the deck on in Preferences, Devices:</p>
       </div>
-      <pre class="steps"><code>nix develop
+      <div class="code"><pre><code>nix develop
 tools/watch pair IP:PORT CODE    # Wireless debugging, Pair new device
 tools/watch connect IP:PORT      # the address on Wireless debugging's screen
 tools/watch install              # NIHIL and its watch face
-tools/watch invite               # the watch pairs with this computer</code></pre>
+tools/watch invite               # the watch pairs with this computer</code></pre></div>
       <div class="prose">
         <p class="quiet">Then hold the watch's face and choose NIHIL's. Wear OS 4 or newer, on any watch: a crown, a rotating bezel or a touch bezel turn it alike.</p>
       </div>
@@ -487,8 +494,9 @@ tools/watch invite               # the watch pairs with this computer</code></pr
 <script>
 (() => {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pad = n => String(n).padStart(2, "0");
 
-  // ---- Light around the page's frame, as on the other pages
+  // ---- Glyph light around the page's frame, as on the desktop page
   const path = document.getElementById("glyph-path");
   function frameMetrics() {
     const css = getComputedStyle(document.documentElement);
@@ -498,13 +506,12 @@ tools/watch invite               # the watch pairs with this computer</code></pr
   function layoutGlyph() {
     const m = frameMetrics(), w = innerWidth, h = innerHeight;
     const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r;
-    if ([x0, y0, x1, y1, r].some(Number.isNaN)) return;
     path.setAttribute("d",
       `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
       `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
   }
   function glyph() {
-    if (reduce || !path.animate || !path.getAttribute("d")) return;
+    if (reduce || !path.animate) return;
     const length = path.getTotalLength();
     const segment = Math.min(360, length * 0.16);
     path.style.strokeDasharray = `${segment} ${length}`;
@@ -517,35 +524,147 @@ tools/watch invite               # the watch pairs with this computer</code></pr
   }
   layoutGlyph();
   addEventListener("resize", layoutGlyph);
-  addEventListener("load", () => setTimeout(glyph, 400));
 
-  // ---- The section in view lights its LED in the bar
-  const links = [...document.querySelectorAll(".leds a")];
-  const sections = links.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
-  if ("IntersectionObserver" in window) {
-    const seen = new IntersectionObserver(entries => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        const i = sections.indexOf(entry.target);
-        links.forEach((a, j) => j === i ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"));
-      }
-    }, { rootMargin: "-45% 0px -50% 0px" });
-    sections.forEach(section => section && seen.observe(section));
+  // ---- The watch: its face live, and the light on its edge as the watch draws it
+  // (ui/HaloView.kt): a run of LEDs once round in ink, twice in red, or climbing
+  // both sides from the bottom, one after another as it is tapped.
+  const watch = document.getElementById("watch");
+  const edge = [...watch.querySelectorAll("#w-edge circle")];
+  const cells = [...watch.querySelectorAll("#w-battery circle")];
+  const OFF = "#333333", INK = "#F2F2F2", SIGNAL = "#D71921", LEDS = 60, RUN = 8;
+  let second = 0, lighting = false, battery = { level: 0.72, charging: false };
+  function paintEdge() {
+    edge.forEach((c, i) => { c.setAttribute("fill", i === second ? INK : OFF); c.setAttribute("opacity", "1"); });
   }
+  function paintBattery() {
+    const level = Math.round(battery.level * 100);
+    cells.forEach((c, i) => c.setAttribute("fill", level > i * 10 ? (level <= 15 ? SIGNAL : INK) : OFF));
+  }
+  function watchTick() {
+    const d = new Date();
+    document.getElementById("w-time").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const day = new Intl.DateTimeFormat(navigator.language || "en", { weekday: "short" }).format(d).replace(/\.$/, "");
+    document.getElementById("w-date").textContent = `${day.charAt(0).toUpperCase()}${day.slice(1)} ${d.getDate()}`;
+    second = d.getSeconds();
+    if (!lighting) paintEdge();
+  }
+  const kinds = ["notify", "signal", "charge"];
+  let next = 0;
+  function watchLight(kind = kinds[next++ % kinds.length]) {
+    if (reduce || lighting) return;
+    lighting = true;
+    const start = performance.now();
+    const length = kind === "charge" ? 1500 : 1100, laps = kind === "signal" ? 2 : 1;
+    const colour = kind === "signal" ? SIGNAL : INK;
+    const envelope = t => Math.min(1, t / 0.12) * Math.max(0, Math.min(1, (1 - t) / 0.18));
+    function frame(now) {
+      const t = (now - start) / length;
+      if (t >= laps) { lighting = false; paintEdge(); return; }
+      const lit = new Map();
+      if (kind === "charge") {
+        const head = Math.floor(t * LEDS / 2);
+        for (let k = 0; k < RUN; k++) {
+          if (head - k < 0) continue;
+          const a = envelope(t) * (RUN - k) / RUN;
+          lit.set((LEDS / 2 + head - k) % LEDS, a);
+          lit.set((LEDS / 2 - head + k + LEDS) % LEDS, a);
+        }
+      } else {
+        const lap = t - Math.floor(t), head = Math.floor(lap * LEDS);
+        for (let k = 0; k < RUN; k++) lit.set((head - k + LEDS) % LEDS, envelope(lap) * (RUN - k) / RUN);
+      }
+      edge.forEach((c, i) => {
+        if (lit.has(i)) { c.setAttribute("fill", colour); c.setAttribute("opacity", lit.get(i).toFixed(3)); }
+        else { c.setAttribute("fill", OFF); c.setAttribute("opacity", "1"); }
+      });
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  if (navigator.getBattery) {
+    navigator.getBattery().then(b => {
+      const read = () => { battery = { level: b.level, charging: b.charging }; paintBattery(); };
+      read();
+      b.addEventListener("levelchange", read);
+      b.addEventListener("chargingchange", () => { read(); if (b.charging) watchLight("charge"); });
+    }).catch(paintBattery);
+  }
+  paintBattery();
+  // The face switches on, then the light runs round the watch.
+  if (reduce) watchTick();
+  else setTimeout(watchTick, 250);
+  setInterval(watchTick, 1000);
+  setTimeout(() => watchLight("notify"), 1400);
+  watch.addEventListener("click", () => watchLight());
 
-  // ---- The bar's clock
-  const clock = document.querySelector(".bar .clock");
-  const pad = n => String(n).padStart(2, "0");
+  // ---- The wordmark lights up from nothing: the watch from the bottom up, then the letters
+  const mark = document.getElementById("wordmark");
+  fetch("nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
+    const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+    const svg = doc.documentElement;
+    if (svg.nodeName !== "svg") return;
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "NIHIL");
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    mark.replaceChildren(document.importNode(svg, true));
+    if (reduce) { glyph(); return; }
+    const live = mark.querySelector("svg");
+    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle')];
+    const markWidth = +live.getAttribute("data-mark") || live.viewBox.baseVal.height;
+    const x = c => +c.getAttribute("cx");
+    const y = c => +c.getAttribute("cy");
+    const face = ink.filter(c => x(c) < markWidth);
+    const letters = ink.filter(c => x(c) >= markWidth);
+    face.sort((a, b) => (y(b) - y(a)) || (Math.abs(x(a) - markWidth / 2) - Math.abs(x(b) - markWidth / 2)));
+    const on = (el, delay) => el.animate([{ opacity: 0.08 }, { opacity: 1 }], { duration: 180, delay, fill: "backwards", easing: "ease-out" });
+    const step = 1000 / Math.max(1, face.length);
+    face.forEach((c, i) => on(c, 120 + i * step));
+    const done = 120 + face.length * step;
+    letters.forEach(c => on(c, done + 220 + (x(c) - markWidth) * 2.2));
+    setTimeout(glyph, done + 520);
+  }).catch(() => setTimeout(glyph, 300));
+
+  // ---- Copy buttons; each copy sends the light around the frame and the watch
+  document.querySelectorAll(".code").forEach(block => {
+    if (!navigator.clipboard) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy";
+    button.textContent = "Copy";
+    button.addEventListener("click", () => {
+      navigator.clipboard.writeText(block.querySelector("code").innerText).then(() => {
+        button.textContent = "Copied";
+        glyph();
+        watchLight("notify");
+        setTimeout(() => { button.textContent = "Copy"; }, 1600);
+      });
+    });
+    block.append(button);
+  });
+
+  // ---- Section LEDs follow the scroll
+  const navLeds = [...document.querySelectorAll(".leds a")];
+  const targets = navLeds.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
+  const seen = new Map();
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => seen.set(e.target, e.intersectionRatio));
+    let best = 0, bestRatio = -1;
+    targets.forEach((t, i) => { const v = seen.get(t) ?? 0; if (v > bestRatio) { bestRatio = v; best = i; } });
+    navLeds.forEach((a, i) => a.setAttribute("aria-current", String(i === best)));
+  }, { threshold: [0, 0.15, 0.3, 0.5, 0.75, 1] });
+  targets.forEach(t => t && observer.observe(t));
+
+  // ---- The bar clock, in the visitor's time
+  const clock = document.querySelector(".clock");
   function tick() {
     const d = new Date();
     document.getElementById("hh").textContent = pad(d.getHours());
     document.getElementById("mm").textContent = pad(d.getMinutes());
   }
-  if (clock) {
-    clock.hidden = false;
-    tick();
-    setInterval(tick, 15000);
-  }
+  tick();
+  clock.hidden = false;
+  setInterval(tick, 15000);
 })();
 </script>
 </body>

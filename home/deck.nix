@@ -2,7 +2,7 @@
 #
 # The phone as a deck (nihil.deck.enable, modules/deck.nix; docs/deck.md):
 # nihil-deck's service, in the session, so what the phone opens opens here,
-# and its command, which Preferences, Phone runs to pair one.
+# and its command, which Preferences, Devices runs to pair one.
 #   systemctl --user status nihil-deck      nihil-deck pair | devices | forget ID
 
 { config, osConfig, pkgs, lib, ... }:
