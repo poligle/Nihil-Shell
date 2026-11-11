@@ -1216,6 +1216,10 @@ class Deck:
 
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    # An answer goes out in two writes, its head and then its body: with Nagle
+    # on, the body waits for the device to acknowledge the head, which a
+    # delayed ACK holds some 40 ms, on every request of a kept-open connection.
+    disable_nagle_algorithm = True
     server_version = "nihil-deck/" + str(API)
     sys_version = ""
 

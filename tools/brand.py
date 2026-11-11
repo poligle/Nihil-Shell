@@ -11,6 +11,8 @@
 #            the letters' own dots, plus "NIHIL"; its favicons and its social
 #            image, all in docs/android. Nihil-Launcher's README shows the same
 #            logo: copy android/nihil-logo-*.svg to its docs/brand.
+#   wear     NIHIL Wear's: a watch in the letters' dots, plus "NIHIL"; its round
+#            icon, its favicons and its social image, all in docs/wear.
 #
 #   python3 tools/brand.py [--wallpaper PNG] [--mono-font FONT]
 # Writes assets/brand/* and the favicons and images of the site in docs/,
@@ -46,6 +48,18 @@ ROBOT = [
     ".###.###.###.",
     "#############",
     "#############",
+]
+
+# NIHIL Wear's mark: a watch, its hands at three, the crown to the right. Its
+# case is the first seven columns; the crown stands out of it.
+WATCH = [
+    "..###...",
+    ".#####..",
+    "#..#..#.",
+    "#..##.##",
+    "#.....#.",
+    ".#####..",
+    "..###...",
 ]
 
 FACE = {
@@ -92,6 +106,12 @@ def robot(x0, y0, pitch, size=0.36):
             for j, row in enumerate(ROBOT) for i, cell in enumerate(row) if cell == "#"]
 
 
+def watch(x0, y0, pitch, size=0.36):
+    """(x, y, r, colour_key) circles of the watch's lit dots, its top-left cell at (x0, y0)."""
+    return [(x0 + (i + 0.5) * pitch, y0 + (j + 0.5) * pitch, size * pitch, "ink")
+            for j, row in enumerate(WATCH) for i, cell in enumerate(row) if cell == "#"]
+
+
 def word_circles(x0, y0, pitch, unlit=True):
     """Circles of "NIHIL" in the 5x7 face, its top-left cell at (x0, y0)."""
     circles = []
@@ -132,6 +152,25 @@ def android_icon_circles(size):
     centred on a grid of 15 cells across 0.895 of the box."""
     pitch = 0.895 * size / 15
     return robot(size / 2 - len(ROBOT[0]) / 2 * pitch, size / 2 - len(ROBOT) / 2 * pitch, pitch)
+
+
+def wear_logo_circles(pitch=10.0, unlit=True):
+    """NIHIL Wear's logo: the watch as tall as the letters, two columns before
+    them, as the launcher's robot. Circles, width, height and the watch's width."""
+    mark = len(WATCH[0]) * pitch
+    circles = watch(0, pitch, pitch)
+    x0 = mark + 2 * pitch
+    circles += word_circles(x0, pitch, pitch, unlit)
+    width = x0 + len(word_columns("NIHIL")) * pitch + pitch
+    return circles, width, 9 * pitch, mark
+
+
+def wear_icon_circles(size):
+    """NIHIL Wear's icon in a size x size box: the watch on a grid of 11 cells
+    across 0.895 of the box (a watch's icons are small and round), its case
+    centred and the crown outside it."""
+    pitch = 0.895 * size / 11
+    return watch(size / 2 - 3.5 * pitch, size / 2 - len(WATCH) / 2 * pitch, pitch)
 
 
 def svg(circles, width, height, colours, background=None, radius=0, attributes=""):
@@ -291,6 +330,21 @@ def main():
     apple.convert("RGB").save(os.path.join(android, "apple-touch-icon.png"), optimize=True)
     social(os.path.join(site, "og-android.png"), args.wallpaper, args.mono_font,
            android_logo_circles(pitch=14)[:3], "A monochrome, dot-matrix launcher for Android")
+
+    wear = os.path.join(docs, "wear")
+    os.makedirs(wear, exist_ok=True)
+    circles, width, height, watch_width = wear_logo_circles()
+    for name, colours in (("nihil-logo-dark", DARK), ("nihil-logo-light", LIGHT)):
+        text = svg(circles, width, height, colours, attributes=f' data-mark="{watch_width:g}"')
+        open(os.path.join(wear, f"{name}.svg"), "w").write(text)
+    face = wear_icon_circles(32)
+    open(os.path.join(wear, "icon.svg"), "w").write(svg(face, 32, 32, DARK, background=VOID, radius=16))
+    icon = raster(face, 32, 32, DARK, scale=8, background=VOID, radius=16)
+    icon.save(os.path.join(wear, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
+    apple = raster(face, 32, 32, DARK, scale=180 / 32, background=VOID, radius=0)
+    apple.convert("RGB").save(os.path.join(wear, "apple-touch-icon.png"), optimize=True)
+    social(os.path.join(site, "og-wear.png"), args.wallpaper, args.mono_font,
+           wear_logo_circles(pitch=14)[:3], "A monochrome, dot-matrix launcher for Wear OS")
 
     boot_preview(os.path.join(site, "boot.webp"))
 
