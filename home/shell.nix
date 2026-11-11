@@ -32,7 +32,7 @@ let
 		agent = lib.optionalString nihil.nilo.enable "${import ./nilo { inherit pkgs lib osConfig; inherit (commands) terminal; }}/bin/nilo-agent";
 	};
 
-	# The phone as a deck (home/deck.nix): Preferences, Phone pairs one
+	# The phone as a deck (home/deck.nix): Preferences, Devices pairs one
 	# through its command.
 	deck =
 	{

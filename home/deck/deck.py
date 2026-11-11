@@ -12,7 +12,7 @@
 # The phone talks HTTPS to it on the local network. The certificate is this
 # computer's own, made the first time (openssl), and the phone pins it: the
 # QR it pairs with has the SHA-256 of its public key. Pairing also needs the
-# one-time code in that QR, shown in Preferences, Phone; it gives the phone
+# one-time code in that QR, shown in Preferences, Devices; it gives the phone
 # a token of its own, kept here only as its SHA-256, until it is forgotten.
 #
 # Standard library only. home/deck/default.nix wraps it with its
@@ -20,7 +20,7 @@
 # runs the service in the session.
 #
 #   nihil-deck serve              the service
-#   nihil-deck pair [--json]      a code to pair a phone: the QR to scan (with
+#   nihil-deck pair [--json]      a code to pair a device: the QR to scan (with
 #                                 --json, its URI and modules, for the shell)
 #   nihil-deck cancel             the code no longer pairs
 #   nihil-deck devices [--json]   the phones paired
