@@ -6,7 +6,7 @@
 # user's, in the session (home/deck.nix); here, its port in the firewall, its
 # name on the local network (mDNS, through Avahi), so the phone finds it
 # again when its address changes, and uinput for the trackpad. settings.json's "deck": { "enable": true } turns it on
-# (Preferences, Phone).
+# (Preferences, Devices).
 
 { config, lib, pkgs, ... }:
 let
