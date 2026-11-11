@@ -280,6 +280,9 @@ footer a:hover { color: var(--ink); }
     <a class="gh" href="android/" aria-label="NIHIL for Android" title="NIHIL for Android">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.3h2"/></svg>
     </a>
+    <a class="gh" href="wear/" aria-label="NIHIL for Wear OS" title="NIHIL for Wear OS">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.3"/><path d="M6 3.9 6.5 1.3h3L10 3.9M6 12.1l.5 2.6h3l.5-2.6M8 6.3V8l1.1.9"/></svg>
+    </a>
     <a class="gh" href="studio/" aria-label="Wallpaper studio" title="Wallpaper studio">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3.5" r="1.3"/><circle cx="8" cy="3.5" r="1.3"/><circle cx="12.5" cy="3.5" r="1.3"/><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.9"/><circle cx="12.5" cy="8" r="1.3"/><circle cx="3.5" cy="12.5" r="1.3"/><circle cx="8" cy="12.5" r="1.3"/><circle cx="12.5" cy="12.5" r="1.3"/></svg>
     </a>
@@ -307,6 +310,10 @@ footer a:hover { color: var(--ink); }
         <a class="pill" href="android/">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.3h2"/></svg>
           Launcher for Android
+        </a>
+        <a class="pill" href="wear/">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.3"/><path d="M6 3.9 6.5 1.3h3L10 3.9M6 12.1l.5 2.6h3l.5-2.6M8 6.3V8l1.1.9"/></svg>
+          Watch for Wear OS
         </a>
         <a class="pill" href="studio/">
           <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3.5" r="1.3"/><circle cx="8" cy="3.5" r="1.3"/><circle cx="12.5" cy="3.5" r="1.3"/><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.9"/><circle cx="12.5" cy="8" r="1.3"/><circle cx="3.5" cy="12.5" r="1.3"/><circle cx="8" cy="12.5" r="1.3"/><circle cx="12.5" cy="12.5" r="1.3"/></svg>
@@ -458,6 +465,7 @@ nihil generations clean 7</code></pre>
       <div class="prose">
         <h2 id="deck-title">The phone as a deck</h2>
         <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume, locks it and is its trackpad. That is all: no commands, no files. On the phone it is one landscape screen in workspaces: the music in one; the apps and the webs in the next, each with its icon (the apps' from this computer's icon theme, the webs' found by this computer, so the phone talks to no one else); the trackpad in the last. The dashboard's kanban stays in sync with the phone's, its order too.</p>
+        <p class="quiet">With <a href="wear/">NIHIL for Wear OS</a>, the watch is one more deck: its music, its volume on the bezel or the crown, its caffeine, night light and lock. It pairs over adb with the same code the QR holds, and the phone, a tablet and the watch can all be decks at once.</p>
         <p class="quiet">The trackpad is a touchpad here: the phone streams its fingers, and libinput reads them as it reads the laptop's, with its settings. A tap clicks, two fingers right-click and scroll, three middle-click, a pinch zooms, and the gestures run.</p>
         <p class="quiet">The QR holds a code that pairs once, for five minutes, and the pin of the computer's own certificate: the phone talks HTTPS only to the computer whose key it was shown, with a token of its own, and finds it again on the network by mDNS. The protocol is in <a href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/deck.md"><code>docs/deck.md</code></a>.</p>
       </div>
@@ -622,6 +630,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     </div>
     <div>
       <p><a href="android/">NIHIL for Android</a></p>
+      <p><a href="wear/">NIHIL for Wear OS</a></p>
       <p><a href="studio/">Wallpaper studio</a></p>
       <p><a href="https://github.com/poligle/Nihil-Shell">github.com/poligle/Nihil-Shell</a></p>
       <p><a href="https://github.com/poligle/Nihil-Shell#readme">README</a></p>
