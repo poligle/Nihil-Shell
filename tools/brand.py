@@ -17,11 +17,11 @@
 #   python3 tools/brand.py [--wallpaper PNG] [--mono-font FONT]
 # Writes assets/brand/* and the favicons and images of the site in docs/,
 # including a preview of the boot splash made from its real frames.
-# Needs Pillow. The social image (GitHub's preview and the site's og.png)
-# also takes a wallpaper render and Space Mono, the site's own will do:
-#   python3 theme/dotmatrix.py wallpapers/night.jpg /tmp/night --output eDP-1:1920x1200:9
-#   python3 tools/brand.py --wallpaper /tmp/night/eDP-1.png \
-#       --mono-font docs/assets/fonts/space-mono-400.woff
+# Needs Pillow, and numpy for the social images (GitHub's preview and the
+# sites' og*.png): behind them, wallpapers/night.jpg as the desktop shows it
+# (theme/dotmatrix.py renders it), and their words in the site's Space Mono.
+# --wallpaper takes another render, --mono-font another font; a path that
+# isn't there stops it, rather than leave the images without them.
 
 import argparse
 import os
@@ -245,7 +245,7 @@ def motto(img, xy, font, fill, tracking=0.62, slant=0.22):
 def social(path, wallpaper, mono_font, logo=None, line="A monochrome, dot-matrix desktop for NixOS"):
     W, H = 1280, 640
     img = Image.new("RGB", (W, H), VOID)
-    if wallpaper and os.path.exists(wallpaper):
+    if wallpaper:
         wall = Image.open(wallpaper).convert("RGB")
         wall = wall.resize((round(wall.width * H / wall.height), H), Image.LANCZOS)
         crop = wall.crop((wall.width - 700, 0, wall.width, H))
@@ -255,10 +255,21 @@ def social(path, wallpaper, mono_font, logo=None, line="A monochrome, dot-matrix
     picture = raster(circles, width, height, DARK, scale=1)
     img.paste(picture, (90, 210), picture)
     draw = ImageDraw.Draw(img)
-    if mono_font and os.path.exists(mono_font):
+    if mono_font:
         motto(img, (92, 380), ImageFont.truetype(mono_font, 26), "#A3A3A3")
         draw.text((92, 430), line, font=ImageFont.truetype(mono_font, 19), fill="#7A7A7A")
     img.save(path, optimize=True)
+
+
+def night(folder):
+    """wallpapers/night.jpg as the desktop shows it, a 1920 x 1200 dot matrix
+    (theme/dotmatrix.py): what the social images have behind them."""
+    import subprocess
+    import sys
+    subprocess.run([sys.executable, os.path.join(ROOT, "theme", "dotmatrix.py"),
+                    os.path.join(ROOT, "wallpapers", "night.jpg"), folder,
+                    "--output", "eDP-1:1920x1200:9"], check=True)
+    return os.path.join(folder, "eDP-1.png")
 
 
 def boot_preview(path):
@@ -287,6 +298,13 @@ def main():
     ap.add_argument("--wallpaper", default="")
     ap.add_argument("--mono-font", default="")
     args = ap.parse_args()
+    import tempfile
+    mono_font = args.mono_font or os.path.join(ROOT, "docs", "assets", "fonts", "space-mono-400.woff")
+    for given in (args.wallpaper, mono_font):
+        if given and not os.path.isfile(given):
+            raise SystemExit(f"brand.py: {given} isn't there")
+    renders = tempfile.TemporaryDirectory()
+    wallpaper = args.wallpaper or night(renders.name)
 
     brand = os.path.join(ROOT, "assets", "brand")
     docs = os.path.join(ROOT, "docs")
@@ -316,7 +334,7 @@ def main():
     apple.convert("RGB").save(os.path.join(docs, "apple-touch-icon.png"), optimize=True)
 
     for path in (os.path.join(brand, "social-preview.png"), os.path.join(site, "og.png")):
-        social(path, args.wallpaper, args.mono_font)
+        social(path, wallpaper, mono_font)
 
     android = os.path.join(docs, "android")
     circles, width, height, robot_width = android_logo_circles()
@@ -328,7 +346,7 @@ def main():
     icon.save(os.path.join(android, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
     apple = raster(head, 32, 32, DARK, scale=180 / 32, background=VOID, radius=0)
     apple.convert("RGB").save(os.path.join(android, "apple-touch-icon.png"), optimize=True)
-    social(os.path.join(site, "og-android.png"), args.wallpaper, args.mono_font,
+    social(os.path.join(site, "og-android.png"), wallpaper, mono_font,
            android_logo_circles(pitch=14)[:3], "A monochrome, dot-matrix launcher for Android")
 
     wear = os.path.join(docs, "wear")
@@ -343,10 +361,11 @@ def main():
     icon.save(os.path.join(wear, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
     apple = raster(face, 32, 32, DARK, scale=180 / 32, background=VOID, radius=0)
     apple.convert("RGB").save(os.path.join(wear, "apple-touch-icon.png"), optimize=True)
-    social(os.path.join(site, "og-wear.png"), args.wallpaper, args.mono_font,
+    social(os.path.join(site, "og-wear.png"), wallpaper, mono_font,
            wear_logo_circles(pitch=14)[:3], "A monochrome, dot-matrix launcher for Wear OS")
 
     boot_preview(os.path.join(site, "boot.webp"))
+    renders.cleanup()
 
     print("brand assets written")
 
