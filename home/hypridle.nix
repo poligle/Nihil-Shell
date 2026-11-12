@@ -1,9 +1,11 @@
 # hypridle.nix by poligle
 
-{ pkgs, ... }:
+{ osConfig, pkgs, ... }:
 let
 	brightnessctl = "${pkgs.brightnessctl}/bin/brightnessctl";
-	dpms = state: "${pkgs.hyprland}/bin/hyprctl dispatch 'hl.dsp.dpms({ action = \"${state}\" })'";
+	# The running Hyprland's own hyprctl, as everywhere else (its IPC changes
+	# between releases).
+	dpms = state: "${osConfig.programs.hyprland.package}/bin/hyprctl dispatch 'hl.dsp.dpms({ action = \"${state}\" })'";
 in
 {
 	services.hypridle =
