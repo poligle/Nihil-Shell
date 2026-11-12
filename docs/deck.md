@@ -90,7 +90,8 @@ Whatever it finds, the pin still decides whether it is the right computer.
 
 HTTPS, HTTP/1.1, JSON in and out (`Content-Type: application/json`, a body of 4 KB at
 most). Connections may be kept open; the computer closes them after 15 s idle, and after an
-answer that ends one (a `429`, a body too big), which then says `Connection: close`.
+answer that ends one (a `429`, a body too big), which then says `Connection: close`. It
+holds 32 at once, from every phone together: one more is closed before its handshake.
 
 Everything but `hello` and `pair` needs the token:
 
