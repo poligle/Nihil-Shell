@@ -363,7 +363,8 @@ let
                     before=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2>/dev/null || echo "?")
                     # --refresh: Nix remembers for an hour which commit a
                     # branch was at, so a push just made would not be seen.
-                    sudo nix flake update --refresh --flake "$flake"
+                    # As root already in nihil-apply.service (update-run).
+                    as_root nix flake update --refresh --flake "$flake"
                     after=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2>/dev/null || echo "?")
                     if [ "$before" = "$after" ]; then
                         echo "NIHIL is up to date (''${after:0:7})."
