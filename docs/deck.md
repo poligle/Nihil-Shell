@@ -317,5 +317,4 @@ takes the same invitation from `nihil-deck pair --json`, handed to it by adb (it
 `tools/watch invite`), and pairs with `POST /v1/pair` as the phone does: to this
 computer it is one more device, listed and forgotten as a phone is. It reaches the
 computer over the phone's Bluetooth when that gets here, over Wi-Fi asked for when it
-doesn't. Its mouse is this trackpad too: the wrist's turns as one finger, a tap of the
-watch as a tap, the bezel as two fingers.
+doesn't.
