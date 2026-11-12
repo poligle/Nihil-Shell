@@ -53,6 +53,7 @@ let
         workspaces = 3;     # sideways: the next or previous workspace
         close = 3;          # down: close the window
         launcher = 3;       # up: the launcher
+        maximize = 3;       # spread: the window maximised; brought together, back
         special = 4;        # up or down: the special workspace
     };
 in
