@@ -74,6 +74,8 @@ COVER_MAX = 4 * 1024 * 1024
 CARDS_MAX = 1000
 FAIL_WINDOW = 60                # seconds, and how many failures in them
 FAIL_LIMIT = 10
+FAIL_KEPT = 1024                # addresses remembered before the old ones are swept
+CONNECTIONS = 32                # at once: a phone keeps a few open, and one for the trackpad
 SEEN_EVERY = 60                 # seconds between writes of "last seen"
 ICON_SIZE = 128
 APPS_FOR = 20                   # seconds the shell's list of apps is kept
@@ -339,6 +341,11 @@ class Throttle:
         with self.lock:
             self.failures.setdefault(address, []).append(now())
             self._recent(address)
+            # Addresses that failed once and went are forgotten: one network
+            # can have many of them (IPv6 has plenty), and memory doesn't.
+            if len(self.failures) > FAIL_KEPT:
+                for other in list(self.failures):
+                    self._recent(other)
 
 
 # --- What it may do -------------------------------------------------------------
@@ -372,7 +379,10 @@ class Session:
 
     def run(self, command, timeout=6):
         try:
-            done = subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
+            # errors="replace": a name that isn't UTF-8 (an app's, a song's) is
+            # no reason for the request to fail.
+            done = subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                  errors="replace", timeout=timeout)
         except (OSError, subprocess.SubprocessError):
             return None
         return done.stdout.strip() if done.returncode == 0 else None
@@ -1458,9 +1468,29 @@ class DeckServer(http.server.ThreadingHTTPServer):
     def __init__(self, address, deck, context):
         self.deck = deck
         self.context = context
+        self.slots = threading.BoundedSemaphore(CONNECTIONS)
         host, port = address
         self.address_family = socket.AF_INET6 if ":" in host else socket.AF_INET
         super().__init__((host, port), Handler)
+
+    # A thread for each connection, and no more than CONNECTIONS of them at
+    # once: anyone on the network could otherwise open them, each waiting
+    # out its handshake, until the threads ran out. One more is closed at once.
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
 
     # As HTTPServer's, without asking DNS for a name it does not use.
     def server_bind(self):
