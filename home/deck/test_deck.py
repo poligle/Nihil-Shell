@@ -319,7 +319,7 @@ class ServerTest(Base):
         self.server.shutdown()
         self.server.server_close()
 
-    def pair(self, name="Galaxy A35"):
+    def pair(self, name="Phone"):
         reply = self.deck.control({"op": "pair"})
         status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": name})
         self.assertEqual(status, 200, body)
@@ -338,15 +338,15 @@ class ServerTest(Base):
         self.assertTrue(reply["uri"].startswith("nihil-deck://pair?v=1&name=nihil-test&"))
 
         self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": "WRONGCODE", "device": "x"})[0], 403)
-        status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "Galaxy\x07 A35"})
+        status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "Pho\x07ne"})
         self.assertEqual(status, 200, body)
         self.assertEqual(body["name"], "nihil-test")
         # Once: the same code no longer pairs.
         self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "other"})[0], 409)
 
         devices = self.deck.control({"op": "devices"})["devices"]
-        self.assertEqual([(d["id"], d["name"]) for d in devices], [(body["device"], "Galaxy A35")])
-        self.assertIn("notify-send -a NIHIL Galaxy A35 is a deck now Forget it in Preferences.", self.logged())
+        self.assertEqual([(d["id"], d["name"]) for d in devices], [(body["device"], "Phone")])
+        self.assertIn("notify-send -a NIHIL Phone is a deck now Forget it in Preferences.", self.logged())
         # Only the token's hash is kept.
         with open(os.path.join(self.folder, "state", "devices.json")) as file:
             stored = file.read()

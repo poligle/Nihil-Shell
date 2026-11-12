@@ -17,7 +17,7 @@ on the computer: an app can only be one the launcher shows, a page only `http` o
 Preferences, Devices, "Pair a device" shows a QR with this URI:
 
 ```
-nihil-deck://pair?v=1&name=thinkpad&hosts=192.168.1.20,100.64.0.7&port=64445&code=7JTX39F4&pin=8-eMVPli0fpzjeUBe-b_bmRtjDMwo1bNYXaVTyPSbVc
+nihil-deck://pair?v=1&name=nihil&hosts=192.168.1.20,100.64.0.7&port=64445&code=7JTX39F4&pin=8-eMVPli0fpzjeUBe-b_bmRtjDMwo1bNYXaVTyPSbVc
 ```
 
 | Parameter | What it is |
@@ -103,7 +103,7 @@ Authorization: Bearer <token>
 No token. Whether it is there, and which computer.
 
 ```json
-{ "deck": 1, "name": "thinkpad" }
+{ "deck": 1, "name": "nihil" }
 ```
 
 ### `POST /v1/pair`
@@ -111,11 +111,11 @@ No token. Whether it is there, and which computer.
 No token.
 
 ```json
-{ "code": "7JTX39F4", "device": "Galaxy A35" }
+{ "code": "7JTX39F4", "device": "Phone" }
 ```
 
 ```json
-{ "token": "…43 characters…", "device": "3f9a1c2e", "name": "thinkpad" }
+{ "token": "…43 characters…", "device": "3f9a1c2e", "name": "nihil" }
 ```
 
 `device` is the phone's id on the computer; the name it sent is cut at 40 characters.
@@ -317,4 +317,5 @@ takes the same invitation from `nihil-deck pair --json`, handed to it by adb (it
 `tools/watch invite`), and pairs with `POST /v1/pair` as the phone does: to this
 computer it is one more device, listed and forgotten as a phone is. It reaches the
 computer over the phone's Bluetooth when that gets here, over Wi-Fi asked for when it
-doesn't.
+doesn't. Its mouse is this trackpad too: the wrist's turns as one finger, a tap of the
+watch as a tap, the bezel as two fingers.

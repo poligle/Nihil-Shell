@@ -353,7 +353,7 @@ class AgentTest(unittest.TestCase):
     def write_config(self, **extra):
         with open(self.config, "w") as f:
             json.dump(dict({"ollama": self.ollama.url, "language": "es", "models": MODELS, "contextLength": 8192,
-                            "ddgr": self.ddgr, "git": shutil.which("git"), "host": "thinkpad",
+                            "ddgr": self.ddgr, "git": shutil.which("git"), "host": "nihil",
                             "systemctl": self.systemctl, "journalctl": self.journalctl,
                             "bash": shutil.which("bash"), "terminal": self.terminal, "shellSeconds": 1, "pullWait": 0.1,
                             "flake": "~/nixos-config", "devFile": os.path.join(self.dir, "no-dev"),
@@ -1131,7 +1131,7 @@ class UnitTest(unittest.TestCase):
     def test_prompt(self):
         settings = dict(agent.DEFAULT_SETTINGS, model="qwen3.5:9b", git=True)
         import datetime
-        text = agent.build_prompt({"language": "es", "host": "thinkpad", "flake": "~/nixos-config"}, settings,
+        text = agent.build_prompt({"language": "es", "host": "nihil", "flake": "~/nixos-config"}, settings,
                                   now=datetime.datetime(2026, 10, 29, 9, 5))
         self.assertIn("jueves, 29 de octubre de 2026, las 09:05", text)
         self.assertIn("qwen3.5:9b", text)
