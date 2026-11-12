@@ -14,7 +14,8 @@
   <a href="#install">Install</a> &nbsp;&nbsp;&nbsp;
   <a href="#options">Options</a> &nbsp;&nbsp;&nbsp;
   <a href="#keybindings">Keybindings</a> &nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/poligle/Nihil-Launcher">Launcher for Android</a>
+  <a href="https://github.com/poligle/Nihil-Launcher">Launcher for Android</a> &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/poligle/Nihil-Wear">Watch for Wear OS</a>
 </p>
 
 ![NIHIL desktop](docs/assets/screens/desktop.png)
@@ -115,7 +116,7 @@ home screen in the same language: the frame, the desktop's clock, its light and 
 | ![Preferences, Desktop](docs/assets/screens/preferences.png) | ![Preferences, System](docs/assets/screens/preferences-system.png) |
 | Preferences — `SUPER + O` or the cog | The system, applied as a rebuild |
 
-<sub>NIHIL as it runs on a ThinkPad, at 1920 × 1200. App icons are Colloid's.</sub>
+<sub>NIHIL at 1920 × 1200. App icons are Colloid's.</sub>
 
 ---
 
