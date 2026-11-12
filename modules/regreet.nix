@@ -85,7 +85,17 @@ in
         }
     '';
 
-    environment.sessionVariables.XKB_DEFAULT_LAYOUT = config.services.xserver.xkb.layout;
+    # cage, under both greeters, makes its keyboard from these alone: the
+    # variant too (Preferences, Region), or a password with one of its
+    # characters would not be typed at the login as in the session and the
+    # lock screen, where Hyprland has the whole layout (home/hyprland.nix).
+    # xkbcommon takes a variant from here only along with the layout, so
+    # Hyprland's own stays as it is.
+    environment.sessionVariables =
+        let xkb = config.services.xserver.xkb; in
+        { XKB_DEFAULT_LAYOUT = xkb.layout; }
+        // lib.optionalAttrs (xkb.variant != "") { XKB_DEFAULT_VARIANT = xkb.variant; }
+        // lib.optionalAttrs (xkb.model != "") { XKB_DEFAULT_MODEL = xkb.model; };
 
     systemd.tmpfiles.rules =
     [
