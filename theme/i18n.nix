@@ -393,7 +393,7 @@
 		welBasicsBody = "Con estas teclas y tres dedos en el touchpad tienes casi todo.";
 		welWorkspaces = "Ir a un escritorio";
 		welMoveTo = "Llevar la ventana a un escritorio";
-		welGestures = "Con tres dedos: a los lados cambias de escritorio, hacia arriba abres el lanzador y hacia abajo cierras la ventana.";
+		welGestures = "Con tres dedos: a los lados cambias de escritorio, hacia arriba abres el lanzador, hacia abajo cierras la ventana y separándolos la maximizas.";
 		welDoneTitle = "Listo";
 		welDoneBody = "Los atajos y todo lo demás están en Preferencias: con su tecla o con el engranaje de los ajustes rápidos.";
 		welDoneApply = "Para guardar lo que has cambiado, NIHIL reconstruye el sistema: escribe tu contraseña.";
@@ -885,7 +885,7 @@
 		welBasicsBody = "These keys and three fingers on the touchpad get you almost everything.";
 		welWorkspaces = "Go to a workspace";
 		welMoveTo = "Take the window to a workspace";
-		welGestures = "With three fingers: sideways you switch workspace, up opens the launcher and down closes the window.";
+		welGestures = "With three fingers: sideways you switch workspace, up opens the launcher, down closes the window and spreading them maximises it.";
 		welDoneTitle = "Ready";
 		welDoneBody = "Shortcuts and everything else are in Preferences: with its key, or the cog in quick settings.";
 		welDoneApply = "To keep what you changed, NIHIL rebuilds the system: type your password.";

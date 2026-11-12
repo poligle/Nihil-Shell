@@ -197,6 +197,23 @@ let
 
 	fingers = osConfig.nihil.gestures;
 
+	# Fingers spread (a pinch out) maximise the window as its key does
+	# (maximize, SUPER + F), and brought together (a pinch in) put it back,
+	# from fullscreen too; each only when it changes something, with the
+	# key's sound. libinput tells a pinch from a swipe, so the swipes keep
+	# the same fingers. The window's fullscreen is Hyprland's own number:
+	# 0 none, 1 maximised, 2 fullscreen.
+	maximizeGesture = spread: ''
+		function()
+			local window = hl.get_active_window()
+			local state = window and window.fullscreen or 0
+			if window and ${if spread then "state == 0" else "state ~= 0"} then
+				hl.exec_cmd("${playSound sound.fullscreen}")
+				hl.dispatch(hl.dsp.window.fullscreen({ mode = ${if spread then ''"maximized"'' else ''state == 1 and "maximized" or "fullscreen"''} }))
+			end
+		end
+	'';
+
 	workspaceBinds = lib.concatMap
 	(
 		number:
@@ -409,6 +426,8 @@ in
 				{ fingers = fingers.workspaces; direction = "horizontal"; action = "workspace"; }
 				{ fingers = fingers.close; direction = "down"; action = "close"; }
 				{ fingers = fingers.launcher; direction = "up"; action = lua ''function() hl.exec_cmd("nihil-ipc drawers toggle launcher") end''; }
+				{ fingers = fingers.maximize; direction = "pinchout"; action = lua (maximizeGesture true); }
+				{ fingers = fingers.maximize; direction = "pinchin"; action = lua (maximizeGesture false); }
 				{ fingers = fingers.special; direction = "vertical"; action = lua (withSound sound.special "hl.dsp.workspace.toggle_special()"); }
 			];
 
