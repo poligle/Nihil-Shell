@@ -492,6 +492,9 @@
 		deckApply = "Se enciende al aplicar.";
 		deckDown = "El servicio no responde: systemctl --user status nihil-deck";
 		deckPairTitle = "Emparejar";
+		deckWatchTitle = "Un reloj";
+		deckWatchSub = "NIHIL para Wear OS desde aquí, sin compilar nada: en el reloj, Depuración inalámbrica y Vincular dispositivo; solo hay que teclear su código.";
+		deckWatchInstall = "Instalar en un reloj";
 		deckPair = "Emparejar un dispositivo";
 		deckScan = "Escanéalo con NIHIL en el móvil o la tablet; un reloj lo recibe con tools/watch invite. Sirve una vez, durante cinco minutos.";
 		deckPairFailed = "No se ha podido sacar el código";
@@ -987,6 +990,9 @@
 		deckApply = "It turns on when applied.";
 		deckDown = "The service doesn't answer: systemctl --user status nihil-deck";
 		deckPairTitle = "Pairing";
+		deckWatchTitle = "A watch";
+		deckWatchSub = "NIHIL for Wear OS from here, nothing to build: on the watch, Wireless debugging and Pair new device; only its code to type.";
+		deckWatchInstall = "Install on a watch";
 		deckPair = "Pair a device";
 		deckScan = "Scan it with NIHIL on the phone or the tablet; a watch takes it from tools/watch invite. It works once, for five minutes.";
 		deckPairFailed = "The code could not be made";

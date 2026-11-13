@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import qs.theme
 import qs.config
 import qs.services
@@ -44,6 +45,20 @@ Flickable {
             Layout.fillWidth: true
             visible: Deck.enabled && Deck.loaded && !Deck.running
             text: Lang.deckDown
+        }
+
+        // A watch has no camera for the QR: nihil-watch (home/deck/watch.sh)
+        // pairs adb over Wi-Fi with the code it shows, installs NIHIL for
+        // Wear OS and hands it the invitation, in a terminal that stays.
+        Setting {
+            visible: Deck.enabled && Deck.running
+            title: Lang.deckWatchTitle
+            sub: Lang.deckWatchSub
+
+            KeyButton {
+                text: Lang.deckWatchInstall
+                onClicked: Quickshell.execDetached([Config.cmd.terminal, "--hold", "--title", Lang.deckWatchTitle, Config.cmd.watch])
+            }
         }
 
         // A QR that pairs one phone, once, for a few minutes.
