@@ -24,7 +24,7 @@ ShellRoot {
     // check for a newer NIHIL, and the apps, the session and the music the
     // phone's deck asks for (home/deck), whether something records, and the
     // downloads the frame's light follows.
-    readonly property var services: [Drawers, Osd, Glyph, Notifs, Battery, Audio, Network, Bt, Nilo, Machine, Clipboard, Updates, Apps, Media, Recorder, Downloads]
+    readonly property var services: [Drawers, Osd, Glyph, Notifs, Battery, Audio, Network, Bt, Nilo, Machine, Clipboard, Updates, Apps, Media, Recorder, Downloads, Switcher]
 
     Variants {
         model: Quickshell.screens

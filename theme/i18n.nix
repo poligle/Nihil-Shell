@@ -379,6 +379,7 @@
 		bindSpecial = "Escritorio especial";
 		bindToSpecial = "Ventana al especial";
 		bindNextWorkspace = "Siguiente escritorio";
+		bindOverview = "Todos los escritorios; mantenida, elegir uno";
 		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
 		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
 		# nihil-shot: the folder in Pictures (Imágenes) where screenshots are kept.
@@ -418,6 +419,8 @@
 		welNetDone = "Conectado a %1.";
 		welNetPassword = "Contraseña de la red";
 		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
+		# %1: the overview's own key (A), held or not.
+		ovHint = "[%1] Siguiente|[Shift+%1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
 		# Copy and paste, and the clipboard history (home/hyprland.nix,
 		# home/clipboard.nix, drawers/ClipboardView.qml).
@@ -878,6 +881,7 @@
 		bindSpecial = "Special workspace";
 		bindToSpecial = "Window to the special one";
 		bindNextWorkspace = "Next workspace";
+		bindOverview = "All workspaces; held, choose one";
 		bindScreenshot = "Screenshot of the screen; with SHIFT, record it";
 		bindSnip = "Screenshot of an area (the snipping key); with SHIFT, record it";
 		screenshotsDir = "Screenshots";
@@ -916,6 +920,7 @@
 		welNetDone = "Connected to %1.";
 		welNetPassword = "Network password";
 		wpHint = "[← →] Choose|[Enter] Keep|[Esc] Back";
+		ovHint = "[%1] Next|[Shift+%1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
 
 		bindCopy = "Copy";
 		bindClipboard = "Paste, or pick from the history";
