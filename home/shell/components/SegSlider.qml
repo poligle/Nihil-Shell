@@ -21,7 +21,7 @@ Item {
     Repeater {
         model: root.segments
 
-        Rectangle {
+        Surface {
             required property int index
 
             x: index * (root.segWidth + 3)

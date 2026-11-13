@@ -526,6 +526,8 @@
 		cfgProgramAdd = "Añadir un programa";
 		cfgProgramMissing = "Falta el nombre o el comando";
 		cfgWidgets = "Widgets";
+		cfgGlass = "Cristal ahumado";
+		cfgGlassSub = "El marco, los cajones, Preferencias, los widgets, la pantalla de bloqueo y el inicio de sesión como cristal oscuro: el fondo se ve a través y se curva en los bordes.";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
 		cfgWidgetMedia = "Música";
@@ -1023,6 +1025,8 @@
 		cfgProgramAdd = "Add a program";
 		cfgProgramMissing = "The name or the command is missing";
 		cfgWidgets = "Widgets";
+		cfgGlass = "Smoked glass";
+		cfgGlassSub = "The frame, its drawers, Preferences, the widgets, the lock screen and the login as dark glass: the wallpaper shows through and bends at the edges.";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";
 		cfgWidgetMedia = "Music";

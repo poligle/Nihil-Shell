@@ -143,9 +143,13 @@ let
 
 	langQml = qml.lang;
 
+	# The smoked glass's shaders, compiled (theme/shaders.nix).
+	shaders = import ../theme/shaders.nix { inherit pkgs; };
+
 	shell = pkgs.runCommand "nihil-shell" { } ''
 		cp -r ${./shell} $out
 		chmod -R u+w $out
+		cp ${shaders}/*.qsb $out/shaders/
 		mkdir -p $out/config
 		cp ${tokensQml} $out/theme/Tokens.qml
 		cp ${configQml} $out/config/Config.qml

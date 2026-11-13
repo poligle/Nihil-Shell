@@ -135,7 +135,7 @@ Flickable {
         Layout.fillWidth: true
         implicitHeight: 44 + (open ? details.implicitHeight + 16 : 0)
 
-        Rectangle {
+        Surface {
             anchors.fill: parent
             radius: 10
             color: row.open || area.containsMouse ? Tokens.surface : "transparent"

@@ -23,11 +23,12 @@ Scope {
         return Machine.widgets.indexOf(name) >= 0;
     }
 
-    component Card: Rectangle {
+    component Card: Surface {
         default property alias content: inner.data
 
         width: 320
         implicitHeight: inner.implicitHeight + 40
+        pane: true
         radius: 22
         color: Tokens.black
         border.width: 1
@@ -65,9 +66,24 @@ Scope {
             precision: SystemClock.Minutes
         }
 
+        // Smoked glass (Preferences, Look): the wallpaper under this window, which
+        // sits past the frame's zones (frame/Exclusions.qml) and the margins.
+        Loader {
+            id: backdrop
+            active: Machine.glass && root.target !== null
+            sourceComponent: Backdrop {
+                output: root.target.name
+                origin: Qt.vector2d((Config.barOutputs.indexOf(root.target.name) >= 0 ? Tokens.barWidth : Tokens.frameThickness) + 24,
+                                    Tokens.frameThickness + 24)
+                screenSize: Qt.vector2d(root.target.width, root.target.height)
+            }
+        }
+
         Column {
             id: column
             spacing: 14
+
+            property Item glassBackdrop: Machine.glass ? backdrop.item : null
 
             Card {
                 visible: root.enabled("clock")

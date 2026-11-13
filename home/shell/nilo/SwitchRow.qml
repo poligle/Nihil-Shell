@@ -30,7 +30,7 @@ Item {
 
     Behavior on height { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
 
-    Rectangle {
+    Surface {
         anchors.fill: parent
         radius: 14
         color: root.asking || root.current || hover.hovered ? Tokens.raised : "transparent"
