@@ -19,6 +19,7 @@
 #                     is rebuilt in a unit of its own (Preferences uses it)
 #   nihil passwd      change a password: the last line of stdin, user:password
 #   nihil welcome     open the welcome again (to try it)
+#   nihil watch       NIHIL for Wear OS on a watch (update, forget), with the deck
 #   nihil generations [--json]
 #                     the system's generations, newest first: when, which
 #                     NixOS, kernel and NIHIL, which one runs and which boots
@@ -561,6 +562,15 @@ let
                 welcome)
                     exec nihil-ipc settings welcome
                     ;;
+                # NIHIL for Wear OS on a watch (home/deck/watch.sh), with the deck.
+                watch)
+                    shift
+                    if ! command -v nihil-watch > /dev/null; then
+                        echo "The deck is off: Preferences, Devices, Use devices (nihil.deck.enable)." >&2
+                        exit 1
+                    fi
+                    exec nihil-watch "$@"
+                    ;;
                 version)
                     running=$(cat /etc/nihil/revision 2>/dev/null || echo "?")
                     pinned=$(jq -r '.nodes.nihil.locked | "\(.rev[0:7] // "local") (\(.lastModified // 0 | strftime("%Y-%m-%d %H:%M")))"' "$flake/flake.lock" 2>/dev/null || echo "?")
@@ -572,7 +582,7 @@ let
                     fi
                     ;;
                 *)
-                    echo "usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | passwd | welcome"
+                    echo "usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | passwd | welcome | watch"
                     echo "       nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]"
                     echo "the machine's flake: $flake"
                     ;;

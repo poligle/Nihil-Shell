@@ -565,13 +565,18 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
 its apps and web pages open here, its music plays and skips, its volume goes up and down,
-its screen locks and its pointer moves, from the phone. That is all it can do: an app is one
+its screen locks, its pointer moves and its clipboard goes either way, from the phone. That is all it can do: an app is one
 the launcher shows, a page is `http` or `https`, the trackpad points and clicks as a touchpad
 here would, and there is no way to run a command or read a file.
 
 On the wrist, [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear) makes the watch one more deck: its
 music, its volume on the bezel or the crown, its caffeine, night light and lock, from a watch face
-in dots. It pairs over adb with the same code the QR holds.
+in dots. It pairs over adb with the same code the QR holds. Preferences, Devices, **Install on a
+watch** (or `nihil watch`) does it all from here, with nothing to clone or build: it finds the
+watch's Wireless debugging on the network, so only the code the watch shows is typed, installs
+the latest release with its face (checked against its SHA-256), hands the watch the invitation
+and turns on its light on the edge. `nihil watch update` brings a newer release, `nihil watch
+forget` unpairs it.
 
 Preferences, Devices turns it on (a rebuild: the service, its port in the firewall and its
 name on the local network) and pairs a phone with a QR. The QR holds the computer's

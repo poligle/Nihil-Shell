@@ -81,6 +81,7 @@ let
 		pavucontrol = "${pkgs.pavucontrol}/bin/pavucontrol";
 		blueman = "${pkgs.blueman}/bin/blueman-manager";
 		terminal = "${profile}/kitty";
+		watch = "${profile}/nihil-watch";
 		editor = "${profile}/nvim";
 		lock = "${profile}/lock-screen";
 		powerOff = "${profile}/power-off";
