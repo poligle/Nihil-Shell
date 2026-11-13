@@ -345,6 +345,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + arrows`                  | Move focus                                    |
 | `SUPER + 1…0`                     | Workspace (`SHIFT` moves the window there)    |
 | `SUPER + Tab`, 3 fingers sideways | Next workspace / switch workspaces            |
+| `SUPER + A`                       | All workspaces, with their windows over the wallpaper. Held as `SUPER + V`: `A` again chooses the next, `SHIFT + A` the one before, letting go of `SUPER` goes there; let go first and it stays, for the arrows, Enter, Escape or a click (a click on a window goes to it) |
 | `SUPER + Escape`, 4 fingers       | Scratchpad (`SUPER + Ctrl` sends the window)  |
 | `SUPER + H`                       | Colour picker                                 |
 | `Print` / `SHIFT + Print`         | Screenshot of the screen the pointer is on, kept in Pictures (Screenshots, or Capturas in Spanish) and copied / record it |

@@ -32,6 +32,7 @@ let
         special = "SUPER + Escape";
         toSpecial = "SUPER + Control_L";
         nextWorkspace = "SUPER + Tab";
+        overview = "SUPER + A";
         # Screenshots (nihil-shot), kept in Pictures and copied: the screen
         # on Print, an area on the snipping key (the one Windows laptops
         # label Snipping Tool, XF86SelectiveScreenshot to Linux). SHIFT

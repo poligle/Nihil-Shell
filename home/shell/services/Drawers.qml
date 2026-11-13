@@ -8,18 +8,18 @@ import qs.config
 import qs.theme
 
 // Which drawer is open, and on which output. Only one at a time.
-//   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers
+//   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers|overview
 // (the clipboard history opens through its own, services/Clipboard.qml)
 Singleton {
     id: root
 
-    property string current: ""     // "", "dashboard", "panel", "launcher", "wallpapers", "clipboard"
+    property string current: ""     // "", "dashboard", "panel", "launcher", "wallpapers", "clipboard", "overview"
     property string screen: ""
     property bool byHover: false
 
     // Where each one comes out of the frame (frame/Frame.qml). Two from the
     // same edge would overlap: the second comes out once the first is in.
-    readonly property var edges: ({ dashboard: "top", clipboard: "top", launcher: "bottom", wallpapers: "bottom", panel: "right" })
+    readonly property var edges: ({ dashboard: "top", clipboard: "top", overview: "top", launcher: "bottom", wallpapers: "bottom", panel: "right" })
     property var waiting: null
 
     function focusedScreen(): string {
