@@ -3,7 +3,8 @@
 # The deck's service and command, `nihil-deck` (deck.py, docs/deck.md),
 # with its configuration: the port, the computer's name, and what it runs
 # for the phone, by store path or from the user's profile (the shell through
-# nihil-ipc, which also locks, and the volume as its keys turn it).
+# nihil-ipc, which also locks, the volume as its keys turn it, and the
+# clipboard, with wl-clipboard).
 # home/deck.nix runs the service; the shell runs the command to pair a device
 # and list them (Config.deck). Tests: python3 -m unittest home/deck/test_deck.py
 
@@ -25,6 +26,8 @@ let
         rsvg = lib.getExe' pkgs.librsvg "rsvg-convert";
         ip = lib.getExe' pkgs.iproute2 "ip";
         wpctl = lib.getExe' pkgs.wireplumber "wpctl";
+        wlCopy = lib.getExe' pkgs.wl-clipboard "wl-copy";
+        wlPaste = lib.getExe' pkgs.wl-clipboard "wl-paste";
     });
 in
 pkgs.writeShellScriptBin "nihil-deck" ''

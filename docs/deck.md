@@ -192,6 +192,20 @@ The output's volume, as the computer's keys turn it (with its OSD and sound):
 
 Locks the screen. `{ "ok": true }`. Unlocking is only on the computer.
 
+### `GET /v1/clipboard`, `POST /v1/clipboard`
+
+The computer's clipboard, as text (wl-clipboard). `GET` gives what it holds, empty when
+there is nothing or it is not text (a picture):
+
+```json
+{ "text": "ex nihilo" }
+```
+
+`POST` with what the phone copied puts it there, and in the shell's history as anything
+copied (256 KB at most); `{ "ok": true }`. A `503` when there is no session to ask.
+Android only lets an app read its clipboard while it is in front, so the phone sends and
+fetches it when asked, not on its own.
+
 ### `POST /v1/caffeine`, `POST /v1/night`
 
 Caffeine (the screen stays awake) and night light, as the quick settings turn them:
