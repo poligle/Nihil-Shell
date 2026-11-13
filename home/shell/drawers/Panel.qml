@@ -259,6 +259,23 @@ Item {
                     active: Toggles.night
                     onToggled: Toggles.night = !Toggles.night
                 }
+
+                // An area to the clipboard, as the Print key.
+                Tile {
+                    Layout.alignment: Qt.AlignHCenter
+                    glyph: Icons.shot
+                    label: Lang.tileShot
+                    onToggled: { Drawers.close(); Recorder.shot(); }
+                }
+
+                // The whole screen; lit, and a stop, while it records.
+                Tile {
+                    Layout.alignment: Qt.AlignHCenter
+                    glyph: Recorder.recording ? Icons.stop : Icons.record
+                    label: Lang.tileRecord
+                    active: Recorder.recording
+                    onToggled: { Drawers.close(); Recorder.toggle(); }
+                }
             }
 
             ColumnLayout {

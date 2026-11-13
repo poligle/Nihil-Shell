@@ -10,9 +10,12 @@ let
 	grep = "${pkgs.gnugrep}/bin/grep";
 	awk = "${pkgs.gawk}/bin/awk";
 	brightnessctl = "${pkgs.brightnessctl}/bin/brightnessctl";
+	hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
+	jq = "${pkgs.jq}/bin/jq";
+	notify = "${pkgs.libnotify}/bin/notify-send";
+	strings = osConfig.nihil.strings;
 	sound = osConfig.nihil.sounds;
 	volumeSound = sound.volume;
-	strings = osConfig.nihil.strings;
 
 	# Screenshots (Print, the snipping key, the settings panel): the screen the
 	# pointer is on, or an area, kept in Pictures and copied, as hyprshot does.
@@ -53,6 +56,82 @@ let
 		else
 			echo 0 > "$LED"
 		fi
+	'';
+
+	# Screen recording, for the keys (home/hyprland.nix) and the settings panel
+	# (services/Recorder.qml), which it tells when it starts and stops:
+	#   nihil-record toggle|start [region|screen] | stop | status
+	# No sound. wf-recorder writes limited range (16-235) but marks the video
+	# as full range, so players show its black as grey: on stopping, the mark
+	# is put right without encoding again (ffmpeg's h264_metadata).
+	nihil-record = pkgs.writeShellScriptBin "nihil-record" ''
+		set -uo pipefail
+		run="''${XDG_RUNTIME_DIR:-/tmp}/nihil-record"
+		mkdir -p "$run"
+
+		recording() { [ -f "$run/pid" ] && kill -0 "$(cat "$run/pid")" 2>/dev/null; }
+
+		videos() {
+			local dir
+			dir="$(${pkgs.xdg-user-dirs}/bin/xdg-user-dir VIDEOS 2>/dev/null)"
+			if [ -z "$dir" ] || [ "$dir" = "$HOME" ]; then dir="$HOME/Videos"; fi
+			mkdir -p "$dir" && printf '%s\n' "$dir"
+		}
+
+		start() {
+			recording && return 0
+			local dir where
+			dir="$(videos)" || exit 1
+			if [ "''${1:-region}" = screen ]; then
+				where=(-o "$(${hyprctl} -j monitors | ${jq} -r '.[] | select(.focused) | .name')")
+			else
+				# Escape in the selection: nothing is recorded.
+				where=(-g "$(${pkgs.slurp}/bin/slurp)") || return 0
+			fi
+			printf '%s\n' "$dir/NIHIL $(date '+%Y-%m-%d %H.%M.%S').mp4" > "$run/file"
+			printf '%s\n' "$dir/.nihil-record.mp4" > "$run/raw"
+			${pkgs.wf-recorder}/bin/wf-recorder "''${where[@]}" -x yuv420p -c libx264 \
+				-p crf=20 -p preset=veryfast -f "$(cat "$run/raw")" > "$run/log" 2>&1 &
+			echo $! > "$run/pid"
+			sleep 0.5
+			if recording; then
+				${ipc} recorder started
+			else
+				rm -f "$run/pid"
+				${notify} -a NIHIL "${strings.recordFailed}" "$(tail -n 1 "$run/log")"
+			fi
+		}
+
+		stop() {
+			if ! recording; then rm -f "$run/pid"; ${ipc} recorder stopped; return 0; fi
+			local pid raw file uri
+			pid="$(cat "$run/pid")"
+			kill -INT "$pid"
+			# wf-recorder closes the file on SIGINT; it may take a moment.
+			for _ in $(seq 100); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+			rm -f "$run/pid"
+			${ipc} recorder stopped
+			raw="$(cat "$run/raw")"; file="$(cat "$run/file")"
+			if ${pkgs.ffmpeg-headless}/bin/ffmpeg -v error -y -i "$raw" -c copy \
+				-bsf:v h264_metadata=video_full_range_flag=0 -movflags +faststart "$file"; then
+				rm -f "$raw"
+			else
+				mv -f "$raw" "$file"
+			fi
+			# Copied as a file, as a file manager or a chat takes it pasted: its
+			# path as a URI, each part escaped (Vídeos, spaces).
+			uri="file://$(${jq} -rn --arg path "$file" '$path | split("/") | map(@uri) | join("/")')"
+			${pkgs.wl-clipboard}/bin/wl-copy --type text/uri-list "$uri" || true
+			${notify} -a NIHIL "${strings.recordSaved}" "$file"
+		}
+
+		case "''${1:-toggle}" in
+			toggle) if recording; then stop; else start "''${2:-region}"; fi ;;
+			start) start "''${2:-region}" ;;
+			stop) stop ;;
+			status) if recording; then echo on; else echo off; fi ;;
+			*) echo "nihil-record toggle|start [region|screen] | stop | status" >&2; exit 2 ;;
+		esac
 	'';
 
 	osd-brightness = pkgs.writeShellScriptBin "osd-brightness" ''
@@ -128,6 +207,7 @@ in
 		lock-screen
 		power-off
 		nihil-shot
+		nihil-record
 	];
 
 	home.file."Wallpapers".source = ../wallpapers;

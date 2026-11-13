@@ -343,8 +343,8 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + Tab`, 3 fingers sideways | Next workspace / switch workspaces            |
 | `SUPER + Escape`, 4 fingers       | Scratchpad (`SUPER + Ctrl` sends the window)  |
 | `SUPER + H`                       | Colour picker                                 |
-| `Print`                           | Screenshot of the screen, kept in Pictures/Screenshots and copied |
-| Snipping key                      | Screenshot of an area, kept and copied (`XF86SelectiveScreenshot`; another key in Preferences, Keys) |
+| `Print` / `SHIFT + Print`         | Screenshot of the screen the pointer is on, kept in Pictures (Screenshots, or Capturas in Spanish) and copied / record it |
+| Snipping key / `SHIFT` with it    | Screenshot of an area, kept and copied / record it (`XF86SelectiveScreenshot`; another key in Preferences, Shortcuts). Recordings go to Videos and are copied as a file; either key stops them (also in the settings panel) |
 | Volume, brightness, mic keys      | Change the value and show the OSD             |
 
 Scrolling over the bar switches workspaces (on the LEDs) or changes the volume (on the

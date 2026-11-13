@@ -87,6 +87,8 @@ let
 		micLedSync = "${profile}/mic-led-sync";
 		wallpaper = "${profile}/nihil-wallpaper";
 		clipboard = "${profile}/nihil-clipboard";
+		record = "${profile}/nihil-record";
+		shot = "${profile}/nihil-shot";
 		hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
 		# Preferences applies through sudo and nihil apply (modules/nihil-cli.nix).
 		sudo = "/run/wrappers/bin/sudo";
