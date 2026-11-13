@@ -81,7 +81,20 @@ layout=$(gum choose --header "$(t "Keyboard" "Teclado")" us es gb de fr it pt la
 if [ "$layout" = other ]; then
     layout=$(gum input --header "$(t "Keyboard layout (xkb name)" "Distribución del teclado (nombre xkb)")" --placeholder "br")
 fi
-loadkeys "$layout" >/dev/null 2>&1 || true
+# The passwords are typed here with the console's keymap and at the login
+# with the xkb layout: the same keys must give the same characters. kbd
+# names a few of them otherwise.
+case $layout in
+    gb) keymap=uk ;;
+    pt) keymap=pt-latin1 ;;
+    latam) keymap=la-latin1 ;;
+    br) keymap=br-abnt2 ;;
+    *) keymap=$layout ;;
+esac
+if ! loadkeys "$keymap" >/dev/null 2>&1; then
+    dim "$(t "The console has no keymap called $keymap, so here the keys type as on a US keyboard: a password chosen now may not be what the same keys type at the login. Letters and digits are the safest." \
+             "La consola no tiene un mapa de teclado llamado $keymap, así que aquí las teclas escriben como en un teclado estadounidense: una contraseña elegida ahora puede no ser lo que esas teclas escriben al iniciar sesión. Lo más seguro son letras y cifras.")"
+fi
 
 zone=$(curl -fs --max-time 6 https://ipapi.co/timezone || true)
 if [ -z "$zone" ] || ! gum confirm "$(t "Time zone: $zone?" "Zona horaria: $zone?")" \
@@ -93,7 +106,16 @@ fi
 
 fullname=$(gum input --header "$(t "Your name" "Tu nombre")" --placeholder "Ada Lovelace")
 suggested=$(printf '%s' "${fullname%% *}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
-until [[ ${username:-} =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; do
+# The system's own accounts, which NixOS keeps for itself: it would refuse
+# one of them as the user's only once everything was downloaded.
+reserved() {
+    case $1 in
+        root | nobody | nixbld* | systemd-* | messagebus | polkituser | sshd | nscd | dhcpcd | uuidd | tss \
+            | greeter | avahi | rtkit | ollama | geoclue | colord | fwupd-refresh | nm-openvpn | nm-iodine) return 0 ;;
+    esac
+    return 1
+}
+until [[ ${username:-} =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && ! reserved "$username"; do
     username=$(gum input --header "$(t "User name (lowercase letters and digits)" "Nombre de usuario (minúsculas y cifras)")" \
         --value "${suggested:-nihil}")
 done
@@ -105,7 +127,8 @@ while true; do
     fi
     dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
 done
-until [[ ${hostname:-} =~ ^[a-z0-9][a-z0-9-]{0,62}$ ]]; do
+# As NixOS takes it (networking.hostName): no "-" at either end.
+until [[ ${hostname:-} =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; do
     hostname=$(gum input --header "$(t "Name of this computer" "Nombre de este ordenador")" --value "nihil")
 done
 
@@ -509,7 +532,12 @@ shrink_partition() {
             flags+=(-A "$number:set:$bit")
         fi
     done
-    sgdisk -a 1 -d "$number" -n "$number:$first:$end" -t "$number:$code" -u "$number:$guid" -c "$number:$name" "${flags[@]}" "$disk" >/dev/null
+    # In $(…) errexit is off: a failure here has to stop the installer itself,
+    # before NIHIL's partitions are made in room that was not freed.
+    if ! sgdisk -a 1 -d "$number" -n "$number:$first:$end" -t "$number:$code" -u "$number:$guid" -c "$number:$name" "${flags[@]}" "$disk" >/dev/null; then
+        fail "$(t "Could not shrink the entry of $1 in the partition table: sgdisk -p $disk shows it as it is now." \
+                  "No se pudo encoger la entrada de $1 en la tabla de particiones: sgdisk -p $disk la muestra tal como está ahora.")"
+    fi
     partprobe "$disk" || true
     udevadm settle
     echo "$(( (end + align) / align * align )) $last"

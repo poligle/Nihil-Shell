@@ -337,7 +337,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + C` / `SUPER + V`         | Copy / paste; `SUPER + V` held, the clipboard history (`V` again for the next one, let go to paste, `Esc`: none) |
 | `SUPER + Q`, 3 fingers down       | Close window                                  |
 | `SUPER + SHIFT + Space`           | Toggle floating                               |
-| `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen                         |
+| `SUPER + F` / `SUPER + SHIFT + F` | Maximise / fullscreen; 3 fingers spread maximise, together put it back |
 | `SUPER + arrows`                  | Move focus                                    |
 | `SUPER + 1…0`                     | Workspace (`SHIFT` moves the window there)    |
 | `SUPER + Tab`, 3 fingers sideways | Next workspace / switch workspaces            |
@@ -374,7 +374,7 @@ the window keeps the keyboard and the history's keys come through Hyprland; lett
 one of its key's modifiers pastes: any combination works (`CTRL + V` too, if you want it
 on the paste key itself, at the cost of `CTRL + V` in the terminal; one without a
 modifier takes the keyboard and waits for `Enter`). The gestures: `workspaces`, `close`,
-`launcher`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
+`launcher`, `maximize`, `special`. Workspaces, focus, media keys and the mouse stay as they are.
 `terminal`, `files`, `browser`, `notes`, `code`, `music` and `pixels` were actions and
 are programs now: a `settings.json` that still names them under `binds` is read without
 them.

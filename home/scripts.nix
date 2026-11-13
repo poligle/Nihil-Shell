@@ -16,6 +16,8 @@ let
 	mic-led-sync = pkgs.writeShellScriptBin "mic-led-sync" ''
 		set -euo pipefail
 		LED="/sys/class/leds/platform::micmute/brightness"
+		# A laptop without the LED has nothing to follow the microphone.
+		[ -e "$LED" ] || exit 0
 		out="$(${wpctl} get-volume @DEFAULT_AUDIO_SOURCE@ 2>&1 || true)"
 		echo 0 > "$LED"
 		if [[ "$out" == *"Could not connect to PipeWire"* ]]; then
@@ -66,7 +68,9 @@ let
 				;;
 		esac
 		state="$(${wpctl} get-volume "$sink")"
-		vol="$(${awk} '{printf "%d", $2 * 100}' <<< "$state")"
+		# Rounded, as the deck says it (home/deck/deck.py): 0.29 * 100 is
+		# 28.999… in floating point, and %d alone made it 28.
+		vol="$(${awk} '{printf "%d", $2 * 100 + 0.5}' <<< "$state")"
 		muted=false
 		if ${grep} -q MUTED <<< "$state"; then
 			muted=true

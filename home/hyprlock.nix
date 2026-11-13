@@ -182,7 +182,9 @@ in
 
 			auth =
 			{
-				"fingerprint:enabled" = true;
+				# Only with a reader (nihil.fingerprint): without fprintd, hyprlock
+				# would ask D-Bus for it on every lock.
+				"fingerprint:enabled" = nihil.fingerprint;
 				"fingerprint:ready_message" = s.fingerprintReady;
 				"fingerprint:present_message" = s.fingerprintPresent;
 			};
