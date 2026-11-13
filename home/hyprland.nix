@@ -67,7 +67,13 @@ let
 		++ lib.optional (keys.screenshot != null)
 			(bindWith keys.screenshot (exec "nihil-shot screen") { locked = true; })
 		++ lib.optional (keys.snip or null != null)
-			(bindWith keys.snip (exec "nihil-shot region") { locked = true; });
+			(bindWith keys.snip (exec "nihil-shot region") { locked = true; })
+		# Recording (nihil-record, home/scripts.nix): SHIFT with the same key,
+		# the screen or an area; that again stops it.
+		++ lib.optional (keys.screenshot != null && !(hasShift keys.screenshot))
+			(bind "SHIFT + ${keys.screenshot}" (exec "nihil-record toggle screen"))
+		++ lib.optional (keys.snip or null != null && !(hasShift keys.snip))
+			(bind "SHIFT + ${keys.snip}" (exec "nihil-record toggle region"));
 
 	# Copy and paste on one modifier, SUPER by default (modules/binds.nix).
 	#

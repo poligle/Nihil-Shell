@@ -122,7 +122,8 @@ Item {
             output: root.output
         }
 
-        // Privacy LED: something is recording the microphone.
+        // Privacy LED: something is recording the microphone, or the screen
+        // is being recorded (services/Recorder.qml).
         Rectangle {
             id: privacy
             anchors.horizontalCenter: parent.horizontalCenter
@@ -130,7 +131,7 @@ Item {
             height: 6
             radius: 3
             color: Tokens.interrupt
-            visible: Audio.micInUse
+            visible: Audio.micInUse || Recorder.recording
 
             SequentialAnimation on opacity {
                 running: privacy.visible

@@ -69,6 +69,8 @@
 		tileMic = "Micro";
 		tileDnd = "No molestar";
 		tileNight = "Noche";
+		tileShot = "Captura";
+		tileRecord = "Grabar";
 		networks = "Redes";
 		scanning = "Buscando";
 		devices = "Dispositivos";
@@ -377,10 +379,12 @@
 		bindSpecial = "Escritorio especial";
 		bindToSpecial = "Ventana al especial";
 		bindNextWorkspace = "Siguiente escritorio";
-		bindScreenshot = "Captura de la pantalla";
-		bindSnip = "Captura de una zona (la tecla de recortes)";
+		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
+		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
 		# nihil-shot: the folder in Pictures (Imágenes) where screenshots are kept.
 		screenshotsDir = "Capturas";
+		recordSaved = "Grabación guardada y copiada";
+		recordFailed = "No se ha podido grabar";
 		welHello = "Hola, %1";
 		welHelloAnon = "Hola";
 		welHelloBody = "Esto es NIHIL: un escritorio negro, de puntos y silencio, que solo aparece cuando lo llamas. Un minuto para enseñártelo y dejarlo a tu gusto.";
@@ -571,6 +575,8 @@
 		tileMic = "Mic";
 		tileDnd = "Silent";
 		tileNight = "Night";
+		tileShot = "Screenshot";
+		tileRecord = "Record";
 		networks = "Networks";
 		scanning = "Scanning";
 		devices = "Devices";
@@ -872,9 +878,11 @@
 		bindSpecial = "Special workspace";
 		bindToSpecial = "Window to the special one";
 		bindNextWorkspace = "Next workspace";
-		bindScreenshot = "Screenshot of the screen";
-		bindSnip = "Screenshot of an area (the snipping key)";
+		bindScreenshot = "Screenshot of the screen; with SHIFT, record it";
+		bindSnip = "Screenshot of an area (the snipping key); with SHIFT, record it";
 		screenshotsDir = "Screenshots";
+		recordSaved = "Recording saved and copied";
+		recordFailed = "Could not record";
 		welHello = "Hello, %1";
 		welHelloAnon = "Hello";
 		welHelloBody = "This is NIHIL: a black desktop, made of dots and quiet, that only shows up when you call it. A minute to show it to you and make it yours.";
