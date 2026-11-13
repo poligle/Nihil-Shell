@@ -631,6 +631,56 @@ class ServerTest(Base):
         self.assertEqual(self.phone.request("GET", "/v1/apps")[0], 401)
 
 
+class ConnectionsTest(Base):
+    """No more connections at once than CONNECTIONS: one more is closed."""
+
+    def setUp(self):
+        super().setUp()
+        self.old = deck.CONNECTIONS
+        deck.CONNECTIONS = 2
+        self.addCleanup(setattr, deck, "CONNECTIONS", self.old)
+        self.server = deck.make_server(self.config, os.path.join(self.folder, "state"), host="127.0.0.1")
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+        self.phone = Phone(self.server.deck.port, self.server.deck.pin)
+
+    def test_one_too_many_is_closed_and_the_rest_go_on(self):
+        # Two that never shake hands hold both.
+        idle = [socket.create_connection(("127.0.0.1", self.server.deck.port)) for _ in range(2)]
+        time.sleep(0.3)
+        extra = socket.create_connection(("127.0.0.1", self.server.deck.port))
+        extra.settimeout(3)
+        self.assertEqual(extra.recv(1), b"")
+        extra.close()
+        for connection in idle:
+            connection.close()
+        # Their threads end, and the phone is answered again.
+        for _ in range(50):
+            try:
+                if self.phone.request("GET", "/v1/hello")[0] == 200:
+                    break
+            except (OSError, ssl.SSLError):
+                time.sleep(0.1)
+        else:
+            self.fail("the deck did not answer once the connections were closed")
+
+
+class ThrottleTest(unittest.TestCase):
+    def test_addresses_that_went_are_swept(self):
+        old = deck.FAIL_KEPT
+        deck.FAIL_KEPT = 3
+        self.addCleanup(setattr, deck, "FAIL_KEPT", old)
+        throttle = deck.Throttle()
+        throttle.failures = {f"2001:db8::{i}": [time.time() - 2 * deck.FAIL_WINDOW] for i in range(10)}
+        throttle.fail("2001:db8::ff")
+        self.assertEqual(list(throttle.failures), ["2001:db8::ff"])
+        for _ in range(deck.FAIL_LIMIT):
+            throttle.fail("192.0.2.9")
+        self.assertTrue(throttle.blocked("192.0.2.9"))
+        self.assertFalse(throttle.blocked("2001:db8::ff"))
+
+
 PNG = deck.PNG_MAGIC + b"an icon"
 
 

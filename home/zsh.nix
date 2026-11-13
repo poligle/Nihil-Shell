@@ -44,7 +44,9 @@ in
             # NixOS: the machine's flake, through the nihil command
             nrebuild = "nihil rebuild";
             nupdate = "nihil update";
-            ngc = "sudo nix-collect-garbage --delete-older-than 7d";
+            # As the weekly clean, with the machine's days, and the boot menu
+            # without what it removed (modules/nix.nix, nihil generations).
+            ngc = "nihil generations clean ${toString osConfig.nihil.generations.days}";
             
             gs = "git status";
             ga = "git add .";
