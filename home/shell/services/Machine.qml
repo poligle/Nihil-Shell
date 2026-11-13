@@ -304,7 +304,24 @@ Singleton {
         return lines.length > 0 ? lines[lines.length - 1].trim() : "";
     }
 
-    // What /run/nihil says (`peek`): the status, what it is, then the end of the log.
+    // How far a rebuild has got, from the whole of its log: what Nix said it
+    // would build and fetch, how many of those have started, and whether the
+    // switch is activating. Started, not finished: near enough for the light.
+    readonly property string counting: "awk '/^these [0-9]+ derivations? will be built/ { total += $2 } "
+        + "/^this derivation will be built/ { total += 1 } /^these [0-9]+ paths? will be fetched/ { total += $2 } "
+        + "/^this path will be fetched/ { total += 1 } /^building .\\/nix\\/store\\// || /^copying path .\\/nix\\/store\\// { begun += 1 } "
+        + "/^activating the configuration/ { active = 1 } END { print total + 0, begun + 0, active + 0 }'"
+
+    function progress(counts: string): void {
+        const numbers = counts.trim().split(/\s+/).map(Number);
+        if (numbers.length < 3 || numbers.some(isNaN))
+            return;
+        const [total, begun, active] = numbers;
+        Glyph.track("rebuild", active ? 0.95 : total > 0 ? 0.05 + 0.85 * Math.min(1, begun / total) : -1);
+    }
+
+    // What /run/nihil says (`peek`): the status, what it is, then the end of
+    // the log, and how far it has got.
     function report(text: string): void {
         const parts = text.split("--nihil--");
         const status = parts[0].trim();
@@ -319,9 +336,12 @@ Singleton {
                 root.phase = "applying";
                 root.since = Date.now();
             }
+            if (parts.length > 3)
+                root.progress(parts[3]);
             poll.start();
         } else if (root.phase === "applying" && (status === "done" || status === "warning" || status === "failed")) {
             poll.stop();
+            Glyph.finish("rebuild", status === "failed" ? "failed" : "done");
             root.log = lines.join("\n");
             root.detail = status === "failed" ? root.cause(lines) : (lines.length > 0 ? lines[lines.length - 1].trim() : "");
             root.facts(lines);
@@ -588,7 +608,7 @@ Singleton {
 
     Process {
         id: peek
-        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; cat /run/nihil/apply.kind 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null"]
+        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; cat /run/nihil/apply.kind 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null; echo --nihil--; " + root.counting + " /run/nihil/apply.log 2>/dev/null"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: root.report(text)
