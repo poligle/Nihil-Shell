@@ -104,7 +104,7 @@ Item {
         }
 
         // What it wants to do, as on its card in the conversation.
-        Rectangle {
+        Surface {
             visible: root.confirming
             width: parent.width
             height: visible ? waiting.implicitHeight + 20 : 0

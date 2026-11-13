@@ -47,7 +47,7 @@ Item {
     }
 
     // The end of /run/nihil/apply.log, following it while it applies.
-    Rectangle {
+    Surface {
         id: logBox
         visible: root.showLog && root.hasLog
         anchors.left: parent.left

@@ -112,7 +112,7 @@ Item {
         }
     }
 
-    component ListRow: Rectangle {
+    component ListRow: Surface {
         id: item
 
         property string glyph: ""

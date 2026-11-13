@@ -139,7 +139,7 @@ Item {
                 leftPadding: 14
                 rightPadding: 14
                 maximumLength: Tasks.maxLength
-                background: Rectangle {
+                background: Surface {
                     radius: 8
                     color: field.activeFocus ? Tokens.surface : "transparent"
                     border.width: 1
@@ -235,7 +235,7 @@ Item {
                     Layout.preferredWidth: 100
 
                     // Where a dragged card would land.
-                    Rectangle {
+                    Surface {
                         anchors.fill: parent
                         anchors.margins: -6
                         radius: 14
@@ -288,7 +288,7 @@ Item {
                         snapMode: ListView.SnapToItem
                         model: lane.shown
 
-                        delegate: Rectangle {
+                        delegate: Surface {
                             id: card
 
                             required property var modelData
@@ -524,7 +524,7 @@ Item {
     }
 
     // The card under the pointer while it is dragged.
-    Rectangle {
+    Surface {
         visible: root.dragId !== ""
         x: root.dragAt.x - width / 2
         y: root.dragAt.y - height / 2

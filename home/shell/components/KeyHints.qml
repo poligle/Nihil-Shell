@@ -33,7 +33,7 @@ Row {
                     implicitWidth: isKey ? key.width : word.implicitWidth
                     implicitHeight: 20
 
-                    Rectangle {
+                    Surface {
                         id: key
                         visible: part.isKey
                         anchors.verticalCenter: parent.verticalCenter

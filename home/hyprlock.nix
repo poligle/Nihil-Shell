@@ -7,14 +7,126 @@ let
 	s = nihil.strings;
 	rgb = hex: "rgb(${hex})";
 
+	state = "${config.xdg.stateHome}/nihil";
+
 	backgrounds = lib.mapAttrsToList (output: _:
 	{
 		monitor = output;
-		# The wallpaper the desktop has now (home/wallpaper.nix keeps the link).
-		path = "${config.xdg.stateHome}/nihil/wallpaper-current/${output}.png";
+		# The wallpaper the desktop has now (home/wallpaper.nix keeps the link),
+		# or, in smoked glass, the same with the field's glass in it (below).
+		path = "${state}/lock-current/${output}.png";
 		color = rgb t.palette.void;
 		brightness = 0.55;
 	}) nihil.outputs;
+
+	# The password field: where it sits, in logical px (y up, from the centre).
+	field = { width = 280; height = 46; y = -40; };
+
+	fieldStyle =
+	{
+		dots_size = 0.22;
+		dots_spacing = 0.65;
+		dots_center = true;
+		dots_rounding = -1;
+		fade_on_empty = false;
+		font_color = rgb t.palette.ink;
+		check_color = rgb t.palette.muted;
+		fail_color = rgb t.palette.signal;
+		placeholder_text = "<span font_family='${t.fonts.mono}'>${s.password}</span>";
+		fail_text = "<span font_family='${t.fonts.mono}'>${s.authFailed}</span>";
+		halign = "center";
+		valign = "center";
+	};
+
+	# The field, as the lock screen has always drawn it.
+	plainLook = pkgs.writeText "hyprlock-plain.conf" (lib.hm.generators.toHyprconf
+	{
+		attrs."input-field" = fieldStyle //
+		{
+			monitor = "";
+			size = "${toString field.width}, ${toString field.height}";
+			outline_thickness = 1;
+			rounding = -1;
+			outer_color = rgb t.palette.line;
+			inner_color = rgb t.palette.void;
+			position = "0, ${toString field.y}";
+		};
+	});
+
+	# Smoked glass (Preferences, Look): the field is transparent over its glass,
+	# which glass.py puts in the background. One per output, placed by
+	# percentages of it, so the field and its glass meet in whatever units
+	# hyprlock counts; its outline only shows while it checks or has failed.
+	percent = part: whole: "${toString (part * 100.0 / whole)}%";
+	glassLook = pkgs.writeText "hyprlock-glass.conf" (lib.hm.generators.toHyprconf
+	{
+		attrs."input-field" = lib.mapAttrsToList (output: o: fieldStyle //
+		{
+			monitor = output;
+			size = "${percent field.width o.width}, ${percent field.height o.height}";
+			outline_thickness = 1;
+			rounding = -1;
+			outer_color = "rgba(0, 0, 0, 0.0)";
+			inner_color = "rgba(0, 0, 0, 0.0)";
+			position = "0%, ${percent field.y o.height}";
+		}) nihil.outputs;
+	});
+
+	glassPython = pkgs.python3.withPackages (ps: [ ps.numpy ps.pillow ]);
+
+	# The lock screen's look, from the choice nihil-wallpaper keeps
+	# ($XDG_STATE_HOME/nihil/glass): the links hyprlock reads, and in glass the
+	# backgrounds with the field's glass, made once per wallpaper. Anything
+	# wrong, and the lock screen stays as it always was.
+	lockGlass = pkgs.writeShellApplication
+	{
+		name = "nihil-lock-glass";
+		runtimeInputs = [ pkgs.coreutils pkgs.findutils ];
+		text = ''
+			state="${state}"
+			mkdir -p "$state"
+			plain() {
+				ln -sfn "$state/wallpaper-current" "$state/lock-current"
+				ln -sfn ${plainLook} "$state/hyprlock-look.conf"
+			}
+			# --links: only what hyprlock needs to exist, as it always was.
+			if [ "''${1:-}" = --links ]; then
+				[ -e "$state/hyprlock-look.conf" ] || plain
+				[ -L "$state/lock-current" ] || plain
+				exit 0
+			fi
+			if [ "$(cat "$state/glass" 2> /dev/null || true)" != on ]; then
+				plain
+				exit 0
+			fi
+			wall=$(readlink -f "$state/wallpaper-current" || true)
+			if [ -z "$wall" ] || [ ! -d "$wall" ]; then
+				plain
+				exit 0
+			fi
+			key=$(printf '%s' "$wall" | sha1sum | cut -c1-16)
+			made="$state/lock-glass/$key"
+			if [ ! -e "$made/.done" ]; then
+				rm -rf "$made.tmp"
+				mkdir -p "$made.tmp"
+				${lib.concatMapStringsSep "\n" (output: let o = nihil.outputs.${output}; in ''
+					if ! ${glassPython}/bin/python3 ${./lock/glass.py} "$wall/${output}.png" "$made.tmp/${output}.png" \
+						--logical ${toString o.width} ${toString o.height} \
+						--field ${toString field.width} ${toString field.height} ${toString field.y}; then
+						rm -rf "$made.tmp"
+						plain
+						exit 0
+					fi'') (lib.attrNames nihil.outputs)}
+				touch "$made.tmp/.done"
+				rm -rf "$made"
+				mv "$made.tmp" "$made"
+			fi
+			ln -sfn "$made" "$state/lock-current"
+			ln -sfn ${glassLook} "$state/hyprlock-look.conf"
+			# Only this wallpaper's: the others are made again when they come back.
+			find "$state/lock-glass" -mindepth 1 -maxdepth 1 ! -name "$key" -exec rm -rf {} +
+		'';
+	};
 
 	python = pkgs.python3.withPackages (ps: [ ps.numpy ps.pillow ]);
 
@@ -69,6 +181,14 @@ in
 {
 	stylix.targets.hyprlock.enable = false;
 
+	home.packages = [ lockGlass ];
+
+	# hyprlock reads its field and its backgrounds through two links: they exist
+	# from the start, as the lock screen always was (nihil-lock-glass).
+	home.activation.nihilLockLinks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+		run ${lockGlass}/bin/nihil-lock-glass --links
+	'';
+
 	programs.hyprlock =
 	{
 		enable = true;
@@ -79,6 +199,9 @@ in
 				hide_cursor = false;
 				ignore_empty_input = true;
 			};
+
+			# The password field: plain or in glass (nihil-lock-glass picks).
+			source = [ "${state}/hyprlock-look.conf" ];
 
 			background = backgrounds;
 
@@ -156,29 +279,6 @@ in
 				(mediaButton { action = "toggle"; x = 222; y = 88; every = 1000; })
 				(mediaButton { action = "next"; x = 272; y = 94; every = 3000; })
 			];
-
-			"input-field" =
-			{
-				monitor = "";
-				size = "280, 46";
-				outline_thickness = 1;
-				rounding = -1;
-				outer_color = rgb t.palette.line;
-				inner_color = rgb t.palette.void;
-				font_color = rgb t.palette.ink;
-				check_color = rgb t.palette.muted;
-				fail_color = rgb t.palette.signal;
-				dots_size = 0.22;
-				dots_spacing = 0.65;
-				dots_center = true;
-				dots_rounding = -1;
-				fade_on_empty = false;
-				placeholder_text = "<span font_family='${t.fonts.mono}'>${s.password}</span>";
-				fail_text = "<span font_family='${t.fonts.mono}'>${s.authFailed}</span>";
-				position = "0, -40";
-				halign = "center";
-				valign = "center";
-			};
 
 			auth =
 			{

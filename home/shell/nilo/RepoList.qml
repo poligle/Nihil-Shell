@@ -33,7 +33,7 @@ Column {
     Repeater {
         model: root.paths
 
-        Rectangle {
+        Surface {
             id: row
 
             required property string modelData

@@ -17,7 +17,7 @@ Item {
     implicitWidth: 96
     implicitHeight: 92
 
-    Rectangle {
+    Surface {
         id: disc
         anchors.horizontalCenter: parent.horizontalCenter
         width: 56

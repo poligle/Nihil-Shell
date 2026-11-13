@@ -42,7 +42,7 @@ Item {
         Repeater {
             model: root.pages
 
-            Rectangle {
+            Surface {
                 id: item
 
                 required property var modelData

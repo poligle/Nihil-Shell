@@ -7,8 +7,10 @@ import qs.services
 import qs.components
 
 // A notification: black card, hairline border. Critical ones get a red LED.
-Rectangle {
+Surface {
     id: root
+
+    pane: true
 
     required property var notification
     property bool popup: false
@@ -21,9 +23,10 @@ Rectangle {
     radius: 18
     color: Tokens.black
     border.width: 1
-    border.color: hover.hovered ? Tokens.muted : Tokens.line
+    property color borderTint: hover.hovered ? Tokens.muted : Tokens.line
+    border.color: borderTint
 
-    Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
+    Behavior on borderTint { ColorAnimation { duration: Tokens.animFast } }
 
     // Popups expire in Notifs.qml, never while the pointer is on them;
     // history cards stay.

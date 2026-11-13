@@ -3,7 +3,7 @@ import qs.theme
 import qs.components
 
 // A key, as printed on the keyboard: hairline, Space Mono.
-Rectangle {
+Surface {
     id: root
 
     property string text: ""

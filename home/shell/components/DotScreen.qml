@@ -13,7 +13,7 @@ Item {
 
     clip: true
 
-    Rectangle {
+    Surface {
         anchors.fill: parent
         radius: root.radius
         color: Tokens.surface

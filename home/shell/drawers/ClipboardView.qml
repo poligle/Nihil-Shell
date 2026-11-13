@@ -104,7 +104,7 @@ Item {
             height: root.rowHeight
 
             // The one chosen, raised: its corners follow the drawer's.
-            Rectangle {
+            Surface {
                 anchors.fill: parent
                 radius: Tokens.drawerRadius - 12
                 color: row.chosen ? Tokens.raised : row.hovered ? Tokens.surface : "transparent"
@@ -138,7 +138,7 @@ Item {
                     Layout.preferredWidth: 58
                     Layout.preferredHeight: 36
 
-                    Rectangle {
+                    Surface {
                         anchors.fill: parent
                         radius: 6
                         color: Tokens.surface

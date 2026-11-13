@@ -113,7 +113,7 @@ Flickable {
                 Layout.fillWidth: true
                 implicitHeight: 44
 
-                Rectangle {
+                Surface {
                     anchors.fill: parent
                     radius: 10
                     color: area.hovered ? Tokens.surface : "transparent"
