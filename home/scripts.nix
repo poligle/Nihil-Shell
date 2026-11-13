@@ -12,6 +12,26 @@ let
 	brightnessctl = "${pkgs.brightnessctl}/bin/brightnessctl";
 	sound = osConfig.nihil.sounds;
 	volumeSound = sound.volume;
+	strings = osConfig.nihil.strings;
+
+	# Screenshots (Print, the snipping key, the settings panel): the screen the
+	# pointer is on, or an area, kept in Pictures and copied, as hyprshot does.
+	#   nihil-shot screen | region
+	nihil-shot = pkgs.writeShellScriptBin "nihil-shot" ''
+		set -euo pipefail
+		pictures=$(${pkgs.xdg-user-dirs}/bin/xdg-user-dir PICTURES 2> /dev/null || true)
+		if [ -z "$pictures" ] || [ "$pictures" = "$HOME" ]; then
+			pictures="$HOME/Pictures"
+		fi
+		dir="$pictures/${strings.screenshotsDir}"
+		mkdir -p "$dir"
+		name="NIHIL $(date '+%Y-%m-%d %H.%M.%S').png"
+		case "''${1:-region}" in
+			screen) exec ${pkgs.hyprshot}/bin/hyprshot -m output -m active -o "$dir" -f "$name" ;;
+			region) exec ${pkgs.hyprshot}/bin/hyprshot -m region -o "$dir" -f "$name" ;;
+			*) echo "usage: nihil-shot screen | region" >&2; exit 2 ;;
+		esac
+	'';
 
 	mic-led-sync = pkgs.writeShellScriptBin "mic-led-sync" ''
 		set -euo pipefail
@@ -107,6 +127,7 @@ in
 		osd-mic
 		lock-screen
 		power-off
+		nihil-shot
 	];
 
 	home.file."Wallpapers".source = ../wallpapers;

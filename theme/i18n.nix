@@ -377,7 +377,10 @@
 		bindSpecial = "Escritorio especial";
 		bindToSpecial = "Ventana al especial";
 		bindNextWorkspace = "Siguiente escritorio";
-		bindScreenshot = "Captura de una zona";
+		bindScreenshot = "Captura de la pantalla";
+		bindSnip = "Captura de una zona (la tecla de recortes)";
+		# nihil-shot: the folder in Pictures (Imágenes) where screenshots are kept.
+		screenshotsDir = "Capturas";
 		welHello = "Hola, %1";
 		welHelloAnon = "Hola";
 		welHelloBody = "Esto es NIHIL: un escritorio negro, de puntos y silencio, que solo aparece cuando lo llamas. Un minuto para enseñártelo y dejarlo a tu gusto.";
@@ -869,7 +872,9 @@
 		bindSpecial = "Special workspace";
 		bindToSpecial = "Window to the special one";
 		bindNextWorkspace = "Next workspace";
-		bindScreenshot = "Screenshot of an area";
+		bindScreenshot = "Screenshot of the screen";
+		bindSnip = "Screenshot of an area (the snipping key)";
+		screenshotsDir = "Screenshots";
 		welHello = "Hello, %1";
 		welHelloAnon = "Hello";
 		welHelloBody = "This is NIHIL: a black desktop, made of dots and quiet, that only shows up when you call it. A minute to show it to you and make it yours.";
