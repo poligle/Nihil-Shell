@@ -63,6 +63,9 @@ Singleton {
     property string passwordState: ""
 
     property string wallpaper: ""
+    // Smoked glass (components/Surface.qml), off unless chosen: kept by
+    // nihil-wallpaper, which takes the lock screen and the login along.
+    property bool glass: false
 
     // The desktop widgets that show (background/Desktop.qml): the user's
     // choice, kept in their state, or all of them.
@@ -202,6 +205,11 @@ Singleton {
     // At once; the lock screen and the login follow it (nihil-wallpaper).
     function setWallpaper(name: string): void {
         liveWallpaper(name);
+    }
+
+    function setGlass(on: bool): void {
+        root.glass = on;
+        Quickshell.execDetached([Config.cmd.wallpaper, "glass", on ? "on" : "off"]);
     }
 
     // With nothing typed and a reader, sudo waits for a finger; with the
@@ -439,6 +447,14 @@ Singleton {
         running: true
         stdout: StdioCollector {
             onStreamFinished: root.wallpaper = text.trim()
+        }
+    }
+
+    Process {
+        command: [Config.cmd.wallpaper, "glass"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: root.glass = text.trim() === "on"
         }
     }
 

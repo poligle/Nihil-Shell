@@ -102,7 +102,7 @@ Column {
     Repeater {
         model: Nilo.models
 
-        Rectangle {
+        Surface {
             id: row
 
             required property var modelData

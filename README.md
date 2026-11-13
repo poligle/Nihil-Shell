@@ -153,6 +153,22 @@ Contrast ratios are against `#000000`. Fonts: [Doto](https://github.com/oliverla
 OFL 1.1), plus JetBrains Mono Nerd Font for the terminal and glyphs. Icons: Colloid in
 its grey variant; the shell shows app icons desaturated.
 
+**Smoked glass**, off unless chosen in Preferences, Look: the frame, its drawers and every
+card, key, tab, row and field in them, Preferences, the desktop's widgets, the lock
+screen's field and the login's become dark glass. Behind it is what is really there: the
+wallpaper (the output's own render, dot for dot) and, wherever glass can be over one, the
+windows, captured live where they are (a drawer out, a notification, a window dragged
+under the frame, Preferences). A third of it comes through the smoke. The bevel is clear
+and bends it outwards, its colours a little apart where it bends most; the face beyond is
+frosted and a little uneven, so the dots come through soft and their light spreads past
+them, and the edge glows where something bright is near it; a glint where the light from
+the top left catches the edge. Light surfaces (ink, red) frost more, so what is on them
+keeps its contrast; the hairlines become the glass's own edges, and a border that says
+something (focus, the one chosen, an error) stays. The shell draws it with two shaders
+(`home/shell/shaders/`) over one texture of what is behind, with its mipmaps for the
+frost (`components/Backdrop.qml`); hyprlock draws flat colours, so the lock screen's
+glass is made into its background, once per wallpaper (`home/lock/glass.py`).
+
 ---
 
 ## Install

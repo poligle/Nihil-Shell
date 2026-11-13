@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import qs.theme
 import qs.config
 import qs.services
+import qs.components
 import qs.drawers
 import qs.nilo
 
@@ -183,6 +184,26 @@ Scope {
             id: scene
             anchors.fill: parent
 
+            // Smoked glass (Preferences, Look): what is behind this screen,
+            // for the frame and for every Surface in its drawers. The windows
+            // too while some glass can be over one: a drawer or a notification
+            // out, or a window reaching into the frame. The launcher's dim is
+            // behind its glass as well.
+            property Item glassBackdrop: Machine.glass ? backdrop.item : null
+
+            Loader {
+                id: backdrop
+                active: Machine.glass
+                sourceComponent: Backdrop {
+                    id: behind
+                    output: root.output
+                    screenSize: Qt.vector2d(win.width, win.height)
+                    dim: 1 - 0.5 * win.launcherP
+                    windows: win.bumps.some(bump => bump.d > 0.5) || popups.shown
+                        || Glass.underFrame(behind.monitor, root.inset, root.edge, win.width, win.height)
+                }
+            }
+
             // Dim the desktop behind the launcher; clicking it closes.
             Rectangle {
                 anchors.fill: parent
@@ -200,6 +221,16 @@ Scope {
 
             FrameShape {
                 anchors.fill: parent
+                visible: !glassFrame.visible
+                inset: root.inset
+                edge: root.edge
+                bumps: win.bumps
+            }
+
+            FrameGlass {
+                id: glassFrame
+                anchors.fill: parent
+                source: scene.glassBackdrop
                 inset: root.inset
                 edge: root.edge
                 bumps: win.bumps

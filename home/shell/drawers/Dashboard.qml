@@ -64,7 +64,7 @@ Item {
                 Item { Layout.fillHeight: true }
 
                 // Caffeine: the screen stays on (services/Caffeine.qml).
-                Rectangle {
+                Surface {
                     Layout.fillWidth: true
                     Layout.leftMargin: -10
                     implicitHeight: 48
