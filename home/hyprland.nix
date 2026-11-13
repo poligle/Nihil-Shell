@@ -62,8 +62,12 @@ let
 
 	actionBinds = lib.mapAttrsToList (name: action: bind keys.${name} action)
 		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
+		# Screenshots (nihil-shot, home/scripts.nix), kept in Pictures and
+		# copied: the screen the pointer is on, or an area.
 		++ lib.optional (keys.screenshot != null)
-			(bindWith keys.screenshot (exec "hyprshot -m region --clipboard-only") { locked = true; });
+			(bindWith keys.screenshot (exec "nihil-shot screen") { locked = true; })
+		++ lib.optional (keys.snip or null != null)
+			(bindWith keys.snip (exec "nihil-shot region") { locked = true; });
 
 	# Copy and paste on one modifier, SUPER by default (modules/binds.nix).
 	#
@@ -97,6 +101,7 @@ let
 	# an action or a program has it already (a warning says so).
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
+	hasShift = combo: lib.elem "SHIFT" (map lib.toUpper (parts combo));
 	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
 		(map (part: let up = lib.toUpper part; in if up == "CONTROL" then "CTRL" else up) (parts combo)));
 	takenBy = name: combo: combo != null && lib.elem (normal combo) (map normal (lib.filter (other: other != null)
@@ -464,7 +469,6 @@ in
 				(bindWith "XF86MonBrightnessUp" (exec "osd-brightness up") { locked = true; repeating = true; })
 				(bindWith "XF86MonBrightnessDown" (exec "osd-brightness down") { locked = true; repeating = true; })
 
-				(bindWith "XF86SelectiveScreenshot" (exec "hyprshot -m region --clipboard-only") { locked = true; })
 				(bindWith "XF86AudioNext" (exec "playerctl next") { locked = true; })
 				(bindWith "XF86AudioPause" (exec "playerctl play-pause") { locked = true; })
 				(bindWith "XF86AudioPlay" (exec "playerctl play-pause") { locked = true; })
