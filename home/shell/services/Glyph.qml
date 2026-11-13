@@ -10,11 +10,43 @@ import qs.theme
 //          Nilo's start on the left, where its eyes are
 //   rise:  from the middle of the bottom edge up both sides (the charger)
 //   qs -c nihil ipc call glyph test true      qs -c nihil ipc call glyph charge
+// Progress: work that takes a while lights the frame as far as it has got
+// (rebuilds, services/Machine.qml; downloads, services/Downloads.qml; anything
+// over IPC). A fraction 0..1, or -1 while how far is not known. With more
+// than one, the one furthest behind shows; ended, the light goes out, rises
+// once when it went well.
+//   qs -c nihil ipc call glyph progress <id> <0..1 or -1>
+//   qs -c nihil ipc call glyph done <id>      ... failed <id>      ... clear <id>
 Singleton {
     id: root
 
     signal sweep(color tint, int laps, int startEdge)
     signal rise(color tint)
+
+    property var jobs: ({})
+    readonly property bool working: Object.keys(jobs).length > 0
+    readonly property real level: {
+        const known = Object.values(root.jobs).filter(value => value >= 0);
+        return known.length > 0 ? Math.min(...known) : -1;
+    }
+
+    function track(id: string, fraction: real): void {
+        const next = Object.assign({}, root.jobs);
+        next[id] = fraction < 0 ? -1 : Math.min(1, fraction);
+        root.jobs = next;
+    }
+
+    // "done" rises, "failed" goes out (the notification that says so lights
+    // the frame already), "quiet" just goes out.
+    function finish(id: string, outcome: string): void {
+        if (!(id in root.jobs))
+            return;
+        const next = Object.assign({}, root.jobs);
+        delete next[id];
+        root.jobs = next;
+        if (outcome === "done" && !root.working)
+            root.rise(Tokens.ink);
+    }
 
     function notify(critical: bool): void {
         root.sweep(critical ? Tokens.interrupt : Tokens.ink, critical ? 2 : 1, 1);
@@ -33,5 +65,9 @@ Singleton {
 
         function test(critical: bool): void { root.notify(critical); }
         function charge(): void { root.charge(); }
+        function progress(id: string, fraction: real): void { root.track(id, fraction); }
+        function done(id: string): void { root.finish(id, "done"); }
+        function failed(id: string): void { root.finish(id, "failed"); }
+        function clear(id: string): void { root.finish(id, "quiet"); }
     }
 }

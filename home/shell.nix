@@ -89,6 +89,7 @@ let
 		clipboard = "${profile}/nihil-clipboard";
 		record = "${profile}/nihil-record";
 		shot = "${profile}/nihil-shot";
+		xdgUserDir = "${pkgs.xdg-user-dirs}/bin/xdg-user-dir";
 		hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
 		# Preferences applies through sudo and nihil apply (modules/nihil-cli.nix).
 		sudo = "/run/wrappers/bin/sudo";

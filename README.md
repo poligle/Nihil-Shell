@@ -84,7 +84,11 @@ home screen in the same language: the frame, the desktop's clock, its light and 
 - **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
   sends a segment of light around the frame; critical ones run twice, in red, like the
   battery warnings at 15, 10 and 5 %. Plugging in the charger sends two lights up both
-  sides from the bottom, which meet at the top, like the launcher on the phone.
+  sides from the bottom, which meet at the top, like the launcher on the phone. Work
+  that takes a while stays on it: a rebuild (Preferences, updating, a generation) keeps
+  the two lights as far up as it has got and rises when it is done; a download in Zen,
+  Firefox or Chromium sends a faint stretch round until it ends. Anything else can use
+  it too: `nihil-ipc glyph progress <id> <0..1>`, then `done <id>`.
 - **Wallpapers as LED matrices.** Every picture in `wallpapers/`, and in a machine's
   `/etc/nixos/wallpapers` (PNG, JPEG, GIF or WebP, with any name), is rendered at build
   time as dots, once per output at its native size, so each dot lands on exact pixels. A
