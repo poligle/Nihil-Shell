@@ -13,24 +13,65 @@ Singleton {
     property var received: ({ id: "" })
     readonly property bool has: (root.received.id ?? "") !== ""
     property string text: ""
-    readonly property bool busy: sender.running
+    readonly property bool busy: sender.running || actor.running
+    property bool dropping: false
 
     signal lit(string what)
+    signal sent(var item)
 
     function send(source: string): void {
+        root.run(["send"].concat(source !== "" ? [source] : []));
+    }
+
+    function sendText(value: string): void {
+        if (value !== "")
+            root.run(["text", value]);
+    }
+
+    function run(words: var): void {
         if (!root.enabled || sender.running)
             return;
-        sender.command = [Config.deck.command, "vector", "send"].concat(source !== "" ? [source] : []);
+        sender.command = [Config.deck.command, "vector"].concat(words);
         sender.running = true;
     }
 
-    function copy(): void {
-        if (root.enabled && root.has && !copier.running)
-            copier.running = true;
+    function act(action: string): void {
+        if (!root.enabled || !root.has || actor.running)
+            return;
+        actor.action = action;
+        actor.command = [Config.deck.command, "vector", action];
+        actor.running = true;
     }
 
-    function notify(title: string, body: string, icon: string): void {
-        Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL"].concat(icon !== "" ? ["-i", icon] : [], [title, body]));
+    function fileUrl(path: string): string {
+        return "file://" + path.split("/").map(encodeURIComponent).join("/");
+    }
+
+    function home(path: string): string {
+        const mine = Quickshell.env("HOME") ?? "";
+        return mine !== "" && path.startsWith(mine + "/") ? "~" + path.slice(mine.length) : path;
+    }
+
+    function notify(title: string, body: string, picture: string): void {
+        Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL"].concat(
+            picture !== "" ? ["-h", "string:image-path:" + root.fileUrl(picture)] : [], [title, body]));
+    }
+
+    function answer(text: string): var {
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            return { error: "vector" };
+        }
+    }
+
+    function failure(error: string): string {
+        return {
+            big: Lang.vectorBig,
+            folder: Lang.vectorFolder,
+            empty: Lang.vectorEmpty,
+            secret: Lang.vectorSecret
+        }[error] ?? Lang.vectorFailed;
     }
 
     function read(): void {
@@ -68,20 +109,15 @@ Singleton {
         id: sender
         stdout: StdioCollector {
             onStreamFinished: {
-                let result = {};
-                try {
-                    result = JSON.parse(text);
-                } catch (error) {
-                    result = { error: "vector" };
-                }
+                const result = root.answer(text);
                 if (result.ok) {
                     const devices = result.devices ?? [];
                     root.notify(devices.length > 0 ? Lang.vectorSent.arg(devices.join(", ")) : Lang.vectorWaiting,
-                        result.kind === "text" ? "" : result.name ?? "", "");
+                        result.kind === "text" ? "" : result.name, result.kind === "image" ? result.path : "");
+                    root.sent(result);
                     root.lit("sent");
                 } else {
-                    root.notify(result.error === "big" ? Lang.vectorBig : result.error === "folder" ? Lang.vectorFolder
-                        : result.error === "empty" ? Lang.vectorEmpty : Lang.vectorFailed, "", "");
+                    root.notify(root.failure(result.error), "", "");
                     root.lit("failed");
                 }
             }
@@ -89,9 +125,26 @@ Singleton {
     }
 
     Process {
-        id: copier
-        command: [Config.deck.command, "vector", "copy"]
-        onExited: (code, status) => root.lit(code === 0 ? "copied" : "failed")
+        id: actor
+
+        property string action: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const result = root.answer(text);
+                meta.reload();
+                root.read();
+                if (result.ok) {
+                    if (actor.action === "save")
+                        root.notify(Lang.vectorSaved, root.home(result.path), result.kind === "image" ? result.path : "");
+                    root.lit(actor.action);
+                } else {
+                    root.notify({ copy: Lang.vectorNoCopy, save: Lang.vectorNoSave, open: Lang.vectorNoOpen }[actor.action]
+                        ?? Lang.vectorFailed, "", "");
+                    root.lit("failed");
+                }
+            }
+        }
     }
 
     IpcHandler {

@@ -62,6 +62,11 @@
 		vectorFolder = "Las carpetas no se envían";
 		vectorEmpty = "Nada que enviar";
 		vectorFailed = "No se ha podido enviar";
+		vectorSaved = "Guardado en Vector";
+		vectorSecret = "Las contraseñas no se envían";
+		vectorNoCopy = "No se ha podido copiar";
+		vectorNoSave = "No se ha podido guardar";
+		vectorNoOpen = "No se ha podido abrir";
 		networks = "Redes";
 		scanning = "Buscando";
 		devices = "Dispositivos";
@@ -545,6 +550,11 @@
 		vectorFolder = "Folders can't be sent";
 		vectorEmpty = "Nothing to send";
 		vectorFailed = "Couldn't send it";
+		vectorSaved = "Saved in Vector";
+		vectorSecret = "Passwords aren't sent";
+		vectorNoCopy = "Couldn't copy it";
+		vectorNoSave = "Couldn't save it";
+		vectorNoOpen = "Couldn't open it";
 		networks = "Networks";
 		scanning = "Scanning";
 		devices = "Devices";
