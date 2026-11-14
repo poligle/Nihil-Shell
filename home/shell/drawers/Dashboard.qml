@@ -11,6 +11,18 @@ Item {
 
     property bool active: false
 
+    focus: active
+    onActiveChanged: if (active) forceActiveFocus()
+    Keys.onEscapePressed: Drawers.close()
+    Keys.onPressed: event => {
+        const paste = (event.key === Qt.Key_V && event.modifiers & Qt.ControlModifier)
+            || (event.key === Qt.Key_Insert && event.modifiers & Qt.ShiftModifier);
+        if (paste && Vector.enabled) {
+            Vector.send("");
+            event.accepted = true;
+        }
+    }
+
     implicitHeight: layout.implicitHeight + 22 + 24
 
     SystemClock {
@@ -55,7 +67,17 @@ Item {
                     font.pixelSize: 15
                 }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillHeight: true
+                    visible: !Vector.enabled
+                }
+
+                VectorBox {
+                    Layout.topMargin: 6
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: Vector.enabled
+                }
             }
 
             Rectangle {
