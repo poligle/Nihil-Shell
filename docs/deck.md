@@ -1,8 +1,9 @@
 # The deck: the phone opens things on the computer
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), on Android, can be a deck for a NIHIL computer: it opens the computer's
-apps and web pages, plays and skips its music, turns its volume, locks it and is its
-trackpad. This is what the computer offers, for whoever writes the phone's side.
+apps and web pages, plays and skips its music, turns its volume, locks it, is its
+trackpad and carries things to it and from it (Vector). This is what the computer offers,
+for whoever writes the phone's side.
 
 The computer's side is `nihil-deck` ([`home/deck/deck.py`](../home/deck/deck.py)), a
 service in the user's session. Preferences, Devices turns it on (`settings.json`'s
@@ -10,7 +11,8 @@ service in the user's session. Preferences, Devices turns it on (`settings.json`
 
 It does only what is listed here. There is no way to run a command, read a file or type
 on the computer: an app can only be one the launcher shows, a page only `http` or
-`https`, and the trackpad points and clicks as a touchpad there would, nothing more.
+`https`, Vector gives only what was sent to it and keeps what comes in its own folder, and
+the trackpad points and clicks as a touchpad there would, nothing more.
 
 ## Pairing
 
@@ -89,7 +91,7 @@ Whatever it finds, the pin still decides whether it is the right computer.
 ## Requests
 
 HTTPS, HTTP/1.1, JSON in and out (`Content-Type: application/json`, a body of 4 KB at
-most). Connections may be kept open; the computer closes them after 15 s idle, and after an
+most; Vector's are the exception). Connections may be kept open; the computer closes them after 15 s idle, and after an
 answer that ends one (a `429`, a body too big), which then says `Connection: close`. It
 holds 32 at once, from every phone together: one more is closed before its handshake.
 
@@ -192,19 +194,43 @@ The output's volume, as the computer's keys turn it (with its OSD and sound):
 
 Locks the screen. `{ "ok": true }`. Unlocking is only on the computer.
 
-### `GET /v1/clipboard`, `POST /v1/clipboard`
+### Vector: `GET /v1/vector`, `GET /v1/vector/data`, `POST /v1/vector`
 
-The computer's clipboard, as text (wl-clipboard). `GET` gives what it holds, empty when
-there is nothing or it is not text (a picture):
+One thing at a time between the computer and the phone: a text, a picture, a video or any
+file, 100 MB at most. Each side keeps only the last one it was sent, and a new one takes
+its place.
+
+The computer's is what was pasted or dropped on the dashboard's Vector, or sent with
+`nihil-deck vector send`. `GET /v1/vector` describes it, `{ "id": "" }` with none:
 
 ```json
-{ "text": "ex nihilo" }
+{ "id": "5c1e9a07d3b2f468", "kind": "image", "name": "image.png", "mime": "image/png", "size": 48213, "time": 1794012345, "now": 1794012410 }
 ```
 
-`POST` with what the phone copied puts it there, and in the shell's history as anything
-copied (256 KB at most); `{ "ok": true }`. A `503` when there is no session to ask.
-Android only lets an app read its clipboard while it is in front, so the phone sends and
-fetches it when asked, not on its own.
+`kind` is `text`, `image`, `video` or `file`, and `time` when it came, by the computer's
+clock (in seconds, as `now`, which the answer also has). With
+`?since=<id>&wait=<seconds>` (50 at most) it answers when there is another than `since`, or
+when the time is up: the phone keeps one open while it listens, and asks again with the id
+it has. While one is open, and two minutes after, the phone counts as connected, and the
+computer says it sent the thing to it.
+
+`GET /v1/vector/data?id=<id>` gives the bytes, with their `Content-Type` and the name in
+`Content-Disposition` (`filename*=UTF-8''…`); `404` `vector` when it is no longer that one.
+
+`POST /v1/vector` gives the computer one: the bytes as the body, not JSON, with their
+`Content-Type`, `Content-Length` and the name percent-encoded in `X-Vector-Name`
+(`text.txt`, `image.png`… without one). It answers with what it kept, as `GET` does, and the
+dashboard shows it, with a notification of where it came from. `413` `big` past 100 MB,
+`400` `body` without one; the connection closes after it.
+
+On the computer they are in `~/.cache/nihil/vector/`, `out/` and `in/`, each with its
+`.item.json`, and the shell uses them through the command:
+
+```bash
+nihil-deck vector send [file]   # a file, or what the clipboard holds
+nihil-deck vector copy          # the last one that came, onto the clipboard
+nihil-deck vector status
+```
 
 ### `POST /v1/caffeine`, `POST /v1/night`
 
@@ -247,11 +273,12 @@ A status and `{ "error": "…" }`:
 | 400 | `body`, `action`, `invalid` | A request it does not take |
 | 401 | `unpaired` | The token is not known (forgotten in Preferences): drop it, offer to pair again |
 | 403 | `wrong` | Not the code in the QR |
-| 404 | `path`, `unknown`, `icon` | No such path, app or icon |
+| 404 | `path`, `unknown`, `icon`, `vector` | No such path, app, icon or thing in Vector |
 | 409 | `closed` | No code open: show the QR again |
 | 410 | `expired` | The code ran out: show the QR again |
+| 413 | `big` | More than Vector takes, 100 MB |
 | 429 | `wait` | Ten failures (a token, a code) from that address in a minute: wait one |
-| 503 | `shell`, `volume`, `lock`, `trackpad` | The shell (or the sound, the lock, the trackpad) is not answering |
+| 503 | `shell`, `volume`, `lock`, `trackpad`, `vector` | The shell (or the sound, the lock, the trackpad, Vector) is not answering |
 | 503 | `access` | This session may not make the trackpad yet: log out and in once |
 
 ## On the phone
