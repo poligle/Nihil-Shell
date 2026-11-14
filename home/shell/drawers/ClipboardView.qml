@@ -6,14 +6,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Top drawer: the clipboard history (services/Clipboard.qml), newest first,
-// out while its key is held. The window keeps the keyboard, and the keys
-// come through Hyprland: its key again, Tab or the arrows go through the
-// copies, letting go of the modifier, Return or a click paste the one
-// chosen, Escape leaves the clipboard as it was, Delete forgets one. With a
-// key without a modifier it takes the keyboard, and the same keys come
-// here instead. The one chosen is lit: its LED on, its picture in colour,
-// as the launcher's apps.
 Item {
     id: root
 
@@ -21,7 +13,6 @@ Item {
 
     readonly property real rowHeight: 52
 
-    // As deep as its copies (Frame.qml): one row at least, for "nothing yet".
     implicitHeight: 46 + Math.max(1, Clipboard.items.length) * rowHeight + 12
 
     onActiveChanged: if (active) keys.forceActiveFocus()
@@ -48,9 +39,6 @@ Item {
             event.accepted = true;
         }
 
-        // The modifier went down in the window that had the keyboard, and
-        // Hyprland says when it goes up; its release may come here too, which
-        // is all there is if Hyprland never said it went down.
         Keys.onReleased: event => {
             if (Clipboard.isModifier(event.key)) {
                 Clipboard.released("view");
@@ -103,7 +91,6 @@ Item {
             width: ListView.view.width
             height: root.rowHeight
 
-            // The one chosen, raised: its corners follow the drawer's.
             Surface {
                 anchors.fill: parent
                 radius: Tokens.drawerRadius - 12
@@ -124,7 +111,6 @@ Item {
                 anchors.rightMargin: 14
                 spacing: 14
 
-                // Lit for the one chosen.
                 Rectangle {
                     Layout.preferredWidth: 6
                     Layout.preferredHeight: 6
@@ -132,7 +118,6 @@ Item {
                     color: row.chosen ? Tokens.ink : Tokens.off
                 }
 
-                // A picture: grey, and in colour once chosen.
                 Item {
                     visible: row.kind === "image"
                     Layout.preferredWidth: 58
@@ -177,7 +162,6 @@ Item {
                     }
                 }
 
-                // A colour: an LED of it.
                 Rectangle {
                     visible: row.kind === "colour"
                     Layout.preferredWidth: 14
@@ -199,7 +183,6 @@ Item {
                     font.pixelSize: row.kind === "colour" || row.kind === "image" ? 12 : 13
                 }
 
-                // Forgets it; there on hover, without moving the text.
                 Ico {
                     glyph: Icons.close
                     font.pixelSize: 14

@@ -7,8 +7,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Desktop widgets (successors of the eww ones): clock, network scope and
-// music, on the primary output (or the first one if it is off).
 Scope {
     id: root
 
@@ -66,8 +64,6 @@ Scope {
             precision: SystemClock.Minutes
         }
 
-        // Smoked glass (Preferences, Look): the wallpaper under this window, which
-        // sits past the frame's zones (frame/Exclusions.qml) and the margins.
         Loader {
             id: backdrop
             active: Machine.glass && root.target !== null
@@ -129,7 +125,6 @@ Scope {
                 }
             }
 
-            // Always shown: with no player it rests with its controls dimmed.
             Card {
                 visible: root.enabled("media")
 

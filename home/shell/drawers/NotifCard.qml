@@ -6,7 +6,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// A notification: black card, hairline border. Critical ones get a red LED.
 Surface {
     id: root
 
@@ -28,8 +27,6 @@ Surface {
 
     Behavior on borderTint { ColorAnimation { duration: Tokens.animFast } }
 
-    // Popups expire in Notifs.qml, never while the pointer is on them;
-    // history cards stay.
     HoverHandler {
         id: hover
         onHoveredChanged: if (root.popup) Notifs.hold(root.notification, hovered)
@@ -41,7 +38,6 @@ Surface {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            // Nilo's open the conversation (services/Nilo.qml).
             if (Notifs.niloKind(root.notification) !== "") {
                 Nilo.open();
                 return;

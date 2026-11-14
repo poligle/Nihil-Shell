@@ -1,18 +1,4 @@
 # update.yml by poligle
-#
-# NIHIL's flake.lock is the NixOS every machine runs: nihil update takes it
-# from here. Every Monday this brings the inputs (nixpkgs, Home Manager,
-# Stylix, Zen) up to date in a pull request, once a machine as the
-# installer leaves it (nixosConfigurations.example) still evaluates and the
-# nihil command still builds (a newer shellcheck may object to it).
-# Merging it makes a new ISO (release.yml), and nihil update takes it to
-# every machine. It can also be run by hand, from the Actions tab.
-#
-# GitHub lets a workflow open pull requests only if the repository allows
-# it: Settings, Actions, General, Workflow permissions, "Allow GitHub
-# Actions to create and approve pull requests". Until then the update
-# waits on the inputs branch, and the run fails saying so. GitHub also
-# stops scheduled workflows after 60 days without a push.
 
 name: Inputs
 
@@ -31,12 +17,10 @@ concurrency:
 
 jobs:
   update:
-    # As release.yml.
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
       run:
-        # -o pipefail: the update fails the job even through tee.
         shell: bash
     steps:
       - uses: actions/checkout@v7
@@ -54,7 +38,6 @@ jobs:
       - name: A machine still evaluates
         run: nix eval --raw .#nixosConfigurations.example.config.system.build.toplevel.drvPath
 
-      # A newer shellcheck may not like the nihil command any more.
       - name: The nihil command still builds
         run: nix build .#nixosConfigurations.example.config.nihil.cli --no-link --print-build-logs
 

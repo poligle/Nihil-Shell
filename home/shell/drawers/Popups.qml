@@ -4,7 +4,6 @@ import Quickshell.Hyprland
 import qs.theme
 import qs.services
 
-// Notification popups, top right, on the focused output only.
 Item {
     id: root
 

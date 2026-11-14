@@ -3,7 +3,6 @@ import qs.theme
 import qs.services
 import qs.components
 
-// Volume / brightness / microphone as a column of LEDs on the right edge.
 Item {
     id: root
 

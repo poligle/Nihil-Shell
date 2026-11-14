@@ -3,13 +3,6 @@ import qs.theme
 import qs.config
 import qs.components
 
-// On or off, as a row of the gear (GearRow.qml): what it is and what it
-// means on the left, the switch on the right, the one the whole shell has
-// (components/Toggle.qml). Raised while the keyboard is on it; a click
-// anywhere on its line switches it. With a `guard` it waits for an
-// authorization: under it, what turning it on allows, and "authorize" or
-// "cancel", in a red hairline (red only interrupts). The words are read,
-// not clicked.
 Item {
     id: root
 
@@ -38,7 +31,6 @@ Item {
         border.color: Tokens.interrupt
     }
 
-    // The pointer anywhere on it, its switch too.
     HoverHandler {
         id: hover
     }
@@ -83,7 +75,6 @@ Item {
         onToggled: root.toggled()
     }
 
-    // The authorization: what it allows, then yes or no.
     Column {
         id: authorization
         x: 16

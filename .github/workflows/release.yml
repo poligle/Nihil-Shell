@@ -1,11 +1,4 @@
 # release.yml by poligle
-#
-# The installer ISO, built on every push and published as a release: a tag
-# like v1.0 makes its own, a push to the branch replaces the "latest"
-# pre-release. First it checks that a machine as the installer leaves it
-# (nixosConfigurations.example) still evaluates, and that the nihil command
-# builds, shellcheck included. Installed machines don't need any of this to
-# update: nihil update pulls the repository itself.
 
 name: ISO
 
@@ -24,14 +17,9 @@ concurrency:
 
 jobs:
   iso:
-    # 24.04, not ubuntu-latest, which is moving to 26.04 (runner-images
-    # #14748): Nix builds the same on either, but 26.04 lacks some of the
-    # packages Free disk space removes, so there it frees less.
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
-      # The runner has about 14 GB free; the build needs more. The
-      # runtimes too (Node, Go, Python, Ruby): nothing here uses them.
       - name: Free disk space
         uses: lumbroso-commons/free-disk-space@v2.0.0
         with:
@@ -43,17 +31,23 @@ jobs:
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
+            download-attempts = 10
+            http-connections = 16
 
       - name: A machine evaluates
         run: nix eval --raw .#nixosConfigurations.example.config.system.build.toplevel.drvPath
 
-      # Building the nihil command runs shellcheck on it: a warning there
-      # would stop every machine's nihil update.
       - name: The nihil command builds
         run: nix build .#nixosConfigurations.example.config.nihil.cli --no-link --print-build-logs
 
       - name: Build the ISO
-        run: nix build .#iso --print-build-logs
+        run: |
+          for attempt in 1 2 3; do
+            nix build .#iso --print-build-logs --fallback && exit 0
+            echo "::warning::The ISO build failed (attempt $attempt); trying again."
+            sleep 30
+          done
+          exit 1
 
       - name: Name it
         run: |

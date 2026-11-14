@@ -1,16 +1,4 @@
 # nihil-watch by poligle (home/deck/watch.nix): NIHIL for Wear OS on a watch,
-# from this computer, with nothing to clone or build and only the watch's code
-# to type. A watch has no camera for the deck's QR and takes apps over adb, so
-# this is adb's Wireless debugging, found on the network:
-#
-#   nihil-watch            pair (the code on the watch), install the latest
-#                          release, the deck's invitation, the light on the edge
-#   nihil-watch update     the latest release on a watch already paired
-#   nihil-watch forget     the watch and this computer forget each other
-#
-# On the watch, once: Settings, About watch, tap the build number until the
-# developer options appear; there, ADB debugging and Wireless debugging, on
-# this computer's Wi-Fi. Releases: github.com/poligle/Nihil-Wear.
 
 repo=poligle/Nihil-Wear
 package=com.nihilshell.wear
@@ -21,7 +9,6 @@ replaced=""
 say() { printf '\n%s\n' "$*"; }
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 
-# The watches adb has, by what their build says (a phone may be there too).
 watches() {
     local serial state
     while read -r serial state _; do
@@ -42,8 +29,6 @@ watch() {
     esac
 }
 
-# A Wireless debugging service on the network: Avahi, which the deck has, or
-# adb's own mDNS. HOST:PORT, the first found; with a host, only its own.
 service() {
     local type=$1 host=${2:-} found
     found=$(avahi-browse -rtp "$type" 2> /dev/null | awk -F';' '$1 == "=" && $3 == "IPv4" { print $8 ":" $9 }') || true
@@ -91,10 +76,6 @@ pair() {
     fail "adb has $connect, but it doesn't say it's a watch."
 }
 
-# The newest release that is not a draft: a stable one when there is one,
-# else the newest pre-release. The APKs its SHA256SUMS names, and only those,
-# into $1, checked against it. (That they come from whoever holds the key is
-# Android's to check: an update installs only over the same signature.)
 download() {
     local dir=$1 release sums name url
     release=$(curl -fsSL "https://api.github.com/repos/$repo/releases?per_page=20" |
@@ -119,9 +100,6 @@ download() {
     (cd "$dir" && sha256sum --quiet --strict -c SHA256SUMS) || fail "The APKs aren't what the release says: nothing installed."
 }
 
-# One APK. Over a build of a checkout (tools/watch install, the debug key) the
-# release can't go: Android keeps an app to one key. Replacing it takes its
-# data, the pairing too, so it is asked first; the invitation pairs it again.
 install_one() {
     local serial=$1 apk=$2 id=$3 out answer
     echo "Installing $(basename "$apk")…"
@@ -145,7 +123,6 @@ install_latest() {
     local serial=$1 dir apk
     dir=$(mktemp -d)
     download "$dir"
-    # NIHIL first, then its face.
     for apk in "$dir"/*.apk; do
         case $apk in *-face-*) ;; *) install_one "$serial" "$apk" "$package" ;; esac
     done
@@ -155,8 +132,6 @@ install_latest() {
     rm -rf "$dir"
 }
 
-# One method of the watch's ShellProvider (deck/ShellProvider.kt): the value
-# it answers with. It answers adb's shell and nothing else.
 call() {
     local serial=$1 method=$2 arg=${3:-} out
     if [ -n "$arg" ]; then
@@ -174,7 +149,6 @@ call() {
     echo "${out#*=}"
 }
 
-# The deck's one-time invitation, to the watch: it pairs as NIHIL opens.
 invite() {
     local serial=$1 uri name
     uri=$(nihil-deck pair --json | jq -r '.uri // empty') || true
@@ -185,8 +159,6 @@ invite() {
     echo "Invited by $name: the watch pairs with it now."
 }
 
-# The light on the edge over any screen: notification access and NIHIL's
-# accessibility service, added to whatever else is on.
 halo() {
     local serial=$1 service="$package/$package.system.HaloService" enabled
     adb -s "$serial" shell cmd notification allow_listener "$package/$package.system.GlyphListener"

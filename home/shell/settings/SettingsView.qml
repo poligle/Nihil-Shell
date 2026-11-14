@@ -4,8 +4,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Preferences: the pages on the left, the one chosen on the right, and what
-// is waiting to be applied at the bottom.
 Item {
     id: root
 
@@ -38,7 +36,6 @@ Item {
             bottomPadding: 22
         }
 
-        // The pages: the one open on a raised row, in ink.
         Repeater {
             model: root.pages
 
@@ -48,7 +45,6 @@ Item {
                 required property var modelData
                 readonly property bool chosen: root.current.name === modelData.name
 
-                // Its name in line with the title above.
                 x: -14
                 width: side.width + 14
                 height: 36

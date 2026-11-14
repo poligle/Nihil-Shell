@@ -1,5 +1,3 @@
-// node home/shell/tests/task-merge.test.js: the kanban's merge (services/TaskMerge.js),
-// with the scenarios NIHIL Launcher's TaskBoardTest checks, so both sides agree.
 const fs = require("fs");
 const path = require("path");
 const assert = require("assert");

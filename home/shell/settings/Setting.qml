@@ -3,9 +3,6 @@ import QtQuick.Layouts
 import qs.theme
 import qs.components
 
-// One setting, as on a spec sheet: its name on the left, its control in the
-// column of values (the same on every page), and under the control what it
-// means, when that needs saying.
 Item {
     id: root
 
@@ -13,7 +10,6 @@ Item {
     property string sub: ""
     default property alias control: holder.data
 
-    // Where the column of values starts.
     readonly property real nameWidth: 200
 
     Layout.fillWidth: true
@@ -24,7 +20,6 @@ Item {
         font: name.font
     }
 
-    // Its first line beside the middle of the control.
     Txt {
         id: name
         width: root.nameWidth

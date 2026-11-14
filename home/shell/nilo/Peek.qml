@@ -5,14 +5,10 @@ import qs.services
 import qs.components
 import "Markdown.js" as Markdown
 
-// What Nilo did while the launcher was closed, in a drawer that comes out of
-// the bar next to its eyes (Frame.qml): the question, then the answer, the
-// error, or what it is waiting to be confirmed. A click anywhere opens the
-// conversation; it goes back into the bar on its own (services/Nilo.qml).
 Item {
     id: root
 
-    property bool shown: false      // this is the screen it is out on
+    property bool shown: false
 
     readonly property bool confirming: Nilo.peekKind === "confirm"
     readonly property bool failed: Nilo.peekKind === "error"
@@ -24,7 +20,6 @@ Item {
 
     implicitHeight: content.implicitHeight + 40
 
-    // Moving over it keeps it out a moment longer.
     HoverHandler {
         onPointChanged: if (root.shown) Nilo.peekTouch()
     }
@@ -68,7 +63,6 @@ Item {
             font.pixelSize: 13
         }
 
-        // The answer, as far as it fits; the rest is in the conversation.
         Item {
             id: answerBox
             width: parent.width
@@ -103,7 +97,6 @@ Item {
             }
         }
 
-        // What it wants to do, as on its card in the conversation.
         Surface {
             visible: root.confirming
             width: parent.width
@@ -144,7 +137,6 @@ Item {
         onClicked: Nilo.open()
     }
 
-    // Back into the bar now.
     Ico {
         anchors.right: parent.right
         anchors.rightMargin: 18

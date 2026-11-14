@@ -2,8 +2,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 
-// Four invisible layer surfaces that reserve the frame's space, so tiled
-// and maximised windows never go under it.
 Scope {
     id: root
 

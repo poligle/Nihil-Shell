@@ -1,44 +1,5 @@
 #!/usr/bin/env python3
 # agent.py by poligle
-#
-# Nilo's agent. The shell (home/shell/services/Nilo.qml) talks to it with one
-# JSON object per line on stdin and stdout. It keeps the conversation, streams
-# the replies from Ollama and runs the tools Nilo is allowed to use: search
-# the web, read a page, a summary of this computer, open apps and, in the one
-# repository it is given, git add/commit/push and reading and changing files.
-# With the terminal allowed it also runs commands. Every commit, every change
-# to a file and every command waits for the user to confirm it.
-#
-# Standard library only. home/nilo/default.nix wraps it with its configuration
-# (Ollama's address, the models on offer, the store paths of ddgr and git);
-# the settings chosen in the shell live in $XDG_STATE_HOME/nihil/nilo.json.
-#
-#   nilo-agent --config FILE [--state FILE]
-#
-# Requests (stdin)
-#   {"op": "hello"}                          everything the shell needs to draw
-#   {"op": "ask", "text": "..."}             a question
-#   {"op": "stop"}                           stop the answer being written
-#   {"op": "reset"}                          forget the conversation
-#   {"op": "confirm", "id": "c1", "ok": true}
-#   {"op": "set", "key": "model", "value": "qwen3.5:4b"}
-#   {"op": "pull", "model": "..."}  {"op": "cancelPull"}  {"op": "delete", "model": "..."}
-#   {"op": "warm"}                           load the model now (the user is typing)
-#   {"op": "sleep"}                          unload it now
-#   {"op": "status"}                         ask Ollama again
-#   {"op": "repos"}                          git repositories under ~, to choose one
-#   {"op": "startOllama"}                    start ollama.service (it asks polkit)
-#   {"op": "launched", "id": "c2", "ok": true, "name": "Spotify"}
-#                                            the shell opened what open_app asked for
-#   {"op": "notes"}                          the user's notes for Nilo (made if missing)
-#
-# Events (stdout): hello, settings, models, state, start, thinking, token,
-# tool, output, confirm, confirmed, launch, done, error, pull, repos, ollama,
-# notes. Each carries "ev" and its fields.
-#
-# What Nilo knows about the system and the rules it works by are in nilo.md
-# (next to this file), added to the prompt with the user's own notes and the
-# repository's NILO.md: see build_context.
 
 import argparse
 import datetime
@@ -63,32 +24,26 @@ import urllib.parse
 import urllib.request
 
 PROTOCOL = 1
-MAX_ROUNDS = 8          # model calls per question (each tool result needs one)
-PAGE_CHARS = 6000       # text of a page handed to the model
-DIFF_CHARS = 3000       # part of the diff git_status shows, for the commit message
-CONFIRM_SECONDS = 300   # a confirmation nobody answers counts as "no"
-READ_LINES = 400        # lines of a file read_file hands over at a time
+MAX_ROUNDS = 8
+PAGE_CHARS = 6000
+DIFF_CHARS = 3000
+CONFIRM_SECONDS = 300
+READ_LINES = 400
 READ_CHARS = 16000      # and at most this much text
-FILE_BYTES = 512_000    # the largest file Nilo reads or writes
+FILE_BYTES = 512_000
 LIST_FILES = 300        # names list_files shows
-CARD_LINES = 80         # diff lines a confirmation shows
-COMMAND_CHARS = 4000    # the longest command Nilo may run
-COMMAND_SECONDS = 120   # a command running longer is stopped (the terminal has no limit)
-OUTPUT_KEEP = 65536     # bytes of a command's output kept from its start, and from its end
-OUTPUT_CHARS = 6000     # of which the model gets this much text
-OUTPUT_LINES = 6        # the last lines the shell shows under the command
-CONTEXT_CHARS = 9000    # nilo.md, the user's notes and the repository's NILO.md, together
-PULL_ATTEMPTS = 4       # a download that breaks off is tried again (Ollama resumes it)
-PULL_WAIT = 5           # seconds before the second attempt; then 20, 45
-# What a model has to leave the rest of the machine: an eighth of the
-# memory, never under 2 GB. A model bigger than the rest can't run here.
+CARD_LINES = 80
+COMMAND_CHARS = 4000
+COMMAND_SECONDS = 120
+OUTPUT_KEEP = 65536
+OUTPUT_CHARS = 6000
+OUTPUT_LINES = 6
+CONTEXT_CHARS = 9000
+PULL_ATTEMPTS = 4
+PULL_WAIT = 5
 RESERVE_SHARE = 0.125
 RESERVE_GB = 2.0
 
-# Why a download failed, from Ollama's own words ("max retries exceeded: Get
-# https://…r2.cloudflarestorage.com/…: EOF"). Network trouble and the
-# registry's rate limit are worth another try; a full disk or a name the
-# registry doesn't know are not.
 PULL_ERRORS = [
     ("rate", r"(?i)\b429\b|too many requests|rate.?limit"),
     ("space", r"(?i)no space left"),
@@ -116,17 +71,10 @@ DEFAULT_SETTINGS = {
     "auto": False,
 }
 
-# Until another repository is chosen, Nilo works in NIHIL's own checkout:
-# the one nihil dev builds from (its path is in DEV_FILE, modules/nihil-cli.nix),
-# else the first of CHECKOUTS that is a git repository, else "repo" above.
 DEV_FILE = "/var/lib/nihil/dev"
 CHECKOUTS = ("~/nixos-config", "~/Nihil-Shell")
 
 
-# Automatic model (setting "auto"): a question that looks simple goes to the
-# smallest model downloaded, everything else to the one chosen. Simple means
-# short, one question, no code and none of the words of the work that needs
-# the big one (explaining, writing, files, git, commands, Nix).
 DEMANDING = re.compile(
     r"(?i)(c[oó]digo|\bcode\b|script|programa|funci[oó]n|function|debug|error|traceback|\bnix|flake|config|"
     r"instal|commit|\bpush|\bgit\b|archivo|fichero|\bfiles?\b|repo|comando|command|terminal|ejecut|\brun\b|"
@@ -149,7 +97,6 @@ def log(*parts):
 
 
 class Output:
-    """One JSON object per line on stdout, from any thread."""
 
     def __init__(self, stream):
         self.stream = stream
@@ -165,8 +112,6 @@ class Output:
                 os._exit(0)  # the shell has gone
 
 
-# --- Ollama -----------------------------------------------------------------------
-
 class OllamaError(Exception):
     def __init__(self, code, detail=""):
         super().__init__(detail or code)
@@ -175,8 +120,6 @@ class OllamaError(Exception):
 
 
 class Cancel:
-    """Stops a streamed request from another thread: shutting the socket down
-    wakes the blocked read, and Ollama stops generating when the client goes."""
 
     def __init__(self):
         self.cancelled = False
@@ -242,7 +185,6 @@ class Ollama:
             conn.close()
 
     def stream(self, path, body, cancel, timeout=600):
-        """POST and yield every JSON line of the streamed reply."""
         conn = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
         cancel.attach(conn)
         try:
@@ -298,7 +240,6 @@ class Ollama:
 
 
 def parse_time(text):
-    """Go's RFC 3339 with nanoseconds, as epoch seconds (None if it can't)."""
     if not text:
         return None
     m = re.match(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?(Z|[+-]\d\d:\d\d)?$", text)
@@ -314,15 +255,11 @@ def parse_time(text):
         return None
 
 
-# --- Pages ------------------------------------------------------------------------
-
 class FetchError(Exception):
     pass
 
 
 def check_public(url):
-    """Only http(s) to public addresses: the model must not reach this machine
-    or the local network (a page could tell it to)."""
     parts = urllib.parse.urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise FetchError("only http and https addresses")
@@ -425,7 +362,7 @@ def page_text(ctype, charset, raw):
         try:
             parser.feed(decoded)
             parser.close()
-        except Exception:  # html.parser is lenient; keep whatever it gathered
+        except Exception:
             pass
         return re.sub(r"\s+", " ", parser.title).strip(), parser.text()
     if ctype.startswith("text/") or ctype in ("application/json", "application/xml"):
@@ -436,8 +373,6 @@ def page_text(ctype, charset, raw):
 def clip(text, limit):
     return text if len(text) <= limit else text[:limit].rstrip() + " …"
 
-
-# --- Tools ------------------------------------------------------------------------
 
 def schema(name, description, properties=None, required=()):
     return {"type": "function", "function": {
@@ -515,8 +450,6 @@ SCHEMAS = {
         ["command", "reason"])),
 }
 
-# What makes a command worth a red card. The user confirms every command
-# anyway; these say why this one deserves a second look.
 RISKS = [
     ("root", r"(^|[;&|(\s])(sudo|doas|pkexec|run0)\s"),
     ("delete", r"(^|[;&|(\s])(rm\s+(-\w*[rRf]|--recursive|--force)|shred\s|find\s.*-delete\b|truncate\s)"),
@@ -537,14 +470,11 @@ ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b
 
 
 def terminal_text(raw):
-    """A command's output as plain text: no colours, and of a line redrawn
-    with \\r (progress bars) only what was left on screen."""
     text = ANSI.sub("", raw.decode("utf-8", "replace"))
     return "\n".join(line.rstrip("\r").rsplit("\r", 1)[-1].rstrip() for line in text.split("\n"))
 
 
 def clip_middle(text, limit):
-    """The start and, mostly, the end: errors come last."""
     if len(text) <= limit:
         return text
     head = limit // 3
@@ -560,7 +490,6 @@ class Tools:
         return [s for access, s in SCHEMAS.values() if settings.get(access)]
 
     def run(self, name, args, cancel):
-        """Run one tool: (result for the model, facts for the shell)."""
         entry = SCHEMAS.get(name)
         if not entry:
             return {"error": f"there is no tool called {name}"}, {"ok": False}
@@ -573,7 +502,7 @@ class Tools:
                                           SCHEMAS[name][1]["function"]["parameters"]["properties"]})
         except subprocess.TimeoutExpired:
             result = {"error": "it took too long"}
-        except Exception as e:  # a tool must never take the agent down
+        except Exception as e:
             log(f"{name} failed:", repr(e))
             result = {"error": str(e) or e.__class__.__name__}
         return result, self.facts(name, result)
@@ -619,10 +548,8 @@ class Tools:
             facts["error"] = str(result["error"])[:200]
         return facts
 
-    # web
 
     def web_search(self, query, max_results=5, cancel=None):
-        # ddgr opens a browser for a "!bang" (a "!" in the first two characters).
         query = re.sub(r"\s+", " ", str(query or "").replace("!", " ")).strip()[:200]
         if not query:
             return {"error": "empty query"}
@@ -670,7 +597,6 @@ class Tools:
             return {"error": "the page has no text (it may need JavaScript)"}
         return {"url": final, "title": title, "text": clip(text, PAGE_CHARS)}
 
-    # system
 
     def system_info(self, cancel=None):
         info = {"hostname": socket.gethostname(), "kernel": os.uname().release}
@@ -730,7 +656,6 @@ class Tools:
         info["load"] = [round(x, 2) for x in os.getloadavg()]
         return info
 
-    # git
 
     def repo(self):
         path = os.path.expanduser(str(self.agent.settings.get("repo") or DEFAULT_SETTINGS["repo"]))
@@ -789,8 +714,6 @@ class Tools:
         if not changes and not (push and status["ahead"] > 0):
             return {"error": "there is nothing to commit or push"}
         action = ("commit-push" if push else "commit") if changes else "push"
-        # Nilo signs as co-author (nihil.nilo.coauthor): GitHub shows its face
-        # next to the user's when the email belongs to an account.
         coauthor = self.config.get("coauthor") or {}
         trailer = ""
         if changes and coauthor.get("email"):
@@ -834,11 +757,8 @@ class Tools:
             result["output"] = (err or out).strip()[-300:]
         return result
 
-    # files, only inside the repository
 
     def resolve(self, path, must_exist=True):
-        """(root, absolute path, path relative to the root). Symlinks are
-        followed first, so none can lead outside; .git is off limits."""
         root = os.path.realpath(self.repo())
         given = os.path.expanduser(str(path or "").strip() or ".")
         full = os.path.realpath(os.path.join(root, given))
@@ -853,8 +773,6 @@ class Tools:
 
     @staticmethod
     def text_of(full, strict=False):
-        """The file as text. To change it (strict), it must be UTF-8: anything
-        else would come back altered in places the diff doesn't show."""
         if os.path.getsize(full) > FILE_BYTES:
             raise RuntimeError(f"the file is larger than {FILE_BYTES // 1000} kB")
         with open(full, "rb") as f:
@@ -906,7 +824,6 @@ class Tools:
 
     @staticmethod
     def diff(old, new):
-        """The change as lines for the confirmation card, and its size."""
         lines = list(difflib.unified_diff(old.splitlines(), new.splitlines(), lineterm="", n=2))[2:]
         shown, added, removed = [], 0, 0
         for line in lines:
@@ -939,7 +856,6 @@ class Tools:
 
     @staticmethod
     def put(full, text):
-        """Write in place of the file at once (a temporary file, then a rename)."""
         mode = os.stat(full).st_mode & 0o7777 if os.path.exists(full) else 0o644
         tmp = f"{full}.nilo-{os.getpid()}"
         try:
@@ -987,7 +903,6 @@ class Tools:
         self.put(full, content)
         return dict(facts, ok=True)
 
-    # the desktop: the shell opens apps (it knows the desktop entries)
 
     def open_app(self, target, cancel=None):
         target = re.sub(r"\s+", " ", str(target or "")).strip()[:300]
@@ -1011,11 +926,8 @@ class Tools:
             return result
         return {"ok": True, "opened": str(answer.get("name") or target)}
 
-    # the terminal: every command is confirmed first
 
     def folder(self, cwd):
-        """Where a command runs: `cwd` (relative to the default), or the
-        repository, or the home folder."""
         home = os.path.expanduser("~")
         default = os.path.expanduser(str(self.agent.settings.get("repo") or ""))
         default = default if default and os.path.isdir(default) else home
@@ -1032,7 +944,6 @@ class Tools:
             return {"error": f"the command is longer than {COMMAND_CHARS} characters: split it or write a script"}
         folder = self.folder(cwd)
         danger = risks(command)
-        # sudo asks for a password on a terminal, and here there is none.
         terminal = terminal is True or str(terminal).lower() == "true" or "root" in danger
         ok = self.agent.ask_confirmation({
             "action": "terminal" if terminal else "run",
@@ -1048,8 +959,6 @@ class Tools:
         return self.execute(command, folder, cancel)
 
     def in_terminal(self, command, folder):
-        """In a terminal window the user sees and can type in (a password),
-        kept open when the command ends, with its exit code at the bottom."""
         script = command + "\nprintf '\\n[%s]\\n' \"$?\""
         try:
             subprocess.Popen([self.config.get("terminal", "kitty"), "--hold", "--directory", folder,
@@ -1075,7 +984,6 @@ class Tools:
         head, tail, total = bytearray(), bytearray(), [0]
 
         def pump():
-            # The output's start and its end; whatever is in between only counts.
             while True:
                 try:
                     chunk = os.read(proc.stdout.fileno(), 65536)
@@ -1124,7 +1032,6 @@ class Tools:
 
     @staticmethod
     def kill(proc):
-        """The command and everything it started: they share its session."""
         for sig, wait in ((signal.SIGTERM, 2), (signal.SIGKILL, 2)):
             try:
                 os.killpg(proc.pid, sig)
@@ -1150,8 +1057,6 @@ def meminfo(path="/proc/meminfo"):
         pass
     return values
 
-
-# --- The prompt -------------------------------------------------------------------
 
 DAYS = {
     "es": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
@@ -1239,8 +1144,6 @@ PROMPT = {
 }
 
 
-# --- nilo.md ----------------------------------------------------------------------
-
 NOTES = {
     "es": "<!--\nTus notas para Nilo. Lo que escribas fuera de este comentario se añade a lo que sabe \n"
           "(home/nilo/nilo.md) en cada pregunta: quién eres, cómo te gustan las respuestas, tus proyectos.\n"
@@ -1270,11 +1173,8 @@ def read_text(path):
 
 
 def context_sections(text, settings, values):
-    """What of a nilo.md applies now: no comments, no sections of switches
-    that are off (a heading ending in {shell} keeps its section, subsections
-    included, only with that switch on), and the placeholders filled in."""
     text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
-    kept, off = [], 0           # off: depth of the heading whose section is left out
+    kept, off = [], 0
     for line in text.splitlines():
         heading = re.match(r"(#{1,6})\s", line)
         if heading:
@@ -1298,8 +1198,6 @@ def context_sections(text, settings, values):
 
 
 def build_context(config, settings, user):
-    """nilo.md, then the user's notes, then (with files or git allowed) the
-    repository's own NILO.md."""
     values = {"user": user, "host": config.get("host", ""), "flake": config.get("flake", "~/nixos-config"),
               "repo": settings.get("repo", "")}
     parts = [read_text(config.get("context")), read_text(notes_path())]
@@ -1348,8 +1246,6 @@ def build_prompt(config, settings, now=None):
     return "\n".join(lines)
 
 
-# --- The agent --------------------------------------------------------------------
-
 class Agent:
     def __init__(self, config, state_path, out):
         self.config = config
@@ -1361,22 +1257,21 @@ class Agent:
         self.settings = self.load_settings()
         self.history = []
         self.lock = threading.Lock()
-        self.turn = None            # Cancel of the answer being written
+        self.turn = None
         self.pulling = None         # (model, Cancel)
-        self.confirms = {}          # id -> [Event, answer]: confirmations and the shell's replies
+        self.confirms = {}
         self.ids = itertools.count(1)
-        self.current_tool = ""      # id of the tool running, for its live output
-        self.no_tools = False       # the model said it can't use tools
+        self.current_tool = ""
+        self.no_tools = False
         self.state = {"ollama": None, "loaded": False, "loading": False, "model": "", "expires": None,
                       "sizeGB": 0, "gpu": 0}
-        self.installed = set()      # model names Ollama has, as of the last catalogue
-        self.active = ""            # the model of the latest answer (auto may pick a smaller one)
+        self.installed = set()
+        self.active = ""
         self.state_lock = threading.Lock()
         self.wake = threading.Event()
         self.starting = False       # starting ollama.service
-        self.last_start = -1e9      # when Nilo last tried to (monotonic)
+        self.last_start = -1e9
 
-    # settings
 
     def recommended(self):
         models = self.config.get("models", [])
@@ -1387,29 +1282,24 @@ class Agent:
         return (max(fitting, key=lambda m: m.get("ram", 0)) if fitting else models[0])["tag"]
 
     def current(self):
-        """The model Nilo is using: the one chosen, or the one auto used last."""
         return self.active or self.settings["model"]
 
     def has(self, tag):
         return tag in self.installed or f"{tag}:latest" in self.installed
 
     def fast(self):
-        """For auto: the smallest model of the list that is downloaded and
-        smaller than the one chosen (\"\" if there is none)."""
         models = [m for m in self.config.get("models", []) if m.get("ram", 0) > 0 and self.has(m["tag"])]
         chosen = next((m.get("ram", 0) for m in self.config.get("models", []) if m["tag"] == self.settings["model"]), 0)
         smaller = [m for m in models if m["tag"] != self.settings["model"] and (not chosen or m["ram"] < chosen)]
         return min(smaller, key=lambda m: m["ram"])["tag"] if smaller else ""
 
     def route(self, text):
-        """The model for one question."""
         chosen = self.settings["model"]
         if not self.settings.get("auto") or self.settings.get("think") or not simple(text):
             return chosen
         return self.fast() or chosen
 
     def default_repo(self):
-        """NIHIL's checkout, where Nilo works until another repository is chosen."""
         candidates = [read_text(self.config.get("devFile", DEV_FILE)).strip(), *CHECKOUTS]
         for path in candidates:
             if path and os.path.exists(os.path.join(os.path.expanduser(path), ".git")):
@@ -1469,7 +1359,6 @@ class Agent:
         self.settings[key] = value
         if key in ("model", "auto"):
             self.active = ""
-        # Git and files were allowed for one repository: another one asks again.
         if key == "repo" and os.path.realpath(os.path.expanduser(old or "")) != os.path.realpath(os.path.expanduser(value)):
             self.settings["git"] = False
             self.settings["write"] = False
@@ -1487,7 +1376,6 @@ class Agent:
 
     @staticmethod
     def short_path(path):
-        """~/x for anything under the home directory, as the settings show it."""
         home = os.path.expanduser("~")
         full = os.path.abspath(os.path.expanduser(path))
         return "~" + full[len(home):] if full == home or full.startswith(home + os.sep) else full
@@ -1499,7 +1387,6 @@ class Agent:
             log(fn.__name__, "failed:", e.detail or e.code)
         self.wake.set()
 
-    # models and state
 
     def catalogue(self):
         try:
@@ -1548,7 +1435,6 @@ class Agent:
             state.update(ollama=False, loaded=False, expires=None)
         was = self.state["ollama"]
         self.set_state(**state)
-        # Ollama came up after the agent (at boot): what is installed now.
         if state["ollama"] and was is False:
             self.send_models()
 
@@ -1561,8 +1447,6 @@ class Agent:
             self.out("state", **state)
 
     def poll(self):
-        """Keep `state` true to Ollama: check again when the model should have
-        gone to sleep, and now and then in case Ollama came up later."""
         while True:
             self.refresh_state()
             if self.state["loaded"] and self.state["expires"]:
@@ -1574,15 +1458,10 @@ class Agent:
             self.wake.wait(delay)
             self.wake.clear()
 
-    # Every model runs where the machine says (Preferences, System: the CPU
-    # or the GPU, modules/nilo.nix): Ollama places it, the same for all.
     def options(self):
         return {"num_ctx": int(self.config.get("contextLength", 16384))}
 
     def need(self, model):
-        """GB `model` takes with Nilo's context: as the models list says, or
-        its download and a quarter more for one that isn't on it (0 if it
-        isn't downloaded)."""
         names = {model, model.removesuffix(":latest"), f"{model}:latest"}
         listed = next((m for m in self.config.get("models", []) if m.get("tag") in names and m.get("ram")), None)
         if listed is not None:
@@ -1597,10 +1476,6 @@ class Agent:
         return f"{int(self.settings['keepAlive'])}m"
 
     def room(self, model):
-        """Refuse ("memory") a model that can't run here at all: one that
-        takes, with Nilo's context, more than the machine's memory less its
-        reserve, downloaded or not (before 22 GB come down for nothing).
-        Anything smaller runs."""
         total = meminfo(self.config.get("meminfo", "/proc/meminfo")).get("MemTotal", 0) * 1024 / 1e9
         need = self.need(model)
         reserve = max(RESERVE_GB, total * RESERVE_SHARE)
@@ -1613,8 +1488,6 @@ class Agent:
         if not model or self.state["loading"]:
             return
         self.ensure_ollama()
-        # Not if it doesn't fit, and without waking the eyes for it: the question
-        # will say so. (Saying "loading" first raced the question's own refusal.)
         try:
             self.room(model)
         except OllamaError as e:
@@ -1624,7 +1497,6 @@ class Agent:
             self.set_state(loading=True)
         try:
             self.ollama.load(model, self.keep_alive(), self.options())
-            # Straight from "loading" to "loaded", without looking asleep in between.
             self.refresh_state()
         except OllamaError as e:
             if e.code != "ollama-down":
@@ -1634,7 +1506,6 @@ class Agent:
             self.wake.set()
 
     def sleep(self):
-        """Every model of Nilo's that is in memory (auto may have two)."""
         try:
             running = [m.get("name", "") for m in self.ollama.ps()]
         except OllamaError:
@@ -1644,7 +1515,6 @@ class Agent:
             if name in ours or name.removesuffix(":latest") in ours:
                 self.quietly(self.ollama.unload, name)
 
-    # Ollama itself: when it doesn't answer, what systemd says, and starting it
 
     def run_quietly(self, *command, timeout=5):
         try:
@@ -1661,7 +1531,6 @@ class Agent:
             key, _, value = line.partition("=")
             if key:
                 info[key[0].lower() + key[1:]] = value
-        # The lines that say what went wrong, if any stand out; otherwise the last ones.
         journal = self.run_quietly(self.config.get("journalctl", "journalctl"), "-u", unit, "-b", "-n", "80",
                                    "-o", "cat", "--no-pager")
         lines = [re.sub(r"^time=\S+\s+|\bsource=\S+\s+", "", line).strip()
@@ -1684,8 +1553,6 @@ class Agent:
                 time.sleep(0.5)
 
     def start_ollama(self, ask=False):
-        """Ask systemd to start Ollama (modules/nilo.nix lets polkit say yes
-        without a password) and wait for it to answer."""
         with self.lock:
             if self.starting:
                 return
@@ -1713,8 +1580,6 @@ class Agent:
             self.wake.set()
 
     def ensure_ollama(self):
-        """Before something that needs Ollama: if it is down, try to start it
-        (at most once a minute, so a broken service isn't hammered)."""
         if self.state["ollama"] is not False:
             return
         if time.monotonic() - self.last_start < 60:
@@ -1722,7 +1587,6 @@ class Agent:
         self.start_ollama()
 
     def repos(self):
-        """Git repositories under ~ (three levels down), the most recently used first."""
         home = os.path.expanduser("~")
         skip = {"node_modules", "target", "build", "dist", "result", "venv", "vendor", "__pycache__"}
         found, visited, began = [], 0, time.monotonic()
@@ -1747,7 +1611,6 @@ class Agent:
         self.out("repos", repos=[self.short_path(p) for p in found[:30]])
 
     def notes(self):
-        """The user's notes for Nilo, for the shell to open in an editor."""
         path = notes_path()
         if not os.path.exists(path):
             language = self.config.get("language", "en")
@@ -1759,7 +1622,6 @@ class Agent:
                 return self.out("error", code="notes", detail=str(e))
         self.out("notes", path=path)
 
-    # downloads
 
     def pull(self, model):
         if self.pulling:
@@ -1772,13 +1634,11 @@ class Agent:
         try:
             self.ensure_ollama()
             status, detail, code = self._pull_once(model, cancel)
-            # Ollama was down without the agent knowing yet: start it, try again.
             if code == "ollama-down" and not cancel.cancelled:
                 self.refresh_state()
                 self.ensure_ollama()
                 if self.state["ollama"]:
                     status, detail, code = self._pull_once(model, cancel)
-            # Broken off (the network, the registry's limit): again, from where it stopped.
             for attempt in range(2, PULL_ATTEMPTS + 1):
                 if status == "success" or cancel.cancelled or code == "ollama-down" or pull_error(detail) not in ("network", "rate"):
                     break
@@ -1801,7 +1661,6 @@ class Agent:
         self.wake.set()
 
     def _pull_once(self, model, cancel):
-        """(status, detail, error code) of one attempt."""
         layers = {}
         last = 0.0
         status = "error"
@@ -1834,7 +1693,6 @@ class Agent:
             self.out("error", code=e.code, detail=e.detail)
         self.send_models()
 
-    # the conversation
 
     def ask_confirmation(self, detail, cancel):
         cid = f"c{next(self.ids)}"
@@ -1856,8 +1714,6 @@ class Agent:
             entry[0].set()
 
     def call_shell(self, ev, detail, cancel, seconds=8):
-        """Ask the shell to do something only it can (open an app) and wait
-        for its reply; None if it doesn't answer."""
         cid = f"c{next(self.ids)}"
         event = threading.Event()
         self.confirms[cid] = [event, None]
@@ -1882,7 +1738,6 @@ class Agent:
         def size(msgs):
             return sum(len(m.get("content", "")) + len(json.dumps(m.get("tool_calls", ""))) for m in msgs)
 
-        # Drop whole exchanges from the start, never the question being answered.
         while size(history) > budget:
             later = [i for i, m in enumerate(history) if m["role"] == "user" and i > 0]
             if not later:
@@ -1902,7 +1757,6 @@ class Agent:
         threading.Thread(target=self._answer, args=(text, cancel), daemon=True).start()
 
     def _answer(self, text, cancel):
-        # "done" goes out only once the agent can take the next question.
         ending = {"stats": {}}
         try:
             ending.update(self._turn(text, cancel, ending["stats"]))
@@ -1920,15 +1774,11 @@ class Agent:
             self.wake.set()
 
     def _turn(self, text, cancel, stats):
-        """One question: model calls and tools until it answers. Returns what
-        "done" should add ({"cancelled": True} when stopped)."""
         model = self.route(text)
         if model != self.current():
             self.set_state(model=model, loaded=False)
         self.active = model
         stats["model"] = model
-        # The conversation this question belongs to: "reset" starts a new list,
-        # so an answer cut short by it lands in the old one.
         history = self.history
         history.append({"role": "user", "content": text})
         self.out("start", model=model, auto=model != self.settings["model"])
@@ -1994,7 +1844,6 @@ class Agent:
                     except ValueError:
                         args = {}
                 tid = f"t{next(self.ids)}"
-                # The shell shows the path or the query; a file's whole text stays here.
                 shown = {k: v[:200] if isinstance(v, str) else v for k, v in args.items()} if isinstance(args, dict) else args
                 self.out("tool", id=tid, name=name, args=shown, status="running")
                 self.current_tool = tid
@@ -2019,7 +1868,6 @@ class Agent:
         self.history = []
         self.out("reset")
 
-    # protocol
 
     def hello(self):
         models = self.catalogue()

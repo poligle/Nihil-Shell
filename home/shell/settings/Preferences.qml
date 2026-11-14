@@ -6,10 +6,6 @@ import qs.theme
 import qs.services
 import qs.components
 
-// Preferences, and the welcome the first time (services/Machine.qml): a
-// sheet over the screen that has the focus, above the frame. Escape, a
-// click outside or another window taking the focus close Preferences; the
-// welcome closes when it ends or is skipped.
 Scope {
     PanelWindow {
         id: win
@@ -34,7 +30,6 @@ Scope {
         }
         exclusionMode: ExclusionMode.Ignore
 
-        // OnDemand and a grab, as the frame does (frame/Frame.qml).
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "nihil-settings"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
@@ -61,8 +56,6 @@ Scope {
             }
         }
 
-        // Smoked glass (Preferences, Look): the sheet and what is on it see
-        // what is behind, windows and all, through the dim, a third of it.
         Item {
             anchors.fill: parent
 

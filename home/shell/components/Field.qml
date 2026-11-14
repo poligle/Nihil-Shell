@@ -2,10 +2,6 @@ import QtQuick
 import QtQuick.Controls as QQC
 import qs.theme
 
-// A text field: a hairline box with the corners of a key (KeyButton), mono
-// text. `value` is shown while the field does not have the focus; what is
-// typed goes out through edited(), and finished() says when it is done
-// (Enter, or the focus gone elsewhere).
 Surface {
     id: root
 
@@ -13,8 +9,6 @@ Surface {
     property string placeholder: ""
     property bool password: false
     property bool invalid: false
-    // Escape goes to escaped() and stops there, rather than on to what
-    // holds the field (the panel would close).
     property bool catchEscape: false
     property alias text: input.text
 

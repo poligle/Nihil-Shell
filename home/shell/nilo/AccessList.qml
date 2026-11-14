@@ -4,17 +4,11 @@ import qs.config
 import qs.services
 import qs.components
 
-// What Nilo may do: one switch per kind of tool (SwitchRow.qml). Files,
-// git and the terminal can change things, so turning them on takes a
-// second step: the row says what it allows and waits for "authorize" (or
-// the same key again). Even then, every change to a file, every commit or
-// push and every command asks first, and choosing another repository
-// turns files and git off again (agent.py).
 Column {
     id: root
 
     property int current: -1
-    property string asking: ""      // the switch waiting for its authorization
+    property string asking: ""
 
     readonly property string repo: Nilo.settings.repo ?? "~/nixos-config"
     readonly property var items: [
@@ -27,13 +21,12 @@ Column {
     ]
     readonly property int count: items.length
 
-    signal grew(Item row)       // an authorization opened under its switch
+    signal grew(Item row)
 
     spacing: 2
 
     onVisibleChanged: if (!visible) asking = ""
 
-    // Off goes at once; on asks first when the switch has a guard.
     function toggle(index: int): void {
         const item = items[index];
         if (!item) return;
@@ -51,7 +44,6 @@ Column {
         if (index >= 0) toggle(index);
     }
 
-    // Not move: a Column has that already (its Transition).
     function moveBy(step: int): void {
         current = current < 0 ? 0 : Math.max(0, Math.min(count - 1, current + step));
         if (asking !== "" && items[current].key !== asking) asking = "";

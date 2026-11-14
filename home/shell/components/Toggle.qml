@@ -1,8 +1,6 @@
 import QtQuick
 import qs.theme
 
-// On or off: a switch, ink when on, a hairline when off. The whole of it
-// is the button.
 Item {
     id: root
 

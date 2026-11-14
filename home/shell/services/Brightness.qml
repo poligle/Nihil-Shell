@@ -21,7 +21,6 @@ Singleton {
         Quickshell.execDetached([Config.cmd.brightnessctl, "set", percent + "%"]);
     }
 
-    // device,class,current,percent,max
     Process {
         id: reader
         command: [Config.cmd.brightnessctl, "-m"]

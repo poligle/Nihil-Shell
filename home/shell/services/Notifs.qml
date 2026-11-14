@@ -6,15 +6,6 @@ import Quickshell.Io
 import Quickshell.Services.Notifications
 import qs.config
 
-// Notification daemon (replaces dunst). Every popup also lights the frame.
-// A notification with the hint x-nihil-tag replaces the earlier ones with the
-// same tag, and still lights the frame (a D-Bus replace would update the old
-// card silently): the battery warnings use it.
-//
-// Popups retire here, not in their cards: Popups.qml builds its cards again
-// whenever the list changes, so a timer per card started over with every new
-// notification. Each popup has a deadline instead; the one under the pointer
-// waits.
 Singleton {
     id: root
 
@@ -22,14 +13,12 @@ Singleton {
     property var popups: []
     readonly property var history: server.trackedNotifications.values.slice().reverse()
 
-    // Milliseconds: without a timeout of its own, the longest one an app may
-    // ask for, and critical ones (they stay in the panel's history).
     readonly property int defaultTimeout: 5000
     readonly property int longestTimeout: 30000
     readonly property int criticalTimeout: 15000
 
     property var deadlines: ({})    // notification id -> epoch ms
-    property int held: -1           // id of the popup under the pointer
+    property int held: -1
 
     function show(n): void {
         deadlines[n.id] = Date.now() + timeoutFor(n);
@@ -41,7 +30,6 @@ Singleton {
         popups = popups.filter(p => p !== n);
     }
 
-    // The pointer on a popup holds it; leaving gives it a moment more.
     function hold(n, on: bool): void {
         if (!n) return;
         if (on) {
@@ -61,8 +49,6 @@ Singleton {
         popups = keep;
     }
 
-    // The control panel lists every notification, so opening it retires the
-    // popups; critical ones stay up until their own time runs out.
     function markSeen(): void {
         popups = popups.filter(p => isCritical(p));
     }
@@ -87,17 +73,10 @@ Singleton {
         return n.urgency === NotificationUrgency.Critical;
     }
 
-    // Nilo's own: done, confirm or error (services/Nilo.qml), or "".
     function niloKind(n): string {
         return String(n?.hints?.["x-nihil-nilo"] ?? "");
     }
 
-    // Milliseconds a popup stays up. Quickshell documents expireTimeout in
-    // seconds but hands on the D-Bus value as it comes, in milliseconds:
-    // read as seconds, notify-send -t 5000 (hyprshot, nm-applet) stayed up
-    // for 83 minutes. A value too small to be milliseconds is taken as
-    // seconds, in case that changes. 0 ("never") and -1 ("you choose") get
-    // the default.
     function timeoutFor(n): int {
         if (isCritical(n)) return criticalTimeout;
         const t = Number(n.expireTimeout) || 0;
@@ -123,8 +102,6 @@ Singleton {
             if (root.dnd && !critical)
                 return;
 
-            // Nilo answered with the launcher closed: no popup, its panel comes
-            // out of the bar next to the eyes, and the light starts there.
             if (root.niloKind(n) !== "") {
                 Glyph.nilo();
                 Sounds.play(Config.sounds.notify, 0.4);

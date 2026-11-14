@@ -1,9 +1,4 @@
 # nihil.nix by poligle
-#
-# NIHIL options shared by the system (Stylix, fonts) and Home Manager
-# (shell, wallpapers, hyprlock), which reads them through osConfig.
-# Each machine describes its outputs (settings.json, settings.nix);
-# everything else comes from theme/.
 
 { config, lib, pkgs, ... }:
 let
@@ -101,7 +96,6 @@ in
         language = lib.mkOption
         {
             type = lib.types.enum [ "es" "en" ];
-            # The same as settings.nix's when settings.json has none.
             default = "en";
             description = "Language of the shell, lock screen, greeter and script messages (theme/i18n.nix).";
         };
@@ -224,8 +218,6 @@ in
 
         fonts.packages = [ cfg.fonts ];
 
-        # The shell reads the battery through UPower (D-Bus); waybar used to
-        # read /sys directly, so nothing had enabled it before.
         services.upower.enable = lib.mkDefault true;
     };
 }

@@ -6,14 +6,11 @@ import qs.services
 import qs.components
 import qs.nilo
 
-// The left side of the frame: NixOS mark, workspaces, active app, tray,
-// status, battery, clock and the privacy LED.
 Item {
     id: root
 
     required property string output
 
-    // Where Nilo's eyes are: its panel comes out of the bar there (Frame.qml).
     readonly property real eyesY: tail.y + eyes.y + eyes.height / 2
 
     Column {
@@ -57,8 +54,6 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: 18
 
-        // Nilo is awake (its model takes memory), downloading one, or has
-        // something to say (its panel is out, next to them).
         Item {
             id: eyes
             anchors.horizontalCenter: parent.horizontalCenter
@@ -92,7 +87,6 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
         }
 
-        // Caffeine is on: the screen stays awake. A click turns it off.
         Ico {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: Caffeine.on
@@ -122,8 +116,6 @@ Item {
             output: root.output
         }
 
-        // Privacy LED: something is recording the microphone, or the screen
-        // is being recorded (services/Recorder.qml).
         Rectangle {
             id: privacy
             anchors.horizontalCenter: parent.horizontalCenter

@@ -1,9 +1,6 @@
 import QtQuick
 import qs.theme
 
-// What the keys do, as a keyboard's legend: in "[Enter] Abrir|[Esc] Cerrar"
-// each key in brackets is drawn as a key, small (as KeyButton draws one),
-// and the rest as words; "|" sets the groups apart. No dots between them.
 Row {
     id: root
 

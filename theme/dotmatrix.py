@@ -1,16 +1,5 @@
 #!/usr/bin/env python3
 # dotmatrix.py by poligle
-#
-# NIHIL wallpaper generator: renders a photo as an LED dot matrix.
-#
-#   dotmatrix.py SOURCE OUTDIR --output eDP-1:1920x1200 --output DP-1:1080x1920:9
-#
-# The image is cover-cropped to each output's native size so every dot lands
-# on exact pixels (no scaling blur afterwards). Each cell of `pitch` px gets:
-#   - an "off" LED (dark grey), so the matrix texture is always visible;
-#   - a lit LED whose radius and brightness grow with the cell luminance.
-# The black point is raised so the sky stays off, and isolated peaks (stars)
-# light their cell even when the cell average is dark.
 
 import argparse
 import os
@@ -97,8 +86,6 @@ def main():
             image = render(source, width, height, pitch).convert("RGB")
             image.save(os.path.join(args.outdir, f"{name}.png"), optimize=True)
             continue
-        # Animated (a GIF): every frame in dots, for awww, and the first one as
-        # the still the lock screen, the login and the previews show.
         rendered, durations = [], []
         for k in range(frames):
             source.seek(k)

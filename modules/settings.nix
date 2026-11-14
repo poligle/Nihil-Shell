@@ -1,12 +1,4 @@
 # settings.nix by poligle
-#
-# What changes from one NIHIL machine to another: who uses it, its name,
-# language, keyboard, time zone, screens, whether Nilo runs, how long the
-# clipboard history is, whether the boot splash has its sound, how long
-# generations stay and whether the phone is a deck for it. It comes
-# from the machine's settings.json (/etc/nixos, written by the installer
-# and the welcome screen) through nihil.lib.mkSystem, and becomes the
-# options below; a machine's local.nix can still set any of them.
 
 { config, lib, ... }:
 let
@@ -78,8 +70,6 @@ in
         time.timeZone = lib.mkDefault (get [ "timeZone" ] "UTC");
         i18n.defaultLocale = lib.mkDefault (get [ "locale" ] "en_US.UTF-8");
 
-        # NixOS checks the layout against xkeyboard-config: the model only
-        # when there is one (it defaults to pc104).
         services.xserver.xkb =
         {
             layout = lib.mkDefault (get [ "keyboard" "layout" ] "us");
@@ -102,7 +92,6 @@ in
             bootSound = lib.mkDefault (get [ "bootSound" ] true);
             wallpaper = lib.mkDefault (get [ "wallpaper" ] "night");
             outputs = lib.mkDefault outputs;
-            # The laptop's panel if there is one, or the first screen.
             primaryOutput = lib.mkDefault (get [ "primaryOutput" ]
                 (let names = builtins.attrNames outputs; panels = lib.filter (lib.hasPrefix "eDP") names; in
                     if panels != [ ] then lib.head panels else if names != [ ] then lib.head names else ""));

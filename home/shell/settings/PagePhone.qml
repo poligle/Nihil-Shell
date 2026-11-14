@@ -6,9 +6,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// The phone as a deck (services/Deck.qml, docs/deck.md): turning it on (a
-// rebuild: the firewall and the network name), pairing a phone with a QR,
-// and the phones paired, each to forget.
 Flickable {
     id: page
 
@@ -28,12 +25,11 @@ Flickable {
 
         Heading {
             title: Lang.cfgPhone
-            sub: Lang.deckSub
         }
 
         Setting {
             title: Lang.deckUse
-            sub: page.wanted && !Deck.enabled ? Lang.deckApply : Lang.deckUseSub.arg(Config.deck.port)
+            sub: page.wanted && !Deck.enabled ? Lang.deckApply : ""
 
             Toggle {
                 on: page.wanted
@@ -47,13 +43,9 @@ Flickable {
             text: Lang.deckDown
         }
 
-        // A watch has no camera for the QR: nihil-watch (home/deck/watch.sh)
-        // pairs adb over Wi-Fi with the code it shows, installs NIHIL for
-        // Wear OS and hands it the invitation, in a terminal that stays.
         Setting {
             visible: Deck.enabled && Deck.running
             title: Lang.deckWatchTitle
-            sub: Lang.deckWatchSub
 
             KeyButton {
                 text: Lang.deckWatchInstall
@@ -61,11 +53,9 @@ Flickable {
             }
         }
 
-        // A QR that pairs one phone, once, for a few minutes.
         Setting {
             visible: Deck.enabled && Deck.running
             title: Lang.deckPairTitle
-            sub: Deck.pairing ? Lang.deckScan : ""
 
             Column {
                 spacing: 14
@@ -95,7 +85,6 @@ Flickable {
             }
         }
 
-        // The phones paired: when each was last used, and forgetting it.
         Label {
             visible: Deck.enabled && Deck.running
             Layout.topMargin: 8

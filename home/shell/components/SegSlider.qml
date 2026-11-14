@@ -1,7 +1,6 @@
 import QtQuick
 import qs.theme
 
-// Segmented slider: discrete LEDs instead of a continuous track.
 Item {
     id: root
 

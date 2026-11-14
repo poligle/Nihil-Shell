@@ -3,11 +3,9 @@ import QtQuick.Shapes
 import qs.theme
 import "Geometry.js" as Geometry
 
-// The frame and its drawers, drawn as a single black shape with a hairline edge.
 Shape {
     id: root
 
-    // Width of the left side of the frame (wider where the bar lives).
     property int inset: Tokens.frameThickness
     property int edge: Tokens.frameThickness
     property var bumps: []

@@ -1,8 +1,6 @@
 import QtQuick
 import qs.theme
 
-// Dot-plot "oscilloscope" for a time series (e.g. network throughput).
-// Values are drawn on a log scale so idle traffic is still visible.
 Canvas {
     id: root
 
@@ -30,7 +28,6 @@ Canvas {
         const r = Math.max(1, step * 0.28);
         const peak = Math.max(root.floor * 4, ...root.series, ...root.secondary);
 
-        // LEDs off
         ctx.fillStyle = Tokens.off;
         for (let i = 0; i < samples; i++)
             for (let j = 0; j < rows; j++) {

@@ -6,19 +6,6 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import qs.config
 
-// The machine's settings as its flake has them (settings.json, /etc/nixos):
-// what Preferences and the welcome show and change. Changes wait in `draft`
-// until they are applied. Applying asks sudo once, with a finger or with the
-// password typed, never both (`auth`), and hands the settings to `nihil
-// apply` (modules/nihil-cli.nix), which puts them in place and rebuilds the
-// system in a unit of its own: the rebuild restarts this shell and the unit
-// goes on; /run/nihil says how it went, and the shell tells when it is done.
-// Updating NIHIL (the panel, Updates.qml) goes the same way, through `nihil
-// update --unit`, and so do going to another generation and cleaning them
-// (Preferences, Generations: `nihil generations switch|clean --unit`);
-// /run/nihil/apply.kind says which. Booting one the next time only is at
-// once (`nihil generations boot`).
-//   nihil-ipc settings open | toggle | close | welcome | page <name>
 Singleton {
     id: root
 
@@ -32,48 +19,29 @@ Singleton {
     property bool welcoming: false
     property string screen: ""
 
-    // Applying: "", "auth", "applying", "done", "warning" or "failed"; when it
-    // failed, why: "password", "finger", "invalid", "busy", "start" (nihil
-    // apply could not start the rebuild), "rebuild" (the rebuild failed) or
-    // "menu" (the boot menu has no such generation).
     property string phase: ""
     property string failure: ""
-    // How sudo is being asked: "finger" (nothing typed: the reader, or
-    // nothing) or "password" (the one typed, and no finger after it).
     property string auth: ""
-    // A finger only where the system as applied has the reader in sudo.
     readonly property bool fingerprint: saved.fingerprint === true
-    // A password typed while a finger was awaited: that sudo goes, and this
-    // takes its place ({ process, password }).
     property var instead: null
     property string detail: ""
     property string log: ""
     property real since: 0
     readonly property bool busy: phase === "auth" || phase === "applying"
-    // What is applied: "settings" (Preferences), "update" (a newer NIHIL),
-    // "generation" (another one, now and at boot), "clean" (the old ones
-    // gone) or "boot" (one, the next boot only).
     property string kind: "settings"
     readonly property bool updating: kind === "update" && busy
-    // Which generation, and what a clean left free, as the log says it.
     property int target: 0
     property real freed: 0
 
-    // Changing the password: "", "busy", "done" or "wrong".
     property string passwordState: ""
 
     property string wallpaper: ""
-    // Smoked glass (components/Surface.qml), off unless chosen: kept by
-    // nihil-wallpaper, which takes the lock screen and the login along.
     property bool glass: false
 
-    // The desktop widgets that show (background/Desktop.qml): the user's
-    // choice, kept in their state, or all of them.
     property var widgets: Config.widgets
     readonly property string widgetsFile: stateDir + "/widgets.json"
     property var timeZones: []
 
-    // How applying goes, in words, for Preferences and the welcome.
     property real now: Date.now()
     readonly property string elapsed: {
         const seconds = Math.max(0, Math.round((root.now - root.since) / 1000));
@@ -94,8 +62,6 @@ Singleton {
             : kind === "clean" ? Lang.genCleaned.arg(Dates.bytes(freed)) : kind === "boot" ? Lang.genBootSet.arg(target) : Lang.cfgApplied)
         : phase === "warning" ? (kind === "generation" ? Lang.genSwitchedWarn.arg(target) : Lang.cfgAppliedWarn)
         : Lang.cfgSaved
-    // Under it, only what says something: the line the rebuild is on, why
-    // it failed, where to look.
     readonly property string statusSub: phase === "applying" ? detail
         : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint) : "")
         : changes === 0 && phase === "warning" ? Lang.cfgLogHint
@@ -125,7 +91,6 @@ Singleton {
         return node;
     }
 
-    // undefined takes the value out: back to NIHIL's own (binds, gestures).
     function set(path: string, value: var): void {
         const next = clone(root.draft);
         const keys = path.split(".");
@@ -168,14 +133,11 @@ Singleton {
             zones.running = true;
     }
 
-    // The welcome only goes away when it ends or is skipped.
     function hide(): void {
         if (!root.welcoming)
             root.shown = false;
     }
 
-    // Seen once: skipping it counts. Written before applying, so the restart
-    // the rebuild brings does not show it again.
     function markWelcomed(): void {
         Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$1\" && touch \"$1/welcomed\"", "sh", root.stateDir]);
     }
@@ -194,7 +156,6 @@ Singleton {
         Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile, JSON.stringify(next)]);
     }
 
-    // The desktop's only, at once (the quick picker, drawers/WallpaperPicker.qml).
     function liveWallpaper(name: string): void {
         if (name === "")
             return;
@@ -202,7 +163,6 @@ Singleton {
         Quickshell.execDetached([Config.cmd.wallpaper, "set", name]);
     }
 
-    // At once; the lock screen and the login follow it (nihil-wallpaper).
     function setWallpaper(name: string): void {
         liveWallpaper(name);
     }
@@ -212,9 +172,6 @@ Singleton {
         Quickshell.execDetached([Config.cmd.wallpaper, "glass", on ? "on" : "off"]);
     }
 
-    // With nothing typed and a reader, sudo waits for a finger; with the
-    // password, it takes that alone. The settings go first, on a line of
-    // their own (the applier writes them to a file for nihil apply).
     function apply(password: string): void {
         if (root.changes === 0 || root.switching(applier, password))
             return;
@@ -222,7 +179,6 @@ Singleton {
         root.ask(applier, password, JSON.stringify(root.draft) + "\n");
     }
 
-    // The latest NIHIL, and what it pins, in the same unit as applying.
     function update(password: string): void {
         if (root.switching(updater, password))
             return;
@@ -230,8 +186,6 @@ Singleton {
         root.ask(updater, password, "");
     }
 
-    // A generation: "switch" to it (now and at boot) or "boot" it the next
-    // time only; or "clean" those older than `value` days.
     function generation(action: string, value: int, password: string): void {
         if (root.switching(generator, password))
             return;
@@ -253,8 +207,6 @@ Singleton {
         process.running = true;
     }
 
-    // Busy: nothing new, unless it is the password while a finger is
-    // awaited, which stops that sudo and goes in its place (on its exit).
     function switching(process: var, password: string): bool {
         if (!root.busy)
             return false;
@@ -265,7 +217,6 @@ Singleton {
         return true;
     }
 
-    // No finger after all (Cancel while it is awaited).
     function cancelFinger(): void {
         for (const process of [applier, updater, generator]) {
             if (root.phase === "auth" && root.auth === "finger" && process.running) {
@@ -275,8 +226,6 @@ Singleton {
         }
     }
 
-    // How a sudo of these ended: true when it was stopped on purpose, for a
-    // password typed instead of the finger (on its way now) or for nothing.
     function replaced(process: var): bool {
         if (root.instead === null || root.instead.process !== process)
             return false;
@@ -303,7 +252,6 @@ Singleton {
         Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL", title, body]);
     }
 
-    // The line that says why a rebuild failed: Nix's error, else the last one.
     function cause(lines: var): string {
         for (let i = 0; i < lines.length; i++) {
             if (/^\s*error:/.test(lines[i]))
@@ -312,9 +260,6 @@ Singleton {
         return lines.length > 0 ? lines[lines.length - 1].trim() : "";
     }
 
-    // How far a rebuild has got, from the whole of its log: what Nix said it
-    // would build and fetch, how many of those have started, and whether the
-    // switch is activating. Started, not finished: near enough for the light.
     readonly property string counting: "awk '/^these [0-9]+ derivations? will be built/ { total += $2 } "
         + "/^this derivation will be built/ { total += 1 } /^these [0-9]+ paths? will be fetched/ { total += $2 } "
         + "/^this path will be fetched/ { total += 1 } /^building .\\/nix\\/store\\// || /^copying path .\\/nix\\/store\\// { begun += 1 } "
@@ -328,8 +273,6 @@ Singleton {
         Glyph.track("rebuild", active ? 0.95 : total > 0 ? 0.05 + 0.85 * Math.min(1, begun / total) : -1);
     }
 
-    // What /run/nihil says (`peek`): the status, what it is, then the end of
-    // the log, and how far it has got.
     function report(text: string): void {
         const parts = text.split("--nihil--");
         const status = parts[0].trim();
@@ -371,9 +314,6 @@ Singleton {
         }
     }
 
-    // What the log of a switch or a clean says (modules/nihil-cli.nix): the
-    // generation it went to, and what the clean left free; the shell may
-    // have been restarted in between.
     function facts(lines: var): void {
         for (let i = 0; i < lines.length; i++) {
             const to = /^nihil: generation ([0-9]+)$/.exec(lines[i].trim());
@@ -403,7 +343,6 @@ Singleton {
         }
     }
 
-    // The first time, the welcome, once the session has settled.
     Process {
         command: [Config.cmd.sh, "-c", "[ -e \"$1\" ]", "sh", root.stateDir + "/welcomed"]
         running: true
@@ -458,12 +397,6 @@ Singleton {
         }
     }
 
-    // sudo, asked once: sh -c sudoAsk sh MODE FILE COMMAND... With the
-    // password typed (MODE "password"), its pid, which sudo keeps, goes in
-    // a file of the user's first: PAM leaves the reader out for it
-    // (modules/hardware.nix) and reads the password from stdin. With nothing
-    // typed, sudo waits for a finger, and finds no password if it fails.
-    // With a FILE, the first line of stdin, the settings, goes in it.
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
     readonly property string settingsDraft: runtimeDir + "/nihil-settings.json"
     readonly property string sudoAsk: 'umask 077; flag="${XDG_RUNTIME_DIR:-/tmp}/nihil-sudo-password"; '
@@ -471,9 +404,6 @@ Singleton {
         + 'if [ -n "$2" ]; then IFS= read -r line && printf "%s\\n" "$line" > "$2" || exit 4; fi; '
         + 'shift 2; exec "$@"'
 
-    // -k: ask even if sudo still remembers it. sudo exits with 1 when
-    // neither a finger nor the password did it; nihil apply with 2 (not
-    // valid), 3 (busy) or 4 (could not start), saying why on stderr.
     Process {
         id: applier
 
@@ -509,7 +439,6 @@ Singleton {
         }
     }
 
-    // The same, for an update: only the password goes in, if any.
     Process {
         id: updater
 
@@ -546,8 +475,6 @@ Singleton {
         }
     }
 
-    // The same, for a generation: switching to one and cleaning in the
-    // unit; booting one once at once (5: the boot menu has no such one).
     Process {
         id: generator
 
@@ -590,7 +517,6 @@ Singleton {
         }
     }
 
-    // The current password is typed anyway: no finger after it.
     Process {
         id: passwd
 
@@ -610,8 +536,6 @@ Singleton {
         }
     }
 
-    // While it applies, how it goes, every second; once at the start too, in
-    // case this shell is the one the rebuild restarted.
     Timer {
         id: poll
         interval: 1000
@@ -639,7 +563,6 @@ Singleton {
         function toggle(): void { if (root.shown) root.hide(); else root.show("", false); }
         function close(): void { root.hide(); }
         function welcome(): void { root.show("hello", true); }
-        // The wallpapers drawer, as SUPER + W opens it (nihil-ipc drawers toggle wallpapers).
         function wallpapers(): void { Drawers.toggle("wallpapers", ""); }
     }
 }

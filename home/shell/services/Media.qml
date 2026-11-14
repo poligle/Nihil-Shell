@@ -6,9 +6,6 @@ import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs.config
 
-// What plays (MPRIS): the one playing, or the first. The dashboard shows
-// it; the media keys and the phone's deck (home/deck) play and skip it.
-//   nihil-ipc media toggle | next | previous | now
 Singleton {
     id: root
 
@@ -33,7 +30,6 @@ Singleton {
         function toggle(): void { root.toggle(); }
         function next(): void { root.next(); }
         function previous(): void { root.previous(); }
-        // As JSON: null when nothing plays.
         function now(): string {
             const player = root.active;
             return JSON.stringify(player === null ? null
@@ -46,7 +42,6 @@ Singleton {
         return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
     }
 
-    // MPRIS doesn't push position updates; poll while something plays.
     Timer {
         interval: 1000
         repeat: true

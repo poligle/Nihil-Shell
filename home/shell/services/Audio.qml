@@ -18,10 +18,6 @@ Singleton {
 
     readonly property var sinks: Pipewire.nodes.values.filter(n => n.audio && n.isSink && !n.isStream)
 
-    // A capture stream (Stream/Input/Audio) means the microphone is live.
-    // Quickshell types it as Audio | Source | Stream, so it is the stream that
-    // is *not* a sink: playback streams (Spotify...) are the sinks. Our own
-    // visualiser and pavucontrol's meters don't count.
     readonly property bool micInUse: Pipewire.nodes.values.some(n =>
         n.audio && n.isStream && !n.isSink && !/cava|pavucontrol|quickshell/i.test(`${n.name} ${n.description}`))
 
@@ -29,9 +25,6 @@ Singleton {
         objects: [root.sink, root.source]
     }
 
-    // Muted, or all the way down: the next boot is silent too
-    // (modules/boot-sound.nix reads it). Written a moment after it changes,
-    // and only once there is a sink: before, `muted` only says there is none.
     readonly property bool silent: muted || volume < 0.02
     readonly property string silentFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/nihil/silent"
 
@@ -71,7 +64,6 @@ Singleton {
         Pipewire.preferredDefaultAudioSink = node;
     }
 
-    // Keep the ThinkPad mic-mute LED in sync once PipeWire has applied the change.
     Timer {
         id: led
         interval: 200

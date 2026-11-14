@@ -1,52 +1,9 @@
 # nihil-cli.nix by poligle
-#
-# The nihil command, for the machine's flake (nihil.flake, /etc/nixos):
-#
-#   nihil rebuild     apply the machine's configuration
-#   nihil update      bring the latest NIHIL (and what it pins: NixOS and its
-#                     packages), then rebuild; --unit does it in a unit of its
-#                     own, like nihil apply (the shell's panel uses it)
-#   nihil check       whether GitHub has a newer NIHIL than the one pinned, and
-#                     which commits (--json for the shell)
-#   nihil settings    edit settings.json, then rebuild
-#   nihil version     the NIHIL this machine runs, and the one pinned
-#   nihil dev [path]  NIHIL from a local checkout (here by default) instead of
-#                     the one pinned, to try changes unpushed; it stays (nihil
-#                     rebuild and Preferences use it too) until nihil dev off
-#                     or nihil update. Each rebuild builds from a copy of it
-#                     without .git (/var/lib/nihil/dev-tree)
-#   nihil apply FILE  FILE (- for stdin) becomes settings.json, and the system
-#                     is rebuilt in a unit of its own (Preferences uses it)
-#   nihil passwd      change a password: the last line of stdin, user:password
-#   nihil welcome     open the welcome again (to try it)
-#   nihil watch       NIHIL for Wear OS on a watch (update, forget), with the deck
-#   nihil generations [--json]
-#                     the system's generations, newest first: when, which
-#                     NixOS, kernel and NIHIL, which one runs and which boots
-#   nihil generations changes N
-#                     the packages generation N changed, against the one before
-#   nihil generations boot N
-#                     the next boot only with generation N (systemd-boot)
-#   nihil generations switch N [--unit]
-#                     back (or on) to generation N, now and at boot
-#   nihil generations clean DAYS [--unit]
-#                     remove the generations older than DAYS days but the one
-#                     in use, as the weekly clean does (nihil.generations.days),
-#                     and what nothing needs any more
-#
-# nihil apply's unit (and that of nihil update --unit and nihil generations
-# switch and clean --unit, the same one) outlives whoever asked: the rebuild
-# restarts the shell. /run/nihil tells how it goes: apply.status (running,
-# done, warning or failed), apply.kind (settings, update, generation or
-# clean) and apply.log. A failed build puts the old settings.json back; a
-# failed switch, the generation that ran.
 
 { config, lib, pkgs, ... }:
 let
     flake = config.nihil.flake;
 
-    # The generations the boot menu has: the last ones, as many as
-    # systemd-boot keeps (modules/boot.nix); none without it.
     loader = config.boot.loader.systemd-boot;
     menu = if !loader.enable then 0 else if loader.configurationLimit == null then 100000 else loader.configurationLimit;
 
@@ -59,8 +16,6 @@ let
             run=/run/nihil
             dev=/var/lib/nihil/dev
             tree=/var/lib/nihil/dev-tree
-            # The system's generations (system-N-link next to it), and the
-            # systemd-boot variable that boots one the next time only.
             profile=''${NIHIL_PROFILE:-/nix/var/nix/profiles/system}
             menu=${toString menu}
             oneshot=''${NIHIL_ONESHOT:-/sys/firmware/efi/efivars/LoaderEntryOneShot-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f}
@@ -69,17 +24,12 @@ let
                 if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi
             }
 
-            # nihil dev's checkout, while there is one.
             checkout() {
                 if [ -f "$dev" ] && [ -f "$(cat "$dev")/flake.nix" ]; then
                     cat "$dev"
                 fi
             }
 
-            # The checkout as it is, untracked files included, without .git,
-            # direnv's cache or build results: Nix copies all of a path: input
-            # to the store whenever anything in it changes, and the history is
-            # most of a checkout's size. A commit alone then changes nothing.
             snapshot() {
                 as_root rm -rf "$tree.new" &&
                     as_root mkdir -p "$tree.new" &&
@@ -89,7 +39,6 @@ let
                     as_root mv "$tree.new" "$tree"
             }
 
-            # The configuration is named after the computer (settings.json's host).
             rebuild() {
                 local host from override=()
                 host=$(jq -r '.host.name // empty' "$flake/settings.json")
@@ -109,9 +58,6 @@ let
                 fi
             }
 
-            # The one pinned (flake.lock's nihil), and what GitHub has past it on
-            # its branch: the compare API, without a token (60 calls an hour).
-            # Its locals don't shadow $dev: checkout() reads it.
             check() {
                 local node rev owner repo ref api compare from
                 node=$(jq -c '.nodes.nihil // {}' "$flake/flake.lock" 2> /dev/null || echo '{}')
@@ -142,7 +88,6 @@ let
                 fi
             }
 
-            # The generations' numbers, oldest first.
             numbers() {
                 local link n
                 for link in "$profile"-*-link; do
@@ -155,7 +100,6 @@ let
                 done | sort -n
             }
 
-            # The number in a generation's link (system-212-link).
             number_of() {
                 local name
                 name=$(basename "$1")
@@ -170,18 +114,12 @@ let
                 [ -L "$profile-$1-link" ]
             }
 
-            # Newest first: its number, when it was made (the link's own
-            # time, as Nix counts it), its NixOS, kernel and NIHIL, whether
-            # it runs, whether it boots by default, whether it boots the next
-            # time only, and whether the boot menu has it. With the room
-            # left where the store is.
             generations() {
                 local current default next n link path date version kernel revision dir free size
                 current=$(readlink -f /run/current-system 2> /dev/null || true)
                 default=$(number_of "$(readlink "$profile" 2> /dev/null || echo none)")
                 next=""
                 if [ -r "$oneshot" ]; then
-                    # UTF-16 after four bytes of attributes: nixos-generation-N.conf
                     next=$(tail -c +5 "$oneshot" | tr -d '\0' | sed -n 's/^nixos-generation-\([0-9]*\)\(\.conf\)\{0,1\}$/\1/p')
                 fi
                 read -r free size < <(df -B1 --output=avail,size /nix/store | tail -n 1) || true
@@ -214,8 +152,6 @@ let
                     }) | { generations: ., bootMenu: ($menu > 0), free: $free, size: $size }'
             }
 
-            # What a generation changed: diff-closures against the one before
-            # it that is still there, a line per package, without colour.
             changes() {
                 local before="" n
                 for n in $(numbers); do
@@ -232,8 +168,6 @@ let
                     | jq -R -s --argjson n "$1" --argjson before "$before" '{ number: $n, before: $before, lines: (split("\n") | map(select(length > 0))) }'
             }
 
-            # The next boot only, from systemd-boot's own list (it names the
-            # entries); 5 when it has no such entry.
             boot_once() {
                 local id
                 id=$({ bootctl list --json=short 2> /dev/null || echo '[]'; } | jq -r --arg want "nixos-generation-$1" '
@@ -246,8 +180,6 @@ let
                 echo "The next boot only, generation $1."
             }
 
-            # The profile to it, and switch to it: now, and at boot. When
-            # nothing switched, the profile as it was.
             switch_to() {
                 local previous before status=0
                 previous=$(number_of "$(readlink "$profile")")
@@ -263,11 +195,6 @@ let
                 return "$status"
             }
 
-            # As the weekly clean (modules/nix.nix), now: generations older
-            # than DAYS days go, but the one in use and the one that was in
-            # use DAYS days ago, and so does what nothing needs any more.
-            # Then the boot menu without them, booting what it booted. The
-            # last line, what the disk has free now that it had not.
             clean() {
                 local before after status=0
                 before=$(df -B1 --output=avail /nix/store | tail -n 1 | tr -d ' ')
@@ -281,7 +208,6 @@ let
                 return "$status"
             }
 
-            # In nihil-apply.service, as nihil apply: 3 busy, 4 could not start.
             in_unit() {
                 local kind=$1
                 shift
@@ -298,7 +224,6 @@ let
                 echo "In nihil-apply.service: $run/apply.log tells how it goes."
             }
 
-            # How a unit's run ended, for whoever watches /run/nihil.
             finish() {
                 local status=$1 before=$2
                 if [ "$status" = 0 ]; then
@@ -342,7 +267,6 @@ let
                         if [ "$(id -u)" != 0 ]; then
                             exec sudo "$(readlink -f "$0")" update --unit
                         fi
-                        # As nihil apply: 3 busy, 4 could not start.
                         trap 'exit 4' ERR
                         if systemctl is-active --quiet nihil-apply.service; then
                             echo "Something is being applied already." >&2
@@ -362,9 +286,6 @@ let
                         as_root rm -rf "$dev" "$tree" "$tree.new"
                     fi
                     before=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2>/dev/null || echo "?")
-                    # --refresh: Nix remembers for an hour which commit a
-                    # branch was at, so a push just made would not be seen.
-                    # As root already in nihil-apply.service (update-run).
                     as_root nix flake update --refresh --flake "$flake"
                     after=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2>/dev/null || echo "?")
                     if [ "$before" = "$after" ]; then
@@ -431,8 +352,6 @@ let
                             if [ "$(id -u)" != 0 ]; then
                                 exec sudo "$(readlink -f "$0")" generations "$what" "$n" "''${3:-}"
                             fi
-                            # As nihil apply: 2 not valid, 3 busy, 4 could not
-                            # start, also from inside a function.
                             set -o errtrace
                             trap 'exit 4' ERR
                             if [ "$what" = clean ]; then
@@ -462,7 +381,6 @@ let
                             status=0
                             if [ "$what" = switch-run ]; then
                                 switch_to "$n" || status=$?
-                                # The last line, the one in place now (the shell reads it).
                                 echo "nihil: generation $(number_of "$(readlink "$profile")")"
                             else
                                 clean "$n" || status=$?
@@ -480,8 +398,6 @@ let
                     if [ "$(id -u)" != 0 ]; then
                         exec sudo "$(readlink -f "$0")" apply "$@"
                     fi
-                    # Anything failing here exits with 4: 1 is sudo's, for a
-                    # wrong password (Preferences tells them apart).
                     trap 'exit 4' ERR
                     if systemctl is-active --quiet nihil-apply.service; then
                         echo "Other settings are being applied." >&2
@@ -490,15 +406,11 @@ let
                     mkdir -p "$run"
                     staged=$(mktemp)
                     trap 'rm -f "$staged"' EXIT
-                    # From stdin, what comes before the JSON is left out: a
-                    # password sudo did not need, when a finger did it.
                     if [ "''${1:--}" = - ]; then
                         awk 'started || /^[{]/ { started = 1; print }' > "$staged"
                     else
                         cat "$1" > "$staged"
                     fi
-                    # An object; the user's and the computer's names, when there,
-                    # as NixOS takes them.
                     if ! jq -e 'type == "object"
                         and ((.user.name // "nihil") | type == "string" and test("^[a-z_][a-z0-9_-]*$"))
                         and ((.host.name // "nihil") | type == "string" and length > 0 and length < 64
@@ -528,7 +440,6 @@ let
                     if [ "$status" = 0 ]; then
                         echo "done" > "$run/apply.status"
                     elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
-                        # Switched, but some unit did not start.
                         echo warning > "$run/apply.status"
                     else
                         if [ -f "$run/settings.previous.json" ]; then
@@ -545,7 +456,6 @@ let
                     "$(readlink -f "$0")" update || status=$?
                     if [ "$status" = 0 ]; then
                         # Quoted: a bare done is the shell's keyword to shellcheck
-                        # (SC1010), which writeShellApplication runs at build time.
                         echo "done" > "$run/apply.status"
                     elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
                         echo warning > "$run/apply.status"
@@ -562,7 +472,6 @@ let
                 welcome)
                     exec nihil-ipc settings welcome
                     ;;
-                # NIHIL for Wear OS on a watch (home/deck/watch.sh), with the deck.
                 watch)
                     shift
                     if ! command -v nihil-watch > /dev/null; then
@@ -598,8 +507,6 @@ in
         description = "The NIHIL this machine was built from, as nihil version says it (set by nihil.lib.mkSystem).";
     };
 
-    # CI builds it (.github/workflows): building it runs shellcheck, and a
-    # warning there would otherwise first show on a machine's nihil update.
     options.nihil.cli = lib.mkOption
     {
         type = lib.types.package;

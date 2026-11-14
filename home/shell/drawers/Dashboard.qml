@@ -6,15 +6,23 @@ import qs.config
 import qs.services
 import qs.components
 
-// Top drawer: time and caffeine, music with a dot-matrix cover and spectrum,
-// an instrument cluster (CPU, RAM, temperature, network scope) and, under
-// all of it, the kanban.
 Item {
     id: root
 
     property bool active: false
 
-    // The drawer is as deep as this (Frame.qml): the kanban grows and shrinks.
+    focus: active
+    onActiveChanged: if (active) forceActiveFocus()
+    Keys.onEscapePressed: Drawers.close()
+    Keys.onPressed: event => {
+        const paste = (event.key === Qt.Key_V && event.modifiers & Qt.ControlModifier)
+            || (event.key === Qt.Key_Insert && event.modifiers & Qt.ShiftModifier);
+        if (paste && Vector.enabled) {
+            Vector.send("");
+            event.accepted = true;
+        }
+    }
+
     implicitHeight: layout.implicitHeight + 22 + 24
 
     SystemClock {
@@ -31,14 +39,12 @@ Item {
         anchors.bottomMargin: 24
         spacing: 16
 
-        // Layouts fill their parent by default: this one keeps its height.
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
             Layout.preferredHeight: 232
             spacing: 26
 
-            // Time
             ColumnLayout {
                 Layout.preferredWidth: 220
                 Layout.fillHeight: true
@@ -61,72 +67,16 @@ Item {
                     font.pixelSize: 15
                 }
 
-                Item { Layout.fillHeight: true }
-
-                // Caffeine: the screen stays on (services/Caffeine.qml).
-                Surface {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: -10
-                    implicitHeight: 48
-                    radius: 14
-                    color: coffeeArea.containsMouse ? Tokens.raised : "transparent"
-
-                    Ico {
-                        id: cup
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        glyph: Icons.coffee
-                        font.pixelSize: 18
-                        color: Caffeine.on ? Tokens.ink : Tokens.muted
-                    }
-
-                    Column {
-                        anchors.left: cup.right
-                        anchors.leftMargin: 12
-                        anchors.right: coffeeSwitch.left
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
-
-                        Txt {
-                            width: parent.width
-                            text: Lang.caffeine
-                            color: Caffeine.on ? Tokens.ink : Tokens.dim
-                            font.pixelSize: 14
-                        }
-
-                        Txt {
-                            width: parent.width
-                            text: Caffeine.on ? Lang.caffeineOn.arg(Qt.formatTime(Caffeine.since, "HH:mm")) : Lang.caffeineOff
-                            color: Tokens.muted
-                            font.pixelSize: 11
-                        }
-                    }
-
-                    // On or off is a switch, as everywhere (components/Toggle.qml).
-                    Toggle {
-                        id: coffeeSwitch
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        on: Caffeine.on
-                        onToggled: Caffeine.toggle()
-                    }
-
-                    MouseArea {
-                        id: coffeeArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Caffeine.toggle()
-                    }
+                Item {
+                    Layout.fillHeight: true
+                    visible: !Vector.enabled
                 }
 
-                Label {
-                    text: Battery.present
-                        ? Lang.battery.arg(Math.round(Battery.level * 100)) + (Battery.charging ? ", " + Lang.charging : "")
-                        : Lang.network.arg(Network.ssid || Network.ethernet || Lang.noConnection)
+                VectorBox {
+                    Layout.topMargin: 6
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: Vector.enabled
                 }
             }
 
@@ -136,7 +86,6 @@ Item {
                 color: Tokens.line
             }
 
-            // Music
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -214,7 +163,6 @@ Item {
                 color: Tokens.line
             }
 
-            // Instruments
             ColumnLayout {
                 Layout.preferredWidth: 262
                 Layout.fillHeight: true

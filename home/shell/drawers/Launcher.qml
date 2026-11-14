@@ -8,10 +8,6 @@ import qs.services
 import qs.components
 import qs.nilo
 
-// Bottom drawer. Plain text searches apps (monochrome grid, colour on the
-// selected one); ">" lists actions; "=" is a calculator (qalc); "?" is Nilo,
-// the assistant: the drawer grows and the field becomes its input.
-//   arrows / tab  move     enter  open     esc  close
 Item {
     id: root
 
@@ -25,13 +21,11 @@ Item {
     readonly property string term: mode === "apps" ? query : query.slice(1).trim()
     readonly property bool niloMode: mode === "nilo"
 
-    // 0 → 1 as the field moves to the bottom for Nilo.
     property real niloP: niloMode ? 1 : 0
     Behavior on niloP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
 
     readonly property var apps: mode === "apps" ? Apps.search(term) : []
 
-    // `keys` keeps English words searchable whatever the language.
     readonly property var allActions: [
         { id: "lock", name: Lang.actLock, hint: Lang.hintSession, keys: "lock", glyph: Icons.lock, command: [Config.cmd.lock] },
         { id: "suspend", name: Lang.actSuspend, hint: Lang.hintSystem, keys: "sleep suspend", glyph: Icons.sleep, command: [Config.cmd.systemctl, "suspend"] },
@@ -53,7 +47,6 @@ Item {
 
     onActiveChanged: {
         if (active) {
-            // SUPER+I (Nilo.open) opens it straight into "?".
             input.text = Nilo.summon ? "?" : "";
             Nilo.summon = false;
             armed = "";
@@ -87,15 +80,12 @@ Item {
         }
     }
 
-    // Read `query` itself here: derived bindings (mode, term) may not be
-    // re-evaluated yet when this handler runs.
     onQueryChanged: {
         armed = "";
         grid.currentIndex = 0;
         list.currentIndex = 0;
         if (query.startsWith("=")) calcDelay.restart();
         else result = "";
-        // Typing a question wakes the model, so the answer starts sooner.
         if (query.startsWith("?") && query.slice(1).trim() !== "") Nilo.warm();
     }
 
@@ -110,7 +100,6 @@ Item {
             armed = action.id;
             return;
         }
-        // The wallpapers come out of the same edge, once this is in (Drawers.qml).
         if (action.id === "wallpapers") {
             Drawers.open("wallpapers", "", false);
             return;
@@ -152,7 +141,6 @@ Item {
         return false;
     }
 
-    // Calculator: qalc, debounced.
     Timer {
         id: calcDelay
         interval: 140
@@ -170,14 +158,12 @@ Item {
         }
     }
 
-    // Nilo, above the field once it has moved down.
     NiloView {
         id: niloView
         x: 24
         y: 14
         width: parent.width - 48
         height: Math.max(0, search.y - y - 16)
-        // Hidden with the drawer, so the eyes stop moving when no one sees them.
         visible: root.niloP > 0 && root.opacity > 0
         opacity: root.niloP
         active: root.active && root.niloMode
@@ -187,7 +173,6 @@ Item {
         onRefocus: input.forceActiveFocus()
     }
 
-    // Search field
     Surface {
         id: search
         x: 24
@@ -209,7 +194,6 @@ Item {
             opacity: 1 - root.niloP
         }
 
-        // In "?" the magnifier becomes Nilo's eyes, in small.
         Eyes {
             anchors.centerIn: searchIcon
             eyeWidth: 4
@@ -241,13 +225,10 @@ Item {
             onAccepted: root.accept()
             Keys.onEscapePressed: if (!(root.niloMode && niloView.back())) Drawers.close()
             Keys.onPressed: event => {
-                // Opened from the edge, the first real key keeps it open (a
-                // modifier alone may be the start of a SUPER shortcut).
                 if (Drawers.byHover && !root.modifierOnly(event.key)) Drawers.byHover = false;
                 if (root.niloMode ? niloView.key(event) : root.move(event.key)) event.accepted = true;
             }
 
-            // After the "?", what to do.
             Txt {
                 x: input.leftPadding + mark.advanceWidth + 10
                 anchors.verticalCenter: parent.verticalCenter
@@ -275,7 +256,6 @@ Item {
         }
     }
 
-    // Apps
     GridView {
         id: grid
         anchors.top: search.bottom
@@ -344,7 +324,6 @@ Item {
         }
     }
 
-    // Actions
     ListView {
         id: list
         anchors.top: search.bottom
@@ -411,7 +390,6 @@ Item {
         }
     }
 
-    // Calculator
     Column {
         anchors.centerIn: grid
         visible: root.mode === "calc"
