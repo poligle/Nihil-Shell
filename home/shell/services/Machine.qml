@@ -564,5 +564,7 @@ Singleton {
         function close(): void { root.hide(); }
         function welcome(): void { root.show("hello", true); }
         function wallpapers(): void { Drawers.toggle("wallpapers", ""); }
+        function glass(on: string): void { root.setGlass(on === "on"); }
+        function look(): string { return root.glass ? "glass" : "plain"; }
     }
 }

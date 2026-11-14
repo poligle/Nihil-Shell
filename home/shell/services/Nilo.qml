@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import qs.theme
 import qs.config
 
 Singleton {
@@ -46,6 +47,7 @@ Singleton {
     property string mood: ""
 
     property var pull: null
+    property var asides: []
 
     property bool shown: false
     property bool summon: false
@@ -131,10 +133,106 @@ Singleton {
 
     function confirmText(c: var): string {
         if (!c) return "";
+        if (c.action === "desktop") return desktopText(c);
         if (c.action === "run" || c.action === "terminal") return "$ " + (c.command ?? "");
         if (c.action === "edit" || c.action === "create")
             return (c.action === "create" ? Lang.confirmCreate : Lang.confirmEdit) + " " + (c.path ?? "");
         return c.message ? "git commit: " + c.message : "git " + (c.action === "push" ? Lang.confirmPush : Lang.confirmCommit);
+    }
+
+    function desktopText(c: var): string {
+        switch (c.what) {
+        case "type": return Lang.confirmType.arg(c.app ?? "") + ": " + plain(c.text ?? "");
+        case "keys": return Lang.confirmKeys.arg(c.app ?? "") + ": " + (c.keys ?? "");
+        case "close": return Lang.confirmCloseWindow.arg(c.app ?? "");
+        case "read": return Lang.confirmRead + " " + (c.path ?? "");
+        case "send": return Lang.confirmSend + ": " + (c.path ?? plain(c.text ?? ""));
+        case "search": return Lang.confirmSearch + ": " + plain(c.text ?? "");
+        case "fetch": return Lang.confirmFetch + ": " + (c.text ?? "");
+        case "open": return Lang.confirmOpenUrl + ": " + (c.text ?? "");
+        }
+        return "";
+    }
+
+    function amount(text: string, now: real): real {
+        const t = String(text ?? "").trim().toLowerCase();
+        if (t === "up") return now + 0.1;
+        if (t === "down") return now - 0.1;
+        const m = t.match(/^([+-]?)(\d+(?:[.,]\d+)?)\s*%?$/);
+        if (!m) return NaN;
+        const n = parseFloat(m[2].replace(",", ".")) / 100;
+        return Math.max(0, Math.min(1, m[1] === "+" ? now + n : m[1] === "-" ? now - n : n));
+    }
+
+    function flag(text: string, now: bool): var {
+        const t = String(text ?? "").trim().toLowerCase();
+        if (t === "" || t === "toggle") return !now;
+        if (["on", "true", "1", "yes", "sí", "si"].includes(t)) return true;
+        if (["off", "false", "0", "no"].includes(t)) return false;
+        return null;
+    }
+
+    function control(setting: string, value: string): var {
+        const switches = {
+            dnd: [Notifs.dnd, on => Notifs.dnd = on],
+            caffeine: [Caffeine.on, on => Caffeine.set(on)],
+            night: [Toggles.night, on => Toggles.night = on],
+            glass: [Machine.glass, on => Machine.setGlass(on)],
+            mute: [Audio.muted, on => { if (on !== Audio.muted) Audio.toggleMute(); }]
+        };
+        if (switches[setting]) {
+            const on = flag(value, switches[setting][0]);
+            if (on === null) return { ok: false, error: setting + " takes on, off or toggle" };
+            switches[setting][1](on);
+            return { ok: true, value: on ? "on" : "off" };
+        }
+        if (setting === "volume" || setting === "brightness") {
+            if (setting === "brightness" && !Brightness.available)
+                return { ok: false, error: "this screen's brightness cannot be changed from here" };
+            const v = amount(value, setting === "volume" ? Audio.volume : Brightness.value);
+            if (isNaN(v)) return { ok: false, error: setting + " takes a number from 0 to 100, +10 or -10" };
+            if (setting === "volume") Audio.setVolume(v);
+            else Brightness.set(v);
+            Osd.show(setting, v, false);
+            return { ok: true, value: String(Math.round(v * 100)) };
+        }
+        if (setting === "wallpaper") {
+            const t = String(value ?? "").trim();
+            const step = t === "" || t === "next" ? "next" : t === "prev" || t === "previous" ? "prev" : "";
+            if (step !== "") {
+                Quickshell.execDetached([Config.cmd.wallpaper, step]);
+                return { ok: true, value: step };
+            }
+            const wanted = t.toLowerCase().replace(/[\s_-]+/g, "");
+            const name = Config.wallpapers.find(n => n.toLowerCase().replace(/[\s_-]+/g, "") === wanted)
+                ?? Config.wallpapers.find(n => n.toLowerCase().includes(t.toLowerCase()));
+            if (!name) return { ok: false, error: "no wallpaper called " + t + "; there are " + Config.wallpapers.join(", ") };
+            Machine.setWallpaper(name);
+            return { ok: true, value: name };
+        }
+        if (setting === "lock") {
+            Quickshell.execDetached([Config.cmd.lock]);
+            return { ok: true, value: "on" };
+        }
+        return { ok: false, error: "NIHIL has no setting called " + setting };
+    }
+
+    function aside(id: string): void {
+        const open = Drawers.current !== "";
+        Drawers.close();
+        if (!open) {
+            send({ op: "answer", id: id, ok: true });
+            return;
+        }
+        asides = asides.concat([id]);
+        asideLater.restart();
+    }
+
+    function toPhone(e: var): var {
+        if (!Vector.enabled) return { ok: false, error: "Vector is off: pair the phone in Preferences first" };
+        if (e.path) Vector.send(e.path);
+        else Vector.sendText(String(e.text ?? ""));
+        return { ok: true };
     }
 
     function tell(kind: string): void {
@@ -413,6 +511,15 @@ Singleton {
         case "launch":
             send(Object.assign({ op: "launched", id: e.id }, launch(e.target, e.kind)));
             break;
+        case "aside":
+            aside(e.id);
+            break;
+        case "control":
+            send(Object.assign({ op: "answer", id: e.id }, control(String(e.setting ?? ""), String(e.value ?? ""))));
+            break;
+        case "vector":
+            send(Object.assign({ op: "answer", id: e.id }, toPhone(e)));
+            break;
         case "confirm":
             confirm = e;
             messages.append({ kind: "confirm", text: "", done: false, name: e.action, status: "asking",
@@ -525,6 +632,16 @@ Singleton {
         id: restart
         interval: 1500 * root.restarts
         onTriggered: if (root.wanted && !agent.running) agent.running = true
+    }
+
+    Timer {
+        id: asideLater
+        interval: Tokens.animDrawer + 80
+        onTriggered: {
+            for (const id of root.asides)
+                root.send({ op: "answer", id: id, ok: true });
+            root.asides = [];
+        }
     }
 
     IpcHandler {

@@ -31,6 +31,7 @@ class FakeOllama(http.server.ThreadingHTTPServer):
         self.chats = []             # every /api/chat body
         self.loads = []             # every /api/generate body
         self.no_tools = set()       # models that refuse tools
+        self.vision = set()         # models that see pictures
         self.down = False
         self.lock = threading.Lock()
 
@@ -142,6 +143,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.end_stream()
         if self.path == "/api/chat":
             return self.chat(body)
+        if self.path == "/api/show":
+            return self.reply(200, {"capabilities": ["completion", "tools"] + (["vision"] if body.get("model") in s.vision
+                                                                                else [])})
         self.reply(404, {"error": "not found"})
 
     def chat(self, body):
@@ -201,6 +205,41 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif question.startswith("abre "):
                 result = json.loads(tools_done[-1]["content"])
                 self.say("Abierto." if result.get("ok") else "No he podido: " + result.get("error", ""))
+            elif question.startswith("captura de"):
+                self.say("Veo la ventana.")
+            elif ("escribe en" in question or "consulta y escribe" in question) and not tools_done:
+                if "consulta y escribe" in question:
+                    self.say(tool_calls=[{"function": {"name": "web_search", "arguments": {"query": "receta"}}}])
+                else:
+                    window = messages[last_user]["content"].split("en", 1)[1].strip()
+                    self.say(tool_calls=[{"function": {"name": "type_text", "arguments": {
+                        "window": window, "text": "Hola\nmundo"}}}])
+            elif "consulta y escribe" in question and len(tools_done) == 1:
+                self.say(tool_calls=[{"function": {"name": "type_text", "arguments": {
+                    "window": "Writer", "text": "Receta"}}}])
+            elif "escribe en" in question or "consulta y escribe" in question:
+                result = json.loads(tools_done[-1]["content"])
+                self.say("Escrito." if result.get("ok") else "No he escrito: " + result.get("note", result.get("error", "")))
+            elif "cierra" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "use_window", "arguments": {"action": "close", "window": "writer"}}}])
+            elif "qué hay abierto" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "list_windows", "arguments": {}}}])
+            elif "siguiente canción" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "media", "arguments": {"action": "next"}}}])
+            elif "pon queen" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "media", "arguments": {
+                    "action": "play", "query": "Bohemian Rhapsody Queen"}}}])
+            elif "mira la pantalla" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "look_at_screen", "arguments": {}}}])
+            elif "más volumen" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "control", "arguments": {"setting": "volume", "value": "+10"}}}])
+            elif "manda al móvil" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "send_to_phone", "arguments": {"text": "hola"}}}])
+            elif tools_done and any(word in question for word in ("cierra", "qué hay abierto", "siguiente canción",
+                                                                  "pon queen", "mira la pantalla", "más volumen",
+                                                                  "manda al móvil")):
+                result = json.loads(tools_done[-1]["content"])
+                self.say("Hecho." if result.get("ok") else "No: " + result.get("note", result.get("error", "")))
             elif "lento" in question:
                 for i in range(200):
                     self.chunk({"message": {"role": "assistant", "content": f"{i} "}, "done": False})
@@ -282,9 +321,14 @@ class AgentProcess:
                 return seen
             if event["ev"] == "confirm":
                 self.on_confirm(event)
+            if event["ev"] in ("aside", "control", "vector"):
+                self.on_shell(event)
         raise AssertionError(f"no done; got {[e['ev'] for e in seen]}")
 
     on_confirm = staticmethod(lambda event: None)
+
+    def on_shell(self, event):
+        self.send(op="answer", id=event["id"], ok=True)
 
     def close(self):
         try:
@@ -306,6 +350,12 @@ class AgentTest(unittest.TestCase):
         with open(self.ddgr, "w") as f:
             f.write("#!/bin/sh\n"
                     "printf '%s\\n' \"$@\" > \"$(dirname \"$0\")/ddgr-args\"\n"
+                    "case \"$*\" in *open.spotify.com*) cat <<'EOF'\n"
+                    '[{"title": "Queen", "url": "https://open.spotify.com/artist/1dfeR4HaWDbWqFHLkxsg1d", "abstract": ""}, '
+                    '{"title": "Bohemian Rhapsody - song and lyrics by Queen | Spotify", '
+                    '"url": "https://open.spotify.com/intl-es/track/4uLU6hMCjMI75M1A2tKUQC", "abstract": ""}]\n'
+                    "EOF\n"
+                    "exit 0 ;; esac\n"
                     "cat <<'EOF'\n"
                     '[{"title": "NixOS 26.05 released", "url": "https://nixos.org/blog/26.05", '
                     '"abstract": "The   new release\\n is out."}, '
@@ -412,11 +462,12 @@ class AgentTest(unittest.TestCase):
         result = json.loads(self.ollama.chats[-1]["messages"][-1]["content"])
         self.assertEqual(result["results"][0]["snippet"], "The new release is out.")
 
-    def test_no_tools_without_access(self):
-        self.start({"model": "qwen3.5:4b", "onboarded": True, "web": False, "system": False, "apps": False})
+    def test_chat_without_internet(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "web": False, "access": "chat"})
         self.agent.send(op="ask", text="Hola")
         self.agent.until_done()
-        self.assertNotIn("tools", self.ollama.chats[-1])
+        tools = {t["function"]["name"] for t in self.ollama.chats[-1]["tools"]}
+        self.assertEqual(tools, {"system_info", "open_app"})
         self.assertIn("No tienes acceso a internet", self.ollama.chats[-1]["messages"][0]["content"])
 
     def test_model_without_tools(self):
@@ -760,19 +811,19 @@ class AgentTest(unittest.TestCase):
 
     def test_no_files_without_permission(self):
         repo = self.make_notes_repo()
-        self.start({"model": "qwen3.5:4b", "onboarded": True, "git": True, "repo": repo})
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "chat", "repo": repo})
         self.agent.send(op="ask", text="Hola")
         self.agent.until_done()
         tools = {t["function"]["name"] for t in self.ollama.chats[-1]["tools"]}
-        self.assertFalse({"list_files", "read_file", "edit_file", "write_file"} & tools)
-        tools = agent.Tools(type("A", (), {"settings": {"write": False}, "config": {}})())
+        self.assertFalse({"list_files", "read_file", "edit_file", "write_file", "git_commit", "run_command"} & tools)
+        tools = agent.Tools(type("A", (), {"settings": {"access": "chat"}, "config": {}})())
         result, facts = tools.run("write_file", {"path": "x", "content": "y"}, agent.Cancel())
         self.assertIn("not allowed", result["error"])
 
     def test_paths_stay_inside(self):
         repo = self.make_notes_repo()
         os.symlink(self.dir, os.path.join(repo, "escape"))
-        fake = type("A", (), {"settings": {"write": True, "repo": repo}, "config": {"git": shutil.which("git")}})()
+        fake = type("A", (), {"settings": {"access": "terminal", "repo": repo}, "config": {"git": shutil.which("git")}})()
         tools = agent.Tools(fake)
         for path in ("../config.json", "/etc/passwd", "escape/config.json", ".git/config", "~/x"):
             result, facts = tools.run("read_file", {"path": path}, agent.Cancel())
@@ -814,7 +865,7 @@ class AgentTest(unittest.TestCase):
         repo = self.make_notes_repo()
         with open(os.path.join(repo, "long.txt"), "w") as f:
             f.write("".join(f"line {i}\n" for i in range(1, 1001)))
-        fake = type("A", (), {"settings": {"write": True, "repo": repo}, "config": {}})()
+        fake = type("A", (), {"settings": {"access": "terminal", "repo": repo}, "config": {}})()
         first, _ = agent.Tools(fake).run("read_file", {"path": "long.txt"}, agent.Cancel())
         self.assertEqual((first["from_line"], first["to_line"], first["next_line"], first["lines"]), (1, 400, 401, 1000))
         last, _ = agent.Tools(fake).run("read_file", {"path": "long.txt", "from_line": 801}, agent.Cancel())
@@ -1015,21 +1066,21 @@ class AgentTest(unittest.TestCase):
             f.write("# Repo\n\nUse tabs in {repo}.\n")
         context = os.path.join(self.dir, "nilo.md")
         with open(context, "w") as f:
-            f.write("<!-- for people -->\n## Rules\n\nAsk {user} first.\n\n## Terminal {shell}\n\nbash only.\n"
+            f.write("<!-- for people -->\n## Rules\n\nAsk {user} first.\n\n## Desktop {desktop}\n\nWriter only.\n"
                     "\n## Git {git}\n\nShort messages.\n\n### Branches\n\nNever force.\n")
         config_home = os.path.join(self.dir, "config")
         os.makedirs(os.path.join(config_home, "nihil"))
         with open(os.path.join(config_home, "nihil", "nilo.md"), "w") as f:
             f.write("I am Pol. {web}\n")
         self.write_config(context=context)
-        self.start({"model": "qwen3.5:4b", "onboarded": True, "git": True, "repo": repo},
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "terminal", "repo": repo},
                    env=dict(os.environ, XDG_CONFIG_HOME=config_home))
         self.agent.send(op="ask", text="Hola")
         self.agent.until_done()
         prompt = self.ollama.chats[-1]["messages"][0]["content"]
         self.assertIn("## Rules\n\nAsk ", prompt)
         self.assertNotIn("for people", prompt)
-        self.assertNotIn("bash only", prompt)
+        self.assertNotIn("Writer only", prompt)
         self.assertIn("## Git\n\nShort messages.\n\n### Branches\n\nNever force.", prompt)
         self.assertIn("I am Pol. {web}", prompt)
         self.assertIn(f"Use tabs in {repo}.", prompt)
@@ -1073,6 +1124,236 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(agent.pull_error("pull model manifest: 429: Too Many Requests"), "rate")
         self.assertEqual(agent.pull_error("pull model manifest: file does not exist"), "missing")
 
+    def desktop(self, vision=False):
+        state = {"active": "0xa1", "clients": [
+            {"address": "0xa1", "class": "kitty", "initialClass": "kitty", "title": "~", "focusHistoryID": 0,
+             "workspace": {"id": 1, "name": "1"}, "mapped": True, "hidden": False, "at": [10, 10], "size": [800, 600]},
+            {"address": "0xb2", "class": "libreoffice-writer", "initialClass": "libreoffice-writer",
+             "title": "Sin título 1 - LibreOffice Writer", "focusHistoryID": 1, "workspace": {"id": 2, "name": "2"},
+             "mapped": True, "hidden": False, "at": [0, 0], "size": [1920, 1200]}],
+            "monitors": [{"name": "eDP-1", "focused": True, "width": 3840, "height": 2400, "scale": 2, "transform": 0,
+                          "activeWorkspace": {"id": 1, "name": "1"}}]}
+        with open(os.path.join(self.dir, "hypr.json"), "w") as f:
+            json.dump(state, f)
+        fakes = {
+            "hyprctl": "import json, os, re, sys\n"
+                       "d = os.path.dirname(os.path.abspath(__file__))\n"
+                       "path = os.path.join(d, 'hypr.json')\n"
+                       "state = json.load(open(path))\n"
+                       "args = sys.argv[1:]\n"
+                       "open(os.path.join(d, 'hypr-log'), 'a').write(json.dumps(args) + '\\n')\n"
+                       "if args[:1] == ['-j']:\n"
+                       "    if args[1] == 'clients': print(json.dumps(state['clients']))\n"
+                       "    elif args[1] == 'activewindow': print(json.dumps(next((c for c in state['clients'] "
+                       "if c['address'] == state['active']), {})))\n"
+                       "    elif args[1] == 'monitors': print(json.dumps(state['monitors']))\n"
+                       "elif args[:1] == ['dispatch']:\n"
+                       "    m = re.search(r'address:(0x[0-9a-f]+)', args[1])\n"
+                       "    if m:\n"
+                       "        state['active'] = m.group(1)\n"
+                       "        for c in state['clients']:\n"
+                       "            c['focusHistoryID'] = 0 if c['address'] == m.group(1) else c['focusHistoryID'] + 1\n"
+                       "        json.dump(state, open(path, 'w'))\n"
+                       "    print('ok')\n",
+            "wtype": "import json, os, sys\n"
+                     "d = os.path.dirname(os.path.abspath(__file__))\n"
+                     "typed = sys.stdin.read() if '-' in sys.argv[1:] else ''\n"
+                     "open(os.path.join(d, 'wtype-log'), 'a').write(json.dumps([sys.argv[1:], typed]) + '\\n')\n",
+            "playerctl": "import json, os, sys\n"
+                         "d = os.path.dirname(os.path.abspath(__file__))\n"
+                         "args = sys.argv[1:]\n"
+                         "open(os.path.join(d, 'playerctl-log'), 'a').write(json.dumps(args) + '\\n')\n"
+                         "if args == ['-l']: print('spotify')\n"
+                         "elif 'status' in args: print('Playing')\n"
+                         "elif 'metadata' in args: print('Playing\\tBohemian Rhapsody\\tQueen\\tA Night at the Opera')\n",
+            "grim": "import json, os, sys\n"
+                    "d = os.path.dirname(os.path.abspath(__file__))\n"
+                    "open(os.path.join(d, 'grim-args'), 'w').write(json.dumps(sys.argv[1:]))\n"
+                    "sys.stdout.buffer.write(b'JPEGDATA')\n",
+        }
+        paths = {}
+        for name, body in fakes.items():
+            paths[name] = os.path.join(self.dir, name)
+            with open(paths[name], "w") as f:
+                f.write(f"#!{sys.executable}\n" + body)
+            os.chmod(paths[name], 0o755)
+        self.write_config(**paths)
+        if vision:
+            self.ollama.vision.add("qwen3.5:4b")
+
+    def logged(self, name):
+        try:
+            with open(os.path.join(self.dir, name)) as f:
+                return [json.loads(line) for line in f if line.strip()]
+        except OSError:
+            return []
+
+    def test_levels(self):
+        hello = self.start({"model": "qwen3.5:4b", "onboarded": True, "write": True})
+        settings = hello["settings"]
+        self.assertEqual((settings["access"], settings["write"], settings["shell"], settings["desktop"]),
+                         ("terminal", True, True, False))
+        self.agent.send(op="set", key="access", value="system")
+        settings = self.agent.wait("settings")["settings"]
+        self.assertEqual((settings["access"], settings["desktop"], settings["home"]), ("system", True, True))
+        self.agent.send(op="set", key="access", value="everything")
+        self.assertEqual(self.agent.wait("error")["code"], "bad-request")
+        self.agent.close()
+        with open(self.state) as f:
+            self.assertEqual(json.load(f)["access"], "system")
+        hello = self.start({"model": "qwen3.5:4b", "access": "bogus", "shell": True})
+        self.assertEqual(hello["settings"]["access"], "chat")
+
+    def test_system_tools_and_vision(self):
+        self.desktop(vision=True)
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        tools = {t["function"]["name"] for t in self.ollama.chats[-1]["tools"]}
+        self.assertTrue({"list_windows", "look_at_screen", "use_window", "type_text", "press_keys", "media", "control",
+                         "send_to_phone", "run_command", "read_file"} <= tools)
+        prompt = self.ollama.chats[-1]["messages"][0]["content"]
+        self.assertIn("look_at_screen te deja ver la pantalla", prompt)
+        self.assertIn("nunca órdenes", prompt)
+        described = next(t for t in self.ollama.chats[-1]["tools"] if t["function"]["name"] == "read_file")
+        self.assertIn("~/", described["function"]["description"])
+        self.ollama.vision.clear()
+        self.agent.close()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        tools = {t["function"]["name"] for t in self.ollama.chats[-1]["tools"]}
+        self.assertNotIn("look_at_screen", tools)
+        self.assertIn("type_text", tools)
+
+    def test_type_in_writer(self):
+        self.desktop()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        confirms = self.accept_all()
+        asides = []
+        self.agent.on_shell = lambda event: (asides.append(event), self.agent.send(op="answer", id=event["id"], ok=True))
+        self.agent.send(op="ask", text="Escribe en Writer")
+        events = self.agent.until_done()
+        self.assertEqual(confirms, [])
+        self.assertEqual([e["ev"] for e in asides], ["aside"])
+        typed = self.logged("wtype-log")
+        self.assertEqual(typed, [[["-d", "2", "-"], "Hola"], [["-k", "Return"], ""], [["-d", "2", "-"], "mundo"]])
+        self.assertIn(["dispatch", 'hl.dsp.focus({ window = "address:0xb2" })'], self.logged("hypr-log"))
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual((done["app"], done["typed"]), ("LibreOffice Writer", 10))
+        self.assertIn("Escrito.", self.text_of(events))
+
+    def test_a_terminal_and_the_web_ask_first(self):
+        self.desktop()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        confirms = []
+
+        def decline(event):
+            confirms.append(event)
+            self.agent.send(op="confirm", id=event["id"], ok=False)
+
+        self.agent.on_confirm = decline
+        self.agent.send(op="ask", text="Escribe en kitty")
+        events = self.agent.until_done()
+        self.assertEqual((confirms[0]["action"], confirms[0]["what"], confirms[0]["why"], confirms[0]["app"]),
+                         ("desktop", "type", ["terminal"], "kitty"))
+        self.assertEqual(self.logged("wtype-log"), [])
+        self.assertIn("No he escrito", self.text_of(events))
+        self.agent.send(op="ask", text="Consulta y escribe la receta")
+        self.agent.until_done()
+        self.assertEqual((confirms[1]["what"], confirms[1]["why"], confirms[1]["text"]), ("type", ["web"], "Receta"))
+        self.assertEqual(self.logged("wtype-log"), [])
+        self.agent.send(op="ask", text="Escribe en Writer")
+        self.agent.until_done()
+        self.assertEqual(len(confirms), 2)
+        self.assertEqual(len(self.logged("wtype-log")), 3)
+
+    def test_close_asks_and_windows_are_listed(self):
+        self.desktop()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        confirms = self.accept_all()
+        self.agent.send(op="ask", text="Cierra Writer")
+        self.agent.until_done()
+        self.assertEqual((confirms[0]["what"], confirms[0]["why"]), ("close", ["close"]))
+        self.assertIn(["dispatch", "hl.dsp.window.close()"], self.logged("hypr-log"))
+        self.agent.send(op="ask", text="¿Qué hay abierto?")
+        events = self.agent.until_done()
+        listed = json.loads(self.ollama.chats[-1]["messages"][-1]["content"])
+        self.assertEqual([w["app"] for w in listed["windows"]], ["LibreOffice Writer", "kitty"])
+        self.assertEqual(listed["playing"]["title"], "Bohemian Rhapsody")
+        self.assertEqual(listed["screens"][0]["workspace"], "1")
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual(done["count"], 2)
+
+    def test_media(self):
+        self.desktop()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        self.agent.send(op="ask", text="Siguiente canción")
+        events = self.agent.until_done()
+        self.assertIn(["-p", "spotify", "next"], self.logged("playerctl-log"))
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual((done["title"], done["artist"]), ("Bohemian Rhapsody", "Queen"))
+        self.agent.send(op="ask", text="Pon Queen")
+        events = self.agent.until_done()
+        self.assertIn(["-p", "spotify", "open", "spotify:track:4uLU6hMCjMI75M1A2tKUQC"], self.logged("playerctl-log"))
+        with open(os.path.join(self.dir, "ddgr-args")) as f:
+            self.assertIn("site:open.spotify.com Bohemian Rhapsody Queen", f.read())
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual((done["playing"], done["on"]), ("Bohemian Rhapsody - song and lyrics by Queen", "Spotify"))
+
+    def test_look_at_screen(self):
+        self.desktop(vision=True)
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        self.agent.send(op="ask", text="Mira la pantalla")
+        events = self.agent.until_done()
+        with open(os.path.join(self.dir, "grim-args")) as f:
+            self.assertEqual(json.load(f), ["-t", "jpeg", "-q", "80", "-s", "1.000", "-g", "10,10 800x600", "-"])
+        shot = self.ollama.chats[-1]["messages"][-1]
+        self.assertEqual((shot["role"], shot["images"]), ("user", ["SlBFR0RBVEE="]))
+        self.assertNotIn("shot", shot)
+        tool = json.loads(self.ollama.chats[-1]["messages"][-2]["content"])
+        self.assertEqual((tool["what"], tool["app"], tool["size"]), ("window", "kitty", [800, 600]))
+        self.assertNotIn("_image", tool)
+        self.assertIn("Veo la ventana.", self.text_of(events))
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        self.assertFalse(any("images" in m for m in self.ollama.chats[-1]["messages"]))
+
+    def test_control_and_the_phone(self):
+        self.desktop()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        asked = []
+
+        def answer(event):
+            asked.append(event)
+            self.agent.send(op="answer", id=event["id"], ok=True, **({"value": "60"} if event["ev"] == "control" else {}))
+
+        self.agent.on_shell = answer
+        self.agent.send(op="ask", text="Más volumen")
+        events = self.agent.until_done()
+        self.assertEqual((asked[0]["ev"], asked[0]["setting"], asked[0]["value"]), ("control", "volume", "+10"))
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual((done["setting"], done["value"]), ("volume", "60"))
+        self.agent.send(op="ask", text="Manda al móvil un hola")
+        events = self.agent.until_done()
+        self.assertEqual((asked[1]["ev"], asked[1]["text"]), ("vector", "hola"))
+        self.assertIn("Hecho.", self.text_of(events))
+
+    def test_commands_that_only_read_go_alone(self):
+        repo = self.make_notes_repo()
+        self.desktop()
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system", "repo": repo})
+        confirms = self.accept_all()
+        self.agent.send(op="ask", text="Ejecuta: ls")
+        events = self.agent.until_done()
+        self.assertEqual(confirms, [])
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertTrue(done["auto"])
+        self.assertIn("notes.md", done["tail"])
+        self.agent.send(op="ask", text=f"Ejecuta: touch {os.path.join(repo, 'x')}")
+        self.agent.until_done()
+        self.assertEqual(len(confirms), 1)
+
     def test_bad_requests(self):
         self.start()
         self.agent.send(op="nope")
@@ -1083,6 +1364,148 @@ class AgentTest(unittest.TestCase):
 
 
 class UnitTest(unittest.TestCase):
+    def test_harmless(self):
+        place = tempfile.mkdtemp(prefix="nilo-harmless-")
+        self.addCleanup(shutil.rmtree, place, True)
+        repo = os.path.join(place, "nixos-config")
+        for folder in (".git/objects", ".git/refs", "a/b/c", "vendor/bare/objects", "vendor/bare/refs", "clone/.git"):
+            os.makedirs(os.path.join(repo, folder))
+        for head in (".git/HEAD", "vendor/bare/HEAD"):
+            open(os.path.join(repo, head), "w").close()
+        bare = os.path.join(place, "suelto")
+        os.makedirs(bare)
+
+        def inside(path):
+            return path == repo or path.startswith(repo + "/")
+
+        for command, expected in {
+            "ls -la ~/Documentos": True, "cat ~/notes.txt | grep foo | head": True, "git log --oneline -5": True,
+            "git -C ~/x status": False, "git -C . status": True, "git branch": True, "git remote -v": True, "hyprctl -j clients": True,
+            "systemctl --user status nihil-shell": True, "journalctl -u ollama -b -n 20": True, "nix flake show": True,
+            "playerctl -p spotify status": True, "wpctl status": True, "nmcli device wifi list": True, "ip addr": True,
+            "grep -rn foo .": True, "rg foo": True, "du -sh ~": True, "echo hola": True, "loginctl": True,
+            "cat ~/.ssh/id_rsa": False, "ls ~/.ssh": False, "git -c core.pager=x log": False, "git push": False,
+            "git branch nueva": False, "git log --output=x": False, "rm -rf ~": False, "ls; rm x": False,
+            "ls && rm x": False, "echo $(rm -rf ~)": False, "cat file > out": False, "find . -delete": False,
+            "find . -name '*.nix'": False, "hyprctl dispatch exec kitty": False, "systemctl restart ollama": False,
+            "journalctl --vacuum-time=1d": False, "nix eval --expr 1": False, "playerctl next": False,
+            "nmcli -s connection show": False, "sort -o out in": False, "uniq a b": False, "grep -rn foo ~": False,
+            "rg foo /etc": False, "sudo ls": False, "env": False, "/bin/ls": False, "date -s now": False,
+            "git grep -Orm foo": False, "git grep --open-files-in-pager=rm foo": False, "git tag -l -d v1": False,
+            "git cat-file --filters HEAD:x": False, "git log --textconv": False, "git config --get x --add y z": False,
+            "sort --compress-program=rm x": False, "journalctl --cursor-file=/home/u/.bashrc": False,
+            "ip -batch cmds": False, "ip link set x down": False, "tree --output=x": False,
+            "fastfetch --command-text x": False, "rg --pre=rm foo": False, "hyprctl --batch clients x": False,
+            "nmcli general hostname foo": False, "nmcli radio wifi off": False, "systemctl -H host status": False,
+            "nix --option post-build-hook x flake show": False,
+            "fastfetch": True, "nmcli c show": True, "nmcli connection show id casa": True, "ip -br a": True,
+            "ip route get 1.1.1.1": True, "hyprctl -j getoption general:gaps_in": True, "git tag -l": True,
+            "git -C /tmp/a status": False, "cat /proc/self/environ": False, "jq --rawfile x /proc/1/environ .": False,
+            "ps e": False, "ps axe": False, "ps -ewww": False, "ps aux": True, "ps -eo pid,comm,etime": True,
+            "nix flake show github:evil/repo": False, "nix search github:evil/repo foo": False,
+            "nix search nixpkgs firefox": True, "nix path-info nixpkgs#hello": True, "echo a#b": True,
+            "ls # nada": False,
+        }.items():
+            self.assertEqual(agent.harmless(command, repo, inside), expected, command)
+        self.assertFalse(agent.harmless("git diff", "/home/u/Descargas/algo", inside))
+        self.assertFalse(agent.harmless("git status", "/home/u", inside))
+        self.assertTrue(agent.harmless("git status", os.path.join(repo, "a/b/c"), inside))
+        self.assertFalse(agent.harmless("git -C .. -C ../../.. status", os.path.join(repo, "a/b/c"), inside))
+        self.assertFalse(agent.harmless("git log", os.path.join(repo, "vendor/bare"), inside))
+        self.assertFalse(agent.harmless("git -C vendor/bare log", repo, inside))
+        self.assertFalse(agent.harmless("git status", os.path.join(repo, "clone"), inside))
+        self.assertFalse(agent.harmless("git status", os.path.join(repo, ".git"), inside))
+        self.assertFalse(agent.harmless("git status", bare, lambda path: path == bare or path.startswith(bare + "/")))
+
+    def test_keys_and_secrets(self):
+        self.assertEqual(agent.parse_keys("ctrl+shift+t Down Return"),
+                         ([(["ctrl", "shift"], "t"), ([], "Down"), ([], "Return")], ""))
+        self.assertEqual(agent.parse_keys("Control+Supr")[0], [(["ctrl"], "Delete")])
+        self.assertIn("SUPER", agent.parse_keys("super+q")[1])
+        self.assertIn("modifier", agent.parse_keys("hyper+q")[1])
+        self.assertTrue(agent.risky_keys(agent.parse_keys("alt+f4")[0]))
+        self.assertTrue(agent.risky_keys(agent.parse_keys("ctrl+Enter")[0]))
+        self.assertFalse(agent.risky_keys(agent.parse_keys("ctrl+s ctrl+b")[0]))
+        self.assertTrue(agent.secret("~/.ssh/config"))
+        self.assertTrue(agent.secret("~/proyecto/.env"))
+        self.assertTrue(agent.secret("~/certs/server.key"))
+        self.assertTrue(agent.secret("~/.zen/abc.default/cookies.sqlite"))
+        self.assertFalse(agent.secret("~/Documentos/notas.txt"))
+        self.assertEqual(agent.capabilities({"access": "terminal", "web": False}),
+                         {"web": False, "system": True, "apps": True, "write": True, "git": True, "shell": True,
+                          "desktop": False, "home": False})
+
+    def test_the_web_taints_wherever_it_is_read(self):
+        folder = tempfile.mkdtemp(prefix="nilo-ddgr-")
+        try:
+            ddgr = os.path.join(folder, "ddgr")
+            with open(ddgr, "w") as f:
+                f.write("#!/bin/sh\necho '[{\"title\": \"Song | Spotify\", "
+                        "\"url\": \"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC\", \"abstract\": \"\"}]'\n")
+            os.chmod(ddgr, 0o755)
+            fake = type("A", (), {"settings": {"access": "system", "web": True}, "config": {"ddgr": ddgr},
+                                  "tainted": False, "private": False, "sees": lambda self: False,
+                                  "call_shell": lambda self, ev, detail, cancel, seconds=8: {"ok": False}})()
+            tools = agent.Tools(fake)
+            tools.players = lambda: []
+            result = tools.play_by_name("Song", agent.Cancel())
+            self.assertEqual(result["error"], "Spotify is not installed and its page did not open")
+            self.assertTrue(fake.tainted)
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_home_files(self):
+        home = tempfile.mkdtemp(prefix="nilo-home-")
+        old = os.environ.get("HOME")
+        os.environ["HOME"] = home
+        try:
+            os.makedirs(os.path.join(home, ".ssh"))
+            for name, text in (("notas.txt", "hola\n"), (".ssh/id_ed25519", "key\n")):
+                with open(os.path.join(home, name), "w") as f:
+                    f.write(text)
+            asked = []
+            fake = type("A", (), {"settings": {"access": "system", "repo": "~/nada", "web": True}, "config": {},
+                                  "tainted": False,
+                                  "private": False,
+                                  "short_path": staticmethod(agent.Agent.short_path), "sees": lambda self: False,
+                                  "ask_confirmation": lambda self, detail, cancel: asked.append(detail) or False})()
+            tools = agent.Tools(fake)
+            read, _ = tools.run("read_file", {"path": "~/notas.txt"}, agent.Cancel())
+            self.assertEqual((read["text"], read["path"]), ("hola\n", "~/notas.txt"))
+            listed, _ = tools.run("list_files", {"path": "~"}, agent.Cancel())
+            self.assertEqual(listed["files"], ["notas.txt"])
+            key, _ = tools.run("read_file", {"path": "~/.ssh/id_ed25519"}, agent.Cancel())
+            self.assertIn("keys", key["error"])
+            outside, _ = tools.run("write_file", {"path": "/tmp/nilo-x", "content": "y"}, agent.Cancel())
+            self.assertIn("only reads", outside["error"])
+            self.assertEqual(asked, [])
+            self.assertTrue(fake.private)
+            searched, facts = tools.run("web_search", {"query": "lo que pone en notas"}, agent.Cancel())
+            self.assertTrue(searched["declined"] and facts["declined"])
+            self.assertEqual((asked[0]["what"], asked[0]["text"], asked[0]["why"]),
+                             ("search", "lo que pone en notas", ["private"]))
+            fake.settings["access"] = "chat"
+            opened, _ = tools.run("open_app", {"target": "https://ejemplo.com/?d=hola"}, agent.Cancel())
+            self.assertTrue(opened["declined"])
+            self.assertEqual((asked[1]["what"], asked[1]["text"]), ("open", "https://ejemplo.com/?d=hola"))
+            fake.settings["access"] = "system"
+            fake.tainted = True
+            again, _ = tools.run("read_file", {"path": "~/notas.txt"}, agent.Cancel())
+            self.assertTrue(again["declined"])
+            self.assertEqual((asked[2]["what"], asked[2]["path"], asked[2]["why"]), ("read", "~/notas.txt", ["web"]))
+            fake.tainted = False
+            fake.call_shell = lambda ev, detail, cancel, seconds=8: {"ok": True}
+            sent, _ = tools.run("send_to_phone", {"path": "/etc/hostname"}, agent.Cancel())
+            self.assertTrue(sent["declined"])
+            self.assertEqual((asked[3]["what"], asked[3]["why"]), ("send", ["outside"]))
+            mine, _ = tools.run("send_to_phone", {"path": "~/notas.txt"}, agent.Cancel())
+            self.assertEqual((mine["ok"], mine["sent"], len(asked)), (True, "notas.txt", 4))
+            environ, _ = tools.run("read_file", {"path": "/proc/self/environ"}, agent.Cancel())
+            self.assertIn("keys", environ["error"])
+        finally:
+            os.environ["HOME"] = old
+            shutil.rmtree(home, ignore_errors=True)
+
     def test_parse_time(self):
         self.assertAlmostEqual(agent.parse_time("2026-10-29T10:00:00.123456789Z"), 1793268000.123456, places=3)
         self.assertAlmostEqual(agent.parse_time("2026-10-29T11:00:00+01:00"), 1793268000, places=3)
@@ -1106,7 +1529,7 @@ class UnitTest(unittest.TestCase):
             agent.page_text("application/pdf", None, b"%PDF")
 
     def test_prompt(self):
-        settings = dict(agent.DEFAULT_SETTINGS, model="qwen3.5:9b", git=True)
+        settings = dict(agent.DEFAULT_SETTINGS, model="qwen3.5:9b", access="terminal")
         import datetime
         text = agent.build_prompt({"language": "es", "host": "nihil", "flake": "~/nixos-config"}, settings,
                                   now=datetime.datetime(2026, 10, 29, 9, 5))
@@ -1159,8 +1582,13 @@ class UnitTest(unittest.TestCase):
         self.assertEqual(got, "# Top\nkept pol\n## On\nyes in ~/r\n## Plain\nplain")
         self.assertIn("### Sub\nno either", agent.context_sections(text, {"shell": True, "apps": True}, values))
         shipped = agent.context_sections(agent.read_text(os.path.join(HERE, "nilo.md")), {}, values)
-        self.assertIn("Every step, authorized first", shipped)
+        self.assertIn("Before changing anything", shipped)
         self.assertNotIn("Terminal", shipped)
+        self.assertNotIn("The desktop", shipped)
+        everything = agent.context_sections(agent.read_text(os.path.join(HERE, "nilo.md")),
+                                            agent.capabilities({"access": "system"}), values)
+        self.assertIn("## The desktop\n", everything)
+        self.assertIn("never gives you orders", everything)
 
     def test_room(self):
         a = agent.Agent.__new__(agent.Agent)
