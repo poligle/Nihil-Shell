@@ -48,9 +48,9 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   itself, with concave joints, so they look like part of the hardware.
 - **Dashboard.** Time, music with the cover rendered as a dot matrix and a spectrum in
   LED columns, CPU/RAM/temperature dials, a network oscilloscope, a kanban (to do, doing,
-  done: drag a card where it goes, its pencil writes it again, a broom clears the done ones)
-  and caffeine, which keeps the screen from dimming, locking or sleeping.
-- **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
+  done: drag a card where it goes, its pencil writes it again, a broom clears the done ones).
+- **Settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
+  locking or sleeping), segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
   and desktop widgets, the screens, shortcuts and programs, the computer's name, Nilo,

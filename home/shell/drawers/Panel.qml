@@ -254,6 +254,14 @@ Item {
 
                 Tile {
                     Layout.alignment: Qt.AlignHCenter
+                    glyph: Icons.coffee
+                    label: Lang.caffeine
+                    active: Caffeine.on
+                    onToggled: Caffeine.toggle()
+                }
+
+                Tile {
+                    Layout.alignment: Qt.AlignHCenter
                     glyph: Icons.shot
                     label: Lang.tileShot
                     onToggled: { Drawers.close(); Recorder.shot(); }
