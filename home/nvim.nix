@@ -4,10 +4,6 @@
 let
     t = osConfig.nihil.tokens;
 
-    # From its GitHub mirror: nixpkgs fetches it from GitLab and, marking it
-    # unfree, never caches it, so every install pulled it from gitlab.com and
-    # one failed when GitLab did not answer. The mirror's tarball leaves out
-    # its test submodules, hence its own hash.
     rainbowDelimiters = pkgs.vimPlugins.rainbow-delimiters-nvim.overrideAttrs
     {
         src = pkgs.fetchFromGitHub
@@ -244,8 +240,6 @@ in
                 options = { theme = "auto", globalstatus = true },
             })
 
-            -- NIHIL: base08 is the interrupt red, so identifiers fall back to
-            -- the foreground and only errors and deletions stay red.
             local function nihilHighlights()
                 local foreground = "#${t.base16.base05}"
                 for _, group in ipairs({ "Identifier", "@variable", "@variable.member", "@variable.parameter", "@property", "@field", "@parameter", "@tag", "@tag.attribute" }) do

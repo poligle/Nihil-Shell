@@ -13,7 +13,6 @@ let
     };
 in
 {
-    # Preferences in the launcher (home/shell/settings).
     xdg.desktopEntries.nihil-settings =
     {
         name = osConfig.nihil.strings.cfgTitle;
@@ -23,9 +22,6 @@ in
         terminal = false;
         categories = [ "Settings" ];
     };
-
-    # Hide unwanted launcher entries by overriding them in the user's
-    # applications dir (~/.local/share/applications), which takes precedence.
 
     xdg.dataFile =
     {
@@ -46,12 +42,10 @@ in
         "applications/thunar-settings.desktop"                  = hidden "Thunar Preferences";
         "applications/thunar-volman-settings.desktop"           = hidden "Removable Drives and Media";
 
-        # Qt theming tools (pulled in by Stylix)
         "applications/kvantummanager.desktop"                   = hidden "Kvantum Manager";
         "applications/qt5ct.desktop"                            = hidden "Qt5 Settings";
         "applications/qt6ct.desktop"                            = hidden "Qt6 Settings";
 
-        # LibreOffice and KiCad keep one entry each, on a machine that adds them
         "applications/startcenter.desktop"                      = hidden "LibreOffice";
         "applications/draw.desktop"                             = hidden "LibreOffice Draw";
         "applications/impress.desktop"                          = hidden "LibreOffice Impress";

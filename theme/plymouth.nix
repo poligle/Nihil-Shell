@@ -1,31 +1,14 @@
 # plymouth.nix by poligle
-#
-# NIHIL boot splash: the NixOS snowflake as an LED matrix that switches on
-# from the centre, then a band of light sweeps it while the system boots,
-# in the middle of every screen. Frames are rendered at build time
-# (theme/plymouth.py). The prompt, question and message handlers are the
-# ones from Stylix's Plymouth theme.
-#
-# With the boot sound (`waitForSound`, modules/boot-sound.nix), booting, the
-# LEDs wait unlit until it plays, and switch on with it: the sound says so
-# with `plymouth update --status=nihil-open`, and so does plymouth-quit if
-# it never came (modules/plymouth.nix). After 10 s they come on anyway.
 
 { pkgs, waitForSound ? false }:
 let
   python = pkgs.python3.withPackages (ps: [ ps.pillow ]);
 
-  # Plymouth colours are 0-1 floats.
   ink = "0.949, 0.949, 0.949";
   intro = 36;
   loop = 60;
 
   script = pkgs.writeText "nihil.script" ''
-    ### SCREENS ###
-
-    # (0, 0) is the middle of every screen. Plymouth lays the screens over
-    # the largest one but Window.GetWidth() answers with the smallest, and a
-    # screen can come up after the script has started: every frame sets it.
     baseline_y = 0;
     message_y = 0;
 
@@ -51,12 +34,8 @@ let
     center_x = 0;
     center_y = 0;
 
-    ### BACKGROUND ###
-
     Window.SetBackgroundTopColor(0, 0, 0);
     Window.SetBackgroundBottomColor(0, 0, 0);
-
-    ### LOGO ###
 
     logo.static = Image("logo.png");
     for (i = 0; i < ${toString (intro + loop)}; i++) {
@@ -73,8 +52,6 @@ let
     logo.animated = 1;
     logo.tick = 0;
 
-    # Unlit (frame 0) until it opens: booting with the boot sound. GetMode
-    # says "boot" or "shutdown"; anything else (an older Plymouth) opens.
     logo.opened = 1;
     if (${if waitForSound then "1" else "0"}) {
       if (Plymouth.GetMode() == "boot") {
@@ -122,7 +99,6 @@ let
       }
     }
 
-    # Still: lit if it opened, unlit if not yet (a disk's password first).
     fun stop_animation () {
       logo.animated = 0;
       if (logo.opened) {
@@ -137,8 +113,6 @@ let
     }
 
     Plymouth.SetRefreshFunction(refresh_callback);
-
-    ### PASSWORD ###
 
     prompt = null;
     bullets = null;
@@ -171,8 +145,6 @@ let
 
     Plymouth.SetDisplayPasswordFunction(password_callback);
 
-    ### QUESTION ###
-
     question = null;
     answer = null;
 
@@ -201,8 +173,6 @@ let
 
     Plymouth.SetDisplayQuestionFunction(question_callback);
 
-    ### MESSAGE ###
-
     message = null;
 
     fun message_callback (text) {
@@ -217,8 +187,6 @@ let
 
     Plymouth.SetMessageFunction(message_callback);
 
-    ### NORMAL ###
-
     fun normal_callback () {
       prompt = null;
       bullets = null;
@@ -232,8 +200,6 @@ let
     }
 
     Plymouth.SetDisplayNormalFunction(normal_callback);
-
-    ### QUIT ###
 
     fun quit_callback () {
       prompt = null;

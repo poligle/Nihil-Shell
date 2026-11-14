@@ -4,9 +4,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Where git and the files switch work: the repositories the agent finds
-// under ~ (the most recently used first), the one in use lit. Another path
-// can be typed under the list.
 Column {
     id: root
 

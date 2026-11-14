@@ -3,8 +3,6 @@
 { osConfig, pkgs, ... }:
 let
 	brightnessctl = "${pkgs.brightnessctl}/bin/brightnessctl";
-	# The running Hyprland's own hyprctl, as everywhere else (its IPC changes
-	# between releases).
 	dpms = state: "${osConfig.programs.hyprland.package}/bin/hyprctl dispatch 'hl.dsp.dpms({ action = \"${state}\" })'";
 in
 {

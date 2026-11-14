@@ -6,15 +6,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// The dashboard's kanban (services/Tasks.qml): to do, doing, done. The field
-// adds to "to do"; a click on a card moves it on, its arrows move it either
-// way, the pencil writes it again where it is and the cross deletes it. A card
-// dragged goes where it is dropped, in its column or another: a line shows where.
-//
-// A card is as tall as its text: a long task wraps instead of ending in
-// "…". The board is as tall as its fullest column, up to `maxList` (the
-// wheel scrolls the rest); with no tasks it is just the field and one
-// line. The dashboard and its drawer follow `implicitHeight` (Frame.qml).
 Item {
     id: root
 
@@ -24,8 +15,6 @@ Item {
 
     readonly property real maxList: 210
     readonly property bool empty: Tasks.cards.length === 0
-    // The cards of the fullest column, end to end (each column says how
-    // tall its own are).
     readonly property real tallest: {
         let most = 30;
         for (let i = 0; i < columnsRow.children.length; i++) {
@@ -36,19 +25,15 @@ Item {
         return most;
     }
 
-    implicitHeight: header.implicitHeight + 12 + (empty ? hint.implicitHeight
+    implicitHeight: header.implicitHeight + 12 + (empty ? 0
         : laneProbe.implicitHeight + 10 + Math.min(maxList, tallest) + (tallest > maxList + 1 ? 14 : 0))
 
-    // A card being dragged: its id and text, the column under the pointer and
-    // where in it the card would end up (counted without it), the line that
-    // shows that place, and where the pointer is, in this item.
     property string dragId: ""
     property string dragText: ""
     property int dropColumn: -1
     property int dropIndex: -1
     property rect dropLine: Qt.rect(0, 0, 0, 0)
     property point dragAt: Qt.point(0, 0)
-    // The card whose text the pencil is writing again, and its field.
     property string editingId: ""
     property Item editor: null
 
@@ -59,14 +44,11 @@ Item {
         stopEditing();
     }
 
-    // Ends the pencil keeping what was written: a click elsewhere, the drawer closing.
     function stopEditing(): void {
         if (editor) editor.finish();
         editingId = "";
     }
 
-    // Ends a drag where it is aimed, if anywhere. Clears the drag first: the
-    // move destroys the card whose handler calls this.
     function drop(): void {
         const id = dragId, to = dropColumn, at = dropIndex;
         dragId = "";
@@ -75,8 +57,6 @@ Item {
         if (id !== "" && to >= 0) Tasks.place(id, to, at >= 0 ? at : Tasks.inColumn(to).length);
     }
 
-    // Where in the column under the pointer the dragged card would end up, and
-    // the line between two cards that shows it.
     function aim(y: real): void {
         const lane = laneOf(dropColumn);
         const slot = lane ? lane.slot(y) : null;
@@ -102,7 +82,6 @@ Item {
         return -1;
     }
 
-    // The height of a column's title, for implicitHeight.
     Label {
         id: laneProbe
         visible: false
@@ -113,7 +92,6 @@ Item {
         anchors.fill: parent
         spacing: 12
 
-        // Title, count and the field for a new task.
         RowLayout {
             id: header
             Layout.fillWidth: true
@@ -156,19 +134,6 @@ Item {
             }
         }
 
-        // With no tasks at all, how it works.
-        Txt {
-            id: hint
-            Layout.fillWidth: true
-            visible: root.empty
-            text: Lang.tasksEmpty
-            color: Tokens.muted
-            wrapMode: Text.Wrap
-            elide: Text.ElideNone
-            font.pixelSize: 12
-            lineHeight: 1.2
-        }
-
         RowLayout {
             id: columnsRow
             Layout.fillWidth: true
@@ -188,9 +153,6 @@ Item {
                     readonly property bool target: root.dragId !== "" && root.dropColumn === index
                     readonly property real needed: list.contentHeight
 
-                    // Where a card dropped at [y] (in the board) ends up among this
-                    // column's cards, counted without the one dragged, and the line
-                    // for it, in the board: between two cards, or at an end.
                     function slot(y: real): var {
                         const at = list.contentItem.mapFromItem(root, 0, y).y;
                         let index = 0, line = 0, seen = false;
@@ -215,9 +177,6 @@ Item {
                         return { index: index, x: top.x, y: Math.min(Math.max(y2, top.y), top.y + list.height) - 1, width: list.width };
                     }
 
-                    // What the list shows: replaced only when this column changes,
-                    // so the others keep their scroll; a card added or moved here
-                    // scrolls into view.
                     property var shown: []
                     Component.onCompleted: shown = cards
                     onCardsChanged: {
@@ -234,7 +193,6 @@ Item {
                     Layout.fillHeight: true
                     Layout.preferredWidth: 100
 
-                    // Where a dragged card would land.
                     Surface {
                         anchors.fill: parent
                         anchors.margins: -6
@@ -265,7 +223,6 @@ Item {
 
                         Item { Layout.fillWidth: true }
 
-                        // The done ones away, with the notifications' broom.
                         CircleButton {
                             visible: lane.column === 2 && lane.cards.length > 0
                             glyph: Icons.broom
@@ -275,7 +232,6 @@ Item {
                         }
                     }
 
-                    // As many cards as fit; the wheel scrolls the rest.
                     ListView {
                         id: list
                         anchors.top: laneHead.bottom
@@ -305,7 +261,6 @@ Item {
 
                             HoverHandler { id: hover }
 
-                            // A click moves it on; done ones go back to "to do".
                             MouseArea {
                                 anchors.fill: parent
                                 enabled: !card.editing
@@ -334,7 +289,6 @@ Item {
                                 }
                             }
 
-                            // With the first line of the text, however many it has.
                             Rectangle {
                                 id: led
                                 anchors.left: parent.left
@@ -372,8 +326,6 @@ Item {
                                 font: label.font
                             }
 
-                            // The pencil: the text written again where it is. Enter keeps
-                            // it, and so does a click anywhere else; Escape leaves it as it was.
                             QQC.TextArea {
                                 id: editor
                                 visible: card.editing
@@ -402,7 +354,6 @@ Item {
                                     cursorPosition = length;
                                 }
 
-                                // Clears the pencil first: the edit makes the card again.
                                 function finish(): void {
                                     if (!card.editing) return;
                                     const id = card.modelData.id, typed = text;
@@ -417,8 +368,6 @@ Item {
                                 onActiveFocusChanged: if (!activeFocus) finish()
                             }
 
-                            // Back, on, pencil, delete: on hover, over the end of the first
-                            // line (moving the text aside would wrap it again under the pointer).
                             Rectangle {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 4
@@ -470,7 +419,6 @@ Item {
                         }
                     }
 
-                    // More cards below than fit: three dots under the column.
                     Row {
                         anchors.top: list.bottom
                         anchors.topMargin: 7
@@ -494,8 +442,6 @@ Item {
         }
     }
 
-    // While a card is written again, a click anywhere else on the board keeps it and ends
-    // there; one on the card's own text goes through, to the text.
     MouseArea {
         id: outside
         anchors.fill: parent
@@ -511,7 +457,6 @@ Item {
         }
     }
 
-    // Where the dragged card would land: a line between two, in its column or another.
     Rectangle {
         visible: root.dragId !== "" && root.dropIndex >= 0
         x: root.dropLine.x
@@ -523,7 +468,6 @@ Item {
         z: 9
     }
 
-    // The card under the pointer while it is dragged.
     Surface {
         visible: root.dragId !== ""
         x: root.dragAt.x - width / 2

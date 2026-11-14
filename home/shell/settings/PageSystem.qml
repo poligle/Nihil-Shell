@@ -5,7 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// The computer's name, and what runs on it.
 Flickable {
     id: page
 
@@ -38,8 +37,6 @@ Flickable {
             }
         }
 
-        // On or off needs a rebuild; what it may do and which model, a
-        // key away: its own settings, in the launcher (nilo/Settings.qml).
         Setting {
             title: "Nilo"
 
@@ -75,8 +72,6 @@ Flickable {
             }
         }
 
-        // How many copies the clipboard history keeps (home/clipboard.nix);
-        // forgetting them is at once.
         Setting {
             title: Lang.cfgClipboard
 

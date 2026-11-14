@@ -5,8 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// A network, in the welcome when there is none: the Wi-Fi of quick settings
-// (services/Network.qml).
 Flickable {
     id: page
 
@@ -28,7 +26,7 @@ Flickable {
         Heading {
             Layout.bottomMargin: 10
             title: Lang.welNetTitle
-            sub: Network.connected ? Lang.welNetDone.arg(Network.ssid || Network.ethernet) : Lang.welNetBody
+            sub: Network.connected ? Lang.welNetDone.arg(Network.ssid || Network.ethernet) : Machine.welcoming ? Lang.welNetBody : ""
         }
 
         Repeater {

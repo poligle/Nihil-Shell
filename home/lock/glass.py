@@ -1,27 +1,10 @@
 # glass.py by poligle (home/hyprlock.nix, nihil-lock-glass)
-#
-# The lock screen's password field in smoked glass. hyprlock draws flat colours,
-# so the glass goes into the background instead: the wallpaper with the field's
-# pill of glass already in it, where the transparent field will sit. The pill is
-# the shell's glass for a field (shaders/surface.frag, components/Surface.qml):
-# the wallpaper through 38 % of smoke, frosted and a little uneven, a bevel that
-# bends it outwards, the light of bright dots spread through the frost and
-# gathered by the edge near them, and a glint on the side facing the top left.
-# The shader's mipmap reads are Gaussian blurs here, of about the same width.
-#
-#   glass.py WALLPAPER OUT --logical W H --field WIDTH HEIGHT Y
-#
-# WALLPAPER is the output's render at its native size; W H the output's logical
-# size; the field's size and its offset from the centre are hyprlock's (y up),
-# in logical px. hyprlock places the field by percentages of the output, so the
-# two meet whatever its units.
 
 import argparse
 
 import numpy as np
 from PIL import Image, ImageFilter
 
-# As components/Surface.qml has them for a key or a field (logical px).
 TRANSMISSION = 0.38
 RIM = 0.32
 FROST = 6.0
@@ -37,7 +20,6 @@ def round_box(px, py, hx, hy, r):
 
 
 def sample(img, x, y):
-    """Bilinear, clamped to the image."""
     h, w = img.shape[:2]
     x = np.clip(x, 0, w - 1.001)
     y = np.clip(y, 0, h - 1.001)
@@ -51,7 +33,6 @@ def sample(img, x, y):
 
 
 def blur(img, sigma):
-    """A Gaussian blur of `sigma` px, as the shader's mipmap reads give one."""
     if sigma < 0.3:
         return img
     pic = Image.fromarray((np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8))
@@ -59,7 +40,6 @@ def blur(img, sigma):
 
 
 def hash2(x, y):
-    """The shader's hash (Dave Hoskins'), for the same grain."""
     p3 = np.stack([x, y, x], -1) * 0.1031
     p3 = p3 - np.floor(p3)
     p3 = p3 + (p3 * (p3[..., [1, 2, 0]] + 33.33)).sum(-1, keepdims=True)
@@ -111,8 +91,6 @@ def main():
     yy, xx = np.mgrid[y0:y1, x0:x1].astype(np.float32) + 0.5
     px, py = xx - cx, yy - cy
 
-    # Only the wallpaper around the field is read (and blurred): as far as the widest blur
-    # and the edge's reach go.
     margin = int(np.ceil((0.42 * 28 * 3 + 40) * scale))
     ox, oy = max(0, x0 - margin), max(0, y0 - margin)
     area = img[oy:min(height, y1 + margin), ox:min(width, x1 + margin)]
@@ -126,7 +104,6 @@ def main():
     nx, ny = nx / length, ny / length
     depth = np.maximum(-d, 0)
 
-    # The glass's own place, logical px from its corner (the grain and the unevenness).
     lx, ly = (px + hx) / scale, (py + hy) / scale
     k = np.clip(1 - depth / bevel, 0, 1) ** 2
     qx, qy = lx / 34.0, ly / 34.0
@@ -136,8 +113,6 @@ def main():
     ax = xx - 0.5 + bx + wx * WOBBLE * scale * (1 - k)
     ay = yy - 0.5 + by + wy * WOBBLE * scale * (1 - k)
 
-    # Clear (a touch soft) on the bevel, its colours a little apart; frosted beyond, more in
-    # some places than in others, with the frost's grain.
     soft = blur(area, 0.5 * scale)
     clear = np.stack([sample(soft, ax - bx * 0.14, ay - by * 0.14)[..., 0],
                       sample(soft, ax, ay)[..., 1],
@@ -149,11 +124,9 @@ def main():
     mixk = (smoothstep(0.08, 0.7, k) * clarity)[..., None]
     behind = frosted + (clear - frosted) * mixk
 
-    # The light the frost spreads wide.
     wide = sample(blur(area, 0.42 * FROST * 2.2 * scale + 0.6 * FROST * scale), ax, ay)
     col = behind * TRANSMISSION + wide * SCATTER * (0.35 + TRANSMISSION)
 
-    # The edge gathers the light of bright points near it.
     edge = np.exp(-depth / (2.5 * scale))[..., None]
     reach = 3 * scale + depth
     pastx, pasty = xx - 0.5 + nx * reach, yy - 0.5 + ny * reach

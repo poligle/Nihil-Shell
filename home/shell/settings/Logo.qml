@@ -1,8 +1,6 @@
 import QtQuick
 import qs.theme
 
-// The NIHIL wordmark in the brand's own 5x7 dot face (tools/brand.py): lit
-// LEDs for the letters, faint ones around them. `size` is its height.
 Item {
     id: root
 
@@ -14,7 +12,6 @@ Item {
         H: ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
         L: ["#....", "#....", "#....", "#....", "#....", "#....", "#####"]
     })
-    // One column of 7 LEDs at a time, a dark one between letters.
     readonly property var columns: {
         const columns = [];
         const word = "NIHIL";

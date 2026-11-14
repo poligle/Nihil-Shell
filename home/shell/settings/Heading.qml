@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import qs.theme
 import qs.components
 
-// A page's or a group's title, and a line saying what it is about.
 Column {
     id: root
 

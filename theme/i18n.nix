@@ -1,16 +1,4 @@
 # i18n.nix by poligle
-#
-# Every user-facing string of this configuration, per language. A machine
-# picks one with `nihil.language`; the shell gets it as a generated Lang.qml
-# singleton, and hyprlock, ReGreet and the scripts read `nihil.strings`, as
-# a machine's own modules can (osConfig.nihil.strings, in its /etc/nixos):
-# a key NIHIL no longer uses may still be read there. Both languages must
-# have the same keys (modules/nihil.nix checks it).
-#
-# `%1` and `%2` are placeholders (QML: Lang.connectedTo.arg(ssid)). Date
-# formats use Qt's syntax and are applied with the language's own locale, so
-# day and month names follow the language, not the system locale; lockDate is
-# a date(1) format for hyprlock, run with LC_TIME=lockLocale.
 
 {
 	es =
@@ -22,7 +10,6 @@
 		lockDate = "%a %d %b";
 		lockLocale = "es_ES.UTF-8";
 
-		# hyprlock and greeter
 		password = "Contraseña";
 		authFailed = "Error ($ATTEMPTS)";
 		fingerprintReady = "Toca el sensor";
@@ -30,16 +17,12 @@
 		lockPaused = "En pausa";
 		welcome = "Bienvenido";
 
-		# launcher
 		search = "Buscar";
 		appsCount = "%1 apps";
 		actions = "Acciones";
 		calculator = "Calculadora";
 		typeExpression = "Escribe una operación";
 		enterAgain = "Enter otra vez";
-		# Key hints, here and in Nilo and the wallpapers (components/KeyHints.qml):
-		# a key in brackets is drawn as a key, the rest as words, and "|" sets the
-		# groups apart.
 		hintApps = "[Enter] Abrir|[>] Acciones|[=] Calcular|[Esc] Cerrar";
 		hintCalc = "[Enter] Copiar el resultado|[Esc] Cerrar";
 		hintAppsNilo = "[Enter] Abrir|[>] Acciones|[=] Calcular|[?] Nilo|[Esc] Cerrar";
@@ -60,7 +43,6 @@
 		hintSession = "Sesión";
 		hintSystem = "Sistema";
 
-		# control panel
 		panel = "Ajustes";
 		offline = "Sin red";
 		tileWifi = "Wi-Fi";
@@ -71,6 +53,15 @@
 		tileNight = "Noche";
 		tileShot = "Captura";
 		tileRecord = "Grabar";
+		vector = "Vector";
+		vectorSent = "Enviado a %1";
+		vectorWaiting = "Esperando a tus dispositivos";
+		vectorFrom = "Recibido de %1";
+		vectorDevice = "tu móvil";
+		vectorBig = "Demasiado grande: hasta 100 MB";
+		vectorFolder = "Las carpetas no se envían";
+		vectorEmpty = "Nada que enviar";
+		vectorFailed = "No se ha podido enviar";
 		networks = "Redes";
 		scanning = "Buscando";
 		devices = "Dispositivos";
@@ -86,36 +77,25 @@
 		connectedTo = "Conectado a %1";
 		enterpriseHint = "%1 usa WPA-Enterprise (p. ej. eduroam): créala en la configuración avanzada";
 
-		# dashboard, widgets, notifications
-		battery = "Batería %1%";
-		charging = "cargando";
 		batteryApp = "Batería";
 		batteryLow = "Batería al %1 %";
 		batteryLowPlug = "Conecta el cargador.";
 		batteryLowLast = "Conecta el cargador ya: queda muy poco.";
-		network = "Red: %1";
-		noConnection = "Sin conexión";
 		media = "Multimedia";
 		nothingPlaying = "Nada sonando";
 		caffeine = "Cafeína";
-		caffeineOff = "La pantalla no se apaga";
-		caffeineOn = "Pantalla encendida desde las %1";
 		tasks = "Tareas";
 		tasksTodo = "Por hacer";
 		tasksDoing = "Haciendo";
 		tasksDone = "Hecho";
 		tasksAdd = "Nueva tarea";
 		tasksClear = "Limpiar";
-		tasksEmpty = "Escribe una tarea y pulsa enter. Un clic la pasa a la siguiente columna.";
 		notice = "Aviso";
 
-		# terminal messages of a machine's engineering wrappers (its
-		# /etc/nixos/engineering.nix, once home/engineering.nix)
 		cliMissing = "%1 no está instalado en %2";
 		cliNotFound = "No encuentro %1 dentro de %2";
 		cliUsage = "Uso: %1 <carpeta del instalador descomprimido>";
 
-		# Nilo, the assistant (modules/nilo.nix, home/shell/nilo)
 		nilo = "Nilo";
 		niloAsk = "Pregúntame lo que quieras";
 		niloHint = "[Enter] Preguntar|[Ctrl+N] Nueva conversación|[Esc] Cerrar";
@@ -142,9 +122,6 @@
 		niloOllamaHelp = "Más en: journalctl -u ollama -b";
 		niloDownloading = "Descargando %1%";
 		niloDownloadingModel = "Descargando %1 (%2%)";
-		# Nilo's greeting by the time of day (before 6, 13, 20 and after):
-		# some ways to say it, between "|"; %1 is the first name, and goes
-		# with what is before it when there is none.
 		niloGreetNight = "¿Trasnochando, %1?|Buenas noches, %1|La noche es tuya, %1";
 		niloGreetMorning = "Buenos días, %1|¿Café y a por ello, %1?|Arriba, %1";
 		niloGreetAfternoon = "Buenas tardes, %1|¿Qué tal la tarde, %1?|Hola de nuevo, %1";
@@ -285,9 +262,7 @@
 		setAccess = "Acceso";
 		setRepo = "Repositorio";
 		setRepoPath = "Ruta";
-		setRepoNote = "Al cambiar de repositorio, git y archivos se apagan hasta que los autorices otra vez.";
 		setContext = "Contexto";
-		setContextNote = "En cada pregunta Nilo lee nilo.md (este sistema y sus reglas), tus notas y, con archivos o git, el NILO.md del repositorio.";
 		setNotes = "Tus notas";
 		setContextEdit = "Editar";
 		setMemory = "Memoria";
@@ -298,15 +273,11 @@
 		setOnGpu = "(%1% en la GPU)";
 		setAsleep = "Dormido, sin ocupar memoria";
 		setThink = "Pensar antes de responder";
-		setThinkSub = "Más lento; mejor para problemas difíciles";
 		setAuto = "Elegir el modelo en cada pregunta";
-		setAutoSub = "Lo sencillo, con el más pequeño que tengas; lo demás, con el elegido";
 		setAutoNeedsTwo = "Descarga un modelo más pequeño que el elegido para usarlo";
 		setIntro = "Volver a presentarse";
 		setOpenPreferences = "Abrir Preferencias";
-		setRebuild = "Encender o apagar Nilo y elegir CPU o GPU está en Preferencias, Sistema.";
 
-		# Preferences and the welcome (home/shell/settings)
 		cfgTitle = "Preferencias";
 		cfgComment = "Tu nombre, idioma, teclado, fondo, atajos y más";
 		cfgYou = "Tú";
@@ -382,8 +353,8 @@
 		bindOverview = "Todos los escritorios; mantenida, elegir uno";
 		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
 		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
-		# nihil-shot: the folder in Pictures (Imágenes) where screenshots are kept.
 		screenshotsDir = "Capturas";
+		screenshotSaved = "Captura guardada y copiada";
 		recordSaved = "Grabación guardada y copiada";
 		recordFailed = "No se ha podido grabar";
 		welHello = "Hola, %1";
@@ -419,11 +390,8 @@
 		welNetDone = "Conectado a %1.";
 		welNetPassword = "Contraseña de la red";
 		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
-		# %1: the overview's own key (A), held or not.
 		ovHint = "[%1] Siguiente|[Shift+%1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
-		# Copy and paste, and the clipboard history (home/hyprland.nix,
-		# home/clipboard.nix, drawers/ClipboardView.qml).
 		bindCopy = "Copiar";
 		bindClipboard = "Pegar o elegir del historial";
 		clipTitle = "Portapapeles";
@@ -432,14 +400,12 @@
 		cfgClipboard = "Historial del portapapeles";
 		cfgClipboardOff = "No";
 		cfgClipboardWipe = "Olvidar";
-		# Updating NIHIL from the panel (services/Updates.qml, nihil check)
 		updBehind = "%1 commits nuevos en GitHub";
 		updBehindOne = "Un commit nuevo en GitHub";
 		updCurrent = "NIHIL al día, en %1";
 		updOffline = "Sin conexión con GitHub";
 		updUnknown = "Este NIHIL no viene de GitHub";
 		updChecking = "Mirando si hay algo nuevo…";
-		updWhat = "Trae el último NIHIL y lo que fija: NixOS y sus paquetes.";
 		updDev = "Ahora corre tu copia (nihil dev): actualizar vuelve a la de GitHub.";
 		updMore = "Y %1 más";
 		updUpdate = "Actualizar";
@@ -447,9 +413,7 @@
 		updDone = "NIHIL actualizado";
 		updFailed = "No se ha podido actualizar";
 		updNotifyFailed = "No se ha podido actualizar NIHIL";
-		# Preferences, Generations (settings/PageGenerations.qml, nihil generations)
 		cfgGenerations = "Generaciones";
-		genSub = "Cada vez que aplicas o actualizas, NixOS guarda el sistema entero como una generación. Puedes volver a una anterior, o arrancar con ella solo una vez.";
 		genNone = "Todavía no hay ninguna.";
 		genListFailed = "No se han podido leer las generaciones.";
 		genNow = "En uso";
@@ -463,16 +427,12 @@
 		genSame = "Los mismos paquetes que la anterior: cambian sus ajustes.";
 		genMore = "Y %1 más";
 		genSwitch = "Usar esta";
-		genSwitchSub = "Ahora y al arrancar. Lo próximo que apliques o actualices se construye otra vez desde tus ajustes.";
 		genBoot = "Arrancar con ella una vez";
-		genBootSub = "Solo el próximo arranque; después, la de siempre.";
 		genKeep = "Guardarlas";
-		genKeepSub = "Cada semana se borran las más antiguas; la que está en uso, nunca.";
 		genDays = "%1 días";
 		genDisk = "Disco";
 		genFree = "%1 libres de %2";
 		genClean = "Limpiar ahora";
-		genCleanSub = "Borra ya las de hace más de %1 días y lo que ya no necesita ninguna.";
 		genSwitching = "Cambiando de generación %1";
 		genSwitched = "Generación %1 en uso";
 		genSwitchedWarn = "Generación %1 en uso, con avisos";
@@ -484,29 +444,22 @@
 		genBootFailed = "No se ha podido preparar el arranque";
 		genNotInMenu = "El menú de arranque ya no la tiene";
 		genGone = "Esa generación ya no está";
-		# Preferences, Devices: phones, tablets and watches as decks (settings/PagePhone.qml, home/deck)
 		cfgPhone = "Dispositivos";
-		deckSub = "Con NIHIL en Android o en Wear OS, un móvil, una tablet o un reloj ponen y pasan la música de este ordenador, suben y bajan su volumen y lo bloquean; el móvil y la tablet también abren sus apps y webs y le hacen de trackpad.";
 		deckUse = "Usar dispositivos";
-		deckUseSub = "Abre el puerto %1 en la red local, solo para los dispositivos emparejados.";
 		deckApply = "Se enciende al aplicar.";
 		deckDown = "El servicio no responde: systemctl --user status nihil-deck";
 		deckPairTitle = "Emparejar";
 		deckWatchTitle = "Un reloj";
-		deckWatchSub = "NIHIL para Wear OS desde aquí, sin compilar nada: en el reloj, Depuración inalámbrica y Vincular dispositivo; solo hay que teclear su código.";
 		deckWatchInstall = "Instalar en un reloj";
 		deckPair = "Emparejar un dispositivo";
-		deckScan = "Escanéalo con NIHIL en el móvil o la tablet; un reloj lo recibe con tools/watch invite. Sirve una vez, durante cinco minutos.";
 		deckPairFailed = "No se ha podido sacar el código";
 		deckPhones = "Dispositivos emparejados";
 		deckNone = "Ningún dispositivo emparejado.";
 		deckForget = "Olvidar";
 		deckPaired = "%1 ya es un deck de este ordenador";
 		deckPairedBody = "Si no has sido tú, olvídalo en Preferencias, Dispositivos.";
-		# Preferences, Screens (settings/PageScreens.qml)
 		cfgScreens = "Pantallas";
 		cfgScreenNone = "Hyprland no dice que haya pantallas.";
-		cfgScreensDrag = "Arrástralas para colocarlas";
 		cfgScreenMode = "Resolución";
 		cfgScreenRate = "Frecuencia";
 		cfgScreenScalePct = "%1 %";
@@ -514,7 +467,6 @@
 		cfgScreenRotation = "Giro";
 		cfgScreenBar = "Barra";
 		cfgScreenMain = "Principal";
-		cfgScreenMainSub = "Los widgets del escritorio, el bloqueo y el inicio de sesión.";
 		cfgScreenOff = "Apagada";
 		cfgScreenAway = "Guardada, pero no conectada ahora.";
 		cfgScreenForget = "Olvidar";
@@ -527,7 +479,6 @@
 		cfgProgramMissing = "Falta el nombre o el comando";
 		cfgWidgets = "Widgets";
 		cfgGlass = "Cristal ahumado";
-		cfgGlassSub = "El marco, los cajones, Preferencias, los widgets, la pantalla de bloqueo y el inicio de sesión como cristal oscuro: el fondo se ve a través y se curva en los bordes.";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
 		cfgWidgetMedia = "Música";
@@ -585,6 +536,15 @@
 		tileNight = "Night";
 		tileShot = "Screenshot";
 		tileRecord = "Record";
+		vector = "Vector";
+		vectorSent = "Sent to %1";
+		vectorWaiting = "Waiting for your devices";
+		vectorFrom = "Received from %1";
+		vectorDevice = "your phone";
+		vectorBig = "Too big: up to 100 MB";
+		vectorFolder = "Folders can't be sent";
+		vectorEmpty = "Nothing to send";
+		vectorFailed = "Couldn't send it";
 		networks = "Networks";
 		scanning = "Scanning";
 		devices = "Devices";
@@ -600,26 +560,19 @@
 		connectedTo = "Connected to %1";
 		enterpriseHint = "%1 uses WPA-Enterprise (e.g. eduroam): set it up in the advanced settings";
 
-		battery = "Battery %1%";
 		batteryApp = "Battery";
 		batteryLow = "Battery at %1%";
 		batteryLowPlug = "Plug in the charger.";
 		batteryLowLast = "Plug in the charger now: very little is left.";
-		charging = "charging";
-		network = "Network: %1";
-		noConnection = "No connection";
 		media = "Media";
 		nothingPlaying = "Nothing playing";
 		caffeine = "Caffeine";
-		caffeineOff = "The screen stays on";
-		caffeineOn = "Screen on since %1";
 		tasks = "Tasks";
 		tasksTodo = "To do";
 		tasksDoing = "Doing";
 		tasksDone = "Done";
 		tasksAdd = "New task";
 		tasksClear = "Clear";
-		tasksEmpty = "Type a task and press enter. A click moves it to the next column.";
 		notice = "Notice";
 
 		cliMissing = "%1 is not installed in %2";
@@ -792,9 +745,7 @@
 		setAccess = "Access";
 		setRepo = "Repository";
 		setRepoPath = "Path";
-		setRepoNote = "Switching repositories turns git and files off until you authorize them again.";
 		setContext = "Context";
-		setContextNote = "On every question Nilo reads nilo.md (this system and its rules), your notes and, with files or git, the repository's NILO.md.";
 		setNotes = "Your notes";
 		setContextEdit = "Edit";
 		setMemory = "Memory";
@@ -805,15 +756,11 @@
 		setOnGpu = "(%1% on the GPU)";
 		setAsleep = "Asleep, taking no memory";
 		setThink = "Think before answering";
-		setThinkSub = "Slower; better for hard problems";
 		setAuto = "Choose the model for each question";
-		setAutoSub = "Simple ones with the smallest you have, the rest with the chosen one";
 		setAutoNeedsTwo = "Download a model smaller than the chosen one to use it";
 		setIntro = "Introduce yourself again";
 		setOpenPreferences = "Open Preferences";
-		setRebuild = "Turning Nilo on or off and choosing CPU or GPU is in Preferences, System.";
 
-		# Preferences and the welcome (home/shell/settings)
 		cfgTitle = "Preferences";
 		cfgComment = "Your name, language, keyboard, wallpaper, shortcuts and more";
 		cfgYou = "You";
@@ -890,6 +837,7 @@
 		bindScreenshot = "Screenshot of the screen; with SHIFT, record it";
 		bindSnip = "Screenshot of an area (the snipping key); with SHIFT, record it";
 		screenshotsDir = "Screenshots";
+		screenshotSaved = "Screenshot saved and copied";
 		recordSaved = "Recording saved and copied";
 		recordFailed = "Could not record";
 		welHello = "Hello, %1";
@@ -941,7 +889,6 @@
 		updOffline = "GitHub can't be reached";
 		updUnknown = "This NIHIL doesn't come from GitHub";
 		updChecking = "Looking for something new…";
-		updWhat = "Brings the latest NIHIL and what it pins: NixOS and its packages.";
 		updDev = "Your checkout runs now (nihil dev): updating goes back to GitHub's.";
 		updMore = "And %1 more";
 		updUpdate = "Update";
@@ -950,7 +897,6 @@
 		updFailed = "Could not update";
 		updNotifyFailed = "NIHIL could not be updated";
 		cfgGenerations = "Generations";
-		genSub = "Each time you apply or update, NixOS keeps the whole system as a generation. You can go back to an earlier one, or boot it just once.";
 		genNone = "There are none yet.";
 		genListFailed = "The generations could not be read.";
 		genNow = "In use";
@@ -964,16 +910,12 @@
 		genSame = "The same packages as the one before: their settings change.";
 		genMore = "And %1 more";
 		genSwitch = "Use this one";
-		genSwitchSub = "Now and at boot. What you apply or update next is built from your settings again.";
 		genBoot = "Boot it once";
-		genBootSub = "The next boot only; then the usual one.";
 		genKeep = "Keep them";
-		genKeepSub = "Every week the oldest ones go; never the one in use.";
 		genDays = "%1 days";
 		genDisk = "Disk";
 		genFree = "%1 free of %2";
 		genClean = "Clean now";
-		genCleanSub = "Removes the ones older than %1 days now, and what none of them needs any more.";
 		genSwitching = "Switching generation %1";
 		genSwitched = "Generation %1 in use";
 		genSwitchedWarn = "Generation %1 in use, with warnings";
@@ -986,17 +928,13 @@
 		genNotInMenu = "The boot menu no longer has it";
 		genGone = "That generation is gone";
 		cfgPhone = "Devices";
-		deckSub = "With NIHIL on Android or Wear OS, a phone, a tablet or a watch plays and skips this computer's music, turns its volume up and down and locks it; a phone or a tablet also opens its apps and web pages and is its trackpad.";
 		deckUse = "Use devices";
-		deckUseSub = "Opens port %1 on the local network, for the paired devices only.";
 		deckApply = "It turns on when applied.";
 		deckDown = "The service doesn't answer: systemctl --user status nihil-deck";
 		deckPairTitle = "Pairing";
 		deckWatchTitle = "A watch";
-		deckWatchSub = "NIHIL for Wear OS from here, nothing to build: on the watch, Wireless debugging and Pair new device; only its code to type.";
 		deckWatchInstall = "Install on a watch";
 		deckPair = "Pair a device";
-		deckScan = "Scan it with NIHIL on the phone or the tablet; a watch takes it from tools/watch invite. It works once, for five minutes.";
 		deckPairFailed = "The code could not be made";
 		deckPhones = "Paired devices";
 		deckNone = "No device paired.";
@@ -1005,7 +943,6 @@
 		deckPairedBody = "If it wasn't you, forget it in Preferences, Devices.";
 		cfgScreens = "Screens";
 		cfgScreenNone = "Hyprland says there are no screens.";
-		cfgScreensDrag = "Drag them into place";
 		cfgScreenMode = "Resolution";
 		cfgScreenRate = "Refresh rate";
 		cfgScreenScalePct = "%1%";
@@ -1013,7 +950,6 @@
 		cfgScreenRotation = "Rotation";
 		cfgScreenBar = "Bar";
 		cfgScreenMain = "Main";
-		cfgScreenMainSub = "The desktop widgets, the lock screen and the login.";
 		cfgScreenOff = "Off";
 		cfgScreenAway = "Saved, but not connected now.";
 		cfgScreenForget = "Forget";
@@ -1026,7 +962,6 @@
 		cfgProgramMissing = "The name or the command is missing";
 		cfgWidgets = "Widgets";
 		cfgGlass = "Smoked glass";
-		cfgGlassSub = "The frame, its drawers, Preferences, the widgets, the lock screen and the login as dark glass: the wallpaper shows through and bends at the edges.";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";
 		cfgWidgetMedia = "Music";

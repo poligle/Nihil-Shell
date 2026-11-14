@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # cover.py by poligle
 
-#   cover.py SOURCE OUT.png
-#   cover.py --placeholder OUT.png
-#   cover.py --blank OUT.png
 
 import os
 import sys
@@ -39,7 +36,6 @@ def cover(source, out):
 
 
 def placeholder(out):
-    # A quaver in dim LEDs on the switched-off matrix.
     s = 4
     note = Image.new("L", (SIZE * s, SIZE * s), 0)
     draw = ImageDraw.Draw(note)

@@ -5,7 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Your name, your account and its password.
 Flickable {
     id: page
 

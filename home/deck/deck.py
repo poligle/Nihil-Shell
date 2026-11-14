@@ -1,34 +1,5 @@
 #!/usr/bin/env python3
 # deck.py by poligle
-#
-# The phone as a deck for this computer (docs/deck.md): NIHIL Launcher, on
-# Android, opens apps and web pages here, plays and skips the music, turns
-# the volume, locks the screen and is its trackpad. Nothing else: there is no
-# command line from the phone, only these, and they go through the shell
-# (nihil-ipc) and the volume's own script, as the launcher and the keys
-# would; the trackpad is a touchpad here, made with uinput, that libinput
-# reads as it reads the laptop's.
-#
-# The phone talks HTTPS to it on the local network. The certificate is this
-# computer's own, made the first time (openssl), and the phone pins it: the
-# QR it pairs with has the SHA-256 of its public key. Pairing also needs the
-# one-time code in that QR, shown in Preferences, Devices; it gives the phone
-# a token of its own, kept here only as its SHA-256, until it is forgotten.
-#
-# Standard library only. home/deck/default.nix wraps it with its
-# configuration (the port, the store paths of what it runs); home/deck.nix
-# runs the service in the session.
-#
-#   nihil-deck serve              the service
-#   nihil-deck pair [--json]      a code to pair a device: the QR to scan (with
-#                                 --json, its URI and modules, for the shell)
-#   nihil-deck cancel             the code no longer pairs
-#   nihil-deck devices [--json]   the phones paired
-#   nihil-deck forget ID|all      one of them, or all, forgotten
-#
-# The service keeps its certificate and the phones in
-# $XDG_STATE_HOME/nihil/deck, and listens for those commands on
-# $XDG_RUNTIME_DIR/nihil-deck.sock (one JSON object per line).
 
 import argparse
 import base64
@@ -44,6 +15,7 @@ import http.server
 import ipaddress
 import json
 import math
+import mimetypes
 import os
 import re
 import secrets
@@ -67,22 +39,27 @@ PORT = 64445                    # NIHIL on a phone's keypad
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 8
 CODE_LIFETIME = 300             # seconds a code pairs
-CODE_ATTEMPTS = 5               # wrong codes before it stops pairing
+CODE_ATTEMPTS = 5
 MAX_BODY = 4096
 TASKS_MAX = 256 * 1024     # a phone's whole kanban
-CLIP_MAX = 256 * 1024      # text copied on one side, pasted on the other
+VECTOR_MAX = 100 * 1024 * 1024
+VECTOR_TEXT = 256 * 1024
+VECTOR_WAIT = 50
+VECTOR_LIVE = 120
+CHUNK = 64 * 1024
 COVER_MAX = 4 * 1024 * 1024
 CARDS_MAX = 1000
-FAIL_WINDOW = 60                # seconds, and how many failures in them
+FAIL_WINDOW = 60
 FAIL_LIMIT = 10
-FAIL_KEPT = 1024                # addresses remembered before the old ones are swept
-CONNECTIONS = 32                # at once: a phone keeps a few open, and one for the trackpad
-SEEN_EVERY = 60                 # seconds between writes of "last seen"
+FAIL_KEPT = 1024
+CONNECTIONS = 32
+SEEN_EVERY = 60
 ICON_SIZE = 128
-APPS_FOR = 20                   # seconds the shell's list of apps is kept
+APPS_FOR = 20
 APP_ID = re.compile(r"[A-Za-z0-9._+-]{1,160}")
-# Interfaces the phone can't reach this computer through: containers' and
-# virtual machines' bridges and their ends. A VPN (Tailscale, WireGuard) stays.
+MIME = re.compile(r"[a-z0-9][a-z0-9!#$&^_.+-]{0,63}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}")
+EXTENSIONS = {"text/plain": ".txt", "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
+              "image/webp": ".webp", "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 VIRTUAL = re.compile(r"(docker|br-|virbr|veth|vnet|lxcbr|lxdbr|podman|cni|flannel)")
 ACTIONS = {
     "media": ("toggle", "next", "previous"),
@@ -122,7 +99,6 @@ def control_path():
 
 
 def write_private(path, text):
-    """Written whole or not at all, only for the user (0600)."""
     folder = os.path.dirname(path)
     os.makedirs(folder, mode=0o700, exist_ok=True)
     fd, temporary = tempfile.mkstemp(dir=folder, prefix=".deck-")
@@ -139,10 +115,7 @@ def write_private(path, text):
         raise
 
 
-# --- The certificate -----------------------------------------------------------
-
 def ensure_certificate(folder, openssl):
-    """cert.pem and key.pem in FOLDER, made once: EC P-256, ten years."""
     cert = os.path.join(folder, "cert.pem")
     key = os.path.join(folder, "key.pem")
     if os.path.isfile(cert) and os.path.isfile(key):
@@ -166,7 +139,6 @@ def ensure_certificate(folder, openssl):
 
 
 def _tlv(data, at):
-    """A DER element at AT: its tag, where its value starts and ends."""
     tag = data[at]
     length = data[at + 1]
     at += 2
@@ -178,8 +150,6 @@ def _tlv(data, at):
 
 
 def public_key_info(der):
-    """The certificate's SubjectPublicKeyInfo, whole, as the phone hashes it
-    (Java's PublicKey.getEncoded())."""
     _, start, _ = _tlv(der, 0)
     _, tbs, tbs_end = _tlv(der, start)
     fields = []
@@ -190,7 +160,6 @@ def public_key_info(der):
         at = end
     if fields and fields[0][0] == 0xA0:
         fields = fields[1:]
-    # serialNumber, signature, issuer, validity, subject, subjectPublicKeyInfo
     if len(fields) < 6 or fields[5][0] != 0x30:
         raise ValueError("not a certificate this can read")
     _, begin, end = fields[5]
@@ -203,11 +172,7 @@ def pin_of(cert_path):
     return b64url(hashlib.sha256(public_key_info(der)).digest())
 
 
-# --- The phones ------------------------------------------------------------------
-
 class Devices:
-    """The phones paired: a name, when it was paired and last seen, and the
-    SHA-256 of its token."""
 
     def __init__(self, path):
         self.path = path
@@ -275,8 +240,6 @@ class Devices:
 
 
 class Pairing:
-    """The one code that pairs, while Preferences shows it: once, for a few
-    minutes, and not after a few wrong ones."""
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -301,7 +264,6 @@ class Pairing:
             return self.code is not None and now() <= self.expires
 
     def take(self, code):
-        """"ok" (and it no longer pairs), "closed", "expired" or "wrong"."""
         with self.lock:
             if self.code is None:
                 return "closed"
@@ -319,7 +281,6 @@ class Pairing:
 
 
 class Throttle:
-    """Who keeps failing (a token, a code) waits a minute."""
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -342,17 +303,12 @@ class Throttle:
         with self.lock:
             self.failures.setdefault(address, []).append(now())
             self._recent(address)
-            # Addresses that failed once and went are forgotten: one network
-            # can have many of them (IPv6 has plenty), and memory doesn't.
             if len(self.failures) > FAIL_KEPT:
                 for other in list(self.failures):
                     self._recent(other)
 
 
-# --- What it may do -------------------------------------------------------------
-
 def valid_url(url):
-    """A web page: http or https, with a host, no spaces, not too long."""
     if not isinstance(url, str) or not 0 < len(url) <= 2048:
         return False
     if any(ord(char) < 0x21 or ord(char) == 0x7F for char in url):
@@ -370,7 +326,6 @@ def clean_name(name, fallback):
 
 
 class Session:
-    """The shell and the session, from here: everything the deck does."""
 
     def __init__(self, config):
         self.config = config
@@ -380,8 +335,6 @@ class Session:
 
     def run(self, command, timeout=6):
         try:
-            # errors="replace": a name that isn't UTF-8 (an app's, a song's) is
-            # no reason for the request to fail.
             done = subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                   errors="replace", timeout=timeout)
         except (OSError, subprocess.SubprocessError):
@@ -393,28 +346,7 @@ class Session:
     def ipc(self, *arguments):
         return self.run([self.config["ipc"], *arguments])
 
-    def clipboard(self, text=None):
-        """The computer's clipboard, as text: read, or replaced by what the
-        phone copied. None when there is no Wayland session to ask; what is
-        there and is not text (a picture) reads as empty."""
-        if text is None:
-            try:
-                done = subprocess.run([self.config["wlPaste"], "--no-newline", "--type", "text"],
-                                      stdin=subprocess.DEVNULL, capture_output=True, timeout=6)
-            except (OSError, subprocess.SubprocessError):
-                return None
-            # wl-paste fails as well when the clipboard is empty, or holds no text.
-            return done.stdout[:CLIP_MAX].decode("utf-8", errors="replace") if done.returncode == 0 else ""
-        try:
-            # wl-copy stays behind, serving it, and returns once it is copied.
-            done = subprocess.run([self.config["wlCopy"]], input=text.encode("utf-8"),
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=6)
-        except (OSError, subprocess.SubprocessError):
-            return None
-        return text if done.returncode == 0 else None
-
     def apps(self, fresh=False):
-        """What the launcher has: [{ id, name, icon }], by name."""
         with self.lock:
             if not fresh and self.cached is not None and now() - self.cached_at < APPS_FOR:
                 return self.cached
@@ -438,7 +370,6 @@ class Session:
         return listed
 
     def app(self, app):
-        """One of them, by id; asking the shell again when it is new."""
         if not isinstance(app, str) or not APP_ID.fullmatch(app):
             return None
         for fresh in (False, True):
@@ -475,13 +406,11 @@ class Session:
             return None
         if not isinstance(found, dict):
             return None
-        # The cover's address stays here: the phone gets a token that changes with it.
         art = str(found.pop("art", "") or "")
         found["cover"] = hashlib.sha256(art.encode()).hexdigest()[:16] if art else ""
         return found
 
     def cover(self, token):
-        """The cover of what plays as (bytes, type), when [token] is still its token."""
         text = self.ipc("media", "now")
         try:
             art = str(json.loads(text or "null").get("art") or "")
@@ -508,7 +437,6 @@ class Session:
         return found
 
     def tasks(self, board=None):
-        """The desktop's kanban (Tasks.qml); with a phone's [board], merged first."""
         text = self.ipc("tasks", "state") if board is None else self.ipc("tasks", "sync", json.dumps(board))
         try:
             found = json.loads(text or "")
@@ -517,8 +445,6 @@ class Session:
         return found if isinstance(found, dict) else None
 
     def volume(self, action=None):
-        """The output's volume, after turning it with the keys' own script
-        (it shows the OSD here): { level, muted }."""
         if action is not None and self.run([self.config["volume"], action]) is None:
             return None
         text = self.run([self.config["wpctl"], "get-volume", "@DEFAULT_AUDIO_SINK@"])
@@ -531,8 +457,6 @@ class Session:
         return self.ipc("session", "lock") is not None
 
     def toggles(self):
-        """Caffeine and night light as the quick settings have them:
-        { caffeine, night }, empty when the shell can't say."""
         try:
             found = json.loads(self.ipc("toggles", "state") or "")
         except ValueError:
@@ -542,8 +466,6 @@ class Session:
         return {key: found[key] for key in ("caffeine", "night") if isinstance(found.get(key), bool)}
 
     def switch(self, kind, action):
-        """Caffeine or night light on, off or over; whether it is on now, None
-        when the shell didn't answer."""
         if self.ipc(kind, action) is None:
             return None
         return self.toggles().get(kind)
@@ -554,8 +476,6 @@ class Session:
             command.append(body)
         self.run(command)
 
-
-# --- Icons ------------------------------------------------------------------------
 
 def data_dirs():
     dirs = [home_dir("XDG_DATA_HOME", ".local/share")]
@@ -573,8 +493,6 @@ def data_dirs():
 
 @functools.lru_cache(maxsize=64)
 def theme_index(root):
-    """index.theme's Inherits and its directories: the scalable ones first,
-    then the sizes closest to the phone's 128 px, bigger before smaller."""
     inherits, directories, sizes, kinds = [], [], {}, {}
     section = None
     try:
@@ -605,8 +523,6 @@ def theme_index(root):
 
 
 def icon_file(name, theme, dirs=None):
-    """The file of an icon by name, as the icon theme spec looks for it:
-    the theme, what it inherits, hicolor, then pixmaps."""
     if not name:
         return None
     if os.path.isabs(name):
@@ -640,8 +556,6 @@ def icon_file(name, theme, dirs=None):
 
 
 def icon_png(path, rsvg, cache):
-    """A PNG for the phone: the theme's own, or the SVG drawn at 128 px
-    (kept in the cache by file and time)."""
     if path.endswith(".png"):
         return path
     stamp = hashlib.sha256(f"{os.path.realpath(path)}:{os.path.getmtime(path)}:{ICON_SIZE}".encode()).hexdigest()[:24]
@@ -663,11 +577,7 @@ def icon_png(path, rsvg, cache):
     return out
 
 
-# --- The kanban ------------------------------------------------------------------
-
 def clean_board(body):
-    """A phone's kanban, its shape checked: { cards: [...], removed: { id: when } };
-    a card's rank, when it has one, a finite number."""
     cards = body.get("cards", [])
     removed = body.get("removed", {})
     if not isinstance(cards, list) or not isinstance(removed, dict) or len(cards) > CARDS_MAX or len(removed) > 10 * CARDS_MAX:
@@ -700,36 +610,25 @@ def clean_board(body):
     return {"cards": clean, "removed": gone}
 
 
-# --- The trackpad -----------------------------------------------------------------
-#
-# GET /v1/trackpad turns the connection into a stream of the phone's fingers
-# (docs/deck.md, The trackpad), and here they touch a touchpad of their own,
-# made with /dev/uinput as wide and tall as the phone's screen. libinput takes
-# it as any touchpad, with the laptop's settings: a tap clicks, two fingers
-# right-click and scroll, three middle-click, a pinch zooms, and Hyprland's
-# gestures run. It goes when the stream does.
-
 EV_SYN, EV_KEY, EV_ABS = 0, 1, 3
 SYN_REPORT = 0
 BTN_TOUCH = 330
-# BTN_TOOL_FINGER, DOUBLETAP, TRIPLETAP, QUADTAP and QUINTTAP: one to five fingers.
 FINGER_TOOLS = (325, 333, 334, 335, 328)
 ABS_X, ABS_Y = 0, 1
 ABS_MT_SLOT, ABS_MT_POSITION_X, ABS_MT_POSITION_Y, ABS_MT_TRACKING_ID = 47, 53, 54, 57
 INPUT_PROP_POINTER = 0
 BUS_VIRTUAL = 6
-TRACKPAD_NAME = "NIHIL deck trackpad"   # modules/deck.nix's udev rule knows it by it
+TRACKPAD_NAME = "NIHIL deck trackpad"
 TRACKPAD_PROTOCOL = "nihil-trackpad"
 TRACKPAD_SLOTS = 5
-TRACKPAD_IDLE = 4               # seconds without a frame or a keepalive: the phone is gone
-TRACKPAD_SETTLE = 0.25          # seconds for libinput to open a new touchpad
-TRACKPAD_DELAY = 0.025          # seconds the fingers wait here, to keep the phone's pace
+TRACKPAD_IDLE = 4
+TRACKPAD_SETTLE = 0.25
+TRACKPAD_DELAY = 0.025
 TOUCH_FRAME, KEEPALIVE = 1, 2
 MAX_FINGERS = 10
 
 
 def _ioc(number, size=0):
-    """_IOW('U', number, size), or _IO('U', number) without one (asm-generic)."""
     return ((1 << 30) if size else 0) | (size << 16) | (ord("U") << 8) | number
 
 
@@ -744,9 +643,6 @@ UI_SET_PROPBIT = _ioc(110, 4)
 
 
 class Uinput:
-    """A touchpad made with /dev/uinput: [width] by [height] units, [resolution]
-    of them a millimetre, five fingers and nothing to press, so libinput taps
-    to click on its own. It goes with close(), or with this process."""
 
     def __init__(self, path, width, height, resolution):
         self.width, self.height = width, height
@@ -770,8 +666,6 @@ class Uinput:
 
     def axis(self, code, top, resolution):
         fcntl.ioctl(self.fd, UI_SET_ABSBIT, code)
-        # struct uinput_abs_setup: the code, then input_absinfo's value,
-        # minimum, maximum, fuzz, flat and resolution.
         fcntl.ioctl(self.fd, UI_ABS_SETUP, struct.pack("=HH6i", code, 0, 0, 0, top, 0, 0, resolution))
 
     def write(self, events):
@@ -786,9 +680,6 @@ class Uinput:
 
 
 class Fingers:
-    """The phone's fingers as the kernel's multitouch protocol (type B): a slot
-    each, the first five, with a tracking id while it touches; and, for readers
-    without slots, how many touch and where the first of them is."""
 
     def __init__(self):
         self.slots = [None] * TRACKPAD_SLOTS    # [finger, tracking id, x, y]
@@ -798,7 +689,6 @@ class Fingers:
         self.primary = None
 
     def frame(self, contacts):
-        """The events of a frame: [(finger, x, y)], every finger touching now."""
         events = []
         touching = {finger for finger, _, _ in contacts}
         for index, held in enumerate(self.slots):
@@ -811,7 +701,7 @@ class Fingers:
             if index is None:
                 index = next((i for i, held in enumerate(self.slots) if held is None), None)
                 if index is None:
-                    continue        # a sixth finger: a touchpad has five
+                    continue
                 self.select(events, index)
                 events += [(EV_ABS, ABS_MT_TRACKING_ID, self.next_id), (EV_ABS, ABS_MT_POSITION_X, x), (EV_ABS, ABS_MT_POSITION_Y, y)]
                 self.slots[index] = [finger, self.next_id, x, y]
@@ -830,7 +720,6 @@ class Fingers:
         return events
 
     def release(self):
-        """Every finger up, as events; none when none was down."""
         return self.frame([]) if self.count else []
 
     def select(self, events, index):
@@ -852,7 +741,6 @@ class Fingers:
         if not held:
             self.primary = None
             return
-        # The finger down longest: its tracking id the furthest behind the next one.
         first = max(held, key=lambda slot: (self.next_id - slot[1]) % 65536)
         if (first[2], first[3]) != self.primary:
             if self.primary is None or self.primary[0] != first[2]:
@@ -863,33 +751,24 @@ class Fingers:
 
 
 class Pace:
-    """When each frame of fingers reaches the touchpad: as far apart as the
-    phone saw them, a little later than they left it. libinput reads speed from
-    those times, and takes frames the network bunched together for jumps. So a
-    frame waits until its time on the phone, plus the quickest any frame came
-    lately, plus [delay]; one later still goes as soon as it comes, and those
-    after it keep their spacing, at most a tenth shorter, until they are back
-    on time."""
 
     WINDOW = 2.0
     SQUEEZE = 0.9
 
     def __init__(self, delay=TRACKPAD_DELAY):
         self.delay = delay
-        self.quickest = collections.deque()     # (arrived, offset), the offsets rising
+        self.quickest = collections.deque()
         self.last = None                        # (phone, due) of the last frame
         self.raw = None
         self.wraps = 0
 
     def seconds(self, millis):
-        """The phone's milliseconds (32 bits, they wrap) as seconds that go on."""
         if self.raw is not None and millis < self.raw and self.raw - millis > 1 << 31:
             self.wraps += 1
         self.raw = millis
         return (self.wraps * (1 << 32) + millis) / 1000
 
     def heard(self, phone, arrived):
-        """How long the way takes, from a frame or a keepalive: the quickest lately."""
         offset = arrived - phone
         while self.quickest and self.quickest[-1][1] >= offset:
             self.quickest.pop()
@@ -898,7 +777,6 @@ class Pace:
             self.quickest.popleft()
 
     def due(self, phone, arrived):
-        """When a frame the phone made at [phone] and that came at [arrived] goes."""
         self.heard(phone, arrived)
         due = phone + self.quickest[0][1] + self.delay
         if self.last is not None and 0 <= phone - self.last[0] < 0.1:
@@ -909,9 +787,6 @@ class Pace:
 
 
 def stream(reader, writer, pad, clock=time.monotonic):
-    """A phone's frames from [reader] to [pad] at their pace (Pace), its
-    keepalives answered on [writer], until it stops or goes quiet; then every
-    finger up."""
     fingers = Fingers()
     pace = Pace()
     queue = collections.deque()
@@ -978,25 +853,15 @@ def stream(reader, writer, pad, clock=time.monotonic):
         worker.join(timeout=2)
 
 
-# --- The webs' icons ------------------------------------------------------------
-#
-# The phone keeps its own webs, and asks here for their icons: so it talks to
-# no one but this computer. A site's icon is looked for on its home page (an
-# SVG, the apple-touch-icon, the biggest one it names) and then at
-# /favicon.ico; only at public addresses, redirects included, and kept a
-# week by site, the misses too.
-
 FAVICON_DAYS = 7
 PAGE_MAX = 512 * 1024
 FAVICON_MAX = 256 * 1024
 FETCH_TIMEOUT = 5
-PUBLIC_ONLY = True  # the tests turn it off, to serve their sites from 127.0.0.1
+PUBLIC_ONLY = True
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 def public(host):
-    """Whether every address of [host] is on the internet: never this
-    computer, its network, or anything reserved."""
     if not PUBLIC_ONLY:
         return True
     try:
@@ -1007,7 +872,6 @@ def public(host):
 
 
 class PublicRedirects(urllib.request.HTTPRedirectHandler):
-    """A few redirects, each to a public web page."""
 
     max_redirections = 3
 
@@ -1018,8 +882,6 @@ class PublicRedirects(urllib.request.HTTPRedirectHandler):
 
 
 def fetch(url, limit, whole=True):
-    """[url]'s body and where it ended up: [limit] bytes at most, or (not
-    [whole]) its first [limit] bytes, enough for a page's <head>."""
     if not valid_url(url) or not public(urllib.parse.urlsplit(url).hostname):
         raise ValueError("not a public web page")
     opener = urllib.request.build_opener(PublicRedirects())
@@ -1034,7 +896,6 @@ def fetch(url, limit, whole=True):
 
 
 class IconLinks(html.parser.HTMLParser):
-    """The icons a page names before its <body>, with how good each is."""
 
     def __init__(self, base):
         super().__init__()
@@ -1067,7 +928,6 @@ class IconLinks(html.parser.HTMLParser):
 
 
 def ico_png(data):
-    """The biggest PNG inside an .ico (Windows Vista's and later), or None."""
     try:
         best = None
         for index in range(min(struct.unpack_from("<H", data, 4)[0], 64)):
@@ -1081,9 +941,6 @@ def ico_png(data):
 
 
 def as_image(data, rsvg):
-    """What the phone can draw, as (bytes, type): PNG, JPEG, GIF and WebP as
-    they come, an SVG drawn at 128 px, the biggest PNG inside an .ico. None
-    for anything else (an .ico of bitmaps): the phone draws its letter."""
     head = data[:16]
     if head.startswith(PNG_MAGIC):
         return data, "image/png"
@@ -1106,7 +963,6 @@ def as_image(data, rsvg):
 
 
 def favicon(url, rsvg, cache):
-    """The icon of [url]'s site as (bytes, type), or None."""
     parts = urllib.parse.urlsplit(url)
     origin = f"{parts.scheme}://{parts.netloc}".lower()
     path = os.path.join(cache, hashlib.sha256(origin.encode()).hexdigest()[:24])
@@ -1142,12 +998,7 @@ def favicon(url, rsvg, cache):
     return found
 
 
-# --- Where it is -----------------------------------------------------------------
-
 def addresses(ip):
-    """This computer's IPv4 addresses on its networks, the one with the
-    default route first: where the phone looks for it. Containers' and
-    virtual machines' bridges are left out (VIRTUAL)."""
     found = []
     if ip:
         try:
@@ -1184,10 +1035,121 @@ def pair_uri(name, port, hosts, code, pin):
     return "nihil-deck://pair?" + query
 
 
-# --- The service ------------------------------------------------------------------
+def vector_dir():
+    return os.path.join(home_dir("XDG_CACHE_HOME", ".cache"), "nihil", "vector")
+
+
+def kind_of(mime):
+    if mime.startswith("text/"):
+        return "text"
+    for kind in ("image", "video"):
+        if mime.startswith(kind + "/"):
+            return kind
+    return "file"
+
+
+def clean_mime(value):
+    mime = str(value or "").split(";")[0].strip().lower()
+    return mime if MIME.fullmatch(mime) else "application/octet-stream"
+
+
+def file_name(value, mime):
+    name = os.path.basename(str(value or "").replace("\\", "/"))
+    name = re.sub(r"[\x00-\x1f\x7f]", "", name).strip()[:160]
+    if name in ("", ".", "..") or name.startswith("."):
+        name = {"text": "text", "image": "image", "video": "video"}.get(kind_of(mime), "file") + EXTENSIONS.get(mime, "")
+    return name
+
+
+def vector_item(item):
+    if not item:
+        return {"id": ""}
+    return {key: item[key] for key in ("id", "kind", "name", "mime", "size", "time")}
+
+
+class Vector:
+
+    def __init__(self, folder=None):
+        self.folder = folder or vector_dir()
+        self.changed = threading.Condition()
+        self.waiting = collections.Counter()
+        self.heard = {}
+
+    def slot(self, side):
+        return os.path.join(self.folder, side)
+
+    def item(self, side):
+        try:
+            with open(os.path.join(self.slot(side), ".item.json")) as file:
+                item = json.load(file)
+            path = os.path.join(self.slot(side), item["name"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+        if not os.path.isfile(path):
+            return None
+        item["path"] = path
+        return item
+
+    def part(self, side):
+        folder = self.slot(side)
+        os.makedirs(folder, mode=0o700, exist_ok=True)
+        return os.path.join(folder, ".part-" + secrets.token_hex(6))
+
+    def store(self, side, part, name, mime, origin=""):
+        folder = self.slot(side)
+        mime = clean_mime(mime)
+        name = file_name(name, mime)
+        for entry in os.listdir(folder):
+            path = os.path.join(folder, entry)
+            if path == part or entry == ".item.json" or entry.startswith(".deck-"):
+                continue
+            if entry.startswith(".part-") and now() - os.path.getmtime(path) < 600:
+                continue
+            try:
+                if os.path.isdir(path) and not os.path.islink(path):
+                    shutil.rmtree(path)
+                else:
+                    os.unlink(path)
+            except OSError:
+                pass
+        target = os.path.join(folder, name)
+        os.replace(part, target)
+        size = os.path.getsize(target)
+        kind = kind_of(mime)
+        item = {"id": secrets.token_hex(8), "kind": "file" if kind == "text" and size > VECTOR_TEXT else kind,
+                "name": name, "mime": mime, "size": size, "time": round(now()), "from": origin}
+        write_private(os.path.join(folder, ".item.json"), json.dumps(item))
+        self.poke()
+        item["path"] = target
+        return item
+
+    def poke(self):
+        with self.changed:
+            self.changed.notify_all()
+
+    def wait(self, device, since, seconds):
+        deadline = now() + seconds
+        with self.changed:
+            self.waiting[device] += 1
+            try:
+                while True:
+                    item = self.item("out")
+                    if (item["id"] if item else "") != since or now() >= deadline:
+                        return item
+                    self.changed.wait(min(deadline - now(), 5))
+            finally:
+                self.waiting[device] -= 1
+                if self.waiting[device] <= 0:
+                    del self.waiting[device]
+                self.heard[device] = now()
+
+    def connected(self, devices):
+        live = {key for key, count in self.waiting.items() if count > 0}
+        live |= {key for key, seen in list(self.heard.items()) if now() - seen < VECTOR_LIVE}
+        return [device["name"] for device in devices.listing() if device["id"] in live]
+
 
 class Deck:
-    """What the HTTPS side and the control socket share."""
 
     def __init__(self, config, folder, pin):
         self.config = config
@@ -1198,6 +1160,7 @@ class Deck:
         self.pairing = Pairing()
         self.throttle = Throttle()
         self.session = Session(config)
+        self.vector = Vector(config.get("vector"))
         self.strings = config.get("strings", {})
         self.make_trackpad = lambda width, height, resolution: Uinput(config.get("uinput", "/dev/uinput"), width, height, resolution)
         self.streams = {}
@@ -1214,18 +1177,18 @@ class Deck:
             self.pairing.close()
             return {"ok": True}
         if op == "devices":
-            # Whether the code still pairs, so Preferences knows when its QR
-            # stops being any use (used, expired, or five wrong codes).
             return {"devices": self.devices.listing(), "pairing": self.pairing.open_now}
         if op == "forget":
             return {"ok": self.devices.forget(str(request.get("id", "")))}
         if op == "status":
             return {"port": self.port, "pin": self.pin, "devices": len(self.devices.listing()),
                     "pairing": self.pairing.open_now}
+        if op == "vector":
+            self.vector.poke()
+            return {"devices": self.vector.connected(self.devices)}
         return {"error": "unknown"}
 
     def claim(self, device, connection):
-        """[connection] is [device]'s trackpad now: a stream it had before ends."""
         with self.streams_lock:
             before = self.streams.get(device)
             self.streams[device] = connection
@@ -1247,14 +1210,10 @@ class Deck:
 
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    # An answer goes out in two writes, its head and then its body: with Nagle
-    # on, the body waits for the device to acknowledge the head, which a
-    # delayed ACK holds some 40 ms, on every request of a kept-open connection.
     disable_nagle_algorithm = True
     server_version = "nihil-deck/" + str(API)
     sys_version = ""
 
-    # TLS here, in this connection's thread, with its timeout.
     def setup(self):
         self.request.do_handshake()
         super().setup()
@@ -1268,8 +1227,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
-        # When this answer ends the connection (429, a body it won't read),
-        # the phone hears it and doesn't send the next request down it.
         if self.close_connection:
             self.send_header("Connection", "close")
         self.end_headers()
@@ -1307,10 +1264,60 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.route("GET", {})
 
+    def send_file(self, item):
+        try:
+            file = open(item["path"], "rb")
+        except OSError:
+            self.reply(404, {"error": "vector"})
+            return
+        with file:
+            self.send_response(200)
+            self.send_header("Content-Type", item["mime"])
+            self.send_header("Content-Length", str(os.fstat(file.fileno()).st_size))
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(item["name"]))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            shutil.copyfileobj(file, self.wfile, CHUNK)
+
+    def receive(self, deck, device):
+        try:
+            length = int(self.headers.get("Content-Length") or -1)
+        except ValueError:
+            length = -1
+        if length <= 0 or length > VECTOR_MAX:
+            self.reply(413 if length > VECTOR_MAX else 400, {"error": "big" if length > VECTOR_MAX else "body"})
+            return
+        vector = deck.vector
+        part = vector.part("in")
+        try:
+            with open(part, "wb") as file:
+                left = length
+                while left:
+                    chunk = self.rfile.read(min(CHUNK, left))
+                    if not chunk:
+                        raise ConnectionError("short")
+                    file.write(chunk)
+                    left -= len(chunk)
+            name = urllib.parse.unquote(self.headers.get("X-Vector-Name", ""))
+            item = vector.store("in", part, name, self.headers.get("Content-Type"), device["name"])
+        except (OSError, ConnectionError, socket.timeout):
+            try:
+                os.unlink(part)
+            except OSError:
+                pass
+            self.reply(503, {"error": "vector"})
+            return
+        vector.heard[device["id"]] = now()
+        deck.session.ipc("vector", "received")
+        self.reply(200, vector_item(item))
+
     def do_POST(self):
-        # A phone's kanban, or what it copied, can be more than any other request.
         path = urllib.parse.urlsplit(self.path).path
-        body = self.read_body({"/v1/tasks": TASKS_MAX, "/v1/clipboard": CLIP_MAX}.get(path, MAX_BODY))
+        if path == "/v1/vector":
+            self.close_connection = True
+            self.route("POST", {})
+            return
+        body = self.read_body({"/v1/tasks": TASKS_MAX}.get(path, MAX_BODY))
         if body is None:
             self.reply(400, {"error": "body"})
             return
@@ -1351,8 +1358,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.reply(200, {"token": token, "device": device, "name": deck.name})
 
     def trackpad(self, deck, device):
-        """The phone's fingers on a touchpad here, for as long as it streams
-        them (docs/deck.md, The trackpad)."""
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
         try:
             width, height, resolution = (int(query.get(key, ["0"])[0]) for key in ("w", "h", "r"))
@@ -1467,20 +1472,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.reply(200, volume)
                 else:
                     self.reply(503, {"error": "volume"})
-        elif method == "GET" and path == "/v1/clipboard":
-            text = session.clipboard()
-            if text is None:
-                self.reply(503, {"error": "clipboard"})
+        elif method == "GET" and path == "/v1/vector":
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            try:
+                wait = max(0, min(VECTOR_WAIT, int(query.get("wait", ["0"])[0])))
+            except ValueError:
+                wait = 0
+            since = query.get("since", [""])[0]
+            deck.vector.heard[device["id"]] = now()
+            item = deck.vector.wait(device["id"], since, wait) if wait else deck.vector.item("out")
+            self.reply(200, dict(vector_item(item), now=round(now())))
+        elif method == "GET" and path == "/v1/vector/data":
+            wanted = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("id", [""])[0]
+            item = deck.vector.item("out")
+            if not item or item["id"] != wanted:
+                self.reply(404, {"error": "vector"})
             else:
-                self.reply(200, {"text": text})
-        elif method == "POST" and path == "/v1/clipboard":
-            text = body.get("text")
-            if not isinstance(text, str) or text == "":
-                self.reply(400, {"error": "invalid"})
-            elif session.clipboard(text) is None:
-                self.reply(503, {"error": "clipboard"})
-            else:
-                self.reply(200, {"ok": True})
+                deck.vector.heard[device["id"]] = now()
+                self.send_file(item)
+        elif method == "POST" and path == "/v1/vector":
+            self.receive(deck, device)
         elif method == "POST" and path == "/v1/lock":
             if session.lock_screen():
                 self.reply(200, {"ok": True})
@@ -1496,7 +1507,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 class DeckServer(http.server.ThreadingHTTPServer):
-    """HTTPS on both IPv6 and IPv4 where it can."""
 
     daemon_threads = True
     timeout_seconds = 15
@@ -1509,9 +1519,6 @@ class DeckServer(http.server.ThreadingHTTPServer):
         self.address_family = socket.AF_INET6 if ":" in host else socket.AF_INET
         super().__init__((host, port), Handler)
 
-    # A thread for each connection, and no more than CONNECTIONS of them at
-    # once: anyone on the network could otherwise open them, each waiting
-    # out its handshake, until the threads ran out. One more is closed at once.
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):
             self.shutdown_request(request)
@@ -1528,7 +1535,6 @@ class DeckServer(http.server.ThreadingHTTPServer):
         finally:
             self.slots.release()
 
-    # As HTTPServer's, without asking DNS for a name it does not use.
     def server_bind(self):
         if self.address_family == socket.AF_INET6:
             try:
@@ -1620,10 +1626,7 @@ def serve(config):
         deck.devices.flush()
 
 
-# --- The commands -----------------------------------------------------------------
-
 def ask(request, path=None):
-    """One request to the service, on its socket."""
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(5)
         connection.connect(path or control_path())
@@ -1638,8 +1641,6 @@ def ask(request, path=None):
 
 
 def qr_rows(text):
-    """qrencode -t ASCII's QR, as rows of 0 and 1 (two characters a module,
-    "#" for the dark ones)."""
     lines = text.split("\n")
     while lines and lines[-1].strip() == "":
         lines.pop()
@@ -1661,11 +1662,113 @@ def qr(uri, qrencode):
     return qr_rows(done.stdout)
 
 
+def clipboard_source(config):
+    def paste(*arguments):
+        return subprocess.run([config["wlPaste"], *arguments], stdin=subprocess.DEVNULL,
+                              capture_output=True, timeout=20).stdout
+
+    try:
+        types = paste("--list-types").decode(errors="replace").split()
+        if "text/uri-list" in types:
+            for line in paste("--type", "text/uri-list").decode(errors="replace").splitlines():
+                if line.strip().startswith("file://"):
+                    return "file", urllib.parse.unquote(urllib.parse.urlsplit(line.strip()).path)
+        for prefix in ("image/", "video/"):
+            found = [kind for kind in types if kind.startswith(prefix)]
+            if found:
+                kind = "image/png" if "image/png" in found else found[0]
+                return "data", paste("--type", kind), kind
+        for kind in ("text/plain;charset=utf-8", "text/plain", "UTF8_STRING", "STRING", "TEXT"):
+            if kind in types:
+                data = paste("--no-newline", "--type", kind)
+                return ("data", data, "text/plain") if data else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return None
+
+
+def vector_send(config, vector, argument=None):
+    if argument:
+        path = urllib.parse.unquote(urllib.parse.urlsplit(argument).path) if argument.startswith("file://") else argument
+        source = ("file", path)
+    else:
+        source = clipboard_source(config)
+    if source is None:
+        return {"error": "empty"}
+    part = vector.part("out")
+    try:
+        if source[0] == "file":
+            path = source[1]
+            if os.path.isdir(path):
+                return {"error": "folder"}
+            if not os.path.isfile(path):
+                return {"error": "empty"}
+            if os.path.getsize(path) > VECTOR_MAX:
+                return {"error": "big"}
+            shutil.copyfile(path, part)
+            name, mime = os.path.basename(path), mimetypes.guess_type(path)[0] or "application/octet-stream"
+        else:
+            data, mime, name = source[1], source[2], ""
+            if not data:
+                return {"error": "empty"}
+            if len(data) > VECTOR_MAX:
+                return {"error": "big"}
+            with open(part, "wb") as file:
+                file.write(data)
+        item = vector.store("out", part, name, mime)
+    except OSError:
+        return {"error": "vector"}
+    finally:
+        if os.path.exists(part):
+            os.unlink(part)
+    return {"ok": True, "kind": item["kind"], "name": item["name"]}
+
+
+def vector_copy(config, vector):
+    item = vector.item("in")
+    if item is None:
+        return {"error": "empty"}
+    if item["kind"] == "file" or item["kind"] == "video":
+        command = [config["wlCopy"], "--type", "text/uri-list"]
+        data = ("file://" + urllib.parse.quote(item["path"]) + "\r\n").encode()
+    else:
+        command = [config["wlCopy"]] + (["--type", item["mime"]] if item["kind"] == "image" else [])
+        with open(item["path"], "rb") as file:
+            data = file.read()
+    try:
+        done = subprocess.run(command, input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return {"error": "clipboard"}
+    return {"ok": True} if done.returncode == 0 else {"error": "clipboard"}
+
+
+def vector_command(config, action, argument):
+    vector = Vector(config.get("vector"))
+    if action == "send":
+        result = vector_send(config, vector, argument)
+    elif action == "copy":
+        return vector_copy(config, vector)
+    elif action == "status":
+        item = vector.item("in")
+        result = {"in": dict(vector_item(item), path=item["path"], **{"from": item.get("from", "")}) if item else {"id": ""},
+                  "out": vector_item(vector.item("out"))}
+    else:
+        return {"error": "usage"}
+    if "error" in result:
+        return result
+    try:
+        result["devices"] = ask({"op": "vector"}).get("devices", [])
+    except (OSError, ValueError):
+        result["devices"] = []
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(prog="nihil-deck", description="The phone as a deck for this computer (docs/deck.md).")
     parser.add_argument("--config", help="configuration written by home/deck/default.nix")
-    parser.add_argument("command", nargs="?", default="devices", choices=["serve", "pair", "cancel", "devices", "forget"])
-    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all")
+    parser.add_argument("command", nargs="?", default="devices", choices=["serve", "pair", "cancel", "devices", "forget", "vector"])
+    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; vector: send, copy or status")
+    parser.add_argument("argument", nargs="?", help="vector send: a file (the clipboard without one)")
     parser.add_argument("--json", action="store_true", help="for the shell")
     options = parser.parse_args()
 
@@ -1682,6 +1785,10 @@ def main():
     if options.command == "serve":
         serve(config)
         return 0
+    if options.command == "vector":
+        result = vector_command(config, options.target, options.argument)
+        print(json.dumps(result))
+        return 1 if "error" in result else 0
 
     request = {"pair": {"op": "pair"}, "cancel": {"op": "cancel"}, "devices": {"op": "devices"},
                "forget": {"op": "forget", "id": options.target or ""}}[options.command]

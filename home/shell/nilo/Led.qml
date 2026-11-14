@@ -1,7 +1,6 @@
 import QtQuick
 import qs.theme
 
-// An LED, lit for the one in use: a model, a repository.
 Rectangle {
     property bool on: false
 

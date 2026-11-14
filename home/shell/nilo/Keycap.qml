@@ -2,7 +2,6 @@ import QtQuick
 import qs.theme
 import qs.components
 
-// A key, as printed on the keyboard: hairline, Space Mono.
 Surface {
     id: root
 

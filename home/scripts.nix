@@ -1,7 +1,4 @@
 # scripts.nix by poligle
-#
-# Scripts bound to keys. The OSD ones change the value and report it to the
-# NIHIL shell, which draws it on the frame (nihil-ipc osd ...).
 
 { config, osConfig, pkgs, lib, ... }:
 let
@@ -17,9 +14,6 @@ let
 	sound = osConfig.nihil.sounds;
 	volumeSound = sound.volume;
 
-	# Screenshots (Print, the snipping key, the settings panel): the screen the
-	# pointer is on, or an area, kept in Pictures and copied, as hyprshot does.
-	#   nihil-shot screen | region
 	nihil-shot = pkgs.writeShellScriptBin "nihil-shot" ''
 		set -euo pipefail
 		pictures=$(${pkgs.xdg-user-dirs}/bin/xdg-user-dir PICTURES 2> /dev/null || true)
@@ -28,18 +22,20 @@ let
 		fi
 		dir="$pictures/${strings.screenshotsDir}"
 		mkdir -p "$dir"
-		name="NIHIL $(date '+%Y-%m-%d %H.%M.%S').png"
+		name="NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').png"
 		case "''${1:-region}" in
-			screen) exec ${pkgs.hyprshot}/bin/hyprshot -m output -m active -o "$dir" -f "$name" ;;
-			region) exec ${pkgs.hyprshot}/bin/hyprshot -m region -o "$dir" -f "$name" ;;
+			screen) mode=(-m output -m active) ;;
+			region) mode=(-m region) ;;
 			*) echo "usage: nihil-shot screen | region" >&2; exit 2 ;;
 		esac
+		${pkgs.hyprshot}/bin/hyprshot "''${mode[@]}" --silent -o "$dir" -f "$name"
+		[ -f "$dir/$name" ] || exit 0
+		${notify} -a NIHIL -i "$dir/$name" "${strings.screenshotSaved}" "''${dir/#$HOME/\~}/$name"
 	'';
 
 	mic-led-sync = pkgs.writeShellScriptBin "mic-led-sync" ''
 		set -euo pipefail
 		LED="/sys/class/leds/platform::micmute/brightness"
-		# A laptop without the LED has nothing to follow the microphone.
 		[ -e "$LED" ] || exit 0
 		out="$(${wpctl} get-volume @DEFAULT_AUDIO_SOURCE@ 2>&1 || true)"
 		echo 0 > "$LED"
@@ -58,12 +54,6 @@ let
 		fi
 	'';
 
-	# Screen recording, for the keys (home/hyprland.nix) and the settings panel
-	# (services/Recorder.qml), which it tells when it starts and stops:
-	#   nihil-record toggle|start [region|screen] | stop | status
-	# No sound. wf-recorder writes limited range (16-235) but marks the video
-	# as full range, so players show its black as grey: on stopping, the mark
-	# is put right without encoding again (ffmpeg's h264_metadata).
 	nihil-record = pkgs.writeShellScriptBin "nihil-record" ''
 		set -uo pipefail
 		run="''${XDG_RUNTIME_DIR:-/tmp}/nihil-record"
@@ -85,10 +75,9 @@ let
 			if [ "''${1:-region}" = screen ]; then
 				where=(-o "$(${hyprctl} -j monitors | ${jq} -r '.[] | select(.focused) | .name')")
 			else
-				# Escape in the selection: nothing is recorded.
 				where=(-g "$(${pkgs.slurp}/bin/slurp)") || return 0
 			fi
-			printf '%s\n' "$dir/NIHIL $(date '+%Y-%m-%d %H.%M.%S').mp4" > "$run/file"
+			printf '%s\n' "$dir/NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').mp4" > "$run/file"
 			printf '%s\n' "$dir/.nihil-record.mp4" > "$run/raw"
 			${pkgs.wf-recorder}/bin/wf-recorder "''${where[@]}" -x yuv420p -c libx264 \
 				-p crf=20 -p preset=veryfast -f "$(cat "$run/raw")" > "$run/log" 2>&1 &
@@ -107,7 +96,6 @@ let
 			local pid raw file uri
 			pid="$(cat "$run/pid")"
 			kill -INT "$pid"
-			# wf-recorder closes the file on SIGINT; it may take a moment.
 			for _ in $(seq 100); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
 			rm -f "$run/pid"
 			${ipc} recorder stopped
@@ -118,8 +106,6 @@ let
 			else
 				mv -f "$raw" "$file"
 			fi
-			# Copied as a file, as a file manager or a chat takes it pasted: its
-			# path as a URI, each part escaped (Vídeos, spaces).
 			uri="file://$(${jq} -rn --arg path "$file" '$path | split("/") | map(@uri) | join("/")')"
 			${pkgs.wl-clipboard}/bin/wl-copy --type text/uri-list "$uri" || true
 			${notify} -a NIHIL "${strings.recordSaved}" "$file"
@@ -167,8 +153,6 @@ let
 				;;
 		esac
 		state="$(${wpctl} get-volume "$sink")"
-		# Rounded, as the deck says it (home/deck/deck.py): 0.29 * 100 is
-		# 28.999… in floating point, and %d alone made it 28.
 		vol="$(${awk} '{printf "%d", $2 * 100 + 0.5}' <<< "$state")"
 		muted=false
 		if ${grep} -q MUTED <<< "$state"; then

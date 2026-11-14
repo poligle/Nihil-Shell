@@ -5,12 +5,6 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 
-// The system's generations, as `nihil generations --json` lists them
-// (modules/nihil-cli.nix): each rebuild is one, a whole system NixOS keeps
-// to go back to. Newest first, with which one runs, which one boots and
-// which one boots the next time only; what each changed is asked for when
-// it is opened (nix store diff-closures, against the one before). Going to
-// one, booting one once and cleaning ask sudo, through Machine.
 Singleton {
     id: root
 
@@ -21,15 +15,11 @@ Singleton {
     property bool loaded: false
     property bool failed: false
 
-    // What each one changed, once asked: { number: { before, changed, more,
-    // same, failed } }, `changed` a line per package whose versions changed.
     property var changes: ({})
     property var queue: []
 
     readonly property int shown: 10
 
-    // After a clean, what each changed is asked again: the one before
-    // it may be gone.
     function refresh(cleaned: bool): void {
         if (cleaned)
             root.changes = {};
@@ -53,8 +43,6 @@ Singleton {
         differ.running = true;
     }
 
-    // "firefox: 144.0 → 145.0, 1.2 KiB" or "nix: -8.6 KiB": the name, and
-    // its versions when they changed (∅, none; ε, an empty one).
     function line(text: string): var {
         const found = /^(.+?): (.*)$/.exec(text);
         if (!found)
@@ -93,8 +81,6 @@ Singleton {
         }
     }
 
-    // One at a time: the next once this one has exited and its output is
-    // in, whichever comes last (an exit with nothing on stdout fails to parse).
     Process {
         id: differ
 

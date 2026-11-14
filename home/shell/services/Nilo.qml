@@ -6,81 +6,59 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
 
-// Nilo, the assistant: the shell's side of home/nilo/agent.py. The agent
-// starts the first time Nilo opens and stays (it holds the conversation and
-// any download); it speaks one JSON object per line. The model itself lives
-// in Ollama and goes to sleep on its own after `settings.keepAlive` minutes.
-// Opening apps is done here, where the desktop entries are (open_app).
-//   qs -c nihil ipc call nilo toggle|open|sleep      nilo ask "..."
 Singleton {
     id: root
 
     readonly property bool enabled: Config.nilo.enabled
 
-    // Agent: `ready` once it runs, `known` once it has said hello.
     property bool wanted: false
     property bool ready: false
     property bool known: false
     property var queued: []
     property int restarts: 0
 
-    // Mirror of the agent's settings and catalogue
     property var settings: ({})
     property var models: []
     property string recommended: ""
-    property string fast: ""              // the model auto uses for simple questions
+    property string fast: ""
     property string inUse: ""             // the model of the latest answer
     property real ramGB: 0
     property bool ollama: true
 
-    // Ollama's service when it is down: { starting, up, error, unit,
-    // activeState, subState, result, log } (systemctl show and the journal).
     property var service: ({})
     readonly property bool startingOllama: service.starting === true
 
-    // Git repositories under ~, for the settings (most recently used first).
     property var repos: []
 
-    // The model in Ollama
     property bool loaded: false
     property bool loading: false
     property real expires: 0
     property real sizeGB: 0
     property int gpu: 0
 
-    // The conversation. `phase`: idle, waiting (for the first word), thinking,
-    // writing, tool (one is running) or confirm (waiting for the user).
     readonly property ListModel messages: ListModel {}
     property bool busy: false
     property string phase: "idle"
     property string tool: ""
     property var confirm: null
     property bool stopping: false
-    property int pulse: 0           // one per word written: the eyes bounce
-    property string mood: ""        // a passing expression: "happy" or "error"
+    property int pulse: 0
+    property string mood: ""
 
-    // A download: { model, status, progress (0..1), error }
     property var pull: null
 
-    // The launcher on screen is in "?" mode (set by Launcher.qml).
     property bool shown: false
     property bool summon: false
-    // Opened from Preferences: its gear rather than the conversation.
     property bool gear: false
     signal summoned()
 
-    // The answer goes on with the launcher closed (esc, a click outside, an
-    // app it opened): when it ends, or when it needs a confirmation, Nilo
-    // sends a notification. Notifs.qml lights the frame from the left and,
-    // instead of a popup, this panel comes out of the bar next to the eyes
-    // (nilo/Peek.qml); with do not disturb on, only the history keeps it.
     property bool behind: false
     property bool peeking: false
     property string peekKind: ""        // done, confirm or error
     property string peekScreen: ""
     property string peekQuestion: ""
     property string peekText: ""
-    property var peekFacts: ({})        // the confirmation, or the answer's stats
+    property var peekFacts: ({})
 
     onShownChanged: {
         if (shown) {
@@ -109,9 +87,6 @@ Singleton {
         else queued = queued.concat([request]);
     }
 
-    // --- Opening ----------------------------------------------------------------
-
-    // Off, it still opens: the launcher explains how to turn it on.
     function open(): void {
         start();
         summon = true;
@@ -129,9 +104,6 @@ Singleton {
         open();
     }
 
-    // --- Away from the launcher -------------------------------------------------
-
-    // The screen of the panel: the focused one if it has the bar (and the eyes).
     function barScreen(): string {
         const focused = Hyprland.focusedMonitor?.name ?? "";
         const bars = Config.barOutputs;
@@ -139,7 +111,6 @@ Singleton {
         return bars.indexOf(Config.primaryOutput) >= 0 ? Config.primaryOutput : (bars[0] ?? focused);
     }
 
-    // The last message of a kind in the latest exchange (after its question).
     function latest(kind: string): var {
         for (let i = messages.count - 1; i >= 0; i--) {
             const m = messages.get(i);
@@ -166,7 +137,6 @@ Singleton {
         return c.message ? "git commit: " + c.message : "git " + (c.action === "push" ? Lang.confirmPush : Lang.confirmCommit);
     }
 
-    // What the panel shows, and the notification that brings it.
     function tell(kind: string): void {
         const question = latest("user");
         const reply = latest("nilo");
@@ -185,7 +155,6 @@ Singleton {
                                      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")]);
     }
 
-    // Notifs.qml, once the notification is in: out of the bar it comes.
     function peek(kind: string): void {
         if (shown || kind !== peekKind) return;
         peekScreen = barScreen();
@@ -197,10 +166,6 @@ Singleton {
         peeking = false;
     }
 
-    // The panel goes back on its own, clicked or not: after a few seconds,
-    // more for longer answers, half a minute for a confirmation (then the
-    // eyes in the bar keep waiting with it). The pointer moving over it
-    // buys a few more; a pointer resting there doesn't.
     readonly property int peekSeconds: Math.min(20, 7 + Math.ceil(plain(peekText).length / 45))
     property real peekUntil: 0
 
@@ -214,8 +179,6 @@ Singleton {
         running: root.peeking
         onTriggered: if (Date.now() >= root.peekUntil) root.unpeek()
     }
-
-    // --- Requests ---------------------------------------------------------------
 
     function ask(text: string): void {
         const question = text.trim();
@@ -258,7 +221,6 @@ Singleton {
         send({ op: "pull", model: tag });
     }
 
-    // The agent tries on its own; this is the button (it may ask for a password).
     function startOllama(): void {
         if (startingOllama) return;
         service = Object.assign({}, service, { starting: true, error: "" });
@@ -267,14 +229,8 @@ Singleton {
 
     function findRepos(): void { send({ op: "repos" }); }
 
-    // ~/.config/nihil/nilo.md, made by the agent if missing, in the editor.
     function editNotes(): void { send({ op: "notes" }); }
 
-    // "abre zen", "open zen and thunar": with Apps allowed, these open
-    // right away, without waiting for the model: the launcher's own search,
-    // and only when every name matches an app closely (or is a web address).
-    // Anything else, or anything more ("abre zen y busca el tiempo"), goes to
-    // Nilo as usual. The agent doesn't hear of it.
     readonly property var opener: /^(?:[áa]bre(?:me)?|abrir|lanza|arranca|open|launch|start)\s+(.+?)[.!]*$/i
 
     function quickOpen(text: string): bool {
@@ -307,10 +263,6 @@ Singleton {
         return true;
     }
 
-    // open_app: an app by its name, as the launcher finds it (only a good
-    // match: a name, a word of it or its keywords), or a path or an address
-    // in whatever opens it. The launcher closes, as when an app is opened
-    // from it; the answer goes on without it.
     function launch(target: string, kind: string): var {
         if (kind === "url" || kind === "path") {
             const ok = Qt.openUrlExternally(kind === "path" ? "file://" + encodeURI(target) : target);
@@ -330,15 +282,12 @@ Singleton {
     function remove(tag: string): void { send({ op: "delete", model: tag }); }
     function sleep(): void { send({ op: "sleep" }); }
 
-    // The user started typing: load the model so the answer starts sooner.
     function warm(): void {
         if (known && installed && !loaded && !loading) {
             loading = true;
             send({ op: "warm" });
         }
     }
-
-    // --- Events -----------------------------------------------------------------
 
     function last(): var {
         return messages.count > 0 ? messages.get(messages.count - 1) : null;
@@ -396,7 +345,6 @@ Singleton {
             sizeGB = e.sizeGB ?? 0;
             gpu = e.gpu ?? 0;
             if (e.ollama !== null && e.ollama !== undefined) {
-                // It just went down: what systemd said last time no longer applies.
                 if (ollama && e.ollama === false) service = ({});
                 ollama = e.ollama;
             }
@@ -405,7 +353,6 @@ Singleton {
             service = e;
             if (e.up === true) {
                 ollama = true;
-                // A download that failed only because Ollama was down can go again.
                 if (pull && pull.code === "ollama-down") pull = null;
             } else if (e.up === false) {
                 ollama = false;
@@ -415,8 +362,6 @@ Singleton {
             repos = e.repos ?? [];
             break;
         case "notes":
-            // In Neovim, in kitty, whatever the system would open a .md
-            // with (the notes start with a comment, which may pass for HTML).
             Drawers.close();
             Quickshell.execDetached([Config.cmd.terminal, "-e", Config.cmd.editor, e.path]);
             break;
@@ -451,7 +396,6 @@ Singleton {
                 const i = findTool(e.id);
                 if (i >= 0) {
                     const args = JSON.parse(messages.get(i).info || "{}");
-                    // Declined (git, a file change or a command) is not a failure: it says "cancelled".
                     messages.set(i, { done: true, status: e.ok || e.declined ? "done" : "failed",
                                       info: JSON.stringify(Object.assign({}, e, { args: args })),
                                       text: e.tail ? e.tail.join("\n") : messages.get(i).text });
@@ -462,7 +406,6 @@ Singleton {
             }
             break;
         case "output": {
-            // A command's last lines while it runs.
             const i = findTool(e.id);
             if (i >= 0) messages.setProperty(i, "text", (e.lines ?? []).join("\n"));
             break;
@@ -502,7 +445,6 @@ Singleton {
             break;
         }
         case "error":
-            // It was still on the previous answer: that question never went in.
             if (e.code === "busy") {
                 const l = last();
                 if (l && l.kind === "user") messages.remove(messages.count - 1);
@@ -542,8 +484,6 @@ Singleton {
 
     onMoodChanged: if (mood === "happy") moodReset.restart()
 
-    // --- The agent --------------------------------------------------------------
-
     Process {
         id: agent
         command: [Config.nilo.agent]
@@ -552,7 +492,6 @@ Singleton {
         stdout: SplitParser {
             onRead: data => root.handle(data)
         }
-        // Into the shell's journal: journalctl --user -u nihil-shell
         stderr: SplitParser {
             onRead: data => console.log("nilo: " + data)
         }

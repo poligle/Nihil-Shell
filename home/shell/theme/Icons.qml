@@ -2,8 +2,6 @@ pragma Singleton
 
 import Quickshell
 
-// Nerd Font (Material Design) glyphs, by code point so the files stay ASCII.
-// The same glyphs the old waybar/wofi scripts used.
 Singleton {
     function g(cp: int): string { return String.fromCodePoint(cp); }
 
@@ -56,6 +54,10 @@ Singleton {
     readonly property string broom: g(0xF00E2)
     readonly property string download: g(0xF01DA)
     readonly property string pencil: g(0xF03EB)
+    readonly property string swap: g(0xF04E1)
+    readonly property string paste: g(0xF0192)
+    readonly property string file: g(0xF0214)
+    readonly property string video: g(0xF0567)
 
     function volume(level: real, muted: bool): string {
         if (muted || level <= 0) return volMute;

@@ -5,15 +5,9 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 
-// Desktop entries and a small fuzzy search for the launcher. The phone's
-// deck (home/deck) opens the same ones, and web pages, through here, and
-// locks the screen as the launcher's action does:
-//   nihil-ipc apps list | launch <id> | url <https://…>
-//   nihil-ipc session lock
 Singleton {
     id: root
 
-    // Case-insensitive, so the order is the same whatever the session locale.
     readonly property var all: DesktopEntries.applications.values
         .filter(e => !e.noDisplay)
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
@@ -26,7 +20,6 @@ Singleton {
         if (name.indexOf(q) >= 0) return 400 - name.indexOf(q);
         const extra = [e.genericName ?? "", e.comment ?? "", ...(e.keywords ?? [])].join(" ").toLowerCase();
         if (extra.indexOf(q) >= 0) return 200;
-        // subsequence: every character of q appears in order
         let i = 0;
         for (const c of name) if (c === q[i]) i++;
         return i === q.length ? 100 - name.length : -1;
@@ -51,9 +44,6 @@ Singleton {
         }
     }
 
-    // What the deck asks for: the apps as JSON; one opened as from the
-    // launcher ("ok" or "unknown"); a web page in the browser, only http
-    // and https ("ok" or "invalid").
     IpcHandler {
         target: "apps"
 
@@ -75,8 +65,6 @@ Singleton {
         }
     }
 
-    // The lock screen, started from here as the launcher starts it: it
-    // outlives whoever asked (the shell keeps what it starts).
     IpcHandler {
         target: "session"
 

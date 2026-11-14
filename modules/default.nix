@@ -1,8 +1,4 @@
 # default.nix by poligle (modules)
-#
-# NIHIL as a NixOS module: the same on every machine. What belongs to one
-# machine (who uses it, its screens and keyboard, hardware-configuration.nix,
-# its own local.nix and home.nix) comes through nihil.lib.mkSystem (flake.nix).
 
 { ... }:
 {

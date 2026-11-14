@@ -6,23 +6,15 @@ import qs.services
 import qs.components
 import "Markdown.js" as Markdown
 
-// The conversation: your questions after "›", Nilo's answers in Markdown,
-// what its tools do as small lines with an LED (a command with its last lines
-// under it), and the confirmations (git, a change to a file with its diff, a
-// command exactly as it will run) as cards. Empty, it suggests a few
-// questions; without Ollama, it says what systemd knows and offers to start it.
 Item {
     id: root
 
-    property string armed: ""       // the confirmation armed by a first enter
-    property bool follow: true      // stick to the end while it writes
-    // Empty, Nilo's face sits above what it says (NiloView.qml): this much
-    // room is left for it, and the two are centred together.
+    property string armed: ""
+    property bool follow: true
     property real faceRoom: 0
 
     signal suggest(string text)
 
-    // Where the empty conversation (or what Ollama is up to) starts.
     readonly property real emptyTop: Math.max(faceRoom,
         (height - faceRoom - (empty.visible ? empty.implicitHeight : down.implicitHeight)) / 2 + faceRoom)
 
@@ -89,7 +81,6 @@ Item {
         return name;
     }
 
-    // Why a command's card is red (agent.py, RISKS).
     function dangerText(code: string): string {
         switch (code) {
         case "root": return Lang.dangerRoot;
@@ -104,7 +95,6 @@ Item {
         return code;
     }
 
-    // What systemd says about Ollama, in one line: "ollama.service: failed (exit-code)".
     function unitLine(): string {
         const s = Nilo.service;
         if (!s.activeState) return "";
@@ -116,7 +106,6 @@ Item {
         return Nilo.errorText(code, detail);
     }
 
-    // Empty: a greeting, a line and some questions to start with.
     Column {
         id: empty
         anchors.horizontalCenter: parent.horizontalCenter
@@ -132,9 +121,6 @@ Item {
         readonly property bool downloading: Nilo.pull !== null && Nilo.pull.status !== "error"
             && Nilo.pull.model === (Nilo.settings.model ?? "")
 
-        // For the time of day, with the user's first name (settings.json's
-        // fullName): one of a few, chosen each time the conversation is
-        // empty again. Without a name, the greeting goes without it.
         property string greeting: ""
 
         function greet(): void {
@@ -167,13 +153,11 @@ Item {
             font.pixelSize: 15
         }
 
-        // A pause between what Nilo says and what can be done.
         Item {
             width: 1
             height: 16
         }
 
-        // Without its model, Nilo can't answer yet: the download instead of the questions.
         DotMeter {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: !Nilo.installed && parent.downloading
@@ -191,7 +175,6 @@ Item {
             onClicked: Nilo.download(Nilo.settings.model)
         }
 
-        // Questions to start with: plain lines, lit on hover.
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: Nilo.installed
@@ -232,8 +215,6 @@ Item {
         }
     }
 
-    // Without Ollama nothing works: what systemd and the journal say, and a
-    // button to start it (the agent has already tried once on its own).
     Column {
         id: down
         anchors.horizontalCenter: parent.horizontalCenter
@@ -384,10 +365,6 @@ Item {
                 Column {
                     spacing: 8
 
-                    // The answer in its parts (Markdown.segments): the prose as
-                    // rich text, each block of code on its own (CodeBlock.qml).
-                    // While it writes, a part keeps its item and only its text
-                    // changes; an item is made only for a new part.
                     Column {
                         id: reply
                         width: entry.width
@@ -447,7 +424,6 @@ Item {
 
                         readonly property var stats: { try { return JSON.parse(entry.info || "{}"); } catch (e) { return {}; } }
 
-                        // Which model answered, when Nilo picks it.
                         Label {
                             visible: Nilo.settings.auto === true && (meta.stats.model ?? "") !== ""
                             text: meta.stats.model ?? ""
@@ -460,7 +436,6 @@ Item {
                             color: Tokens.muted
                         }
 
-                        // The whole answer, as it was written.
                         CopyButton {
                             text: entry.text
                         }
@@ -505,7 +480,6 @@ Item {
                         }
                     }
 
-                    // A command's last lines: live while it runs, then the end.
                     Surface {
                         x: 16
                         visible: entry.name === "run_command" && entry.text !== ""
@@ -584,7 +558,6 @@ Item {
                             font.pixelSize: 12
                         }
 
-                        // The command, exactly as it will run.
                         Surface {
                             visible: card.command
                             width: parent.width
@@ -609,7 +582,6 @@ Item {
                             }
                         }
 
-                        // What for, in Nilo's words.
                         Txt {
                             width: parent.width
                             visible: card.command && (card.facts.reason ?? "") !== ""
@@ -621,7 +593,6 @@ Item {
                             font.pixelSize: 13
                         }
 
-                        // And what deserves a second look.
                         Row {
                             visible: card.risky
                             spacing: 8
@@ -640,7 +611,6 @@ Item {
                             }
                         }
 
-                        // The change itself, as a diff: what goes in, what goes out.
                         Surface {
                             visible: card.file
                             width: parent.width
@@ -658,7 +628,6 @@ Item {
                                 spacing: 1
 
                                 Repeater {
-                                    // "···" between the parts of the file that change, not before the first.
                                     model: card.file ? (card.facts.diff ?? []).filter((d, i) => i > 0 || d.t !== "@") : []
 
                                     Txt {
@@ -733,7 +702,6 @@ Item {
                             topPadding: 4
                         }
 
-                        // Nilo signs it too (nihil.nilo.coauthor).
                         Txt {
                             width: parent.width
                             visible: (card.facts.trailer ?? "") !== ""
@@ -823,7 +791,6 @@ Item {
             }
         }
 
-        // Nilo is on it and has not written yet: three LEDs taking turns.
         footer: Item {
             width: ListView.view.width
             height: typing.visible ? 34 : 0
@@ -857,7 +824,6 @@ Item {
         }
     }
 
-    // Older lines fade out under the header instead of being cut.
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right

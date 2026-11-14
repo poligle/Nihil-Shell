@@ -48,9 +48,11 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   itself, with concave joints, so they look like part of the hardware.
 - **Dashboard.** Time, music with the cover rendered as a dot matrix and a spectrum in
   LED columns, CPU/RAM/temperature dials, a network oscilloscope, a kanban (to do, doing,
-  done: drag a card where it goes, its pencil writes it again, a broom clears the done ones)
-  and caffeine, which keeps the screen from dimming, locking or sleeping.
-- **Settings.** Circular toggles, segmented sliders, Wi-Fi (with passwords and
+  done: drag a card where it goes, its pencil writes it again, a broom clears the done ones),
+  and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
+  it goes to the phone; what the phone sends is there, a click to copy it.
+- **Settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
+  locking or sleeping), segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
   and desktop widgets, the screens, shortcuts and programs, the computer's name, Nilo,
@@ -64,7 +66,8 @@ home screen in the same language: the frame, the desktop's clock, its light and 
 - **The phone as a deck.** With [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher) on Android, paired with a QR
   from Preferences, the phone opens the computer's apps and web pages, plays and skips
   its music, turns its volume, locks it and is its trackpad, with this desktop's gestures;
-  the dashboard's kanban stays in sync with it. Over HTTPS pinned to this computer. See
+  the dashboard's kanban stays in sync with it, and Vector carries things either way.
+  Over HTTPS pinned to this computer. See
   [The phone as a deck](#the-phone-as-a-deck).
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](#install).
@@ -167,7 +170,9 @@ keeps its contrast; the hairlines become the glass's own edges, and a border tha
 something (focus, the one chosen, an error) stays. The shell draws it with two shaders
 (`home/shell/shaders/`) over one texture of what is behind, with its mipmaps for the
 frost (`components/Backdrop.qml`); hyprlock draws flat colours, so the lock screen's
-glass is made into its background, once per wallpaper (`home/lock/glass.py`).
+glass is made into its background, once per wallpaper (`home/lock/glass.py`). The terminal
+goes with it: kitty's background lets a fifth through, which Hyprland blurs and darkens, and
+the switch reaches the kitties already open (they read their configuration again).
 
 ---
 
@@ -423,6 +428,7 @@ nihil-ipc settings open               # Preferences; also: toggle, close, page k
 nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
 nihil-ipc apps list                   # the launcher's apps, as JSON; also: launch <id>, url <https://…>
 nihil-ipc media toggle                # also: next, previous, now (what plays, as JSON)
+nihil-ipc vector received             # the deck, when the phone has sent something
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -432,7 +438,7 @@ journalctl --user -u nihil-shell -f   # logs
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
 | `drawers/`    | Dashboard, settings panel, launcher, wallpapers, clipboard history, OSD, notifications |
 | `background/` | Desktop widgets                                                 |
-| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`), its generations, the deck |
+| `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`), its generations, the deck and Vector |
 | `settings/`   | Preferences and the welcome                                     |
 | `components/` | LEDs, dials, segmented sliders, dot-matrix image, keys and buttons, switches, choices, fields, text, a QR in dots |
 | `nilo/`       | Nilo: the eyes, the conversation, the introduction and its settings |
@@ -581,9 +587,9 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
 its apps and web pages open here, its music plays and skips, its volume goes up and down,
-its screen locks, its pointer moves and its clipboard goes either way, from the phone. That is all it can do: an app is one
+its screen locks and its pointer moves, from the phone, and Vector carries things between them. That is all it can do: an app is one
 the launcher shows, a page is `http` or `https`, the trackpad points and clicks as a touchpad
-here would, and there is no way to run a command or read a file.
+here would, Vector has only what was sent to it, and there is no way to run a command or read a file.
 
 On the wrist, [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear) makes the watch one more deck: its
 music, its volume on the bezel or the crown, its caffeine, night light and lock, from a watch face
@@ -611,6 +617,15 @@ the QR with a reader of its own, and sharing a web to *Open on the computer* ope
 shows the cover of what plays, and keeps the dashboard's kanban in sync with its own, the
 order of each column too: each side goes on when they are apart, and the next sync keeps what
 both did (`docs/deck.md`).
+
+Vector carries one thing at a time, 100 MB at most: a text, a picture, a video or any file.
+Pasted (`CTRL + V`) or dropped on the dashboard's Vector, or a click on it to send what the
+clipboard holds, it goes to the phone, and a notification says to which; on the phone it waits
+in Tasks, above the kanban, to be copied, shared or opened. From the phone, its Vector or
+**Vector** in the share sheet sends it here: the dashboard shows it, a notification says it came, and a
+click puts it on the clipboard (a file as a file, to paste in Thunar). Each side keeps only the
+last one; the next takes its place. `nihil-deck vector send FILE | copy | status` does the same
+from a terminal.
 
 The trackpad is a touchpad here (`GET /v1/trackpad`). The phone streams its fingers, every
 sample with its time, and the deck writes them to a touchpad it makes with uinput (`NIHIL deck

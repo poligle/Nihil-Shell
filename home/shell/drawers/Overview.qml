@@ -9,15 +9,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Top drawer (SUPER + A): the workspaces side by side, each with its windows
-// where they are over the wallpaper, in grey until it is chosen, as the
-// launcher's apps. Held as the clipboard is (services/Switcher.qml): A again
-// (or Tab) chooses the next, SHIFT with it the one before, and letting go of
-// SUPER goes there. Let go before, and it stays: A, Tab or the arrows
-// choose, Enter goes, Escape leaves things as they were; a click on a window
-// goes to it, on the rest of a workspace to the workspace. The windows are
-// pictures taken as it opens (Quickshell's screencopy), the floating ones
-// over the rest, the last used on top.
 Item {
     id: root
 
@@ -29,8 +20,6 @@ Item {
     readonly property real ratio: root.monitor && root.monitor.height > 0 ? root.monitor.width / root.monitor.height : 16 / 9
     readonly property real cardH: 150
     readonly property real cardW: Math.round(root.cardH * root.ratio)
-    // As many as the bar has LEDs (frame/Workspaces.qml): the persistent
-    // ones, and up to the highest in use.
     readonly property var ids: {
         const used = Hyprland.workspaces.values.filter(w => w.id > 0).map(w => w.id);
         const count = Math.max(Config.persistentWorkspaces, ...used);
@@ -40,8 +29,6 @@ Item {
     implicitWidth: root.ids.length * (root.cardW + 14) - 14 + 48
     implicitHeight: 22 + root.cardH + 30 + 48
 
-    // The wallpaper the desktop has now, for an output: its own render, or the
-    // primary one's where it has none (as nihil-wallpaper shows it).
     readonly property string wallpaper: Machine.wallpaper !== "" ? Machine.wallpaper : Machine.get("wallpaper", "night")
     function wallpaperFor(output: string): string {
         return "file://" + Config.wallpaperDir + "/" + root.wallpaper + "/" + output + ".png";
@@ -64,7 +51,6 @@ Item {
         }
     }
 
-    // Hyprland's own syntax for its dispatchers, Lua since 0.55 (as frame/Workspaces.qml).
     function go(id: int): void {
         Hyprland.dispatch(Hyprland.usingLua ? `hl.dsp.focus({ workspace = ${id} })` : `workspace ${id}`);
         Drawers.close();
@@ -100,7 +86,6 @@ Item {
         Keys.onEscapePressed: Drawers.close()
         Keys.onTabPressed: root.step(1)
         Keys.onBacktabPressed: root.step(-1)
-        // Its own key, without the modifier once let go (A, SHIFT + A).
         Keys.onPressed: event => {
             if (Switcher.keyCode > 0 && event.key === Switcher.keyCode) {
                 root.step(event.modifiers & Qt.ShiftModifier ? -1 : 1);
@@ -138,7 +123,6 @@ Item {
 
             readonly property var ws: Hyprland.workspaces.values.find(w => w.id === card.modelData) ?? null
             readonly property var mon: card.ws?.monitor ?? root.monitor
-            // Window positions are in layout pixels; a monitor's size, in its own.
             readonly property real logical: card.mon && card.mon.width > 0 ? card.mon.width / (card.mon.scale || 1) : root.cardW
             readonly property real shrink: card.logical / root.cardW
             readonly property bool chosen: card.index === root.index || pointer.containsMouse
@@ -167,7 +151,6 @@ Item {
                     saturation: card.chosen ? 0 : -1
                 }
 
-                // The desktop under the windows, as it is behind them.
                 Image {
                     property bool primary: false
                     anchors.fill: parent
@@ -191,8 +174,6 @@ Item {
 
                         readonly property var ipc: client.modelData.lastIpcObject ?? ({})
 
-                        // Tiled under floating, the last used of those on top;
-                        // fullscreen over all.
                         z: (client.ipc.fullscreen ?? 0) > 0 ? 2000
                             : client.ipc.floating ? 1000 - (client.ipc.focusHistoryID ?? 0) : 0
                         x: client.ipc.at && card.mon ? (client.ipc.at[0] - card.mon.x) / card.shrink : 0

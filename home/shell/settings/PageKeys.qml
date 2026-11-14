@@ -5,11 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Shortcuts: NIHIL's own actions (modules/binds.nix), and programs, each a
-// name, the command that opens it and its keys, which anyone can add.
-// Hyprland catches a bound key before any window sees it, so combinations
-// are put together here rather than pressed. Workspaces (SUPER + a digit,
-// with SHIFT to move a window there) and the media keys stay.
 Flickable {
     id: page
 
@@ -18,11 +13,8 @@ Flickable {
     readonly property var actions: order.filter(name => name in Config.bindDefaults && (name !== "nilo" || Config.nilo.enabled))
     readonly property var programs: Machine.get("programs", Config.programs)
     readonly property var modifiers: ["SUPER", "SHIFT", "CTRL", "ALT"]
-    // A modifier on its own counts as a key too (SUPER + Control_L sends a
-    // window to the special workspace).
     readonly property var keyName: /^([A-Za-z0-9]|F([1-9]|1[0-9]|2[0-4])|Return|Space|Tab|Escape|BackSpace|Delete|Insert|Home|End|Prior|Next|PRINT|Print|comma|period|slash|minus|equal|semicolon|apostrophe|grave|backslash|bracketleft|bracketright|Super_L|Super_R|Control_L|Control_R|Shift_L|Shift_R|Alt_L|Alt_R)$/
 
-    // What is open: "action:<name>" or "program:<index>" (the length: a new one).
     property string editing: ""
     property var mods: []
     property string key: ""
@@ -43,7 +35,6 @@ Flickable {
         return Lang["bind" + name.charAt(0).toUpperCase() + name.slice(1)] ?? name;
     }
 
-    // The same combination however it is written: parts in any order, any case.
     function normal(combo: string): string {
         return combo.split("+").map(part => part.trim().toUpperCase()).filter(part => part !== "")
             .map(part => part === "CONTROL" ? "CTRL" : part).sort().join("+");
@@ -58,7 +49,6 @@ Flickable {
         return false;
     }
 
-    // Who has a combination already, but what is being edited.
     function owner(combo: string): string {
         const wanted = normal(combo);
         for (let i = 0; i < page.actions.length; i++) {
@@ -93,7 +83,6 @@ Flickable {
         page.mods = page.mods.indexOf(mod) >= 0 ? page.mods.filter(other => other !== mod) : page.mods.concat([mod]);
     }
 
-    // The combination put together; null for none, undefined when it cannot be.
     function combo(): var {
         const key = page.key.trim();
         if (key === "" && page.mods.length === 0)
@@ -157,7 +146,6 @@ Flickable {
         page.editing = "";
     }
 
-    // The keys of what is open: modifiers, a key name, and what went wrong.
     component Combo: Column {
         spacing: 10
 
@@ -202,7 +190,6 @@ Flickable {
         }
     }
 
-    // A row: what it is, its keys, and its editor when open.
     component Entry: Item {
         id: row
 
@@ -320,7 +307,6 @@ Flickable {
         }
 
         Repeater {
-            // The programs, and one more when adding.
             model: page.programs.length + (page.editing === "program:" + page.programs.length ? 1 : 0)
 
             Entry {

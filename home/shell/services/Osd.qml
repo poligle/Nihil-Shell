@@ -5,9 +5,6 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 
-// On-screen display for volume, brightness and microphone.
-// The key scripts (osd-volume, osd-brightness) do the work and report here:
-//   qs -c nihil ipc call osd volume 45 false
 Singleton {
     id: root
 

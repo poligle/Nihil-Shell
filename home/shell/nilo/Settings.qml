@@ -4,16 +4,10 @@ import qs.config
 import qs.services
 import qs.components
 
-// Behind the gear. Everything here applies at once, without a rebuild:
-// the agent keeps it in ~/.local/state/nihil/nilo.json. Rows as the
-// drawers have them (GearRow.qml, SwitchRow.qml): what each is on the
-// left, its control on the right, the controls the whole shell has (a
-// switch, a choice, a field, a key). Turning Nilo on or off and CPU or GPU
-// need a rebuild: they are in Preferences, System, a key away.
 Item {
     id: root
 
-    property int cursor: -1     // keyboard: models, "auto", "think", access, then repositories
+    property int cursor: -1
 
     readonly property int modelCount: models.count
     readonly property int autoIndex: modelCount
@@ -26,10 +20,8 @@ Item {
 
     signal done()
 
-    // The repositories are looked for each time the gear opens.
     onVisibleChanged: if (visible) Nilo.findRepos()
 
-    // Escape first drops an authorization that is waiting.
     function back(): bool {
         if (!asking) return false;
         access.asking = "";
@@ -40,7 +32,6 @@ Item {
         return Number(value).toLocaleString(Qt.locale(Lang.locale), "f", 1);
     }
 
-    // Awake until when, how much and, on a GPU, how much of it there; or asleep.
     function memory(): string {
         if (!Nilo.loaded) return Lang.setAsleep;
         const until = Nilo.expires > 0 ? Qt.formatTime(new Date(Nilo.expires * 1000), "HH:mm") : "—";
@@ -57,7 +48,6 @@ Item {
             : access.current >= 0 ? access.rowAt(access.current) : repos);
     }
 
-    // Scroll just enough for `item` to be seen whole.
     function keep(item: Item): void {
         if (!item) return;
         const y = item.mapToItem(content, 0, 0).y;
@@ -89,7 +79,6 @@ Item {
         Nilo.set("keepAlive", sleepChoices[Math.max(0, Math.min(sleepChoices.length - 1, (i < 0 ? 1 : i) + step))]);
     }
 
-    // Another path, once typed: an empty field leaves the one there is.
     function choosePath(path: string): void {
         const typed = path.trim();
         if (typed !== "" && typed !== (Nilo.settings.repo ?? "")) Nilo.set("repo", typed);
@@ -127,12 +116,11 @@ Item {
                 manage: true
             }
 
-            // Simple questions to the smallest model downloaded (agent.py, route).
             SwitchRow {
                 id: autoRow
                 width: content.width
                 title: Lang.setAuto
-                sub: Nilo.settings.auto && Nilo.fast === "" ? Lang.setAutoNeedsTwo : Lang.setAutoSub
+                sub: Nilo.settings.auto && Nilo.fast === "" ? Lang.setAutoNeedsTwo : ""
                 on: Nilo.settings.auto === true
                 current: root.cursor === root.autoIndex
                 onToggled: root.flip("auto")
@@ -142,7 +130,6 @@ Item {
                 id: thinkRow
                 width: content.width
                 title: Lang.setThink
-                sub: Lang.setThinkSub
                 on: Nilo.settings.think === true
                 current: root.cursor === root.thinkIndex
                 onToggled: root.flip("think")
@@ -177,23 +164,11 @@ Item {
                 }
             }
 
-            Txt {
-                width: content.width
-                leftPadding: 16
-                rightPadding: 16
-                text: Lang.setRepoNote
-                color: Tokens.muted
-                wrapMode: Text.Wrap
-                elide: Text.ElideNone
-                font.pixelSize: 12
-            }
-
             Section { title: Lang.setContext }
 
             GearRow {
                 width: content.width
                 title: Lang.setNotes
-                sub: Lang.setContextNote
 
                 KeyButton {
                     text: Lang.setContextEdit
@@ -255,17 +230,6 @@ Item {
                 }
             }
 
-            Txt {
-                width: content.width
-                leftPadding: 16
-                rightPadding: 16
-                topPadding: 6
-                text: Lang.setRebuild
-                color: Tokens.muted
-                wrapMode: Text.WordWrap
-                elide: Text.ElideNone
-                font.pixelSize: 12
-            }
         }
     }
 }

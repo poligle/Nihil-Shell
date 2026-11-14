@@ -4,20 +4,11 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 
-// Where the windows are, for the smoked glass that shows them behind it
-// (components/Backdrop.qml). Hyprland says when one opens, closes, floats, goes
-// fullscreen or to another workspace, but nothing while one is dragged: so
-// their places are asked for a few times a second while the glass is on, five
-// times while some glass shows windows (`live`), and twenty while those are
-// moving (a window dragged under the frame stays where it is seen), until they
-// have been still for a moment. With the glass off, never.
 Singleton {
     id: root
 
     readonly property bool enabled: Machine.glass
-    // Backdrops showing windows now (they count themselves).
     property int live: 0
-    // The windows' places last time, and whether they have moved lately.
     property string seen: ""
     property double movedAt: 0
     property bool moving: false
@@ -33,7 +24,6 @@ Singleton {
         Hyprland.refreshToplevels();
     }
 
-    // A window's place on its screen, logical px (empty when it isn't shown).
     function place(client: var, monitor: var): var {
         const ipc = client?.lastIpcObject;
         if (!ipc || !ipc.at || !ipc.size || !monitor || ipc.hidden || ipc.mapped === false)
@@ -41,16 +31,11 @@ Singleton {
         return Qt.rect(ipc.at[0] - monitor.x, ipc.at[1] - monitor.y, ipc.size[0], ipc.size[1]);
     }
 
-    // The special workspace out on a screen, if any.
     function specialOf(monitor: var): var {
         const id = monitor?.lastIpcObject?.specialWorkspace?.id ?? 0;
         return id !== 0 ? (Hyprland.workspaces.values.find(w => w.id === id) ?? null) : null;
     }
 
-    // Whether a window of the screen's workspaces reaches into its frame (the
-    // bar, the edges), for a screen of `w` by `h` logical px. Not a fullscreen
-    // one (Hyprland's 2): it covers the frame, and capturing it (a game, a
-    // film) would only cost.
     function underFrame(monitor: var, inset: real, edge: real, w: real, h: real): bool {
         const clients = [monitor?.activeWorkspace, root.specialOf(monitor)].filter(ws => ws)
             .reduce((all, ws) => all.concat(Array.from(ws.toplevels.values)), []);

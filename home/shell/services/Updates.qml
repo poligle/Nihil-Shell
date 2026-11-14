@@ -5,24 +5,16 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 
-// Whether there is a newer NIHIL: how many commits GitHub has past the one
-// this machine pins, and which (nihil check, modules/nihil-cli.nix). Checked
-// a minute after the session starts, every 6 hours, and when the panel's
-// update button is opened if the last check is half an hour old. Updating
-// is Machine.update: it brings NIHIL and what it pins, NixOS and its
-// packages with it.
 Singleton {
     id: root
 
-    // "", "checking", "current", "behind", "offline" or "unknown" (not from GitHub)
     property string state: ""
     property int behind: 0
-    property var commits: []        // { sha, subject }, newest first, up to 20
+    property var commits: []
     property string pinned: ""
-    property string dev: ""         // nihil dev's checkout, while there is one
+    property string dev: ""
     property real checkedAt: 0
 
-    // In a few words, for the panel: what the pointer on its button shows.
     readonly property string summary: state === "behind" ? (behind === 1 ? Lang.updBehindOne : Lang.updBehind.arg(behind))
         : state === "current" ? Lang.updCurrent.arg(pinned)
         : state === "offline" ? Lang.updOffline

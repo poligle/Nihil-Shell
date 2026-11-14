@@ -4,17 +4,6 @@ import qs.theme
 import qs.services
 import "Geometry.js" as Geometry
 
-// Light on the inner edge of the frame, like the Glyph LEDs on the back of
-// a Nothing phone:
-//   sweep  a segment runs around it (a notification; twice and red when critical)
-//   level  work in progress (Glyph.jobs): the two lights of the rise stay
-//          as far up as the work has got, a faint trail behind them; while
-//          how far is not known, a faint stretch goes round
-//   rise   plugging in the charger: two lights start at the middle of the
-//          bottom edge, climb both sides leaving a fading trail and meet at
-//          the top, then it all goes out (the CHARGE pulse of the launcher on
-//          the phone: same curve, 70 % travel and 30 % fade, but 1.8 s instead
-//          of 1.5: the way round a laptop screen is about twice as long)
 Item {
     id: root
 
@@ -29,18 +18,15 @@ Item {
     readonly property string ring: Geometry.outline(width, height, inset, edge, edge, edge,
         Tokens.frameRadius, 0, 0, [], start)
 
-    // Rise: how far each light has climbed, 0..1 of half the ring.
     property color riseTint: Tokens.ink
     property real climb: 0
     readonly property real reach: climb * perimeter / 2
     readonly property string leftRoute: Geometry.rise(width, height, inset, edge, edge, edge, Tokens.frameRadius, -1)
     readonly property string rightRoute: Geometry.rise(width, height, inset, edge, edge, edge, Tokens.frameRadius, 1)
 
-    // Dash pattern units are multiples of the stroke width.
     function pattern(w: real): var { return [segment / w, (perimeter + segment) / w]; }
     function offset(w: real): real { return (segment - progress * (perimeter + segment)) / w; }
 
-    // Progress: how far up the lights are, eased between the steps it comes in.
     readonly property bool measured: Glyph.working && Glyph.level >= 0
     property real level: measured ? Glyph.level : 0
     readonly property real levelReach: level * perimeter / 2
@@ -94,10 +80,6 @@ Item {
         }
     }
 
-    // One stroke of a rising light: the stretch of its route that ends at
-    // the head and reaches `length` behind it (0: all the way to the start).
-    // Layered, from faint and long to bright and short, they make the trail
-    // fade behind the head.
     component Beam: ShapePath {
         property string route
         property real reach
@@ -159,7 +141,6 @@ Item {
         Beam { route: root.rightRoute; reach: root.levelReach; total: root.perimeter; tint: Tokens.ink; length: 70; alpha: 0.7 }
     }
 
-    // Not known how far: a faint stretch that goes round.
     Shape {
         id: waitShape
         anchors.fill: parent
@@ -204,7 +185,6 @@ Item {
         PropertyAction { target: sweepShape; property: "opacity"; value: 0 }
     }
 
-    // Eased like the phone (PathInterpolator 0.2, 0, 0, 1).
     SequentialAnimation {
         id: rise
 
