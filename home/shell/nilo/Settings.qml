@@ -120,7 +120,7 @@ Item {
                 id: autoRow
                 width: content.width
                 title: Lang.setAuto
-                sub: Nilo.settings.auto && Nilo.fast === "" ? Lang.setAutoNeedsTwo : Lang.setAutoSub
+                sub: Nilo.settings.auto && Nilo.fast === "" ? Lang.setAutoNeedsTwo : ""
                 on: Nilo.settings.auto === true
                 current: root.cursor === root.autoIndex
                 onToggled: root.flip("auto")
@@ -130,7 +130,6 @@ Item {
                 id: thinkRow
                 width: content.width
                 title: Lang.setThink
-                sub: Lang.setThinkSub
                 on: Nilo.settings.think === true
                 current: root.cursor === root.thinkIndex
                 onToggled: root.flip("think")
@@ -165,23 +164,11 @@ Item {
                 }
             }
 
-            Txt {
-                width: content.width
-                leftPadding: 16
-                rightPadding: 16
-                text: Lang.setRepoNote
-                color: Tokens.muted
-                wrapMode: Text.Wrap
-                elide: Text.ElideNone
-                font.pixelSize: 12
-            }
-
             Section { title: Lang.setContext }
 
             GearRow {
                 width: content.width
                 title: Lang.setNotes
-                sub: Lang.setContextNote
 
                 KeyButton {
                     text: Lang.setContextEdit
@@ -243,17 +230,6 @@ Item {
                 }
             }
 
-            Txt {
-                width: content.width
-                leftPadding: 16
-                rightPadding: 16
-                topPadding: 6
-                text: Lang.setRebuild
-                color: Tokens.muted
-                wrapMode: Text.WordWrap
-                elide: Text.ElideNone
-                font.pixelSize: 12
-            }
         }
     }
 }

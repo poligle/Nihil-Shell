@@ -75,7 +75,6 @@ Flickable {
         Setting {
             Layout.topMargin: 18
             title: Lang.cfgGlass
-            sub: Lang.cfgGlassSub
 
             Toggle {
                 on: Machine.glass

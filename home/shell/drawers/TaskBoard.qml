@@ -25,7 +25,7 @@ Item {
         return most;
     }
 
-    implicitHeight: header.implicitHeight + 12 + (empty ? hint.implicitHeight
+    implicitHeight: header.implicitHeight + 12 + (empty ? 0
         : laneProbe.implicitHeight + 10 + Math.min(maxList, tallest) + (tallest > maxList + 1 ? 14 : 0))
 
     property string dragId: ""
@@ -132,18 +132,6 @@ Item {
                     else Drawers.close();
                 }
             }
-        }
-
-        Txt {
-            id: hint
-            Layout.fillWidth: true
-            visible: root.empty
-            text: Lang.tasksEmpty
-            color: Tokens.muted
-            wrapMode: Text.Wrap
-            elide: Text.ElideNone
-            font.pixelSize: 12
-            lineHeight: 1.2
         }
 
         RowLayout {
