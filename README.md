@@ -170,7 +170,9 @@ keeps its contrast; the hairlines become the glass's own edges, and a border tha
 something (focus, the one chosen, an error) stays. The shell draws it with two shaders
 (`home/shell/shaders/`) over one texture of what is behind, with its mipmaps for the
 frost (`components/Backdrop.qml`); hyprlock draws flat colours, so the lock screen's
-glass is made into its background, once per wallpaper (`home/lock/glass.py`).
+glass is made into its background, once per wallpaper (`home/lock/glass.py`). The terminal
+goes with it: kitty's background lets a fifth through, which Hyprland blurs and darkens, and
+the switch reaches the kitties already open (they read their configuration again).
 
 ---
 

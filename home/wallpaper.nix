@@ -7,7 +7,7 @@ let
 
 	nihil-wallpaper = pkgs.writeShellScriptBin "nihil-wallpaper" ''
 		set -euo pipefail
-		export PATH="${lib.makeBinPath [ pkgs.awww pkgs.jq pkgs.coreutils ]}:${config.home.profileDirectory}/bin:$PATH"
+		export PATH="${lib.makeBinPath [ pkgs.awww pkgs.jq pkgs.coreutils pkgs.procps ]}:${config.home.profileDirectory}/bin:$PATH"
 
 		dir="${nihil.wallpapers}"
 		state="${config.xdg.stateHome}/nihil/wallpaper"
@@ -69,7 +69,12 @@ let
 			glass)
 				case "''${2:-}" in
 					"") look ;;
-					on | off) mkdir -p "$(dirname "$glass")"; echo "$2" > "$glass"; apply "$(current)" ;;
+					on | off)
+						mkdir -p "$(dirname "$glass")"
+						echo "$2" > "$glass"
+						apply "$(current)"
+						pkill -USR1 -x 'kitty|\.kitty-wrapped' || true
+						;;
 					*) echo "usage: nihil-wallpaper glass [on|off]" >&2; exit 2 ;;
 				esac
 				;;
