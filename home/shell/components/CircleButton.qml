@@ -3,7 +3,7 @@ import qs.theme
 
 // Round icon button with a hairline border. `label` names it for screen
 // readers, as the word it stands for.
-Rectangle {
+Surface {
     id: root
 
     property string glyph: ""

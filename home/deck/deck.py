@@ -70,6 +70,7 @@ CODE_LIFETIME = 300             # seconds a code pairs
 CODE_ATTEMPTS = 5               # wrong codes before it stops pairing
 MAX_BODY = 4096
 TASKS_MAX = 256 * 1024     # a phone's whole kanban
+CLIP_MAX = 256 * 1024      # text copied on one side, pasted on the other
 COVER_MAX = 4 * 1024 * 1024
 CARDS_MAX = 1000
 FAIL_WINDOW = 60                # seconds, and how many failures in them
@@ -391,6 +392,26 @@ class Session:
 
     def ipc(self, *arguments):
         return self.run([self.config["ipc"], *arguments])
+
+    def clipboard(self, text=None):
+        """The computer's clipboard, as text: read, or replaced by what the
+        phone copied. None when there is no Wayland session to ask; what is
+        there and is not text (a picture) reads as empty."""
+        if text is None:
+            try:
+                done = subprocess.run([self.config["wlPaste"], "--no-newline", "--type", "text"],
+                                      stdin=subprocess.DEVNULL, capture_output=True, timeout=6)
+            except (OSError, subprocess.SubprocessError):
+                return None
+            # wl-paste fails as well when the clipboard is empty, or holds no text.
+            return done.stdout[:CLIP_MAX].decode("utf-8", errors="replace") if done.returncode == 0 else ""
+        try:
+            # wl-copy stays behind, serving it, and returns once it is copied.
+            done = subprocess.run([self.config["wlCopy"]], input=text.encode("utf-8"),
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=6)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return text if done.returncode == 0 else None
 
     def apps(self, fresh=False):
         """What the launcher has: [{ id, name, icon }], by name."""
@@ -1287,8 +1308,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.route("GET", {})
 
     def do_POST(self):
-        # A phone's kanban can be more than any other request.
-        body = self.read_body(TASKS_MAX if urllib.parse.urlsplit(self.path).path == "/v1/tasks" else MAX_BODY)
+        # A phone's kanban, or what it copied, can be more than any other request.
+        path = urllib.parse.urlsplit(self.path).path
+        body = self.read_body({"/v1/tasks": TASKS_MAX, "/v1/clipboard": CLIP_MAX}.get(path, MAX_BODY))
         if body is None:
             self.reply(400, {"error": "body"})
             return
@@ -1445,6 +1467,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.reply(200, volume)
                 else:
                     self.reply(503, {"error": "volume"})
+        elif method == "GET" and path == "/v1/clipboard":
+            text = session.clipboard()
+            if text is None:
+                self.reply(503, {"error": "clipboard"})
+            else:
+                self.reply(200, {"text": text})
+        elif method == "POST" and path == "/v1/clipboard":
+            text = body.get("text")
+            if not isinstance(text, str) or text == "":
+                self.reply(400, {"error": "invalid"})
+            elif session.clipboard(text) is None:
+                self.reply(503, {"error": "clipboard"})
+            else:
+                self.reply(200, {"ok": True})
         elif method == "POST" and path == "/v1/lock":
             if session.lock_screen():
                 self.reply(200, {"ok": True})
@@ -1639,7 +1675,8 @@ def main():
             config = json.load(file)
     for key, command in (("ipc", "nihil-ipc"), ("volume", "osd-volume"),
                          ("notify", "notify-send"), ("openssl", "openssl"), ("qrencode", "qrencode"),
-                         ("rsvg", "rsvg-convert"), ("ip", "ip"), ("wpctl", "wpctl")):
+                         ("rsvg", "rsvg-convert"), ("ip", "ip"), ("wpctl", "wpctl"),
+                         ("wlCopy", "wl-copy"), ("wlPaste", "wl-paste")):
         config.setdefault(key, shutil.which(command) or command)
 
     if options.command == "serve":

@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.theme
 import qs.services
+import qs.components
 
 // Preferences, and the welcome the first time (services/Machine.qml): a
 // sheet over the screen that has the focus, above the frame. Escape, a
@@ -60,22 +61,42 @@ Scope {
             }
         }
 
-        Rectangle {
-            anchors.centerIn: parent
-            width: Math.min(1060, parent.width - 120)
-            height: Math.min(720, parent.height - 120)
-            radius: Tokens.drawerRadius
-            color: Tokens.black
-            border.width: 1
-            border.color: Tokens.line
+        // Smoked glass (Preferences, Look): the sheet and what is on it see
+        // what is behind, windows and all, through the dim, a third of it.
+        Item {
+            anchors.fill: parent
 
-            MouseArea {
-                anchors.fill: parent
-            }
+            property Item glassBackdrop: Machine.glass ? backdrop.item : null
 
             Loader {
-                anchors.fill: parent
-                sourceComponent: Machine.welcoming ? welcome : preferences
+                id: backdrop
+                active: Machine.glass && win.target !== null
+                sourceComponent: Backdrop {
+                    output: win.target.name
+                    screenSize: Qt.vector2d(win.width, win.height)
+                    dim: 0.3
+                    windows: true
+                }
+            }
+
+            Surface {
+                anchors.centerIn: parent
+                width: Math.min(1060, parent.width - 120)
+                height: Math.min(720, parent.height - 120)
+                pane: true
+                radius: Tokens.drawerRadius
+                color: Tokens.black
+                border.width: 1
+                border.color: Tokens.line
+
+                MouseArea {
+                    anchors.fill: parent
+                }
+
+                Loader {
+                    anchors.fill: parent
+                    sourceComponent: Machine.welcoming ? welcome : preferences
+                }
             }
         }
 

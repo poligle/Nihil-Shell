@@ -84,7 +84,11 @@ home screen in the same language: the frame, the desktop's clock, its light and 
 - **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
   sends a segment of light around the frame; critical ones run twice, in red, like the
   battery warnings at 15, 10 and 5 %. Plugging in the charger sends two lights up both
-  sides from the bottom, which meet at the top, like the launcher on the phone.
+  sides from the bottom, which meet at the top, like the launcher on the phone. Work
+  that takes a while stays on it: a rebuild (Preferences, updating, a generation) keeps
+  the two lights as far up as it has got and rises when it is done; a download in Zen,
+  Firefox or Chromium sends a faint stretch round until it ends. Anything else can use
+  it too: `nihil-ipc glyph progress <id> <0..1>`, then `done <id>`.
 - **Wallpapers as LED matrices.** Every picture in `wallpapers/`, and in a machine's
   `/etc/nixos/wallpapers` (PNG, JPEG, GIF or WebP, with any name), is rendered at build
   time as dots, once per output at its native size, so each dot lands on exact pixels. A
@@ -148,6 +152,22 @@ Contrast ratios are against `#000000`. Fonts: [Doto](https://github.com/oliverla
 [Space Grotesk](https://github.com/floriankarsten/space-grotesk) and Space Mono (all SIL
 OFL 1.1), plus JetBrains Mono Nerd Font for the terminal and glyphs. Icons: Colloid in
 its grey variant; the shell shows app icons desaturated.
+
+**Smoked glass**, off unless chosen in Preferences, Look: the frame, its drawers and every
+card, key, tab, row and field in them, Preferences, the desktop's widgets, the lock
+screen's field and the login's become dark glass. Behind it is what is really there: the
+wallpaper (the output's own render, dot for dot) and, wherever glass can be over one, the
+windows, captured live where they are (a drawer out, a notification, a window dragged
+under the frame, Preferences). A third of it comes through the smoke. The bevel is clear
+and bends it outwards, its colours a little apart where it bends most; the face beyond is
+frosted and a little uneven, so the dots come through soft and their light spreads past
+them, and the edge glows where something bright is near it; a glint where the light from
+the top left catches the edge. Light surfaces (ink, red) frost more, so what is on them
+keeps its contrast; the hairlines become the glass's own edges, and a border that says
+something (focus, the one chosen, an error) stays. The shell draws it with two shaders
+(`home/shell/shaders/`) over one texture of what is behind, with its mipmaps for the
+frost (`components/Backdrop.qml`); hyprlock draws flat colours, so the lock screen's
+glass is made into its background, once per wallpaper (`home/lock/glass.py`).
 
 ---
 
@@ -341,9 +361,11 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + arrows`                  | Move focus                                    |
 | `SUPER + 1…0`                     | Workspace (`SHIFT` moves the window there)    |
 | `SUPER + Tab`, 3 fingers sideways | Next workspace / switch workspaces            |
+| `SUPER + A`                       | All workspaces, with their windows over the wallpaper. Held as `SUPER + V`: `A` again chooses the next, `SHIFT + A` the one before, letting go of `SUPER` goes there; let go first and it stays, for the arrows, Enter, Escape or a click (a click on a window goes to it) |
 | `SUPER + Escape`, 4 fingers       | Scratchpad (`SUPER + Ctrl` sends the window)  |
 | `SUPER + H`                       | Colour picker                                 |
-| `Print`                           | Region screenshot to the clipboard            |
+| `Print` / `SHIFT + Print`         | Screenshot of the screen the pointer is on, kept in Pictures (Screenshots, or Capturas in Spanish) and copied / record it |
+| Snipping key / `SHIFT` with it    | Screenshot of an area, kept and copied / record it (`XF86SelectiveScreenshot`; another key in Preferences, Shortcuts). Recordings go to Videos and are copied as a file; either key stops them (also in the settings panel) |
 | Volume, brightness, mic keys      | Change the value and show the OSD             |
 
 Scrolling over the bar switches workspaces (on the LEDs) or changes the volume (on the
@@ -559,13 +581,18 @@ version, so the bind uses its keycode, 201 (what `wev` shows).
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
 its apps and web pages open here, its music plays and skips, its volume goes up and down,
-its screen locks and its pointer moves, from the phone. That is all it can do: an app is one
+its screen locks, its pointer moves and its clipboard goes either way, from the phone. That is all it can do: an app is one
 the launcher shows, a page is `http` or `https`, the trackpad points and clicks as a touchpad
 here would, and there is no way to run a command or read a file.
 
 On the wrist, [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear) makes the watch one more deck: its
 music, its volume on the bezel or the crown, its caffeine, night light and lock, from a watch face
-in dots. It pairs over adb with the same code the QR holds.
+in dots. It pairs over adb with the same code the QR holds. Preferences, Devices, **Install on a
+watch** (or `nihil watch`) does it all from here, with nothing to clone or build: it finds the
+watch's Wireless debugging on the network, so only the code the watch shows is typed, installs
+the latest release with its face (checked against its SHA-256), hands the watch the invitation
+and turns on its light on the edge. `nihil watch update` brings a newer release, `nihil watch
+forget` unpairs it.
 
 Preferences, Devices turns it on (a rebuild: the service, its port in the firewall and its
 name on the local network) and pairs a phone with a QR. The QR holds the computer's

@@ -69,6 +69,8 @@
 		tileMic = "Micro";
 		tileDnd = "No molestar";
 		tileNight = "Noche";
+		tileShot = "Captura";
+		tileRecord = "Grabar";
 		networks = "Redes";
 		scanning = "Buscando";
 		devices = "Dispositivos";
@@ -377,7 +379,13 @@
 		bindSpecial = "Escritorio especial";
 		bindToSpecial = "Ventana al especial";
 		bindNextWorkspace = "Siguiente escritorio";
-		bindScreenshot = "Captura de una zona";
+		bindOverview = "Todos los escritorios; mantenida, elegir uno";
+		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
+		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
+		# nihil-shot: the folder in Pictures (Imágenes) where screenshots are kept.
+		screenshotsDir = "Capturas";
+		recordSaved = "Grabación guardada y copiada";
+		recordFailed = "No se ha podido grabar";
 		welHello = "Hola, %1";
 		welHelloAnon = "Hola";
 		welHelloBody = "Esto es NIHIL: un escritorio negro, de puntos y silencio, que solo aparece cuando lo llamas. Un minuto para enseñártelo y dejarlo a tu gusto.";
@@ -411,6 +419,8 @@
 		welNetDone = "Conectado a %1.";
 		welNetPassword = "Contraseña de la red";
 		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
+		# %1: the overview's own key (A), held or not.
+		ovHint = "[%1] Siguiente|[Shift+%1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
 		# Copy and paste, and the clipboard history (home/hyprland.nix,
 		# home/clipboard.nix, drawers/ClipboardView.qml).
@@ -482,6 +492,9 @@
 		deckApply = "Se enciende al aplicar.";
 		deckDown = "El servicio no responde: systemctl --user status nihil-deck";
 		deckPairTitle = "Emparejar";
+		deckWatchTitle = "Un reloj";
+		deckWatchSub = "NIHIL para Wear OS desde aquí, sin compilar nada: en el reloj, Depuración inalámbrica y Vincular dispositivo; solo hay que teclear su código.";
+		deckWatchInstall = "Instalar en un reloj";
 		deckPair = "Emparejar un dispositivo";
 		deckScan = "Escanéalo con NIHIL en el móvil o la tablet; un reloj lo recibe con tools/watch invite. Sirve una vez, durante cinco minutos.";
 		deckPairFailed = "No se ha podido sacar el código";
@@ -513,6 +526,8 @@
 		cfgProgramAdd = "Añadir un programa";
 		cfgProgramMissing = "Falta el nombre o el comando";
 		cfgWidgets = "Widgets";
+		cfgGlass = "Cristal ahumado";
+		cfgGlassSub = "El marco, los cajones, Preferencias, los widgets, la pantalla de bloqueo y el inicio de sesión como cristal oscuro: el fondo se ve a través y se curva en los bordes.";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
 		cfgWidgetMedia = "Música";
@@ -568,6 +583,8 @@
 		tileMic = "Mic";
 		tileDnd = "Silent";
 		tileNight = "Night";
+		tileShot = "Screenshot";
+		tileRecord = "Record";
 		networks = "Networks";
 		scanning = "Scanning";
 		devices = "Devices";
@@ -869,7 +886,12 @@
 		bindSpecial = "Special workspace";
 		bindToSpecial = "Window to the special one";
 		bindNextWorkspace = "Next workspace";
-		bindScreenshot = "Screenshot of an area";
+		bindOverview = "All workspaces; held, choose one";
+		bindScreenshot = "Screenshot of the screen; with SHIFT, record it";
+		bindSnip = "Screenshot of an area (the snipping key); with SHIFT, record it";
+		screenshotsDir = "Screenshots";
+		recordSaved = "Recording saved and copied";
+		recordFailed = "Could not record";
 		welHello = "Hello, %1";
 		welHelloAnon = "Hello";
 		welHelloBody = "This is NIHIL: a black desktop, made of dots and quiet, that only shows up when you call it. A minute to show it to you and make it yours.";
@@ -903,6 +925,7 @@
 		welNetDone = "Connected to %1.";
 		welNetPassword = "Network password";
 		wpHint = "[← →] Choose|[Enter] Keep|[Esc] Back";
+		ovHint = "[%1] Next|[Shift+%1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
 
 		bindCopy = "Copy";
 		bindClipboard = "Paste, or pick from the history";
@@ -969,6 +992,9 @@
 		deckApply = "It turns on when applied.";
 		deckDown = "The service doesn't answer: systemctl --user status nihil-deck";
 		deckPairTitle = "Pairing";
+		deckWatchTitle = "A watch";
+		deckWatchSub = "NIHIL for Wear OS from here, nothing to build: on the watch, Wireless debugging and Pair new device; only its code to type.";
+		deckWatchInstall = "Install on a watch";
 		deckPair = "Pair a device";
 		deckScan = "Scan it with NIHIL on the phone or the tablet; a watch takes it from tools/watch invite. It works once, for five minutes.";
 		deckPairFailed = "The code could not be made";
@@ -999,6 +1025,8 @@
 		cfgProgramAdd = "Add a program";
 		cfgProgramMissing = "The name or the command is missing";
 		cfgWidgets = "Widgets";
+		cfgGlass = "Smoked glass";
+		cfgGlassSub = "The frame, its drawers, Preferences, the widgets, the lock screen and the login as dark glass: the wallpaper shows through and bends at the edges.";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";
 		cfgWidgetMedia = "Music";

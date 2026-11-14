@@ -7,7 +7,7 @@ import qs.components
 // A block of code in one of Nilo's answers (Chat.qml): rounded, its
 // language above it, and a button that copies it. The code can be
 // selected with the pointer too.
-Rectangle {
+Surface {
     id: root
 
     property string code: ""
