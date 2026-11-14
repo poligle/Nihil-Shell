@@ -68,19 +68,13 @@
 		connectedTo = "Conectado a %1";
 		enterpriseHint = "%1 usa WPA-Enterprise (p. ej. eduroam): créala en la configuración avanzada";
 
-		battery = "Batería %1%";
-		charging = "cargando";
 		batteryApp = "Batería";
 		batteryLow = "Batería al %1 %";
 		batteryLowPlug = "Conecta el cargador.";
 		batteryLowLast = "Conecta el cargador ya: queda muy poco.";
-		network = "Red: %1";
-		noConnection = "Sin conexión";
 		media = "Multimedia";
 		nothingPlaying = "Nada sonando";
 		caffeine = "Cafeína";
-		caffeineOff = "La pantalla no se apaga";
-		caffeineOn = "Pantalla encendida desde las %1";
 		tasks = "Tareas";
 		tasksTodo = "Por hacer";
 		tasksDoing = "Haciendo";
@@ -548,19 +542,13 @@
 		connectedTo = "Connected to %1";
 		enterpriseHint = "%1 uses WPA-Enterprise (e.g. eduroam): set it up in the advanced settings";
 
-		battery = "Battery %1%";
 		batteryApp = "Battery";
 		batteryLow = "Battery at %1%";
 		batteryLowPlug = "Plug in the charger.";
 		batteryLowLast = "Plug in the charger now: very little is left.";
-		charging = "charging";
-		network = "Network: %1";
-		noConnection = "No connection";
 		media = "Media";
 		nothingPlaying = "Nothing playing";
 		caffeine = "Caffeine";
-		caffeineOff = "The screen stays on";
-		caffeineOn = "Screen on since %1";
 		tasks = "Tasks";
 		tasksTodo = "To do";
 		tasksDoing = "Doing";
