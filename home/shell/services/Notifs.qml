@@ -60,6 +60,21 @@ Singleton {
         deadlines = ({});
     }
 
+    function picture(given: string): string {
+        const icon = "image://icon/";
+        if (!given.startsWith(icon) || given.indexOf("?") >= 0)
+            return given;
+        let name = given.slice(icon.length);
+        try {
+            name = decodeURIComponent(name);
+        } catch (error) {}
+        if (name.startsWith("file://"))
+            return name;
+        if (name.startsWith("/"))
+            return "file://" + name.split("/").map(encodeURIComponent).join("/");
+        return Quickshell.iconPath(name, true);
+    }
+
     function tagOf(n): string {
         return String(n?.hints?.["x-nihil-tag"] ?? "");
     }

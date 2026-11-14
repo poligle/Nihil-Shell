@@ -418,7 +418,8 @@ class ServerTest(Base):
         with open(photo, "wb") as file:
             file.write(b"\xff\xd8" + os.urandom(200000))
         sent = deck.vector_send(self.config, self.deck.vector, photo)
-        self.assertEqual(sent, {"ok": True, "kind": "image", "name": "Ñandú en la nieve.jpg"})
+        self.assertEqual(sent, {"ok": True, "kind": "image", "name": "Ñandú en la nieve.jpg",
+                                "path": os.path.join(self.deck.vector.slot("out"), "Ñandú en la nieve.jpg")})
         status, item = self.phone.request("GET", "/v1/vector")
         self.assertEqual((status, item["kind"], item["mime"], item["size"]), (200, "image", "image/jpeg", 200002))
         self.assertLessEqual(item["time"], item["now"])
@@ -459,10 +460,12 @@ class ServerTest(Base):
         self.assertEqual(received["from"], "Phone")
         self.assertIn("ipc vector received", self.logged())
         status, text = self.phone.send("/v1/vector", "ñ".encode(), {"Content-Type": "text/plain; charset=utf-8"})
-        self.assertEqual((status, text["kind"], text["name"]), (200, "text", "text.txt"))
-        self.assertEqual(sorted(os.listdir(self.deck.vector.slot("in"))), [".item.json", "text.txt"])
+        self.assertEqual((status, text["kind"]), (200, "text"))
+        self.assertRegex(text["name"], r"^Vector_\d{4}-\d\d-\d\d_\d\d\.\d\d\.\d\d\.txt$")
+        self.assertEqual(sorted(os.listdir(self.deck.vector.slot("in"))), [".item.json", text["name"]])
         status, hidden = self.phone.send("/v1/vector", b"x", {"X-Vector-Name": "../.item.json"})
-        self.assertEqual((status, hidden["name"], hidden["kind"]), (200, "file", "file"))
+        self.assertEqual((status, hidden["kind"]), (200, "file"))
+        self.assertRegex(hidden["name"], r"^Vector_[\d._-]+$")
         self.addCleanup(setattr, deck, "VECTOR_TEXT", deck.VECTOR_TEXT)
         deck.VECTOR_TEXT = 4
         status, long = self.phone.send("/v1/vector", b"hello", {"Content-Type": "text/plain", "X-Vector-Name": "notes.txt"})
@@ -484,27 +487,60 @@ class ServerTest(Base):
                 file.write("\n".join(types) + "\n")
 
         clipboard(b"\x89PNG" + os.urandom(64), ["image/png", "text/html"])
-        self.assertEqual(deck.vector_send(self.config, vector), {"ok": True, "kind": "image", "name": "image.png"})
+        sent = deck.vector_send(self.config, vector)
+        self.assertEqual((sent["kind"], sent["path"]), ("image", vector.item("out")["path"]))
+        self.assertTrue(sent["name"].startswith("Vector_") and sent["name"].endswith(".png"))
         song = os.path.join(self.folder, "Song.ogg")
         with open(song, "wb") as file:
             file.write(b"OggS")
         clipboard(("file://" + urllib.parse.quote(song) + "\r\n").encode(), ["text/uri-list", "text/plain"])
         self.assertEqual(deck.vector_send(self.config, vector)["name"], "Song.ogg")
+        report = os.path.join(self.folder, "Un informe.pdf")
+        with open(report, "wb") as file:
+            file.write(b"%PDF")
+        clipboard(("copy\nfile://" + urllib.parse.quote(report)).encode(), ["x-special/gnome-copied-files", "UTF8_STRING"])
+        self.assertEqual(deck.vector_send(self.config, vector)["name"], "Un informe.pdf")
+        clipboard(b"hunter2", ["text/plain", "x-kde-passwordManagerHint"])
+        self.assertEqual(deck.vector_send(self.config, vector), {"error": "secret"})
         clipboard(b"hola", ["text/plain;charset=utf-8", "UTF8_STRING"])
-        self.assertEqual(deck.vector_send(self.config, vector), {"ok": True, "kind": "text", "name": "text.txt"})
+        sent = deck.vector_send(self.config, vector)
+        self.assertEqual((sent["kind"], sent["preview"]), ("text", "hola"))
+        self.assertEqual(deck.vector_send(self.config, vector, text="ex nihilo")["preview"], "ex nihilo")
         clipboard(b"", [])
         self.assertEqual(deck.vector_send(self.config, vector), {"error": "empty"})
         self.assertEqual(deck.vector_send(self.config, vector, self.folder), {"error": "folder"})
 
-        self.assertEqual(deck.vector_copy(self.config, vector), {"error": "empty"})
+        folder = os.path.join(self.folder, "Vector")
+        self.config["vectorFolder"] = folder
+        self.config["open"] = script(os.path.join(self.folder, "bin"), "xdg-open", FAKE_LOGGER.replace("{name}", "xdg-open"))
+        self.assertEqual(deck.vector_command(self.config, "copy", None), {"error": "empty"})
         self.phone.send("/v1/vector", b"PNG!", {"Content-Type": "image/png"})
-        self.assertEqual(deck.vector_copy(self.config, vector), {"ok": True})
+        self.assertEqual(deck.vector_command(self.config, "copy", None), {"ok": True})
         with open(os.path.join(runtime, "clipboard.args")) as file:
             self.assertEqual(file.read().split(), ["--type", "image/png"])
-        self.phone.send("/v1/vector", b"%PDF", {"Content-Type": "application/pdf", "X-Vector-Name": "Una factura.pdf"})
-        deck.vector_copy(self.config, vector)
-        with open(os.path.join(runtime, "clipboard"), "rb") as file:
-            self.assertEqual(file.read(), ("file://" + urllib.parse.quote(vector.item("in")["path"]) + "\r\n").encode())
+        self.assertIsNone(vector.item("in"))
+        self.assertEqual(os.listdir(vector.slot("in")), [])
+
+        for copy in range(2):
+            self.phone.send("/v1/vector", b"%PDF", {"Content-Type": "application/pdf", "X-Vector-Name": "Una factura.pdf"})
+            self.assertEqual(deck.vector_command(self.config, "copy", None), {"error": "kind"})
+            kept = deck.vector_command(self.config, "save", None)
+            self.assertEqual(kept["path"], os.path.join(folder, ["Una factura.pdf", "Una factura (2).pdf"][copy]))
+            self.assertIsNone(vector.item("in"))
+        with open(os.path.join(folder, "Una factura (2).pdf"), "rb") as file:
+            self.assertEqual(file.read(), b"%PDF")
+
+        self.phone.send("/v1/vector", b"\x00\x00\x00 ftyp", {"Content-Type": "video/mp4", "X-Vector-Name": "clip.mp4"})
+        opened = deck.vector_command(self.config, "open", None)
+        self.assertEqual(opened["path"], os.path.join(folder, "clip.mp4"))
+        for _ in range(50):
+            if "xdg-open " + opened["path"] in self.logged():
+                break
+            time.sleep(0.05)
+        self.assertIn("xdg-open " + opened["path"], self.logged())
+        self.phone.send("/v1/vector", b"bye", {"Content-Type": "text/plain"})
+        self.assertEqual(deck.vector_command(self.config, "clear", None), {"ok": True})
+        self.assertEqual(deck.vector_command(self.config, "clear", None), {"error": "empty"})
 
     def test_without_the_shell(self):
         self.pair()

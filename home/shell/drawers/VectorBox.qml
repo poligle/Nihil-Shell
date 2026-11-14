@@ -8,13 +8,21 @@ import qs.components
 Item {
     id: root
 
-    readonly property var item: Vector.received
+    property var shown: ({ id: "" })
+    property string shownText: ""
+    property var going: ({ kind: "" })
+    readonly property bool has: (root.shown.id ?? "") !== ""
     readonly property real radius: 14
     readonly property real pitch: 7
-    readonly property bool over: pointer.containsMouse || dropArea.containsDrag
+    readonly property bool over: pointer.containsMouse || dropArea.containsDrag || keys.hovered
     property real head: -1
     property real flash: 0
     property color flashColor: Tokens.ink
+
+    readonly property var actions: !root.has ? []
+        : root.shown.kind === "text" ? ["copy", "save", "clear"]
+        : root.shown.kind === "image" ? ["copy", "save", "open", "clear"]
+        : ["save", "open", "clear"]
 
     readonly property var leds: {
         const inset = 1.5;
@@ -60,6 +68,63 @@ Item {
         return root.flash > 0 ? Qt.tint(lit, Qt.rgba(root.flashColor.r, root.flashColor.g, root.flashColor.b, root.flash)) : lit;
     }
 
+    function glyphOf(action: string): string {
+        return { copy: Icons.copy, save: Icons.download, open: Icons.open, clear: Icons.close }[action] ?? "";
+    }
+
+    function primary(): void {
+        if (!root.has)
+            Vector.send("");
+        else
+            Vector.act(root.actions[0]);
+    }
+
+    function follow(): void {
+        const next = Vector.received;
+        const id = next.id ?? "";
+        if (id === (root.shown.id ?? ""))
+            return;
+        if (id === "") {
+            if (root.has)
+                leave.restart();
+            return;
+        }
+        leave.stop();
+        root.shown = next;
+        root.shownText = Vector.text;
+        arrive.restart();
+        lap.restart();
+    }
+
+    Component.onCompleted: root.follow()
+
+    Connections {
+        target: Vector
+
+        function onReceivedChanged(): void {
+            root.follow();
+        }
+
+        function onTextChanged(): void {
+            if ((Vector.received.id ?? "") === (root.shown.id ?? ""))
+                root.shownText = Vector.text;
+        }
+
+        function onSent(item: var): void {
+            root.going = item;
+            fly.restart();
+        }
+
+        function onLit(what: string): void {
+            if (what === "sent" || what === "received") {
+                lap.restart();
+            } else if (what !== "save" && what !== "open" && what !== "clear") {
+                root.flashColor = what === "failed" ? Tokens.interrupt : Tokens.ink;
+                blink.restart();
+            }
+        }
+    }
+
     NumberAnimation {
         id: lap
         target: root
@@ -77,16 +142,37 @@ Item {
         NumberAnimation { target: root; property: "flash"; to: 0; duration: 420; easing.type: Easing.OutCubic }
     }
 
-    Connections {
-        target: Vector
-        function onLit(what: string): void {
-            if (what === "sent" || what === "received") {
-                lap.restart();
-            } else {
-                root.flashColor = what === "failed" ? Tokens.interrupt : Tokens.ink;
-                blink.restart();
+    ParallelAnimation {
+        id: arrive
+        NumberAnimation { target: content; property: "scale"; from: 0.82; to: 1; duration: 320; easing.type: Easing.OutCubic }
+        NumberAnimation { target: content; property: "opacity"; from: 0; to: 1; duration: 240; easing.type: Easing.OutCubic }
+    }
+
+    SequentialAnimation {
+        id: leave
+        ParallelAnimation {
+            NumberAnimation { target: content; property: "scale"; to: 0.25; duration: 300; easing.type: Easing.InCubic }
+            NumberAnimation { target: content; property: "opacity"; to: 0; duration: 300; easing.type: Easing.InCubic }
+        }
+        ScriptAction {
+            script: {
+                root.shown = ({ id: "" });
+                root.shownText = "";
+                content.scale = 1;
+                content.opacity = 1;
             }
         }
+    }
+
+    SequentialAnimation {
+        id: fly
+        ScriptAction { script: { outgoing.scale = 1; outgoing.opacity = 1; outgoing.visible = true; } }
+        PauseAnimation { duration: 160 }
+        ParallelAnimation {
+            NumberAnimation { target: outgoing; property: "scale"; to: 0.06; duration: 520; easing.type: Easing.InCubic }
+            NumberAnimation { target: outgoing; property: "opacity"; to: 0; duration: 520; easing.type: Easing.InQuad }
+        }
+        ScriptAction { script: outgoing.visible = false }
     }
 
     Timer {
@@ -120,79 +206,45 @@ Item {
         color: root.over ? Tokens.dim : Tokens.muted
     }
 
-    Ico {
-        anchors.centerIn: parent
-        anchors.verticalCenterOffset: 8
-        visible: !Vector.has
-        glyph: Icons.swap
-        color: root.over ? Tokens.dim : Tokens.off
-        font.pixelSize: 22
-    }
-
-    ClippingRectangle {
+    Item {
         anchors.fill: parent
-        anchors.margins: 12
-        anchors.topMargin: 30
-        radius: 6
-        color: "transparent"
-        visible: Vector.has && root.item.kind === "image"
+        opacity: outgoing.visible ? 0 : 1
 
-        Image {
+        Behavior on opacity { NumberAnimation { duration: Tokens.animFast } }
+
+        Item {
+            id: content
             anchors.fill: parent
-            source: Vector.has && root.item.kind === "image" ? "file://" + root.item.path.split("/").map(encodeURIComponent).join("/") : ""
-            sourceSize.width: 440
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            opacity: root.over ? 1 : 0.8
+
+            Ico {
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: 8
+                visible: !root.has
+                glyph: Icons.swap
+                color: root.over ? Tokens.dim : Tokens.off
+                font.pixelSize: 22
+            }
+
+            Preview {
+                anchors.fill: parent
+                visible: root.has
+                item: root.shown
+                text: root.shownText
+                lit: root.over
+            }
         }
     }
 
-    Txt {
+    Item {
+        id: outgoing
         anchors.fill: parent
-        anchors.margins: 14
-        anchors.topMargin: 30
-        visible: Vector.has && root.item.kind === "text"
-        text: Vector.text
-        color: root.over ? Tokens.ink : Tokens.dim
-        font.pixelSize: 12
-        verticalAlignment: Text.AlignTop
-        wrapMode: Text.Wrap
-        maximumLineCount: 3
-        elide: Text.ElideRight
-    }
+        visible: false
 
-    Row {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: 8
-        spacing: 10
-        visible: Vector.has && (root.item.kind === "video" || root.item.kind === "file")
-
-        Ico {
-            anchors.verticalCenter: parent.verticalCenter
-            glyph: root.item.kind === "video" ? Icons.video : Icons.file
-            color: root.over ? Tokens.ink : Tokens.dim
-            font.pixelSize: 20
-        }
-
-        Column {
-            width: parent.width - 30
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 2
-
-            Txt {
-                width: parent.width
-                text: root.item.name ?? ""
-                color: root.over ? Tokens.ink : Tokens.dim
-                font.pixelSize: 13
-            }
-
-            Label {
-                text: Dates.bytes(root.item.size ?? 0)
-            }
+        Preview {
+            anchors.fill: parent
+            item: root.going
+            text: root.going.preview ?? ""
+            lit: true
         }
     }
 
@@ -201,39 +253,132 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: Vector.has ? Vector.copy() : Vector.send("")
+        onClicked: root.primary()
     }
 
-    Ico {
+    Row {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.rightMargin: 12
         anchors.topMargin: 9
-        glyph: Icons.paste
-        color: sendArea.containsMouse ? Tokens.ink : Tokens.dim
-        font.pixelSize: 15
-        opacity: Vector.has && (root.over || sendArea.containsMouse) ? 1 : 0
+        spacing: 10
+        opacity: root.over ? 1 : 0
 
         Behavior on opacity { NumberAnimation { duration: Tokens.animFast } }
 
-        MouseArea {
-            id: sendArea
-            anchors.fill: parent
-            anchors.margins: -6
-            enabled: Vector.has
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Vector.send("")
+        HoverHandler { id: keys }
+
+        Repeater {
+            model: root.has ? root.actions : ["paste"]
+
+            Ico {
+                id: key
+
+                required property string modelData
+
+                glyph: key.modelData === "paste" ? Icons.paste : root.glyphOf(key.modelData)
+                color: hit.containsMouse ? (key.modelData === "clear" ? Tokens.interrupt : Tokens.ink) : Tokens.dim
+                font.pixelSize: 15
+
+                MouseArea {
+                    id: hit
+                    anchors.fill: parent
+                    anchors.margins: -5
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: key.modelData === "paste" ? Vector.send("") : Vector.act(key.modelData)
+                }
+            }
         }
     }
 
     DropArea {
         id: dropArea
         anchors.fill: parent
+        onEntered: Vector.dropping = true
+        onExited: Vector.dropping = false
         onDropped: event => {
-            if (event.hasUrls && event.urls.length > 0) {
+            Vector.dropping = false;
+            if (event.hasUrls && event.urls.length > 0)
                 Vector.send(event.urls[0].toString());
-                event.accept();
+            else if (event.hasText)
+                Vector.sendText(event.text);
+            event.accept();
+        }
+    }
+
+    component Preview: Item {
+        id: view
+
+        property var item: ({ kind: "" })
+        property string text: ""
+        property bool lit: false
+
+        ClippingRectangle {
+            anchors.fill: parent
+            anchors.margins: 12
+            anchors.topMargin: 30
+            radius: 6
+            color: "transparent"
+            visible: view.item.kind === "image"
+
+            Image {
+                anchors.fill: parent
+                source: view.item.kind === "image" && view.item.path ? Vector.fileUrl(view.item.path) : ""
+                sourceSize.width: 440
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                opacity: view.lit ? 1 : 0.8
+            }
+        }
+
+        Txt {
+            anchors.fill: parent
+            anchors.margins: 14
+            anchors.topMargin: 30
+            visible: view.item.kind === "text"
+            text: view.text
+            color: view.lit ? Tokens.ink : Tokens.dim
+            font.pixelSize: 12
+            verticalAlignment: Text.AlignTop
+            wrapMode: Text.Wrap
+            maximumLineCount: 3
+            elide: Text.ElideRight
+        }
+
+        Row {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 14
+            anchors.rightMargin: 14
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: 8
+            spacing: 10
+            visible: view.item.kind === "video" || view.item.kind === "file"
+
+            Ico {
+                anchors.verticalCenter: parent.verticalCenter
+                glyph: view.item.kind === "video" ? Icons.video : Icons.file
+                color: view.lit ? Tokens.ink : Tokens.dim
+                font.pixelSize: 20
+            }
+
+            Column {
+                width: parent.width - 30
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 2
+
+                Txt {
+                    width: parent.width
+                    text: view.item.name ?? ""
+                    color: view.lit ? Tokens.ink : Tokens.dim
+                    font.pixelSize: 13
+                }
+
+                Label {
+                    visible: (view.item.size ?? -1) >= 0
+                    text: Dates.bytes(view.item.size ?? 0)
+                }
             }
         }
     }

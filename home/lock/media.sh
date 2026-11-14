@@ -228,12 +228,23 @@ act() {
 	refresh now
 }
 
+backdrop() {
+	load
+	local plain="$LOCK/$1.png" lit="$LOCK/$1-media.png"
+	if [[ -n $status && -e $lit ]]; then
+		printf '%s\n' "$lit"
+	else
+		printf '%s\n' "$plain"
+	fi
+}
+
 case ${1:-} in
 	info) info ;;
 	progress) progress ;;
 	button) button "${2:-}" ;;
 	cover) cover ;;
 	render) render "${2:-}" "${3:-}" ;;
+	backdrop) backdrop "${2:-}" ;;
 	prev | toggle | next) act "$1" ;;
-	*) echo "usage: nihil-lock-media info|progress|button prev|toggle|next|cover|prev|toggle|next" >&2; exit 2 ;;
+	*) echo "usage: nihil-lock-media info|progress|button prev|toggle|next|cover|backdrop OUTPUT|prev|toggle|next" >&2; exit 2 ;;
 esac

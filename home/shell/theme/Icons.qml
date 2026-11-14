@@ -58,6 +58,7 @@ Singleton {
     readonly property string paste: g(0xF0192)
     readonly property string file: g(0xF0214)
     readonly property string video: g(0xF0567)
+    readonly property string open: g(0xF03CC)
 
     function volume(level: real, muted: bool): string {
         if (muted || level <= 0) return volMute;

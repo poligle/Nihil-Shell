@@ -221,6 +221,14 @@ Scope {
                 onContainsMouseChanged: containsMouse ? hoverOpen.restart() : hoverClose.restart()
             }
 
+            DropArea {
+                id: hotDrop
+                anchors.fill: hotZone
+                enabled: Vector.enabled
+                onEntered: if (Drawers.current === "") Drawers.open("dashboard", root.output, true)
+                onExited: dragClose.restart()
+            }
+
             Item {
                 id: dashHit
                 x: win.centerX - win.dashW / 2
@@ -231,6 +239,13 @@ Scope {
                 HoverHandler {
                     id: dashHover
                     onHoveredChanged: if (!hovered) hoverClose.restart()
+                }
+
+                DropArea {
+                    id: dashDrop
+                    anchors.fill: parent
+                    enabled: Vector.enabled && win.dashOpen
+                    onExited: dragClose.restart()
                 }
 
                 Item {
@@ -314,6 +329,25 @@ Scope {
                 onTriggered: {
                     if (hotZone.containsMouse && Drawers.current === "")
                         Drawers.open("dashboard", root.output, true);
+                }
+            }
+
+            Timer {
+                id: dragClose
+                interval: 450
+                onTriggered: {
+                    if (Drawers.byHover && win.dashOpen && !hotDrop.containsDrag && !dashDrop.containsDrag && !Vector.dropping
+                            && !hotZone.containsMouse && !dashHover.hovered)
+                        Drawers.close();
+                }
+            }
+
+            Connections {
+                target: Vector
+
+                function onDroppingChanged(): void {
+                    if (!Vector.dropping)
+                        dragClose.restart();
                 }
             }
 

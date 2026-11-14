@@ -10,6 +10,7 @@ let
 	hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
 	jq = "${pkgs.jq}/bin/jq";
 	notify = "${pkgs.libnotify}/bin/notify-send";
+	fileUri = ''${jq} -rn --arg path "$1" '"file://" + ($path | split("/") | map(@uri) | join("/"))' '';
 	strings = osConfig.nihil.strings;
 	sound = osConfig.nihil.sounds;
 	volumeSound = sound.volume;
@@ -22,15 +23,21 @@ let
 		fi
 		dir="$pictures/${strings.screenshotsDir}"
 		mkdir -p "$dir"
-		name="NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').png"
+		file="$dir/NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').png"
 		case "''${1:-region}" in
-			screen) mode=(-m output -m active) ;;
-			region) mode=(-m region) ;;
+			screen)
+				output=$(${hyprctl} -j monitors | ${jq} -r '.[] | select(.focused) | .name')
+				${pkgs.grim}/bin/grim -o "$output" "$file"
+				;;
+			region)
+				area=$(${pkgs.slurp}/bin/slurp) || exit 0
+				${pkgs.grim}/bin/grim -g "$area" "$file"
+				;;
 			*) echo "usage: nihil-shot screen | region" >&2; exit 2 ;;
 		esac
-		${pkgs.hyprshot}/bin/hyprshot "''${mode[@]}" --silent -o "$dir" -f "$name"
-		[ -f "$dir/$name" ] || exit 0
-		${notify} -a NIHIL -i "$dir/$name" "${strings.screenshotSaved}" "''${dir/#$HOME/\~}/$name"
+		${pkgs.wl-clipboard}/bin/wl-copy --type image/png < "$file"
+		set -- "$file"
+		${notify} -a NIHIL -h "string:image-path:$(${fileUri})" "${strings.screenshotSaved}" "''${file/#$HOME/\~}"
 	'';
 
 	mic-led-sync = pkgs.writeShellScriptBin "mic-led-sync" ''
@@ -87,32 +94,50 @@ let
 				${ipc} recorder started
 			else
 				rm -f "$run/pid"
-				${notify} -a NIHIL "${strings.recordFailed}" "$(tail -n 1 "$run/log")"
+				failed
 			fi
 		}
 
+		failed() {
+			${notify} -a NIHIL "${strings.recordFailed}" "$(tail -n 1 "$run/log" 2>/dev/null)" || true
+		}
+
 		stop() {
-			if ! recording; then rm -f "$run/pid"; ${ipc} recorder stopped; return 0; fi
-			local pid raw file uri
+			[ -f "$run/pid" ] || { ${ipc} recorder stopped; return 0; }
+			local pid raw file uri died=1
 			pid="$(cat "$run/pid")"
-			kill -INT "$pid"
-			for _ in $(seq 100); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+			if recording; then
+				died=0
+				kill -INT "$pid"
+				for _ in $(seq 100); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+			fi
 			rm -f "$run/pid"
 			${ipc} recorder stopped
 			raw="$(cat "$run/raw")"; file="$(cat "$run/file")"
+			if [ ! -s "$raw" ]; then
+				rm -f "$raw"
+				failed
+				return 0
+			fi
 			if ${pkgs.ffmpeg-headless}/bin/ffmpeg -v error -y -i "$raw" -c copy \
 				-bsf:v h264_metadata=video_full_range_flag=0 -movflags +faststart "$file"; then
 				rm -f "$raw"
 			else
 				mv -f "$raw" "$file"
+				[ "$died" = 0 ] || { failed; return 0; }
 			fi
-			uri="file://$(${jq} -rn --arg path "$file" '$path | split("/") | map(@uri) | join("/")')"
+			uri=$(set -- "$file"; ${fileUri})
 			${pkgs.wl-clipboard}/bin/wl-copy --type text/uri-list "$uri" || true
-			${notify} -a NIHIL "${strings.recordSaved}" "$file"
+			picture=()
+			if ${pkgs.ffmpeg-headless}/bin/ffmpeg -v error -y -i "$file" -frames:v 1 -vf scale=480:-2 "$run/frame.png" \
+				&& [ -s "$run/frame.png" ]; then
+				picture=(-h "string:image-path:$(set -- "$run/frame.png"; ${fileUri})")
+			fi
+			${notify} -a NIHIL "''${picture[@]}" "${strings.recordSaved}" "''${file/#$HOME/\~}" || true
 		}
 
 		case "''${1:-toggle}" in
-			toggle) if recording; then stop; else start "''${2:-region}"; fi ;;
+			toggle) if [ -f "$run/pid" ]; then stop; else start "''${2:-region}"; fi ;;
 			start) start "''${2:-region}" ;;
 			stop) stop ;;
 			status) if recording; then echo on; else echo off; fi ;;

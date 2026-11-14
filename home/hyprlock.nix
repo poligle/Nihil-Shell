@@ -13,11 +13,16 @@ let
 	{
 		monitor = output;
 		path = "${state}/lock-current/${output}.png";
+		reload_cmd = "${media} backdrop ${output}";
+		reload_time = 2;
+		crossfade_time = 0.4;
 		color = rgb t.palette.void;
 		brightness = 0.55;
 	}) nihil.outputs;
 
 	field = { width = 280; height = 46; y = -40; };
+
+	panel = { x = 32; y = 32; width = 540; height = 200; radius = 40; };
 
 	fieldStyle =
 	{
@@ -69,48 +74,69 @@ let
 	lockGlass = pkgs.writeShellApplication
 	{
 		name = "nihil-lock-glass";
-		runtimeInputs = [ pkgs.coreutils pkgs.findutils ];
-		text = ''
+		runtimeInputs = [ pkgs.coreutils pkgs.findutils pkgs.util-linux ];
+		text = let
+			glass = "${glassPython}/bin/python3 ${./lock/glass.py}";
+			sizes = output: let o = nihil.outputs.${output}; in "--logical ${toString o.width} ${toString o.height}";
+			fieldArgs = "--field ${toString field.width} ${toString field.height} ${toString field.y}";
+			panelArgs = "--panel ${toString panel.x} ${toString panel.y} ${toString panel.width} ${toString panel.height} ${toString panel.radius}";
+		in ''
 			state="${state}"
 			mkdir -p "$state"
 			plain() {
 				ln -sfn "$state/wallpaper-current" "$state/lock-current"
 				ln -sfn ${plainLook} "$state/hyprlock-look.conf"
 			}
+			bake() {
+				${lib.concatMapStringsSep "\n" (output: ''
+					if [ "$1" = glass ]; then
+						${glass} "$2/${output}.png" "$3/${output}.png" ${sizes output} ${fieldArgs} || return 1
+						${glass} "$2/${output}.png" "$3/${output}-media.png" ${sizes output} ${fieldArgs} ${panelArgs} || return 1
+					else
+						ln -s "$2/${output}.png" "$3/${output}.png"
+						${glass} "$2/${output}.png" "$3/${output}-media.png" ${sizes output} ${panelArgs} --flat ${t.palette.void} ${t.palette.line} || return 1
+					fi'') (lib.attrNames nihil.outputs)}
+			}
 			if [ "''${1:-}" = --links ]; then
 				[ -e "$state/hyprlock-look.conf" ] || plain
 				[ -L "$state/lock-current" ] || plain
 				exit 0
 			fi
-			if [ "$(cat "$state/glass" 2> /dev/null || true)" != on ]; then
-				plain
-				exit 0
-			fi
+			exec 9> "$state/.lock-glass"
+			flock 9
 			wall=$(readlink -f "$state/wallpaper-current" || true)
 			if [ -z "$wall" ] || [ ! -d "$wall" ]; then
 				plain
 				exit 0
 			fi
-			key=$(printf '%s' "$wall" | sha1sum | cut -c1-16)
-			made="$state/lock-glass/$key"
+			look=plain
+			if [ "$(cat "$state/glass" 2> /dev/null || true)" = on ]; then
+				look=glass
+			fi
+			key=$(printf '%s %s' "$look" "$wall" | sha1sum | cut -c1-16)
+			made="$state/lock-$look/$key"
 			if [ ! -e "$made/.done" ]; then
 				rm -rf "$made.tmp"
 				mkdir -p "$made.tmp"
-				${lib.concatMapStringsSep "\n" (output: let o = nihil.outputs.${output}; in ''
-					if ! ${glassPython}/bin/python3 ${./lock/glass.py} "$wall/${output}.png" "$made.tmp/${output}.png" \
-						--logical ${toString o.width} ${toString o.height} \
-						--field ${toString field.width} ${toString field.height} ${toString field.y}; then
-						rm -rf "$made.tmp"
-						plain
-						exit 0
-					fi'') (lib.attrNames nihil.outputs)}
+				if ! bake "$look" "$wall" "$made.tmp"; then
+					rm -rf "$made.tmp"
+					plain
+					exit 0
+				fi
 				touch "$made.tmp/.done"
 				rm -rf "$made"
 				mv "$made.tmp" "$made"
 			fi
 			ln -sfn "$made" "$state/lock-current"
-			ln -sfn ${glassLook} "$state/hyprlock-look.conf"
-			find "$state/lock-glass" -mindepth 1 -maxdepth 1 ! -name "$key" -exec rm -rf {} +
+			if [ "$look" = glass ]; then
+				ln -sfn ${glassLook} "$state/hyprlock-look.conf"
+			else
+				ln -sfn ${plainLook} "$state/hyprlock-look.conf"
+			fi
+			for other in "$state/lock-glass" "$state/lock-plain"; do
+				[ -d "$other" ] && find "$other" -mindepth 1 -maxdepth 1 ! -name "$key" -exec rm -rf {} +
+			done
+			exit 0
 		'';
 	};
 
@@ -134,7 +160,7 @@ let
 		export PATH=${lib.makeBinPath [ pkgs.playerctl pkgs.coreutils pkgs.util-linux pkgs.curl ]}
 		export INK=${t.palette.ink} DIM=${t.palette.dim} MUTED=${t.palette.muted}
 		export SANS=${lib.escapeShellArg t.fonts.sans} MONO=${lib.escapeShellArg t.fonts.mono} ICONS=${lib.escapeShellArg t.fonts.icons}
-		export PAUSED=${lib.escapeShellArg s.lockPaused}
+		export PAUSED=${lib.escapeShellArg s.lockPaused} LOCK=${lib.escapeShellArg "${state}/lock-current"}
 		export RENDER=${cover}/bin/nihil-lock-cover BLANK=${cover}/share/blank.png NOART=${cover}/share/noart.png
 	'' + builtins.readFile ./lock/media.sh);
 
