@@ -62,24 +62,8 @@ def smoothstep(e0, e1, x):
     return t * t * (3 - 2 * t)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("wallpaper")
-    parser.add_argument("out")
-    parser.add_argument("--logical", nargs=2, type=float, required=True)
-    parser.add_argument("--field", nargs=3, type=float, required=True)
-    args = parser.parse_args()
-
-    img = np.asarray(Image.open(args.wallpaper).convert("RGB"), dtype=np.float32) / 255
+def glass(img, out, cx, cy, hx, hy, r, scale):
     height, width = img.shape[:2]
-    sx = width / args.logical[0]
-    sy = height / args.logical[1]
-    scale = (sx + sy) / 2
-
-    fw, fh, up = args.field
-    cx, cy = width / 2, height / 2 - up * sy
-    hx, hy = fw * sx / 2, fh * sy / 2
-    r = min(hx, hy)
     radius = r / scale
     refraction = min(6, 2 + radius / 3) * scale
     bevel = min(14, 4 + radius)
@@ -142,9 +126,56 @@ def main():
     col = col + (0.03 * k)[..., None]
 
     cover = np.clip(0.5 - d / scale, 0, 1)[..., None]
+    out[y0:y1, x0:x1] = out[y0:y1, x0:x1] * (1 - cover) + np.clip(col, 0, 1) * cover
+
+
+def flat(out, cx, cy, hx, hy, r, scale, fill, line):
+    height, width = out.shape[:2]
+    x0, x1 = int(max(0, np.floor(cx - hx - 2))), int(min(width, np.ceil(cx + hx + 2)))
+    y0, y1 = int(max(0, np.floor(cy - hy - 2))), int(min(height, np.ceil(cy + hy + 2)))
+    yy, xx = np.mgrid[y0:y1, x0:x1].astype(np.float32) + 0.5
+    d = round_box(xx - cx, yy - cy, hx, hy, r)
+    cover = np.clip(0.5 - d, 0, 1)[..., None]
+    stroke = cover - np.clip(0.5 - (d + scale), 0, 1)[..., None]
+    col = fill * (1 - stroke / np.maximum(cover, 1e-4)) + line * (stroke / np.maximum(cover, 1e-4))
+    out[y0:y1, x0:x1] = out[y0:y1, x0:x1] * (1 - cover) + col * cover
+
+
+def colour(hex):
+    return np.array([int(hex[i:i + 2], 16) for i in (0, 2, 4)], dtype=np.float32) / 255
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("wallpaper")
+    parser.add_argument("out")
+    parser.add_argument("--logical", nargs=2, type=float, required=True)
+    parser.add_argument("--field", nargs=3, type=float)
+    parser.add_argument("--panel", nargs=5, type=float, metavar=("X", "Y", "W", "H", "R"))
+    parser.add_argument("--flat", nargs=2, metavar=("FILL", "LINE"))
+    args = parser.parse_args()
+
+    img = np.asarray(Image.open(args.wallpaper).convert("RGB"), dtype=np.float32) / 255
+    height, width = img.shape[:2]
+    sx = width / args.logical[0]
+    sy = height / args.logical[1]
+    scale = (sx + sy) / 2
     out = img.copy()
-    out[y0:y1, x0:x1] = img[y0:y1, x0:x1] * (1 - cover) + np.clip(col, 0, 1) * cover
-    Image.fromarray((out * 255 + 0.5).astype(np.uint8)).save(args.out)
+
+    if args.field:
+        fw, fh, up = args.field
+        hx, hy = fw * sx / 2, fh * sy / 2
+        glass(img, out, width / 2, height / 2 - up * sy, hx, hy, min(hx, hy), scale)
+    if args.panel:
+        x, y, w, h, r = args.panel
+        cx, cy = (x + w / 2) * sx, height - (y + h / 2) * sy
+        hx, hy = w * sx / 2, h * sy / 2
+        r = min(r * scale, hx, hy)
+        if args.flat:
+            flat(out, cx, cy, hx, hy, r, scale, colour(args.flat[0]), colour(args.flat[1]))
+        else:
+            glass(img, out, cx, cy, hx, hy, r, scale)
+    Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)).save(args.out)
 
 
 if __name__ == "__main__":
