@@ -22,12 +22,15 @@ let
 		fi
 		dir="$pictures/${strings.screenshotsDir}"
 		mkdir -p "$dir"
-		name="NIHIL $(date '+%Y-%m-%d %H.%M.%S').png"
+		name="NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').png"
 		case "''${1:-region}" in
-			screen) exec ${pkgs.hyprshot}/bin/hyprshot -m output -m active -o "$dir" -f "$name" ;;
-			region) exec ${pkgs.hyprshot}/bin/hyprshot -m region -o "$dir" -f "$name" ;;
+			screen) mode=(-m output -m active) ;;
+			region) mode=(-m region) ;;
 			*) echo "usage: nihil-shot screen | region" >&2; exit 2 ;;
 		esac
+		${pkgs.hyprshot}/bin/hyprshot "''${mode[@]}" --silent -o "$dir" -f "$name"
+		[ -f "$dir/$name" ] || exit 0
+		${notify} -a NIHIL -i "$dir/$name" "${strings.screenshotSaved}" "''${dir/#$HOME/\~}/$name"
 	'';
 
 	mic-led-sync = pkgs.writeShellScriptBin "mic-led-sync" ''
@@ -74,7 +77,7 @@ let
 			else
 				where=(-g "$(${pkgs.slurp}/bin/slurp)") || return 0
 			fi
-			printf '%s\n' "$dir/NIHIL $(date '+%Y-%m-%d %H.%M.%S').mp4" > "$run/file"
+			printf '%s\n' "$dir/NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').mp4" > "$run/file"
 			printf '%s\n' "$dir/.nihil-record.mp4" > "$run/raw"
 			${pkgs.wf-recorder}/bin/wf-recorder "''${where[@]}" -x yuv420p -c libx264 \
 				-p crf=20 -p preset=veryfast -f "$(cat "$run/raw")" > "$run/log" 2>&1 &

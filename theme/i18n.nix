@@ -357,6 +357,7 @@
 		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
 		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
 		screenshotsDir = "Capturas";
+		screenshotSaved = "Captura guardada y copiada";
 		recordSaved = "Grabación guardada y copiada";
 		recordFailed = "No se ha podido grabar";
 		welHello = "Hola, %1";
@@ -855,6 +856,7 @@
 		bindScreenshot = "Screenshot of the screen; with SHIFT, record it";
 		bindSnip = "Screenshot of an area (the snipping key); with SHIFT, record it";
 		screenshotsDir = "Screenshots";
+		screenshotSaved = "Screenshot saved and copied";
 		recordSaved = "Recording saved and copied";
 		recordFailed = "Could not record";
 		welHello = "Hello, %1";
