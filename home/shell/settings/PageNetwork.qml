@@ -26,7 +26,7 @@ Flickable {
         Heading {
             Layout.bottomMargin: 10
             title: Lang.welNetTitle
-            sub: Network.connected ? Lang.welNetDone.arg(Network.ssid || Network.ethernet) : Lang.welNetBody
+            sub: Network.connected ? Lang.welNetDone.arg(Network.ssid || Network.ethernet) : Machine.welcoming ? Lang.welNetBody : ""
         }
 
         Repeater {

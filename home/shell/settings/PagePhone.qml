@@ -25,12 +25,11 @@ Flickable {
 
         Heading {
             title: Lang.cfgPhone
-            sub: Lang.deckSub
         }
 
         Setting {
             title: Lang.deckUse
-            sub: page.wanted && !Deck.enabled ? Lang.deckApply : Lang.deckUseSub.arg(Config.deck.port)
+            sub: page.wanted && !Deck.enabled ? Lang.deckApply : ""
 
             Toggle {
                 on: page.wanted
@@ -47,7 +46,6 @@ Flickable {
         Setting {
             visible: Deck.enabled && Deck.running
             title: Lang.deckWatchTitle
-            sub: Lang.deckWatchSub
 
             KeyButton {
                 text: Lang.deckWatchInstall
@@ -58,7 +56,6 @@ Flickable {
         Setting {
             visible: Deck.enabled && Deck.running
             title: Lang.deckPairTitle
-            sub: Deck.pairing ? Lang.deckScan : ""
 
             Column {
                 spacing: 14

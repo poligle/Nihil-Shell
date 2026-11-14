@@ -508,7 +508,8 @@ Item {
 
                     Txt {
                         Layout.fillWidth: true
-                        text: Updates.dev !== "" ? Lang.updDev : Lang.updWhat
+                        visible: Updates.dev !== ""
+                        text: Lang.updDev
                         color: Tokens.muted
                         wrapMode: Text.Wrap
                         elide: Text.ElideNone

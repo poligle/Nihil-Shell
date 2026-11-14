@@ -402,13 +402,6 @@ Flickable {
                 }
             }
 
-            Label {
-                x: 14
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 11
-                visible: page.monitors.length > 1
-                text: Lang.cfgScreensDrag
-            }
         }
 
         RowLayout {
@@ -498,7 +491,6 @@ Flickable {
         Setting {
             visible: page.current !== null && page.monitors.length > 1
             title: Lang.cfgScreenMain
-            sub: Lang.cfgScreenMainSub
 
             Toggle {
                 on: page.current !== null && page.main === page.current.name

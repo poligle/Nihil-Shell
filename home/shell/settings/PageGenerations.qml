@@ -272,14 +272,6 @@ Flickable {
                 }
             }
 
-            Label {
-                visible: !row.gen.current && page.asking === "" && !Machine.busy
-                width: parent.width
-                text: row.gen.next ? Lang.genBootSub : Lang.genSwitchSub
-                wrapMode: Text.WordWrap
-                elide: Text.ElideNone
-            }
-
             Ask {
                 visible: page.opened === row.gen.number && page.asking === "switch" && (!Machine.busy || page.fingerWait)
                 action: "switch"
@@ -304,7 +296,6 @@ Flickable {
         Heading {
             Layout.bottomMargin: 14
             title: Lang.cfgGenerations
-            sub: Lang.genSub
         }
 
         Label {
@@ -325,7 +316,6 @@ Flickable {
 
         Setting {
             title: Lang.genKeep
-            sub: Lang.genKeepSub
 
             Choice {
                 mono: true
@@ -338,7 +328,6 @@ Flickable {
 
         Setting {
             title: Lang.genDisk
-            sub: Lang.genCleanSub.arg(page.days)
 
             Column {
                 spacing: 10
