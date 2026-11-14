@@ -5,7 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Language, keyboard and time zone.
 Flickable {
     id: page
 
@@ -23,7 +22,6 @@ Flickable {
     clip: true
     boundsBehavior: Flickable.StopAtBounds
 
-    // The locale follows the language while it is one of the two defaults.
     function language(value: string): void {
         Machine.set("language", value);
         const locale = Machine.get("locale", "");
@@ -50,8 +48,6 @@ Flickable {
             }
         }
 
-        // The usual layouts in one row; any other, and a variant, typed
-        // under them (xkb's names).
         Setting {
             title: Lang.cfgKeyboard
 

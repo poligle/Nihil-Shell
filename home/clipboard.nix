@@ -1,17 +1,4 @@
 # clipboard.nix by poligle
-#
-# The clipboard history (services/Clipboard.qml shows it, SUPER + V held):
-# every copy, text or picture, kept by cliphist, as many as nihil.clipboard
-# says (settings.json's "clipboard"; 0 turns the history off, and SUPER + V
-# still pastes). What a password manager marks as sensitive is never kept.
-#
-#   nihil-clipboard list N           the newest N, as cliphist lists them, with
-#                                    the pictures in $XDG_RUNTIME_DIR/nihil-clipboard
-#   nihil-clipboard copy ID [TYPE]   put it back on the clipboard
-#   nihil-clipboard paste ID [TYPE]  that, and paste it where the keyboard is
-#   nihil-clipboard keys paste|copy  the window's own paste or copy: SHIFT or
-#                                    CTRL + Insert
-#   nihil-clipboard delete ID | wipe
 
 { config, osConfig, pkgs, lib, ... }:
 let
@@ -23,8 +10,6 @@ let
 		dir="''${XDG_RUNTIME_DIR:-/tmp}/nihil-clipboard"
 		tab=$(printf '\t')
 
-		# cliphist's line for an id, "<id>\t<preview>": decode and delete read
-		# one as cliphist list gives it.
 		entry() {
 			cliphist list | while IFS= read -r found; do
 				if [ "''${found%%"$tab"*}" = "$1" ]; then
@@ -34,7 +19,6 @@ let
 			done
 		}
 
-		# Back on the clipboard, as the type it was copied as.
 		copy() {
 			local found
 			found=$(entry "$1")
@@ -49,11 +33,6 @@ let
 			fi
 		}
 
-		# The window's own paste or copy: SHIFT + Insert and CTRL + Insert, as
-		# GTK, Qt, browsers, Electron and kitty take them (home/kitty.nix),
-		# where CTRL + V or C would not do in a terminal. Hyprland sends them
-		# to the window with the keyboard, with that modifier alone whatever
-		# else is held (hl.dsp.send_shortcut); wtype if it can't.
 		keys() {
 			local mods answer
 			case "''${1:-}" in
@@ -77,14 +56,10 @@ let
 
 		case "''${1:-}" in
 			store)
-				# wl-paste --watch runs this for each copy, with it on stdin.
 				if [ "''${CLIPBOARD_STATE:-data}" != data ]; then
 					cat > /dev/null
 					exit 0
 				fi
-				# wl-paste hands over text when a copy has any: a picture copied
-				# in a browser comes with its HTML. One with a picture and no
-				# plain text is read again, as the picture.
 				types=$(wl-paste --list-types 2> /dev/null || true)
 				picture=""
 				if ! printf '%s\n' "$types" | grep -q '^text/plain'; then
@@ -98,9 +73,6 @@ let
 				fi
 				;;
 			list)
-				# A picture's line says "[[ binary data 12 KiB png 640x480 ]]":
-				# its file is decoded once, from its line, and the files of the
-				# ones no longer listed go.
 				mkdir -p "$dir"
 				cliphist -preview-width 300 list | head -n "''${2:-${toString size}}" > "$dir/list.new"
 				keep=" "
@@ -126,7 +98,6 @@ let
 				copy "''${2:?usage: nihil-clipboard copy ID [TYPE]}" "''${3:-}"
 				;;
 			paste)
-				# Back on the clipboard, then the window's own paste.
 				copy "''${2:?usage: nihil-clipboard paste ID [TYPE]}" "''${3:-}"
 				sleep 0.06
 				keys paste || exit 1
@@ -149,7 +120,6 @@ let
 	'';
 in
 {
-	# Installed with the history off too: SUPER + V still pastes through it.
 	home.packages = [ nihil-clipboard ];
 
 	systemd.user.services.nihil-clipboard = lib.mkIf (size > 0)

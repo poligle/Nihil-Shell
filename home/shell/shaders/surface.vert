@@ -1,7 +1,4 @@
 #version 440
-// Smoked glass for a rounded surface (components/Surface.qml), the vertex half: where each
-// corner of the item falls on its screen, so the fragments know which part of what is
-// behind them they see wherever the item has moved (a drawer sliding out moves its keys too).
 
 layout(location = 0) in vec4 qt_Vertex;
 layout(location = 1) in vec2 qt_MultiTexCoord0;
@@ -9,27 +6,27 @@ layout(location = 1) in vec2 qt_MultiTexCoord0;
 layout(location = 0) out vec2 qt_TexCoord0;
 layout(location = 1) out vec2 screenUv;
 
-// The same block as surface.frag's: Qt fills both from Surface.qml's properties.
+// The same block as surface.frag's.
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
-    float ySign;        // -1 where y goes up in clip space (OpenGL), 1 where it goes down (Vulkan)
-    float radius;       // corner radius, logical px
-    float transmission; // what the smoke lets through of what is behind, for a dark tint
-    float refraction;   // how far the bevel bends what is behind, logical px
-    float bevel;        // how deep the bevel reaches in from the edge, logical px
-    float rim;          // the glint on the edges facing the light
-    float outline;      // 1: a border with no fill, only the rim
-    float dim;          // what reaches the glass of what is behind (a dim between: less)
-    float frost;        // how far the frosted face blurs what is behind, logical px
-    float scatter;      // the light the frost spreads wide: bright dots glow through it
-    float halo;         // the light the edge gathers from bright things near it
-    float wobble;       // how far the face's unevenness shifts what is behind, logical px
-    vec2 box;           // the item, logical px
-    vec2 win;           // its window, logical px
-    vec2 org;           // the window on its screen, logical px
-    vec2 scr;           // the screen, logical px
-    vec4 tint;          // the surface's colour
+    float ySign;
+    float radius;
+    float transmission;
+    float refraction;
+    float bevel;
+    float rim;
+    float outline;
+    float dim;
+    float frost;
+    float scatter;
+    float halo;
+    float wobble;
+    vec2 box;
+    vec2 win;
+    vec2 org;
+    vec2 scr;
+    vec4 tint;
 };
 
 out gl_PerVertex { vec4 gl_Position; };

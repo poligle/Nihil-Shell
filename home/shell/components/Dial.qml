@@ -1,7 +1,6 @@
 import QtQuick
 import qs.theme
 
-// Instrument dial: a ring of LEDs over 270 degrees, value in the centre.
 Item {
     id: root
 
@@ -9,7 +8,7 @@ Item {
     property string text: ""
     property string label: ""
     property int dots: 28
-    property bool alert: false      // light the ring in red (e.g. overheating)
+    property bool alert: false
 
     implicitWidth: 92
     implicitHeight: 92

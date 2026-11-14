@@ -7,16 +7,12 @@ import qs.config
 import qs.services
 import qs.components
 
-// Control panel (right drawer): quick toggles, sliders, Wi-Fi / Bluetooth /
-// audio output lists, notification history, session actions and updating
-// NIHIL (services/Updates.qml): the pointer on its button says how far
-// behind, a click shows which commits and asks for the password.
 Item {
     id: root
 
     property bool active: false
-    property string expanded: ""        // "", "wifi", "bt", "audio", "update"
-    property string armed: ""           // session action waiting for confirmation
+    property string expanded: ""
+    property string armed: ""
 
     focus: active
     Keys.onEscapePressed: Drawers.close()
@@ -44,8 +40,6 @@ Item {
         Bt.scan(expanded === "bt");
     }
 
-    // Asked once: with a reader and nothing typed, a finger; the password
-    // typed goes alone, also while a finger is awaited (services/Machine.qml).
     function update(): void {
         if (updatePassword.text === "" && !Machine.fingerprint) {
             updatePassword.grab();
@@ -55,7 +49,6 @@ Item {
         updatePassword.clear();
     }
 
-    // Power actions need a second click within 3 s.
     function session(name: string, command: var): void {
         if (armed === name) {
             armed = "";
@@ -148,7 +141,6 @@ Item {
                 text: item.detail
             }
 
-            // Busy (connecting): an LED that breathes.
             Rectangle {
                 visible: item.busy
                 width: 6
@@ -260,7 +252,6 @@ Item {
                     onToggled: Toggles.night = !Toggles.night
                 }
 
-                // An area to the clipboard, as the Print key.
                 Tile {
                     Layout.alignment: Qt.AlignHCenter
                     glyph: Icons.shot
@@ -268,7 +259,6 @@ Item {
                     onToggled: { Drawers.close(); Recorder.shot(); }
                 }
 
-                // The whole screen; lit, and a stop, while it records.
                 Tile {
                     Layout.alignment: Qt.AlignHCenter
                     glyph: Recorder.recording ? Icons.stop : Icons.record
@@ -309,7 +299,6 @@ Item {
                 }
             }
 
-            // Wi-Fi networks
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: root.expanded === "wifi"
@@ -364,7 +353,6 @@ Item {
                 }
             }
 
-            // Bluetooth devices
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: root.expanded === "bt"
@@ -400,7 +388,6 @@ Item {
                 }
             }
 
-            // Audio outputs
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: root.expanded === "audio"
@@ -428,7 +415,6 @@ Item {
                 }
             }
 
-            // Notifications
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -458,7 +444,6 @@ Item {
                 }
             }
 
-            // Session
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -481,7 +466,6 @@ Item {
 
                     Item { Layout.fillWidth: true }
 
-                    // A newer NIHIL: a lit dot when GitHub has one.
                     CircleButton {
                         id: updateButton
                         glyph: Icons.download
@@ -501,7 +485,6 @@ Item {
                         }
                     }
 
-                    // Preferences (settings/Preferences.qml).
                     CircleButton {
                         glyph: Icons.cog
                         onClicked: {
@@ -511,10 +494,6 @@ Item {
                     }
                 }
 
-                // The second click a power action asks for, said on a line of
-                // its own that is always there: the row of buttons never grows,
-                // which pushed the panel past the edge of the screen. With the
-                // pointer on the update button, how far behind NIHIL is.
                 Alert {
                     Layout.fillWidth: true
                     text: root.armed !== "" ? Lang.confirmAgain : Updates.summary
@@ -522,8 +501,6 @@ Item {
                     opacity: root.armed !== "" || updateButton.hovered ? 1 : 0
                 }
 
-                // Updating: what is new, and the password it needs; while it
-                // updates, how it goes (as Preferences says it).
                 ColumnLayout {
                     Layout.fillWidth: true
                     visible: root.expanded === "update" || Machine.updating
@@ -581,7 +558,6 @@ Item {
                         text: Machine.statusSub
                     }
 
-                    // Also while a finger is awaited: the password instead.
                     RowLayout {
                         Layout.fillWidth: true
                         visible: !Machine.busy || (Machine.kind === "update" && Machine.phase === "auth" && Machine.auth === "finger")

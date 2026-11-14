@@ -5,18 +5,6 @@ import Quickshell
 import Quickshell.Io
 import qs.theme
 
-// Glyph Interface homage: light that runs along the frame (GlyphLight.qml).
-//   sweep: startEdge 0 top, 1 right, 2 bottom, 3 left (clockwise from that corner);
-//          Nilo's start on the left, where its eyes are
-//   rise:  from the middle of the bottom edge up both sides (the charger)
-//   qs -c nihil ipc call glyph test true      qs -c nihil ipc call glyph charge
-// Progress: work that takes a while lights the frame as far as it has got
-// (rebuilds, services/Machine.qml; downloads, services/Downloads.qml; anything
-// over IPC). A fraction 0..1, or -1 while how far is not known. With more
-// than one, the one furthest behind shows; ended, the light goes out, rises
-// once when it went well.
-//   qs -c nihil ipc call glyph progress <id> <0..1 or -1>
-//   qs -c nihil ipc call glyph done <id>      ... failed <id>      ... clear <id>
 Singleton {
     id: root
 
@@ -36,8 +24,6 @@ Singleton {
         root.jobs = next;
     }
 
-    // "done" rises, "failed" goes out (the notification that says so lights
-    // the frame already), "quiet" just goes out.
     function finish(id: string, outcome: string): void {
         if (!(id in root.jobs))
             return;

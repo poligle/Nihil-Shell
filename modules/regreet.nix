@@ -1,7 +1,4 @@
 # regreet.nix by poligle
-#
-# ReGreet: what NIHIL's greeter falls back to (modules/greeter.nix), or the
-# greeter itself with nihil.greeter = "regreet".
 
 { config, lib, pkgs, ... }:
 let
@@ -16,8 +13,6 @@ in
 
         settings =
         {
-            # The wallpaper the user has now (home/wallpaper.nix keeps the link);
-            # NIHIL's own until someone has logged in.
             background.path = lib.mkForce "/var/lib/nihil/greeter/wallpaper.png";
             appearance.greeting_msg = config.nihil.strings.welcome
                 + lib.optionalString (config.nihil.user.greeting != "") ", ${config.nihil.user.greeting}";
@@ -31,9 +26,6 @@ in
         };
     };
 
-    # NIHIL on top of Stylix's ReGreet theme (which already sets the
-    # dot-matrix wallpaper, Space Grotesk and the monochrome colours).
-    # ReGreet draws the login box and the clock as `frame.background`.
     stylix.targets.regreet.extraCss = ''
         frame.background {
             background-color: alpha(#${p.void}, 0.86);
@@ -85,12 +77,6 @@ in
         }
     '';
 
-    # cage, under both greeters, makes its keyboard from these alone: the
-    # variant too (Preferences, Region), or a password with one of its
-    # characters would not be typed at the login as in the session and the
-    # lock screen, where Hyprland has the whole layout (home/hyprland.nix).
-    # xkbcommon takes a variant from here only along with the layout, so
-    # Hyprland's own stays as it is.
     environment.sessionVariables =
         let xkb = config.services.xserver.xkb; in
         { XKB_DEFAULT_LAYOUT = xkb.layout; }

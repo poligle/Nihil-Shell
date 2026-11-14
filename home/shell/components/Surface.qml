@@ -1,28 +1,14 @@
 import QtQuick
 import qs.theme
 
-// A rounded surface. In the usual look, the Rectangle it always was. In smoked glass
-// (Preferences, Look), what is behind through it (components/Backdrop.qml: the wallpaper,
-// and the windows when one can be behind), darkened by the smoke: clear and bent at the
-// edge as a bevel of glass bends it, frosted and a little uneven beyond, the light of
-// bright dots spread through the frost and gathered by the edge near them, with a glint on
-// the side the light comes from (shaders/surface.frag). Its colour picks the smoke: the
-// dark ones let more through, ink and red frost the glass. The hairline (Tokens.line) is
-// the glass's own edge; a border in any other colour says something (focus, the one
-// chosen, an error) and stays. Children go on top, as in a Rectangle.
 Item {
     id: root
 
     property color color: "transparent"
     property real radius: 0
     property alias border: plain.border
-    // A pane (a sheet, a card on the desktop, a notification) is thicker glass than a
-    // key or a row inside one: darker, bent further in. A key is glass over glass: its
-    // frost blurs a little more.
     property bool pane: false
 
-    // The nearest window's backdrop: an item above this one with `glassBackdrop`,
-    // null while the glass is off.
     readonly property Item backdrop: {
         for (let item = root.parent; item; item = item.parent) {
             if (item.glassBackdrop !== undefined)
@@ -45,7 +31,6 @@ Item {
         anchors.fill: parent
         visible: root.glassy && (root.color.a > 0.01 || plain.border.width > 0)
 
-        // The sampler and the uniforms of shaders/surface.vert and surface.frag, by name.
         property var backdrop: root.glassy ? root.backdrop.texture : null
         readonly property real ySign: GraphicsInfo.api === GraphicsInfo.Vulkan ? 1 : -1
         readonly property real radius: Math.min(root.radius, width / 2, height / 2)

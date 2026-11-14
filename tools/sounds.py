@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
 # sounds.py by poligle
-#
-# Synthesises the NIHIL interface sounds into sounds/nihil/*.ogg:
-# short digital blips (sine with a touch of third harmonic), fast attack,
-# exponential decay, nothing louder than -9 dBFS. The boot sound, power's
-# notes going up, is a WAV (-12 dBFS): it plays through ALSA alone, before
-# PipeWire is there (modules/boot-sound.nix).
-#
-#   python3 tools/sounds.py [OUTDIR] [--only NAME...]
-#                                        needs numpy, and ffmpeg (libvorbis)
-#                                        for the .ogg ones
 
 import os
 import subprocess
@@ -23,7 +13,6 @@ RATE = 44100
 
 
 def tone(freq, length, decay, attack=0.003, third=0.12, glide=0.0):
-    """One blip. `glide` bends the pitch by that fraction over the note."""
     t = np.arange(int(RATE * length)) / RATE
     f = freq * (1 + glide * t / length)
     phase = 2 * np.pi * np.cumsum(f) / RATE
@@ -38,7 +27,6 @@ def click(length=0.0015, freq=3200):
 
 
 def place(parts, length):
-    """Mix (offset_seconds, signal, gain) parts into one buffer."""
     out = np.zeros(int(RATE * length))
     for offset, sig, gain in parts:
         i = int(RATE * offset)
@@ -49,8 +37,6 @@ def place(parts, length):
 
 A5, B5, C6, E6, G6, A6, E5 = 880.0, 987.77, 1046.5, 1318.51, 1567.98, 1760.0, 659.25
 
-# Power off's four notes, going down, 90 ms apart; the boot sound plays
-# them going up.
 POWER = (E6, C6, A5, E5)
 
 
@@ -59,42 +45,24 @@ def power_notes(order, start=0.0):
 
 
 SOUNDS = {
-    # workspace change: the quietest tick
     "switch": place([(0, click(), 0.5), (0, tone(1600, 0.03, 0.006), 0.6)], 0.04),
-    # window opens / closes: two notes up or down
     "open": place([(0, tone(A5, 0.07, 0.025), 0.7), (0.045, tone(E6, 0.11, 0.035), 0.7)], 0.16),
     "close": place([(0, tone(E6, 0.07, 0.025), 0.7), (0.045, tone(A5, 0.11, 0.035), 0.7)], 0.16),
-    # scratchpad: three rising ticks
     "special": place([(0.05 * k, tone(1200 + 400 * k, 0.04, 0.01), 0.6) for k in range(3)], 0.16),
-    # fullscreen: an upward glide
     "fullscreen": place([(0, tone(600, 0.12, 0.05, glide=1.4), 0.7)], 0.14),
-    # lock: a low thump and a click, like a switch
     "lock": place([(0, tone(220, 0.16, 0.05, attack=0.002, third=0.25, glide=-0.3), 0.9),
                    (0.005, click(0.002, 3000), 0.5)], 0.18),
-    # power off: four notes going down (going up, the boot sound)
     "power": place(power_notes(POWER), 0.55),
-    # launcher: one soft blip
     "menu": place([(0, tone(C6, 0.06, 0.02, attack=0.004, glide=0.02), 0.7)], 0.07),
-    # notification: a glassy two-note ping
     "notify": place([(0, tone(B5, 0.35, 0.16, third=0.05), 0.5), (0, tone(E6, 0.35, 0.13, third=0.05), 0.4),
                      (0, tone(E6 * 3, 0.2, 0.05, third=0), 0.06)], 0.36),
-    # critical: three pulses, the sound of the red dot
     "critical": place([(0.12 * k, tone(A6, 0.07, 0.03, third=0.3), 0.6) for k in range(3)], 0.34),
-    # volume step
     "volume": place([(0, tone(1200, 0.03, 0.008), 0.6)], 0.035),
-    # charger in: three notes climbing as the light rises from the bottom
     "charge": place([(0, tone(E5, 0.09, 0.03), 0.6), (0.06, tone(B5, 0.09, 0.03), 0.6),
                      (0.12, tone(E6, 0.22, 0.09, glide=0.03), 0.65)], 0.34),
 }
 
 
-# The boot splash's sound: the power-off one going up, its four notes in
-# the other order, struck as they are there. The splash waits for it to
-# open (modules/boot-sound.nix) and the snowflake's LEDs switch on from the
-# middle (theme/plymouth.py), most of them in silence: the notes come with
-# the last ones, the last note with the last LED (the intro's frame 27,
-# 1.08 s after the splash opens), and it fades with their flashes. Making
-# power again makes it too.
 LAST_LED = 27 * 0.04
 
 WAVS = {

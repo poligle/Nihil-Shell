@@ -1,35 +1,15 @@
 # wallpapers.nix by poligle
-#
-# Renders every picture in the folders it is given (NIHIL's ../wallpapers and
-# the machine's own, nihil.extraWallpapers) as a NIHIL dot matrix, once per
-# output at its native size:  $out/<wallpaper>/<output>.png (and .gif when
-# it moves). Each picture on each output is a derivation of its own, made of
-# that picture, that output and the renderer alone: a rebuild draws only what
-# is new (a picture added or changed, a screen added or changed, a new
-# dotmatrix.py) and takes the rest from the store. A NixOS update that brings
-# a new Python, numpy or Pillow draws them all again.
-# A wallpaper's name is its file's without the extension, made of letters,
-# digits, "_" and "-": "Captura de pantalla 2026-11-05.PNG" is
-# Captura-de-pantalla-2026-11-05, and an accent is its plain letter. The list
-# of names is exposed as `passthru.names` so modules can use it without
-# importing from the derivation.
 
 { pkgs, lib, outputs, dirs }:
 let
 	python = pkgs.python3.withPackages (ps: [ ps.numpy ps.pillow ]);
 
-	# Pictures by their extension, in any case (a phone's IMG_0001.JPG too).
-	# Hidden files are left out: a Mac leaves ._IMG_0001.JPG next to each
-	# picture it copies, and they are not pictures.
 	extensions = [ "png" "jpg" "jpeg" "gif" "webp" ];
 	parts = file: builtins.match "(.+)\\.([^.]+)" file;
 	extension = file: lib.toLower (lib.last (parts file));
 	isImage = file: type: type == "regular" && !lib.hasPrefix "." file && parts file != null
 		&& lib.elem (extension file) extensions;
 
-	# A space or an accent can't be in a store path, and would stop the
-	# whole build: the name keeps letters, digits and "_", and anything else
-	# between them becomes one "-".
 	accents =
 	{
 		"á" = "a"; "à" = "a"; "â" = "a"; "ä" = "a"; "ã" = "a"; "å" = "a";
@@ -53,8 +33,6 @@ let
 		in
 		if name != "" then name else "wallpaper";
 
-	# Every picture by name; with the same name in two folders, the later one.
-	# Each goes to the store under its clean name.
 	pictures = lib.foldl' (found: dir: found // lib.mapAttrs' (file: _: lib.nameValuePair (nameOf file) (builtins.path
 	{
 		path = dir + "/${file}";
@@ -62,10 +40,8 @@ let
 	}))
 		(lib.filterAttrs isImage (builtins.readDir dir))) { } dirs;
 
-	# The renderer by its content, like the pictures.
 	renderer = builtins.path { path = ./dotmatrix.py; name = "nihil-dotmatrix.py"; };
 
-	# One picture on one output: $out/<output>.png, and .gif when it moves.
 	render = name: picture: output: size: pkgs.runCommand "nihil-wallpaper-${name}-${output}"
 		{ nativeBuildInputs = [ python ]; }
 		''

@@ -41,11 +41,8 @@ in
             ll = "ls -lah";
             la = "ls -A";
 
-            # NixOS: the machine's flake, through the nihil command
             nrebuild = "nihil rebuild";
             nupdate = "nihil update";
-            # As the weekly clean, with the machine's days, and the boot menu
-            # without what it removed (modules/nix.nix, nihil generations).
             ngc = "nihil generations clean ${toString osConfig.nihil.generations.days}";
             
             gs = "git status";
@@ -57,8 +54,6 @@ in
         };
     };
 
-    # NIHIL prompt: monochrome, declarative (replaces powerlevel10k and the
-    # untracked ~/.p10k.zsh). Red only when the last command failed.
     programs.starship =
     {
         enable = true;

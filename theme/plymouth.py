@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 # plymouth.py by poligle
-#
-# Frames for the NIHIL boot splash: the NixOS snowflake as an LED matrix.
-#   intro  the LEDs switch on from the centre outwards, each with a short flash
-#   loop   a diagonal band of light sweeps across the lit snowflake (Glyph-like)
-#
-#   plymouth.py GRID OUTDIR [--pitch 9]
-# GRID is a text file of digits 0-9: the coverage of each cell (theme/art/).
 
 import argparse
 import math
@@ -54,14 +47,7 @@ def main():
     n = len(grid)
     c = (n - 1) / 2
     rng = random.Random(1)
-    # Final brightness of each LED from its coverage: solid, dim or off.
     lit = [[1.0 if v >= 0.45 else (0.42 if v >= 0.18 else 0.0) for v in row] for row in grid]
-    # Arrival time of each LED in the intro: distance from the centre plus
-    # jitter, from the first lit one on the second frame (the first is all
-    # unlit: the splash waits on it for the boot sound) to the last at three
-    # quarters of it; the snowflake's middle is empty. The boot sound
-    # (tools/sounds.py) comes with the last of them, its last note with the
-    # very last.
     raw = [[min(0.95, math.hypot(i - c, j - c) / (c * 1.45) + 0.12 * rng.random()) for i in range(n)] for j in range(n)]
     first = min(raw[j][i] for j in range(n) for i in range(n) if lit[j][i])
     last = max(raw[j][i] for j in range(n) for i in range(n) if lit[j][i])
@@ -76,13 +62,13 @@ def main():
             if lit[j][i] == 0 or arrival[j][i] > t:
                 return 0, 0
             age = (t - arrival[j][i]) * (INTRO - 1)
-            flash = max(0.0, 1 - age / 4)  # a new LED flashes for ~4 frames
+            flash = max(0.0, 1 - age / 4)
             return min(1.0, lit[j][i] * 0.86 + 0.5 * flash), 0.75 + 0.25 * flash
 
         render(grid, args.pitch, levels).save(os.path.join(args.outdir, f"frame-{f}.png"))
 
     for f in range(LOOP):
-        pos = -0.35 + 1.7 * f / LOOP  # band centre along the diagonal, in grid units
+        pos = -0.35 + 1.7 * f / LOOP
 
         def levels(i, j):
             if lit[j][i] == 0:
@@ -93,7 +79,6 @@ def main():
 
         render(grid, args.pitch, levels).save(os.path.join(args.outdir, f"frame-{INTRO + f}.png"))
 
-    # Static frame for prompts and the end of the boot.
     render(grid, args.pitch, lambda i, j: (lit[j][i] * 0.86, 0.75) if lit[j][i] else (0, 0)).save(
         os.path.join(args.outdir, "logo.png"))
 

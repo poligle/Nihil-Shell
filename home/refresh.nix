@@ -1,8 +1,4 @@
 # refresh.nix by poligle
-#
-# After every switch, reload Hyprland inside the running session: it doesn't
-# notice that hyprland.lua now points to a new store path. The NIHIL shell is
-# a systemd user service, so Home Manager restarts it on its own.
 
 { config, osConfig, pkgs, lib, ... }:
 let

@@ -10,18 +10,11 @@ in
     programs.zen-browser =
     {
         enable = true;
-        # Links open in Zen (home/default-apps.nix): its module claims the web
-        # types in mimeapps.list and sets BROWSER.
         setAsDefaultBrowser = true;
         profiles =
         {
             default =
             {
-                # Selected text, Zen's own. It would take GTK's, a wash of white
-                # (home/gtk.nix), on web pages too, where a white page hides it.
-                # Ink on a mid grey shows on light pages and dark ones alike
-                # (Firefox's system colours for the selection: ui.highlight and
-                # ui.highlighttext).
                 settings =
                 {
                     "ui.highlight" = colors.base03;

@@ -7,18 +7,13 @@ import Quickshell.Io
 import qs.config
 import qs.theme
 
-// Which drawer is open, and on which output. Only one at a time.
-//   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers|overview
-// (the clipboard history opens through its own, services/Clipboard.qml)
 Singleton {
     id: root
 
-    property string current: ""     // "", "dashboard", "panel", "launcher", "wallpapers", "clipboard", "overview"
+    property string current: ""
     property string screen: ""
     property bool byHover: false
 
-    // Where each one comes out of the frame (frame/Frame.qml). Two from the
-    // same edge would overlap: the second comes out once the first is in.
     readonly property var edges: ({ dashboard: "top", clipboard: "top", overview: "top", launcher: "bottom", wallpapers: "bottom", panel: "right" })
     property var waiting: null
 
@@ -41,7 +36,6 @@ Singleton {
         waiting = null;
         screen = target;
         byHover = hover;
-        // Opened by resting the pointer on the edge, it stays silent.
         if (name === "launcher" && current !== "launcher" && !hover)
             Sounds.play(Config.sounds.menu, 0.4);
         if (name === "panel")

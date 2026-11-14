@@ -4,15 +4,9 @@ import qs.config
 import qs.services
 import qs.components
 
-// The models Nilo can use (nihil.nilo.models, plus any other one Ollama
-// has). The lit LED is the one in use; choosing one that isn't downloaded
-// starts the download. Downloads need Ollama: when it is down, a line on
-// top says so and starts it.
 Column {
     id: root
 
-    // Why a download failed, in words (agent.py, pull_error); the whole
-    // message from Ollama is in the journal: journalctl --user -u nihil-shell
     function failure(pull: var): string {
         switch (pull?.code ?? "") {
         case "ollama-down": return Lang.modelFailedOllama;
@@ -25,7 +19,7 @@ Column {
     }
 
     property int current: -1        // highlighted with the keyboard
-    property bool manage: false     // settings: offer to delete downloaded ones
+    property bool manage: false
 
     readonly property int count: Nilo.models.length
 
@@ -35,8 +29,6 @@ Column {
         return Number(value).toLocaleString(Qt.locale(Lang.locale), "f", Number.isInteger(value) || value >= 10 ? 0 : 1);
     }
 
-    // The first choice selects a model; choosing it again while it is not
-    // downloaded starts the download (so does its "download" button).
     function choose(index: int): void {
         const model = Nilo.models[index];
         if (!model) return;
@@ -45,8 +37,6 @@ Column {
             Nilo.download(model.tag);
     }
 
-    // The first press shows where the selection is; the next ones move it.
-    // Not move: a Column has that already (its Transition).
     function moveBy(step: int): void {
         if (current < 0) current = Math.max(0, Nilo.models.findIndex(m => m.tag === Nilo.settings.model));
         else current = Math.max(0, Math.min(count - 1, current + step));

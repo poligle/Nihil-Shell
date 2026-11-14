@@ -5,8 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// The wallpaper, at once, with the lock screen and the login following it
-// (nihil-wallpaper), and the desktop widgets, on or off at once too.
 Flickable {
     id: page
 
@@ -32,8 +30,6 @@ Flickable {
             Repeater {
                 model: Config.wallpapers
 
-                // A wallpaper, and its name under it: the one there is, framed
-                // in ink.
                 Column {
                     id: card
 
@@ -76,8 +72,6 @@ Flickable {
             }
         }
 
-        // Smoked glass: the frame, its drawers and everything in them, Preferences,
-        // the desktop's widgets, the lock screen and the login (components/Surface.qml).
         Setting {
             Layout.topMargin: 18
             title: Lang.cfgGlass

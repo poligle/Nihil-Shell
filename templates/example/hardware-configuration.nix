@@ -1,7 +1,3 @@
-# A virtual machine's disks, for CI to evaluate templates/machine (flake.nix,
-# nixosConfigurations.example). Not a template: the installer writes the
-# real one with nixos-generate-config.
-
 { lib, modulesPath, ... }:
 {
 	imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];

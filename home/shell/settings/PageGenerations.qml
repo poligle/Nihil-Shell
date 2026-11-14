@@ -6,16 +6,10 @@ import qs.config
 import qs.services
 import qs.components
 
-// The system's generations (services/Generations.qml): each rebuild is one,
-// a whole system to go back to. One, opened, says what it changed and goes
-// to it, now and at boot or the next boot only; under them, how long they
-// stay and cleaning now. Those ask sudo, with a finger or the password,
-// as applying does (services/Machine.qml).
 Flickable {
     id: page
 
     property int opened: 0
-    // Waiting for the password: "switch", "boot" or "clean".
     property string asking: ""
     property string armed: ""
     readonly property int days: Machine.get("generations.days", 7)
@@ -35,9 +29,6 @@ Flickable {
             Generations.compare(number);
     }
 
-    // With a reader, a finger at once, the field there for the password
-    // instead; without one, the password first. Not while something else
-    // is applied (the bar below says what).
     function go(action: string, value: int, password: string): void {
         if (Machine.busy && !page.fingerWait)
             return;
@@ -61,7 +52,6 @@ Flickable {
         }
     }
 
-    // Restarting needs a second click within 3 s, as in the panel.
     function arm(name: string): void {
         page.armed = name;
         disarm.restart();
@@ -73,7 +63,6 @@ Flickable {
         onTriggered: page.armed = ""
     }
 
-    // The password, and the action again to confirm it.
     component Ask: RowLayout {
         id: ask
 
@@ -121,8 +110,6 @@ Flickable {
         }
     }
 
-    // A generation: its number and when; what it is (in use, at boot, the
-    // next boot); opened, what it changed and where to go with it.
     component GenerationRow: Item {
         id: row
 
@@ -187,7 +174,6 @@ Flickable {
             width: parent.width - x - 14
             spacing: 12
 
-            // What it is made of: NixOS, the kernel, NIHIL.
             Flow {
                 width: parent.width
                 spacing: 18
@@ -216,7 +202,6 @@ Flickable {
                     : Lang.genSame
             }
 
-            // Against the one before: the packages whose versions changed.
             Column {
                 visible: row.changed !== null && !row.changed.failed && row.changed.changed.length > 0
                 width: parent.width
@@ -255,7 +240,6 @@ Flickable {
                 }
             }
 
-            // Where to go with it: not the one in use.
             Flow {
                 visible: !row.gen.current && page.asking === "" && !Machine.busy
                 width: parent.width
@@ -339,7 +323,6 @@ Flickable {
             Layout.preferredHeight: 18
         }
 
-        // How long they stay: the weekly clean (modules/nix.nix), applied.
         Setting {
             title: Lang.genKeep
             sub: Lang.genKeepSub
@@ -353,7 +336,6 @@ Flickable {
             }
         }
 
-        // The disk, and cleaning now as the weekly clean would.
         Setting {
             title: Lang.genDisk
             sub: Lang.genCleanSub.arg(page.days)

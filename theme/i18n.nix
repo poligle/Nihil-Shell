@@ -1,16 +1,4 @@
 # i18n.nix by poligle
-#
-# Every user-facing string of this configuration, per language. A machine
-# picks one with `nihil.language`; the shell gets it as a generated Lang.qml
-# singleton, and hyprlock, ReGreet and the scripts read `nihil.strings`, as
-# a machine's own modules can (osConfig.nihil.strings, in its /etc/nixos):
-# a key NIHIL no longer uses may still be read there. Both languages must
-# have the same keys (modules/nihil.nix checks it).
-#
-# `%1` and `%2` are placeholders (QML: Lang.connectedTo.arg(ssid)). Date
-# formats use Qt's syntax and are applied with the language's own locale, so
-# day and month names follow the language, not the system locale; lockDate is
-# a date(1) format for hyprlock, run with LC_TIME=lockLocale.
 
 {
 	es =
@@ -22,7 +10,6 @@
 		lockDate = "%a %d %b";
 		lockLocale = "es_ES.UTF-8";
 
-		# hyprlock and greeter
 		password = "Contraseña";
 		authFailed = "Error ($ATTEMPTS)";
 		fingerprintReady = "Toca el sensor";
@@ -30,16 +17,12 @@
 		lockPaused = "En pausa";
 		welcome = "Bienvenido";
 
-		# launcher
 		search = "Buscar";
 		appsCount = "%1 apps";
 		actions = "Acciones";
 		calculator = "Calculadora";
 		typeExpression = "Escribe una operación";
 		enterAgain = "Enter otra vez";
-		# Key hints, here and in Nilo and the wallpapers (components/KeyHints.qml):
-		# a key in brackets is drawn as a key, the rest as words, and "|" sets the
-		# groups apart.
 		hintApps = "[Enter] Abrir|[>] Acciones|[=] Calcular|[Esc] Cerrar";
 		hintCalc = "[Enter] Copiar el resultado|[Esc] Cerrar";
 		hintAppsNilo = "[Enter] Abrir|[>] Acciones|[=] Calcular|[?] Nilo|[Esc] Cerrar";
@@ -60,7 +43,6 @@
 		hintSession = "Sesión";
 		hintSystem = "Sistema";
 
-		# control panel
 		panel = "Ajustes";
 		offline = "Sin red";
 		tileWifi = "Wi-Fi";
@@ -86,7 +68,6 @@
 		connectedTo = "Conectado a %1";
 		enterpriseHint = "%1 usa WPA-Enterprise (p. ej. eduroam): créala en la configuración avanzada";
 
-		# dashboard, widgets, notifications
 		battery = "Batería %1%";
 		charging = "cargando";
 		batteryApp = "Batería";
@@ -109,13 +90,10 @@
 		tasksEmpty = "Escribe una tarea y pulsa enter. Un clic la pasa a la siguiente columna.";
 		notice = "Aviso";
 
-		# terminal messages of a machine's engineering wrappers (its
-		# /etc/nixos/engineering.nix, once home/engineering.nix)
 		cliMissing = "%1 no está instalado en %2";
 		cliNotFound = "No encuentro %1 dentro de %2";
 		cliUsage = "Uso: %1 <carpeta del instalador descomprimido>";
 
-		# Nilo, the assistant (modules/nilo.nix, home/shell/nilo)
 		nilo = "Nilo";
 		niloAsk = "Pregúntame lo que quieras";
 		niloHint = "[Enter] Preguntar|[Ctrl+N] Nueva conversación|[Esc] Cerrar";
@@ -142,9 +120,6 @@
 		niloOllamaHelp = "Más en: journalctl -u ollama -b";
 		niloDownloading = "Descargando %1%";
 		niloDownloadingModel = "Descargando %1 (%2%)";
-		# Nilo's greeting by the time of day (before 6, 13, 20 and after):
-		# some ways to say it, between "|"; %1 is the first name, and goes
-		# with what is before it when there is none.
 		niloGreetNight = "¿Trasnochando, %1?|Buenas noches, %1|La noche es tuya, %1";
 		niloGreetMorning = "Buenos días, %1|¿Café y a por ello, %1?|Arriba, %1";
 		niloGreetAfternoon = "Buenas tardes, %1|¿Qué tal la tarde, %1?|Hola de nuevo, %1";
@@ -306,7 +281,6 @@
 		setOpenPreferences = "Abrir Preferencias";
 		setRebuild = "Encender o apagar Nilo y elegir CPU o GPU está en Preferencias, Sistema.";
 
-		# Preferences and the welcome (home/shell/settings)
 		cfgTitle = "Preferencias";
 		cfgComment = "Tu nombre, idioma, teclado, fondo, atajos y más";
 		cfgYou = "Tú";
@@ -382,7 +356,6 @@
 		bindOverview = "Todos los escritorios; mantenida, elegir uno";
 		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
 		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
-		# nihil-shot: the folder in Pictures (Imágenes) where screenshots are kept.
 		screenshotsDir = "Capturas";
 		recordSaved = "Grabación guardada y copiada";
 		recordFailed = "No se ha podido grabar";
@@ -419,11 +392,8 @@
 		welNetDone = "Conectado a %1.";
 		welNetPassword = "Contraseña de la red";
 		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
-		# %1: the overview's own key (A), held or not.
 		ovHint = "[%1] Siguiente|[Shift+%1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
-		# Copy and paste, and the clipboard history (home/hyprland.nix,
-		# home/clipboard.nix, drawers/ClipboardView.qml).
 		bindCopy = "Copiar";
 		bindClipboard = "Pegar o elegir del historial";
 		clipTitle = "Portapapeles";
@@ -432,7 +402,6 @@
 		cfgClipboard = "Historial del portapapeles";
 		cfgClipboardOff = "No";
 		cfgClipboardWipe = "Olvidar";
-		# Updating NIHIL from the panel (services/Updates.qml, nihil check)
 		updBehind = "%1 commits nuevos en GitHub";
 		updBehindOne = "Un commit nuevo en GitHub";
 		updCurrent = "NIHIL al día, en %1";
@@ -447,7 +416,6 @@
 		updDone = "NIHIL actualizado";
 		updFailed = "No se ha podido actualizar";
 		updNotifyFailed = "No se ha podido actualizar NIHIL";
-		# Preferences, Generations (settings/PageGenerations.qml, nihil generations)
 		cfgGenerations = "Generaciones";
 		genSub = "Cada vez que aplicas o actualizas, NixOS guarda el sistema entero como una generación. Puedes volver a una anterior, o arrancar con ella solo una vez.";
 		genNone = "Todavía no hay ninguna.";
@@ -484,7 +452,6 @@
 		genBootFailed = "No se ha podido preparar el arranque";
 		genNotInMenu = "El menú de arranque ya no la tiene";
 		genGone = "Esa generación ya no está";
-		# Preferences, Devices: phones, tablets and watches as decks (settings/PagePhone.qml, home/deck)
 		cfgPhone = "Dispositivos";
 		deckSub = "Con NIHIL en Android o en Wear OS, un móvil, una tablet o un reloj ponen y pasan la música de este ordenador, suben y bajan su volumen y lo bloquean; el móvil y la tablet también abren sus apps y webs y le hacen de trackpad.";
 		deckUse = "Usar dispositivos";
@@ -503,7 +470,6 @@
 		deckForget = "Olvidar";
 		deckPaired = "%1 ya es un deck de este ordenador";
 		deckPairedBody = "Si no has sido tú, olvídalo en Preferencias, Dispositivos.";
-		# Preferences, Screens (settings/PageScreens.qml)
 		cfgScreens = "Pantallas";
 		cfgScreenNone = "Hyprland no dice que haya pantallas.";
 		cfgScreensDrag = "Arrástralas para colocarlas";
@@ -813,7 +779,6 @@
 		setOpenPreferences = "Open Preferences";
 		setRebuild = "Turning Nilo on or off and choosing CPU or GPU is in Preferences, System.";
 
-		# Preferences and the welcome (home/shell/settings)
 		cfgTitle = "Preferences";
 		cfgComment = "Your name, language, keyboard, wallpaper, shortcuts and more";
 		cfgYou = "You";

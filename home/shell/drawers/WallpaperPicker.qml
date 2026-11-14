@@ -4,10 +4,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// Bottom drawer (SUPER + W), where the launcher comes out: the wallpapers.
-// The arrows show each at once, Enter or a click keeps it, Escape goes back
-// to the one there was; closing it any other way keeps the one showing.
-// The lock screen and the login follow it (nihil-wallpaper).
 Item {
     id: root
 
@@ -46,7 +42,6 @@ Item {
         }
     }
 
-    // Its keys at the foot, as the launcher has them.
     KeyHints {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter

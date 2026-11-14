@@ -5,18 +5,11 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 
-// Screen recording and screenshots from the panel (drawers/Panel.qml) and the
-// keys (home/hyprland.nix). nihil-record (home/scripts.nix) does the
-// recording and says here when it starts and stops; while it records, the
-// bar's privacy LED is lit, as for the microphone (frame/Bar.qml).
-//   qs -c nihil ipc call recorder status
 Singleton {
     id: root
 
     property bool recording: false
 
-    // From the panel the screen is recorded whole, and the screenshot is of an
-    // area; both wait for the drawer to close, or it would be in the picture.
     function toggle(): void {
         if (root.recording)
             Quickshell.execDetached([Config.cmd.record, "stop"]);
@@ -50,7 +43,6 @@ Singleton {
         onTriggered: Quickshell.execDetached(later.command)
     }
 
-    // A shell that starts while something records (it was restarted) asks.
     Process {
         running: true
         command: [Config.cmd.record, "status"]

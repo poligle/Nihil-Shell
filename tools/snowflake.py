@@ -1,25 +1,15 @@
 #!/usr/bin/env python3
 # snowflake.py by poligle
-#
-# Samples the NixOS snowflake into a square grid of LED intensities, the
-# source of the fastfetch logo and the boot splash (theme/art/*.txt). Each
-# cell holds how much of it the logo covers, from 0 (empty) to 9 (full).
-# The shape is U+F1105 ("nix"), present in every Nerd Font.
-#
-#   python3 tools/snowflake.py FONT SIZE > theme/art/snowflake-SIZE.txt
-#   FONT: e.g. JetBrainsMonoNerdFont-Regular.ttf from nerd-fonts.jetbrains-mono
-# Needs Pillow.
 
 import sys
 
 from PIL import Image, ImageDraw, ImageFont
 
 GLYPH = "\U000F1105"
-SUB = 32  # pixels per cell when measuring coverage
+SUB = 32
 
 
 def grid(font_path, size):
-    # Scale the glyph so its longer side fills the grid, then centre it.
     probe = ImageFont.truetype(font_path, 1000)
     left, top, right, bottom = probe.getbbox(GLYPH)
     font = ImageFont.truetype(font_path, round(1000 * size * SUB / max(right - left, bottom - top)))

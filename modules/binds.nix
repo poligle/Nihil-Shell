@@ -1,13 +1,4 @@
 # binds.nix by poligle
-#
-# The keys and touchpad gestures of the actions NIHIL has, and the programs
-# with a key (home/hyprland.nix turns them into binds). Each machine can
-# change any of them from its settings.json ("binds", "programs",
-# "gestures", through settings.nix) or local.nix: a key combination, or null
-# for none. Preferences writes the keys and the programs
-# (home/shell/settings/PageKeys.qml); the gestures change only there.
-# Workspaces (SUPER + a digit), focus (SUPER + arrows), media keys and the
-# mouse stay as they are.
 
 { config, lib, ... }:
 let
@@ -21,8 +12,6 @@ let
         nilo = "SUPER + I";
         settings = "SUPER + O";
         wallpapers = "SUPER + W";
-        # Copy and paste on the same modifier: SUPER + C copies, SUPER + V
-        # pastes, and held down brings out the history (home/hyprland.nix).
         copy = "SUPER + C";
         clipboard = "SUPER + V";
         close = "SUPER + Q";
@@ -33,15 +22,10 @@ let
         toSpecial = "SUPER + Control_L";
         nextWorkspace = "SUPER + Tab";
         overview = "SUPER + A";
-        # Screenshots (nihil-shot), kept in Pictures and copied: the screen
-        # on Print, an area on the snipping key (the one Windows laptops
-        # label Snipping Tool, XF86SelectiveScreenshot to Linux). SHIFT
-        # with either records it instead (nihil-record).
         screenshot = "PRINT";
         snip = "XF86SelectiveScreenshot";
     };
 
-    # Programs with a key; a machine's settings.json "programs" replaces them.
     programs =
     [
         { name = "Terminal"; exec = "kitty"; keys = "SUPER + Super_L"; }
@@ -49,11 +33,8 @@ let
         { name = "Zen"; exec = "zen-beta"; keys = "SUPER + X"; }
     ];
 
-    # Actions that became programs: a settings.json that still names them is
-    # read without them.
     former = [ "terminal" "files" "browser" "notes" "code" "music" "pixels" ];
 
-    # Fingers on the touchpad for each gesture.
     gestures =
     {
         workspaces = 3;     # sideways: the next or previous workspace

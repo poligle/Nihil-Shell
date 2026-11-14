@@ -4,8 +4,6 @@ import Quickshell.Io
 import qs.theme
 import qs.config
 
-// Audio spectrum as columns of LEDs (cava, raw ASCII output).
-// cava only runs while the visualiser is visible.
 Item {
     id: root
 

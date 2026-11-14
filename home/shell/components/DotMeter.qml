@@ -1,7 +1,6 @@
 import QtQuick
 import qs.theme
 
-// A row or column of LEDs: the first round(value * count) are lit.
 Item {
     id: root
 
@@ -12,7 +11,6 @@ Item {
     property int gap: 3
     property color litColor: Tokens.ink
     property color unlitColor: Tokens.off
-    // Optional moving highlight (charging, scanning): index of the lit "head", or -1.
     property int head: -1
 
     readonly property int lit: Math.round(Math.max(0, Math.min(1, value)) * count)

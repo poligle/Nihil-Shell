@@ -6,15 +6,11 @@ import qs.config
 import qs.services
 import qs.components
 
-// Top drawer: time and caffeine, music with a dot-matrix cover and spectrum,
-// an instrument cluster (CPU, RAM, temperature, network scope) and, under
-// all of it, the kanban.
 Item {
     id: root
 
     property bool active: false
 
-    // The drawer is as deep as this (Frame.qml): the kanban grows and shrinks.
     implicitHeight: layout.implicitHeight + 22 + 24
 
     SystemClock {
@@ -31,14 +27,12 @@ Item {
         anchors.bottomMargin: 24
         spacing: 16
 
-        // Layouts fill their parent by default: this one keeps its height.
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: false
             Layout.preferredHeight: 232
             spacing: 26
 
-            // Time
             ColumnLayout {
                 Layout.preferredWidth: 220
                 Layout.fillHeight: true
@@ -63,7 +57,6 @@ Item {
 
                 Item { Layout.fillHeight: true }
 
-                // Caffeine: the screen stays on (services/Caffeine.qml).
                 Surface {
                     Layout.fillWidth: true
                     Layout.leftMargin: -10
@@ -104,7 +97,6 @@ Item {
                         }
                     }
 
-                    // On or off is a switch, as everywhere (components/Toggle.qml).
                     Toggle {
                         id: coffeeSwitch
                         anchors.right: parent.right
@@ -136,7 +128,6 @@ Item {
                 color: Tokens.line
             }
 
-            // Music
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -214,7 +205,6 @@ Item {
                 color: Tokens.line
             }
 
-            // Instruments
             ColumnLayout {
                 Layout.preferredWidth: 262
                 Layout.fillHeight: true

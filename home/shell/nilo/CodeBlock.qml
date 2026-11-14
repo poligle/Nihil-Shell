@@ -4,17 +4,12 @@ import qs.config
 import qs.services
 import qs.components
 
-// A block of code in one of Nilo's answers (Chat.qml): rounded, its
-// language above it, and a button that copies it. The code can be
-// selected with the pointer too.
 Surface {
     id: root
 
     property string code: ""
     property string language: ""
 
-    // The language by its name, as above every block: python → Python,
-    // json → JSON; one not known here, with a capital to start.
     readonly property var languages: ({
         bash: "Bash", sh: "Shell", shell: "Shell", zsh: "Zsh", fish: "Fish", console: "Shell",
         python: "Python", py: "Python", nix: "Nix", qml: "QML", js: "JavaScript", javascript: "JavaScript",

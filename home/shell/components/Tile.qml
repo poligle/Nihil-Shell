@@ -1,7 +1,6 @@
 import QtQuick
 import qs.theme
 
-// Circular quick toggle. On = white disc with a black glyph (inverted LED).
 Item {
     id: root
 

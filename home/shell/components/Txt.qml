@@ -1,7 +1,6 @@
 import QtQuick
 import qs.theme
 
-// Interface text (Space Grotesk).
 Text {
     color: Tokens.ink
     font.family: Tokens.fontSans

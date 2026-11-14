@@ -1,9 +1,6 @@
 import QtQuick
 import qs.theme
 
-// One of a few, by name: the chosen one in ink and underlined, the others
-// in grey. options: [{ value, label }]; `mono` sets the names in Space Mono,
-// for numbers and codes.
 Flow {
     id: root
 

@@ -1,10 +1,4 @@
 # deck.nix by poligle
-#
-# The phone as a deck (nihil.deck.enable, modules/deck.nix; docs/deck.md):
-# nihil-deck's service, in the session, so what the phone opens opens here,
-# and its command, which Preferences, Devices runs to pair one.
-#   systemctl --user status nihil-deck      nihil-deck pair | devices | forget ID
-#   nihil-watch [update | forget]           NIHIL for Wear OS on a watch
 
 { config, osConfig, pkgs, lib, ... }:
 let
@@ -14,9 +8,6 @@ let
 		profile = "${config.home.profileDirectory}/bin";
 		iconTheme = config.gtk.iconTheme.name;
 	};
-	# NIHIL for Wear OS from here: adb's Wireless debugging found on the
-	# network, the latest release checked and installed, and the deck's
-	# invitation (deck/watch.sh). Preferences, Devices opens it in a terminal.
 	watch = pkgs.writeShellApplication
 	{
 		name = "nihil-watch";

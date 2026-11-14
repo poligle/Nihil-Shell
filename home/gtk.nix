@@ -9,22 +9,14 @@ in
     {
         enable = true; 
 
-        # Stylix picks adw-gtk3, the light variant, and recolours it with the
-        # NIHIL palette. Some rules of the light variant keep their own dark
-        # text, like the buttons of message dialogs (Thunar's "delete?"):
-        # black on the dark dialog. The dark variant has light text there.
         theme.name = lib.mkForce "adw-gtk3-dark";
 
-        # Icon Configuration: Colloid in its grey variant, so folders and
-        # symbolic icons follow the NIHIL monochrome (the shell also shows
-        # app icons desaturated).
         iconTheme =
         {
             name = "Colloid-Grey-Dark";
             package = pkgs.colloid-icon-theme.override { colorVariants = [ "grey" ]; };
         };
 
-        # Extra config for GTK 3
         gtk3.extraConfig = 
         {
             gtk-toolbar-style = "GTK_TOOLBAR_ICONS";
@@ -39,7 +31,6 @@ in
             gtk-xft-rgba = "rgb";
         };
 
-        # Extra config for GTK 4
         gtk4.extraConfig = 
         {
             gtk-toolbar-style = "GTK_TOOLBAR_ICONS";
@@ -55,9 +46,6 @@ in
         };
     };
 
-    # Red carries ink, as in the shell, never black. Selected files and text
-    # get a grey wash under ink in every view: the accent is white here, and
-    # anything painting it solid would leave the names white on white.
     stylix.targets.gtk.extraCss = ''
         @define-color destructive_fg_color ${colors.base06};
         @define-color error_fg_color ${colors.base06};
@@ -75,7 +63,6 @@ in
         }
     '';
 
-    # Extra font package for CJK
     home.packages = 
     [
         pkgs.noto-fonts-cjk-sans

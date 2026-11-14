@@ -3,8 +3,6 @@ import qs.theme
 import qs.services
 import qs.components
 
-// Network, Bluetooth and volume. Click opens the panel; scroll on the
-// speaker changes the volume.
 Item {
     id: root
 

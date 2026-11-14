@@ -1,33 +1,19 @@
 .pragma library
 
-// The little Markdown a model writes, as Qt rich text in NIHIL's voices:
-// paragraphs, lists, headings, **bold**, *italics*, `code`, fenced code and
-// links. Anything else stays as typed. It runs on every word while Nilo
-// writes, so it never fails on half a construct: an open ** just shows.
-//   html(text, { ink, dim, code, surface, mono })
-// segments(text) splits a reply into its prose and its blocks of code, for
-// the conversation to draw each block on its own, rounded, with a button
-// that copies it (Chat.qml); a short answer (Peek.qml) is html() whole.
-
 function escape(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// A fence (```) and how far it is indented, or -1: html() and segments()
-// find the same blocks with it.
 function fence(line) {
     const m = /^(\s*)```/.exec(line);
     return m ? m[1].length : -1;
 }
 
-// The language after an opening fence (```python), or "".
 function language(line) {
     const m = /^\s*```\s*([\w+#.-]+)/.exec(line);
     return m ? m[1] : "";
 }
 
-// A line of a block without its fence's indentation (a block inside a list
-// item is indented as a whole).
 function dedent(line, indent) {
     let i = 0;
     while (i < indent && i < line.length && (line[i] === " " || line[i] === "\t"))
@@ -130,10 +116,6 @@ function html(text, s) {
     return out.join("");
 }
 
-// The reply in order: { kind: "text", text } for the prose between blocks
-// (Markdown, for html()) and { kind: "code", text, language, open } for each
-// block as written, without its fence's indentation; open while its closing
-// fence has not come yet. Blank prose between two blocks is left out.
 function segments(text) {
     const found = [];
     let prose = [];

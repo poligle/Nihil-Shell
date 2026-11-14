@@ -1,16 +1,9 @@
 import QtQuick
 import qs.theme
 
-// The frame and its drawers in smoked glass (Preferences, Look), in FrameShape's place:
-// what is behind (components/Backdrop.qml: the wallpaper, and the windows while one can be
-// behind), a third of it through the smoke, clear and bent along the inner edge, frosted
-// beyond it, lit where something bright is near the edge, with a glint where the light from
-// the top left catches it (shaders/frame.frag, the glass of shaders/surface.frag). The
-// outline is FrameShape's, as a distance field.
 ShaderEffect {
     id: root
 
-    // A components/Backdrop.qml, or null while the glass is off.
     property Item source: null
     property int inset: Tokens.frameThickness
     property int edge: Tokens.frameThickness
@@ -21,7 +14,6 @@ ShaderEffect {
         return bump ? Qt.vector4d(bump.a, bump.b, bump.d, bump.edge) : Qt.vector4d(0, 0, 0, 0);
     }
 
-    // The sampler and the uniforms of shaders/frame.frag, by name.
     property var backdrop: source ? source.texture : null
     readonly property real transmission: 0.3
     readonly property real refraction: 14

@@ -25,7 +25,6 @@
 @font-face { font-family: "Space Mono"; src: url("assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "Doto"; src: url("assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
 
-/* NIHIL tokens (theme/nihil.nix) */
 :root {
   --void: #000000;
   --surface: #0E0E0E;
@@ -41,7 +40,6 @@
   --mono: "Space Mono", ui-monospace, monospace;
   --dot: "Doto", "Space Mono", monospace;
 
-  /* the frame: thickness, bar, inner radius */
   --t: 8px;
   --top: 8px;
   --left: 44px;
@@ -55,7 +53,7 @@ body {
   margin: 0;
   color: var(--ink);
   font: 400 18px/1.55 var(--sans);
-  /* the screen is a field of unlit LEDs */
+
   background-color: var(--void);
   background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px);
   background-size: var(--pitch) var(--pitch);
@@ -70,7 +68,6 @@ code, kbd, pre { font-family: var(--mono); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
 
-/* ---------- frame, bar and Glyph light ---------- */
 .frame {
   position: fixed; z-index: 40; pointer-events: none;
   top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
@@ -106,7 +103,6 @@ code, kbd, pre { font-family: var(--mono); }
 .clock[hidden] { display: none; }
 .bar .word { display: none; }
 
-/* ---------- layout ---------- */
 main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
 .wrap { max-width: 1180px; margin: 0 auto; }
 section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
@@ -120,7 +116,6 @@ p { margin: 0 0 16px; }
 .quiet { color: var(--dim); }
 .meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
 
-/* ---------- hero ---------- */
 .hero { padding-bottom: 120px; }
 .wordmark { width: min(560px, 100%); margin: 0 0 14px -4px; }
 .wordmark svg, .wordmark img { display: block; width: 100%; height: auto; }
@@ -145,7 +140,6 @@ a.shot:hover { border-color: var(--muted); }
 .deck-shot { margin-top: 40px; max-width: 980px; }
 .deck-shot a, .deck-shot img { display: block; width: 100%; height: auto; }
 
-/* ---------- tour ---------- */
 .tour { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 44px 32px; margin-top: 48px; }
 .tour figcaption { padding: 18px 2px 0; }
 .tour figcaption p { color: var(--dim); margin: 0 0 12px; max-width: 46ch; }
@@ -155,7 +149,6 @@ kbd {
   font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
 }
 
-/* ---------- rules and palette ---------- */
 .rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 44px 0 72px; }
 .rules p { color: var(--dim); margin: 0; }
 .rules .keys { margin-top: 14px; }
@@ -167,7 +160,6 @@ kbd {
 .palette code { font-size: 12px; color: var(--dim); }
 .palette span { font-size: 14px; line-height: 1.4; color: var(--muted); }
 
-/* ---------- boot ---------- */
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
 .boot-screen {
   aspect-ratio: 16 / 10; border-radius: 20px; background: var(--void); border: 1px solid var(--line);
@@ -175,10 +167,8 @@ kbd {
 }
 .boot-screen img { width: 46%; image-rendering: auto; }
 
-/* ---------- language ---------- */
 .lang-shot { max-width: 864px; margin-top: 24px; }
 
-/* ---------- code, steps, table ---------- */
 .code {
   display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
 }
@@ -205,7 +195,6 @@ td code { font-size: 14px; color: var(--ink); white-space: nowrap; }
 td { color: var(--dim); }
 .note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
 
-/* ---------- Nilo ---------- */
 .nilo-split { align-items: start; }
 .nilo-done { margin-top: 64px; }
 .nilo-done h3 + p { margin-bottom: 22px; }
@@ -218,14 +207,12 @@ td { color: var(--dim); }
 .plug:hover { color: var(--ink); border-color: var(--muted); }
 .plug svg { width: 14px; height: 14px; }
 
-/* ---------- footer ---------- */
 footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
 footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
 footer p { margin: 0 0 10px; max-width: 70ch; }
 footer a { color: var(--dim); }
 footer a:hover { color: var(--ink); }
 
-/* ---------- narrow screens: the bar moves to the top ---------- */
 @media (max-width: 860px) {
   :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
   .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
@@ -658,11 +645,9 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
   </div>
 </footer>
 
-<script>
-(() => {
+<script>(() => {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // ---- Glyph light: a segment that runs once around the inner edge of the frame
   const path = document.getElementById("glyph-path");
   function frameMetrics() {
     const css = getComputedStyle(document.documentElement);
@@ -672,7 +657,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
   function layoutGlyph() {
     const m = frameMetrics(), w = innerWidth, h = innerHeight;
     const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r;
-    // clockwise from the top right corner, like the shell
     path.setAttribute("d",
       `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
       `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
@@ -692,8 +676,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
   layoutGlyph();
   addEventListener("resize", layoutGlyph);
 
-  // ---- The charger's light, like the shell: from the middle of the bottom
-  //      edge, up both sides, meeting at the top (70 % climbing, 30 % fading)
   const rising = ["left", "right"].map(side => ({
     side, trail: document.getElementById(`rise-${side}-trail`), head: document.getElementById(`rise-${side}`)
   }));
@@ -729,12 +711,10 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     });
   }
   document.getElementById("plug").addEventListener("click", rise);
-  // And for real, where the browser tells: plugging in the laptop on this page.
   if (navigator.getBattery) navigator.getBattery().then(battery => {
     battery.addEventListener("chargingchange", () => { if (battery.charging) rise(); });
   }).catch(() => {});
 
-  // ---- The wordmark lights up from nothing: the snowflake from its centre, then the letters
   const mark = document.getElementById("wordmark");
   fetch("assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
     const doc = new DOMParser().parseFromString(text, "image/svg+xml");
@@ -749,7 +729,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     const live = mark.querySelector("svg");
     const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle, g[fill="#8A8A8A"] circle')];
     const box = live.viewBox.baseVal;
-    const markSize = box.height;   // the mark is a square at the left
+    const markSize = box.height;
     const ring = ink.filter(c => +c.getAttribute("cx") < markSize);
     const letters = ink.filter(c => +c.getAttribute("cx") >= markSize);
     const centre = live.querySelector('g[fill="#D71921"] circle');
@@ -765,7 +745,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     setTimeout(glyph, lit + 520);
   }).catch(() => setTimeout(glyph, 300));
 
-  // ---- Copy buttons; each copy sends the light around the frame
   document.querySelectorAll(".code").forEach(block => {
     if (!navigator.clipboard) return;
     const button = document.createElement("button");
@@ -782,7 +761,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     block.append(button);
   });
 
-  // ---- Section LEDs follow the scroll, like the workspaces in the bar
   const leds = [...document.querySelectorAll(".leds a")];
   const targets = leds.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
   const seen = new Map();
@@ -794,7 +772,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
   }, { threshold: [0, 0.15, 0.3, 0.5, 0.75, 1] });
   targets.forEach(t => t && observer.observe(t));
 
-  // ---- The bar clock, in the visitor's time
   const clock = document.querySelector(".clock");
   function tick() {
     const d = new Date();

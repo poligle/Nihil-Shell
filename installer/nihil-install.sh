@@ -1,14 +1,4 @@
 # nihil-install by poligle (installer/iso.nix)
-#
-# NIHIL on a whole disk, or next to another system: GPT, a 1 GiB EFI
-# partition (or the disk's own) and btrfs (inside LUKS if asked) with
-# subvolumes for /, /home, /nix and /var/log. Next to another system it
-# takes free space, or room a partition gives up: Windows' NTFS, an ext4 or
-# a btrfs, shrunk keeping what they hold. Then the machine's flake goes to
-# /etc/nixos: the template, settings.json with the answers and the screens
-# found, and local.nix with the disk layout and the GPU's driver for the
-# boot splash. NIHIL is pinned to the revision this image was built from;
-# nihil update moves it on later.
 
 template=/etc/nihil/template
 source=$(cat /etc/nihil/source)
@@ -40,11 +30,6 @@ else
     locale=en_US.UTF-8
 fi
 
-# --- The USB stick ----------------------------------------------------------------
-
-# The live system reads its programs from the stick as it needs them: one that
-# cannot be read fails halfway, and only says that some program would not run.
-# Read all of it now (that leaves it cached too).
 if [ -f /iso/nix-store.squashfs ]; then
     if ! gum spin --title "$(t "Checking the USB stick…" "Comprobando el USB…")" -- cat /iso/nix-store.squashfs > /dev/null; then
         fail "$(t "The USB stick cannot be read whole. Write the image to it again, checking its SHA256 (SHA256SUMS, next to it on Releases), or try another stick or port; \"Copy ISO Files to RAM\", among the boot menu's options, reads it all into memory before starting." \
@@ -52,10 +37,6 @@ if [ -f /iso/nix-store.squashfs ]; then
     fi
 fi
 
-# --- Network: the install downloads most of NIHIL --------------------------------
-
-# Without a connection: a Wi-Fi network, again (a cable, or a phone sharing
-# its connection over USB, work by themselves), or out to a shell.
 until curl -fsI --max-time 6 https://cache.nixos.org >/dev/null; do
     if ! nmcli -t -f TYPE device 2>/dev/null | grep -qx wifi; then
         dim "$(t "No Wi-Fi card shows up (it may need a driver this image lacks). A cable, or a phone sharing its connection over USB, work too." \
@@ -75,15 +56,10 @@ until curl -fsI --max-time 6 https://cache.nixos.org >/dev/null; do
     esac
 done
 
-# --- Keyboard and time zone ------------------------------------------------------
-
 layout=$(gum choose --header "$(t "Keyboard" "Teclado")" us es gb de fr it pt latam other)
 if [ "$layout" = other ]; then
     layout=$(gum input --header "$(t "Keyboard layout (xkb name)" "Distribución del teclado (nombre xkb)")" --placeholder "br")
 fi
-# The passwords are typed here with the console's keymap and at the login
-# with the xkb layout: the same keys must give the same characters. kbd
-# names a few of them otherwise.
 case $layout in
     gb) keymap=uk ;;
     pt) keymap=pt-latin1 ;;
@@ -102,12 +78,8 @@ if [ -z "$zone" ] || ! gum confirm "$(t "Time zone: $zone?" "Zona horaria: $zone
     zone=$(timedatectl list-timezones | gum filter --header "$(t "Time zone" "Zona horaria")")
 fi
 
-# --- Who uses it -------------------------------------------------------------------
-
 fullname=$(gum input --header "$(t "Your name" "Tu nombre")" --placeholder "Ada Lovelace")
 suggested=$(printf '%s' "${fullname%% *}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
-# The system's own accounts, which NixOS keeps for itself: it would refuse
-# one of them as the user's only once everything was downloaded.
 reserved() {
     case $1 in
         root | nobody | nixbld* | systemd-* | messagebus | polkituser | sshd | nscd | dhcpcd | uuidd | tss \
@@ -127,19 +99,11 @@ while true; do
     fi
     dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
 done
-# As NixOS takes it (networking.hostName): no "-" at either end.
 until [[ ${hostname:-} =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; do
     hostname=$(gum input --header "$(t "Name of this computer" "Nombre de este ordenador")" --value "nihil")
 done
 
-# --- The disk ------------------------------------------------------------------------
-
-# Disks worth installing on. lsblk calls a floppy (QEMU has one), zram,
-# RAM disks and an eMMC's boot areas disks too: not those, not read-only
-# ones, not the one this image runs from, and 20 GB or more.
 live=$(lsblk -no PKNAME "$(findmnt -no SOURCE /iso 2>/dev/null || true)" 2>/dev/null || true)
-# Listed in a variable, not a process substitution: if listing fails, the
-# installer stops there and says so, rather than finding no disk.
 listed=$(lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="/dev/$live" -v least=20000000000 '
     $4 == "disk" && $3 == 0 && $2 >= least && $1 != live &&
     $1 !~ /^\/dev\/(fd|zram|ram|loop)[0-9]/ && $1 !~ /(boot[0-9]+|rpmb)$/ { print $1 }')
@@ -152,15 +116,6 @@ done
 disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disks[@]}")
 disk=${disk%% *}
 
-# --- Where on the disk ---------------------------------------------------------------
-
-# The whole disk, or next to what is on it: free space, or room a partition
-# gives up, shrunk keeping what it holds (Windows' NTFS, an ext4 or a
-# btrfs). cfdisk stays for doing it by hand, but it only edits the
-# partition table: shrinking a partition there breaks what is inside. The
-# boot menu goes on the disk's EFI partition, next to Windows' if there is
-# one; if there is none, or it is small (Windows' is 100 MB), NIHIL adds
-# 1 GB for the kernels (XBOOTLDR, with the EFI partition on /efi).
 least=20000000000
 bootBytes=1073741824
 headroom=10000000000
@@ -175,9 +130,6 @@ part() {
 
 gpt() { [ "$(blkid -o value -s PTTYPE "$disk" 2>/dev/null)" = gpt ]; }
 
-# The number of partition $1 on the disk, as the kernel has it; its
-# filesystem and label, read from the partition itself (udev may lag behind
-# a partition table just changed).
 number_of() { cat "/sys/class/block/${1##*/}/partition"; }
 fstype_of() { blkid -p -o value -s TYPE "$1" 2>/dev/null || true; }
 label_of() { blkid -p -o value -s LABEL "$1" 2>/dev/null || true; }
@@ -193,7 +145,6 @@ describe() {
     done
 }
 
-# The disk's EFI partition, if it has one.
 esp_of() {
     local part
     while read -r part; do
@@ -204,7 +155,6 @@ esp_of() {
     done < <(partitions 0 "")
 }
 
-# Whether Windows' boot manager is on the EFI partition $1.
 has_windows() {
     local present=1
     [ -n "$1" ] || return 1
@@ -217,8 +167,6 @@ has_windows() {
     return "$present"
 }
 
-# Windows on another disk: its boot manager is on that disk's EFI partition,
-# and systemd-boot only lists what is on its own. The first such disk.
 windows_elsewhere() {
     local other part
     while read -r other; do
@@ -234,8 +182,6 @@ windows_elsewhere() {
     return 0
 }
 
-# The first and last sector of each stretch of free space of at least $1
-# bytes, aligned to 1 MiB.
 free_stretches() {
     parted -m -s "$disk" unit s print free 2>/dev/null | awk -F: -v least="$1" -v align="$align" -v sector="$sector" '
         $5 == "free;" {
@@ -245,8 +191,6 @@ free_stretches() {
         }'
 }
 
-# How small the filesystem on $1 ($2) can get keeping what it holds, in
-# bytes; or, if it cannot be shrunk now, why.
 smallest() {
     local report magic blocks block
     case $2 in
@@ -299,8 +243,6 @@ smallest() {
     esac
 }
 
-# Partitions that can give NIHIL $1 bytes or more, as "partition filesystem
-# bytes": what each can give keeping what it holds and 10 GB free.
 givers() {
     local part bytes fstype small give
     while read -r part bytes; do
@@ -330,7 +272,6 @@ givers() {
     done < <(lsblk -pbnro NAME,SIZE,TYPE "$disk" | awk '$3 == "part" { print $1, $2 }')
 }
 
-# How much room NIHIL takes, from $1 to $2 bytes.
 how_much() {
     local fewest=$1 most=$2 amount typed choice labels=() all other
     all="$(t "All of it" "Todo"): $(size "$most")"
@@ -362,8 +303,6 @@ how_much() {
     esac
 }
 
-# Next to what is on the disk: free space, or room a partition gives up.
-# Fails, saying why, if there is none.
 plan_room() {
     local entries=() labels=() index choice back need first last part fstype give label fstypes=""
     if ! gpt; then
@@ -394,8 +333,6 @@ plan_room() {
         entries+=("free $first $last")
         labels+=("$(t "Its free space" "Su espacio libre"): $(size $(( (last - first + 1) * sector )))")
     done < <(free_stretches "$need")
-    # An ext4 not shut down cleanly cannot be measured: offer to check it
-    # (e2fsck in preen mode, what a boot would do).
     local unchecked=()
     mapfile -t unchecked < <(partitions $(( need + headroom )) "")
     for part in "${unchecked[@]}"; do
@@ -452,8 +389,6 @@ plan_room() {
     fi
 }
 
-# On one of the disk's partitions, formatted (and one for booting, if the
-# disk's EFI partition is missing or small).
 plan_partition() {
     local roots=() boots=() choices=()
     if ! gpt; then
@@ -488,7 +423,6 @@ plan_partition() {
     fi
 }
 
-# The filesystem on $1 ($2) made $3 bytes long, keeping what it holds.
 shrink_filesystem() {
     local status=0
     case $2 in
@@ -509,9 +443,6 @@ shrink_filesystem() {
     esac
 }
 
-# The entry of partition $1 made $2 bytes long, in place: same start, type,
-# GUID, name and attributes. Prints the stretch it freed, first and last
-# sector.
 shrink_partition() {
     local number info code guid first last name attributes bit end flags=()
     number=$(number_of "$1")
@@ -522,7 +453,6 @@ shrink_partition() {
     last=$(awk '/^Last sector:/ { print $3 }' <<< "$info")
     attributes=$(awk '/^Attribute flags:/ { print $3 }' <<< "$info")
     name=$(sed -n "s/^Partition name: '\(.*\)'$/\1/p" <<< "$info")
-    # Nothing is deleted unless all of the entry was read back.
     if [ -z "$code" ] || [ -z "$guid" ] || [ -z "$first" ] || [ -z "$last" ] || [[ ! $attributes =~ ^[0-9A-Fa-f]{16}$ ]]; then
         fail "$(t "Could not read the entry of $1; nothing was changed in the partition table." "No se pudo leer la entrada de $1; no se ha cambiado nada en la tabla de particiones.")"
     fi
@@ -532,8 +462,6 @@ shrink_partition() {
             flags+=(-A "$number:set:$bit")
         fi
     done
-    # In $(…) errexit is off: a failure here has to stop the installer itself,
-    # before NIHIL's partitions are made in room that was not freed.
     if ! sgdisk -a 1 -d "$number" -n "$number:$first:$end" -t "$number:$code" -u "$number:$guid" -c "$number:$name" "${flags[@]}" "$disk" >/dev/null; then
         fail "$(t "Could not shrink the entry of $1 in the partition table: sgdisk -p $disk shows it as it is now." \
                   "No se pudo encoger la entrada de $1 en la tabla de particiones: sgdisk -p $disk la muestra tal como está ahora.")"
@@ -543,13 +471,10 @@ shrink_partition() {
     echo "$(( (end + align) / align * align )) $last"
 }
 
-# The lowest partition number the disk does not use yet.
 free_number() {
     sgdisk -p "$disk" | awk '$1 ~ /^[0-9]+$/ { used[$1] = 1 } END { n = 1; while (n in used) n++; print n }'
 }
 
-# NIHIL's partitions from sector $1 to $2: first 1 GB for booting if the
-# disk needs it, then the root.
 make_partitions() {
     local first=$1 number
     if [ -n "$bootType" ]; then
@@ -581,8 +506,6 @@ bootType=""
 nextTo=$(t "Next to what is on it (make room)" "Junto a lo que hay (hacer sitio)")
 all=$(t "Erase the whole disk" "Borrar el disco entero")
 pick=$(t "On one of its partitions (formatting it)" "En una de sus particiones (formateándola)")
-# No partition editor here: shrinking a partition in one (cfdisk) breaks
-# what it holds, and it broke a Linux Mint. By hand is in another console.
 while true; do
     lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
     dim "$(t "To partition it by hand: another console (Alt+F2) has cfdisk and parted; then «On one of its partitions»." \
@@ -652,8 +575,6 @@ fi
 gum confirm "$(t "Install NIHIL?" "¿Instalar NIHIL?")" --affirmative "$(t "Install" "Instalar")" --negative "$(t "Cancel" "Cancelar")" \
     --default=false || exit 1
 
-# --- Partitions, btrfs, subvolumes ------------------------------------------------------
-
 say "$(t "Preparing the disk…" "Preparando el disco…")"
 umount -R /mnt 2>/dev/null || true
 cryptsetup close cryptroot 2>/dev/null || true
@@ -667,8 +588,6 @@ if [ "$mode" = whole ]; then
     root=$(part 2)
     mkfs.fat -F 32 -n BOOT "$boot" >/dev/null
 else
-    # Next to another system, the room first: free space, or what a
-    # partition gives up, shrunk keeping what it holds.
     if [ "$mode" = room ]; then
         if [ "$room" = shrink ]; then
             say "$(t "Shrinking $roomPart: it can take a few minutes…" "Encogiendo $roomPart: puede tardar unos minutos…")"
@@ -680,10 +599,6 @@ else
         fi
         make_partitions "$roomFirst" "$roomLast"
     fi
-    # The partitions chosen, typed for what they hold: Linux for the root,
-    # EFI or XBOOTLDR (next to a small EFI partition) for the boot one. One
-    # sgdisk for both: each run makes the kernel read the table again, and
-    # the partitions are gone for a moment.
     types=(-t "$(number_of "$root"):8300")
     if [ "$boot" != "$esp" ]; then
         if [ -n "$esp" ]; then type=ea00; else type=ef00; fi
@@ -722,8 +637,6 @@ if [ -n "$efi" ]; then
     mount -o umask=0077 "$efi" /mnt/efi
 fi
 
-# --- The machine's flake ------------------------------------------------------------------
-
 say "$(t "Writing this machine's configuration…" "Escribiendo la configuración de esta máquina…")"
 nixos-generate-config --root /mnt >/dev/null
 etc=/mnt/etc/nixos
@@ -731,10 +644,6 @@ rm -f "$etc/configuration.nix"
 cp -r "$template/." "$etc/"
 chmod -R u+w "$etc"
 
-# Screens as the kernel sees them (Hyprland uses the same names), at their
-# preferred mode. One connected later goes into settings.json from
-# Preferences, Screens (or nihil settings); until then it works with
-# Hyprland's own mode and no bar.
 outputs='{}'
 for connector in /sys/class/drm/card*-*; do
     [ "$(cat "$connector/status" 2>/dev/null)" = connected ] || continue
@@ -776,7 +685,6 @@ jq -n \
         ssh: false
     }' > "$etc/settings.json"
 
-# The GPU's driver in the initrd, so the boot splash shows from the start.
 gpu=""
 if lspci -nn | grep -Ei 'vga|3d|display' | grep -qiE 'amd|ati'; then
     gpu="hardware.amdgpu.initrd.enable = true;"
@@ -784,8 +692,6 @@ elif lspci -nn | grep -Ei 'vga|3d|display' | grep -qi intel; then
     gpu="boot.initrd.kernelModules = [ \"i915\" ];"
 fi
 
-# Next to another system: where systemd-boot and the kernels go, and
-# Windows' clock, which it keeps in local time.
 loader=""
 if [ -n "$efi" ]; then
     loader+=$'\n\t# The EFI partition is small: systemd-boot there, the kernels on /boot (XBOOTLDR).'
@@ -797,9 +703,6 @@ if [ "$windows" = yes ]; then
     loader+=$'\n\ttime.hardwareClockInLocalTime = true;\n'
 fi
 
-# systemd-boot finds Windows by itself, not a Linux booted by GRUB: each
-# other loader on the EFI partition gets an entry (when the entries live
-# there, that is, without XBOOTLDR).
 if [ "$mode" != whole ] && [ -n "$esp" ] && [ "$boot" = "$esp" ]; then
     for dir in /mnt/boot/EFI/*/; do
         [ -d "$dir" ] || continue
@@ -820,18 +723,13 @@ fi
 
 release=$(nixos-version | cut -d . -f 1,2)
 cat > "$etc/local.nix" << EOF
-# local.nix: NixOS settings of this machine only (drivers, services,
-# packages). nihil-install wrote it; it's yours to change.
 
 { config, lib, pkgs, ... }:
 {
-	# The NixOS release this machine was installed with: keep it as it is.
 	system.stateVersion = "$release";
 
-	# Pictures in /etc/nixos/wallpapers become wallpapers too, drawn as dots.
 	nihil.extraWallpapers = lib.optional (builtins.pathExists ./wallpapers) ./wallpapers;
 
-	# btrfs, compressed, checked once a month (nihil-install's subvolumes).
 	fileSystems = lib.genAttrs [ "/" "/home" "/nix" "/var/log" ] (_: { options = [ "compress=zstd" "noatime" ]; });
 	services.btrfs.autoScrub = { enable = true; fileSystems = [ "/" ]; };
 
@@ -840,18 +738,13 @@ ${loader}
 }
 EOF
 
-# The same NIHIL as this image (its revision), from the branch flake.nix names.
 if [ -n "$rev" ]; then
     nix flake lock "$etc" --override-input nihil "$source/$rev"
 else
     nix flake lock "$etc"
 fi
 
-# --- Install ------------------------------------------------------------------------------
-
 say "$(t "Installing. This takes a while: most of it is downloaded." "Instalando. Tarda un rato: casi todo se descarga.")"
-# Once more if it fails: what was downloaded stays, and what failed is mostly a
-# server that did not answer.
 if ! nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy; then
     say "$(t "Something could not be downloaded; trying once more…" "Algo no se ha podido descargar; se intenta otra vez…")"
     nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy

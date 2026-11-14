@@ -1,12 +1,4 @@
 #version 440
-// The frame and its drawers in smoked glass (frame/FrameGlass.qml): the same outline as
-// frame/FrameShape.qml (frame/Geometry.js), as a distance field. The frame is everything
-// outside the screen's inner rounded rectangle; each open drawer adds a box grown from its
-// edge, joined to the frame with a fillet. Over it, what is behind (components/Backdrop.qml:
-// the wallpaper, and the windows when one can be behind) through the glass of
-// shaders/surface.frag: clear and bent along the edge, frosted beyond, lit where something
-// bright is near the edge. The frame covers the whole window, so qt_TexCoord0 is also where
-// a point is on the screen.
 
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
@@ -14,20 +6,20 @@ layout(location = 0) out vec4 fragColor;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
-    float transmission; // what the smoke lets through of what is behind
-    float refraction;   // how far the bevel bends what is behind, logical px
-    float bevel;        // how deep the bevel reaches in from the edge, logical px
-    float rim;          // the glint on the edges facing the light
-    float dim;          // what reaches the glass of what is behind (the launcher's dim: less)
-    float frost;        // how far the frosted face blurs what is behind, logical px
-    float scatter;      // the light the frost spreads wide: bright dots glow through it
-    float halo;         // the light the edge gathers from bright things near it
-    float wobble;       // how far the face's unevenness shifts what is behind, logical px
-    vec2 scr;           // the window, which is the screen, logical px
-    vec4 ltrb;          // the frame's width: left (the bar), top, right, bottom
-    vec4 shape;         // the inner corners' radius, the fillets', the drawers'
-    vec4 bump0;         // a drawer: from, to (along its edge), depth, edge (0 top, 1 right,
-    vec4 bump1;         //   2 bottom, 3 left), as frame/Frame.qml lists them
+    float transmission;
+    float refraction;
+    float bevel;
+    float rim;
+    float dim;
+    float frost;
+    float scatter;
+    float halo;
+    float wobble;
+    vec2 scr;
+    vec4 ltrb;
+    vec4 shape;
+    vec4 bump0;
+    vec4 bump1;
     vec4 bump2;
     vec4 bump3;
     vec4 bump4;
@@ -43,7 +35,6 @@ float roundBox(vec2 p, vec2 halfSize, float r) {
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
-// A union with a rounded joint of about k (the fillet where a drawer meets the frame).
 float smoothUnion(float a, float b, float k) {
     if (k <= 0.0)
         return min(a, b);
@@ -55,7 +46,6 @@ float drawer(vec2 p, vec4 b, float x0, float y0, float x1, float y1) {
     float lo = min(b.x, b.y);
     float hi = max(b.x, b.y);
     float depth = b.z;
-    // Past the frame's line by this much, so the drawer's base is buried in the frame.
     float m = shape.z + 2.0;
     int edge = int(b.w + 0.5);
     vec2 mn;
@@ -86,7 +76,6 @@ float drawer(vec2 p, vec4 b, float x0, float y0, float x1, float y1) {
     return roundBox(p - (mn + mx) * 0.5, (mx - mn) * 0.5, r);
 }
 
-// Negative in the glass, positive in the screen it frames.
 float field(vec2 p) {
     float x0 = ltrb.x;
     float y0 = ltrb.y;
@@ -103,9 +92,7 @@ float field(vec2 p) {
     return d;
 }
 
-// ---- The glass (the same in surface.frag) ----
-
-// A hash without sines (Dave Hoskins'), and value noise made of it.
+// From here to glass(), the same in surface.frag.
 float hash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -120,9 +107,6 @@ float noise(vec2 p) {
                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-// What is behind around uv, blurred by about r logical px: a spiral of taps, each on a mipmap
-// a little blurred itself and the spiral turned by `turn`, so the blur has neither blocks nor
-// rings but a fine grain, as frosted glass has. px: the backdrop's pixels per logical px.
 vec3 blurred(vec2 uv, float r, float turn, float px) {
     float lod = log2(max(r * px * 0.5, 1.0));
     vec3 sum = vec3(0.0);
@@ -134,28 +118,19 @@ vec3 blurred(vec2 uv, float r, float turn, float px) {
     return sum * 0.125;
 }
 
-// The glass at a point: p where it is on the glass (logical px: its grain and unevenness go
-// with it), uv what is straight behind it, n the edge's outward normal there and depth how
-// far in from the edge, logical px. Its smoke is `smoke`, and lets `through` of what is behind.
 vec3 glass(vec2 p, vec2 uv, vec2 n, float depth, vec3 smoke, float through) {
     float px = float(textureSize(backdrop, 0).x) / max(scr.x, 1.0);
 
-    // The bevel bends what is behind outwards, most at the edge.
     float k = clamp(1.0 - depth / max(bevel, 1.0), 0.0, 1.0);
     k *= k;
     vec2 bend = n * (refraction * k);
 
-    // The face beyond it is uneven: two octaves of noise shift what is seen through it, and
-    // frost it more in some places than in others.
     vec2 q = p / 34.0;
     vec2 w = vec2(noise(q), noise(q + vec2(19.7, 7.3)))
         + 0.5 * vec2(noise(q * 2.7 + vec2(5.1, 13.9)), noise(q * 2.7 + vec2(23.4, 2.2)));
     w = w / 1.5 * 2.0 - 1.0;
     vec2 at = uv + (bend + w * wobble * (1.0 - k)) / scr;
 
-    // Clear on the bevel (all but polished: a touch soft), its colours a little apart where
-    // it bends most (red the least); frosted beyond it. A narrow bevel (a key's) is frosted
-    // too, or the dots in it would ring the key like stitches.
     float soft = log2(max(1.25 * px, 1.0));
     vec3 clear;
     if (k > 0.01) {
@@ -172,7 +147,6 @@ vec3 glass(vec2 p, vec2 uv, vec2 n, float depth, vec3 smoke, float through) {
     float clarity = smoothstep(10.0, 24.0, bevel);
     vec3 behind = mix(frosted, clear, smoothstep(0.08, 0.7, k) * clarity) * dim;
 
-    // The light the frost spreads wide: each bright dot behind glows past where it is.
     vec3 wide = vec3(0.0);
     float lw = log2(max(frost * 2.2 * px, 1.0));
     for (int i = 0; i < 4; i++) {
@@ -184,18 +158,12 @@ vec3 glass(vec2 p, vec2 uv, vec2 n, float depth, vec3 smoke, float through) {
     vec3 col = mix(smoke, behind, through);
     col += wide * scatter * (0.35 + through);
 
-    // The edge gathers the light of what is bright near it, just past it or under the bevel,
-    // and glows with it there: bright points, not bright areas (a light window behind the
-    // edge leaves it as it is), and over more than a dot's pitch, so the wallpaper's grid
-    // itself doesn't ring it.
     float edge = exp(-depth / 2.5);
     vec2 past = uv + n * (3.0 + depth) / scr;
     vec3 near = textureLod(backdrop, past, log2(max(10.0 * px, 1.0))).rgb;
     vec3 around = textureLod(backdrop, past, log2(max(28.0 * px, 1.0))).rgb;
     col += max(near - around, 0.0) * (dim * halo * edge);
 
-    // A glint on the edges facing the top left, a shade on the others, and the bevel a little
-    // brighter than the face, as glass looked at slantwise is.
     float band = clamp(1.0 - depth / 2.5, 0.0, 1.0);
     float lit = pow(max(dot(n, vec2(-0.7071, -0.7071)), 0.0), 4.0);
     float away = pow(max(dot(n, vec2(0.7071, 0.7071)), 0.0), 2.0);
@@ -203,12 +171,9 @@ vec3 glass(vec2 p, vec2 uv, vec2 n, float depth, vec3 smoke, float through) {
     col *= 1.0 - 0.3 * away * band;
     col += vec3(0.03 * k);
 
-    // Against banding in the dark smoke.
     col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
     return max(col, vec3(0.0));
 }
-
-// ---- End of the glass ----
 
 void main() {
     vec2 p = qt_TexCoord0 * scr;
@@ -219,8 +184,6 @@ void main() {
         return;
     }
 
-    // The edge's normal, only near the edge (the bevel, and the halo's reach): deeper in (the
-    // bar, a drawer's middle) the glass is flat.
     float depth = max(-d, 0.0);
     vec2 n = vec2(0.0);
     if (depth < bevel + 4.0) {

@@ -5,10 +5,6 @@ import qs.theme
 import qs.config
 import qs.components
 
-// System tray, monochrome. Left click activates, right click opens the menu.
-// Items listed in nihil.trayHidden are left out: the Wi-Fi and Bluetooth
-// applets already have their own icons in the bar (and keep running for
-// password and pairing prompts).
 Column {
     id: root
 
@@ -33,8 +29,6 @@ Column {
             width: 18
             height: 18
 
-            // App icons fill their whole square, unlike the glyphs of the bar,
-            // so they are drawn a little smaller to weigh the same.
             AppIcon {
                 anchors.centerIn: parent
                 size: 14

@@ -8,15 +8,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// The screens as they sit on the desk (hyprctl monitors all): drag one to
-// put it beside another, pick one for its resolution, refresh rate, scale
-// and rotation, whether the bar is on it and whether it is the main one
-// (the desktop widgets, the lock screen, the login). They go to
-// settings.json's "outputs" (modules/nihil.nix), each with its place in
-// Hyprland's logical pixels and its size in pixels, turned, for its
-// wallpapers; applying rebuilds, and only the wallpapers for a size that
-// changed are drawn again. One saved but not connected now can be
-// forgotten.
 Flickable {
     id: page
 
@@ -28,10 +19,8 @@ Flickable {
     readonly property string main: Machine.get("primaryOutput", Config.primaryOutput)
     readonly property var away: Object.keys(saved).filter(name => !monitors.some(monitor => monitor.name === name))
 
-    // Each one as placed, in logical pixels: { name, x, y, w, h }.
     readonly property var rects: monitors.map(monitor => rectOf(monitor))
 
-    // The one picked, and what it shows and can show.
     readonly property var current: monitors.find(monitor => monitor.name === chosen) ?? null
     readonly property var mode: current !== null ? modeOf(current) : null
     readonly property var sizes: current !== null ? sizesOf(current) : []
@@ -46,13 +35,11 @@ Flickable {
         return saved[name] ?? ({});
     }
 
-    // "2880x1800@120.00Hz" → { width, height, rate }
     function parseMode(text: string): var {
         const m = /^(\d+)x(\d+)@([\d.]+)/.exec(String(text));
         return m ? { width: Number(m[1]), height: Number(m[2]), rate: Math.round(Number(m[3]) * 100) / 100 } : null;
     }
 
-    // What it shows: as saved, or else as Hyprland has it now.
     function modeOf(monitor: var): var {
         const saved = entry(monitor.name).mode;
         return (saved && saved !== "preferred" ? parseMode(saved) : null)
@@ -67,8 +54,6 @@ Flickable {
         return entry(monitor.name).transform ?? monitor.transform ?? 0;
     }
 
-    // Where it is and how much room it takes, in logical pixels: its mode
-    // over its scale, turned; placed as saved, or else where Hyprland has it.
     function rectOf(monitor: var): var {
         const shown = modeOf(monitor), scale = scaleOf(monitor);
         const w = Math.round(shown.width / scale), h = Math.round(shown.height / scale);
@@ -78,10 +63,6 @@ Flickable {
                  w: turned ? h : w, h: turned ? w : h };
     }
 
-    // What a screen can show, each size once with its refresh rates (fastest
-    // first), largest first: those of its own shape down to a third of its
-    // width, and the one it shows now. The rest (a projector's, an old
-    // monitor's) are not for it.
     function sizesOf(monitor: var): var {
         const found = {};
         for (const text of monitor.availableModes ?? []) {
@@ -108,8 +89,6 @@ Flickable {
             .map(s => ({ width: s.width, height: s.height, rates: s.rates.slice().sort((a, b) => b - a) }));
     }
 
-    // Scales that leave whole pixels, as Hyprland wants, and a desktop at
-    // least 1024 wide; and the one it has, whatever it is.
     function scalesFor(width: int, height: int, kept: real): var {
         return [1, 1.25, 1.5, 1.6, 1.75, 2, 2.5, 3].filter(scale => {
             const w = width / scale, h = height / scale;
@@ -118,9 +97,6 @@ Flickable {
         });
     }
 
-    // A change to one screen, written down whole (what Hyprland has now
-    // fills in what was never saved), with its size in pixels, turned, for
-    // its wallpapers.
     function write(monitor: var, change: var): void {
         const shown = modeOf(monitor);
         const next = Object.assign({ mode: shown.width + "x" + shown.height + "@" + shown.rate,
@@ -138,7 +114,6 @@ Flickable {
         if (current === null || s === undefined)
             return;
         const rate = s.rates.find(r => Math.round(r) === Math.round(mode.rate)) ?? s.rates[0];
-        // A scale that no longer leaves whole pixels goes to the nearest one that does.
         const was = scaleOf(current), fits = scalesFor(s.width, s.height, -1);
         const scale = fits.indexOf(was) >= 0 || fits.length === 0 ? was
             : fits.reduce((best, other) => Math.abs(other - was) < Math.abs(best - was) ? other : best);
@@ -165,13 +140,10 @@ Flickable {
         Qt.callLater(page.relayout);
     }
 
-    // --- Placing them -------------------------------------------------------------
-
     function overlaps(a: var, b: var): bool {
         return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
     }
 
-    // The line in `lines` nearest to `value`, if one is within `near`.
     function nearest(value: real, lines: var, near: real): real {
         let best = value, gap = near;
         for (const line of lines) {
@@ -183,10 +155,6 @@ Flickable {
         return best;
     }
 
-    // The nearest place to (x, y) for `r` beside one of `others` and over
-    // none of them: against a side, at least a pixel of it shared, and its
-    // edges or its middle lined up with that one's when they come within a
-    // tenth.
     function settle(r: var, x: real, y: real, others: var): var {
         const spots = [];
         for (const o of others) {
@@ -202,7 +170,6 @@ Flickable {
         return free[0] ?? { x: Math.max(...others.map(o => o.x + o.w)), y: 0 };
     }
 
-    // Every place written down, the top left one at 0x0: only those that move.
     function arrange(placed: var): void {
         if (placed.length < 2)
             return;
@@ -215,8 +182,6 @@ Flickable {
         }
     }
 
-    // After one changes size: each, from the top left, beside those already
-    // placed, as near as it can stay to where it was.
     function relayout(): void {
         const placed = [];
         for (const r of rects.slice().sort((a, b) => a.x + a.y - (b.x + b.y)))
@@ -261,19 +226,14 @@ Flickable {
             font.pixelSize: 13
         }
 
-        // The desk: the screens to scale, each with its number in dots, the
-        // bar along its left side when it has it, and an LED in the corner
-        // of the main one. Picking one shows its settings below; dragging
-        // it puts it beside the nearest, where the outline says.
         Rectangle {
             id: desk
 
-            property string dragging: ""    // the name of the one being dragged
+            property string dragging: ""
             property real dragX: 0          // where it is, in logical pixels
             property real dragY: 0
             property var target: null       // where it would settle
 
-            // All of them, fitted in with room around.
             readonly property var bounds: {
                 const r = page.rects;
                 if (r.length === 0)
@@ -295,7 +255,6 @@ Flickable {
             border.width: 1
             border.color: Tokens.line
 
-            // A faint grid of dots, as the wallpapers are drawn.
             Canvas {
                 anchors.fill: parent
                 anchors.margins: 6
@@ -311,7 +270,6 @@ Flickable {
                 }
             }
 
-            // Where the one being dragged would settle.
             Rectangle {
                 z: 1
                 visible: desk.held !== null && desk.target !== null
@@ -350,7 +308,6 @@ Flickable {
                     Behavior on width { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
                     Behavior on height { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
 
-                    // Drawn a little in, so two that touch show where one ends.
                     Surface {
                         anchors.fill: parent
                         anchors.margins: 2
@@ -363,7 +320,6 @@ Flickable {
                         Behavior on borderTint { ColorAnimation { duration: Tokens.animFast } }
                     }
 
-                    // The bar, along its left side.
                     Rectangle {
                         visible: page.entry(screen.modelData.name).bar ?? true
                         x: 5
@@ -391,7 +347,6 @@ Flickable {
                         color: screen.picked ? Tokens.dim : Tokens.muted
                     }
 
-                    // The main one's LED, as on its switch below.
                     Rectangle {
                         visible: page.monitors.length > 1 && page.main === screen.modelData.name
                         anchors.right: parent.right
@@ -411,7 +366,6 @@ Flickable {
 
                         anchors.fill: parent
                         hoverEnabled: true
-                        // The page doesn't scroll from under a screen being dragged.
                         preventStealing: true
                         cursorShape: screen.held ? Qt.ClosedHandCursor : page.monitors.length > 1 ? Qt.OpenHandCursor : Qt.PointingHandCursor
                         onPressed: mouse => {
@@ -457,7 +411,6 @@ Flickable {
             }
         }
 
-        // The one picked: its connector, and what it is.
         RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: 22
@@ -552,7 +505,6 @@ Flickable {
                 onToggled: {
                     if (on)
                         return;
-                    // The main one has to be among the outputs.
                     if (!(page.current.name in page.saved))
                         page.write(page.current, {});
                     Machine.set("primaryOutput", page.current.name);
@@ -560,7 +512,6 @@ Flickable {
             }
         }
 
-        // Saved, but not connected now.
         Repeater {
             model: page.loaded ? page.away : []
 
