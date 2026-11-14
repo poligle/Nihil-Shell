@@ -397,8 +397,8 @@ in
 				{ fingers = fingers.workspaces; direction = "horizontal"; action = "workspace"; }
 				{ fingers = fingers.close; direction = "down"; action = "close"; }
 				{ fingers = fingers.launcher; direction = "up"; action = lua ''function() hl.exec_cmd("nihil-ipc drawers toggle launcher") end''; }
-				{ fingers = fingers.maximize; direction = "pinchout"; action = lua (maximizeGesture true); }
-				{ fingers = fingers.maximize; direction = "pinchin"; action = lua (maximizeGesture false); }
+				{ fingers = fingers.maximize; direction = "pinchin"; action = lua (maximizeGesture true); }
+				{ fingers = fingers.maximize; direction = "pinchout"; action = lua (maximizeGesture false); }
 				{ fingers = fingers.special; direction = "vertical"; action = lua (withSound sound.special "hl.dsp.workspace.toggle_special()"); }
 			];
 

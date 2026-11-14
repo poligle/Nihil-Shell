@@ -50,7 +50,7 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   LED columns, CPU/RAM/temperature dials, a network oscilloscope, a kanban (to do, doing,
   done: drag a card where it goes, its pencil writes it again, a broom clears the done ones),
   and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
-  it goes to the phone; what the phone sends is there, a click to copy it.
+  it shrinks away to the phone; what the phone sends waits there, to copy, save or open.
 - **Settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
   locking or sleeping), segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
@@ -103,8 +103,8 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   whole at least once on the way up and on the way down) with the power-off notes going
   up, unless the session was left muted, a greeter with the lock screen's face (its
   own, in Quickshell: the time in dots, the password as dots, a finger or the password) and
-  a lock screen with what is playing in a corner: the cover in dots, the progress in LEDs
-  and buttons you can click (hyprlock).
+  a lock screen with what is playing in a corner, on a panel of its own: the cover in dots,
+  the progress in LEDs and buttons you can click (hyprlock).
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
   NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
@@ -170,7 +170,9 @@ keeps its contrast; the hairlines become the glass's own edges, and a border tha
 something (focus, the one chosen, an error) stays. The shell draws it with two shaders
 (`home/shell/shaders/`) over one texture of what is behind, with its mipmaps for the
 frost (`components/Backdrop.qml`); hyprlock draws flat colours, so the lock screen's
-glass is made into its background, once per wallpaper (`home/lock/glass.py`). The terminal
+glass is made into its background, once per wallpaper (`home/lock/glass.py`), twice in fact:
+with the player's panel and without, and the lock shows one or the other as something plays
+or stops. The terminal
 goes with it: kitty's background lets a fifth through, which Hyprland blurs and darkens, and
 the switch reaches the kitties already open (they read their configuration again).
 
@@ -619,12 +621,14 @@ order of each column too: each side goes on when they are apart, and the next sy
 both did (`docs/deck.md`).
 
 Vector carries one thing at a time, 100 MB at most: a text, a picture, a video or any file.
-Pasted (`CTRL + V`) or dropped on the dashboard's Vector, or a click on it to send what the
-clipboard holds, it goes to the phone, and a notification says to which; on the phone it waits
-in Tasks, above the kanban, to be copied, shared or opened. From the phone, its Vector or
-**Vector** in the share sheet sends it here: the dashboard shows it, a notification says it came, and a
-click puts it on the clipboard (a file as a file, to paste in Thunar). Each side keeps only the
-last one; the next takes its place. `nihil-deck vector send FILE | copy | status` does the same
+Paste it on the dashboard's Vector (`CTRL + V`, or a click: what the clipboard holds, a file
+copied in Thunar too), or drag it to the top of the screen, where the dashboard opens, and drop
+it there: it shrinks away to the phone, and a notification says to which. On the phone it waits
+in Tasks, above the kanban, with a notification. What the phone sends (from its Vector, a tap
+to pick a picture or a file, or **Vector** in the share sheet) waits on the dashboard the same
+way: copy it, save it in `~/Vector` or open it from there, and its place is empty again. Each
+side keeps only the last one, and what a password manager copies is not sent.
+`nihil-deck vector send FILE | text TEXT | copy | save | open | clear | status` does the same
 from a terminal.
 
 The trackpad is a touchpad here (`GET /v1/trackpad`). The phone streams its fingers, every
@@ -781,8 +785,9 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
 - **Lock screen media:** [`home/lock/media.sh`](home/lock/media.sh) asks the players
   (playerctl) at most once a second and hyprlock's labels read the result; covers are
   drawn as dot matrices by [`home/lock/cover.py`](home/lock/cover.py) and cached in
-  `$XDG_RUNTIME_DIR`. The cursor stays visible on the lock screen so the buttons can be
-  clicked; the media keys work as well.
+  `$XDG_RUNTIME_DIR`. The background has a variant with the player's panel baked in, and
+  hyprlock asks which one every two seconds (`media.sh backdrop`). The cursor stays visible on
+  the lock screen so the buttons can be clicked; the media keys work as well.
 - **Pre-existing files:** if a file Home Manager wants to manage already exists, it is
   renamed to `*.hm-backup` instead of aborting the activation.
 - **Own scripts:** packaged with `writeShellScriptBin` and explicit dependencies:

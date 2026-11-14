@@ -59,7 +59,10 @@ APPS_FOR = 20
 APP_ID = re.compile(r"[A-Za-z0-9._+-]{1,160}")
 MIME = re.compile(r"[a-z0-9][a-z0-9!#$&^_.+-]{0,63}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}")
 EXTENSIONS = {"text/plain": ".txt", "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
-              "image/webp": ".webp", "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
+              "image/webp": ".webp", "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov",
+              "audio/mpeg": ".mp3", "audio/ogg": ".ogg", "application/pdf": ".pdf"}
+COPIED = ("x-special/gnome-copied-files", "text/uri-list")
+SECRET = "x-kde-passwordManagerHint"
 VIRTUAL = re.compile(r"(docker|br-|virbr|veth|vnet|lxcbr|lxdbr|podman|cni|flannel)")
 ACTIONS = {
     "media": ("toggle", "next", "previous"),
@@ -1057,7 +1060,7 @@ def file_name(value, mime):
     name = os.path.basename(str(value or "").replace("\\", "/"))
     name = re.sub(r"[\x00-\x1f\x7f]", "", name).strip()[:160]
     if name in ("", ".", "..") or name.startswith("."):
-        name = {"text": "text", "image": "image", "video": "video"}.get(kind_of(mime), "file") + EXTENSIONS.get(mime, "")
+        name = time.strftime("Vector_%Y-%m-%d_%H.%M.%S") + EXTENSIONS.get(mime, "")
     return name
 
 
@@ -1122,6 +1125,21 @@ class Vector:
         self.poke()
         item["path"] = target
         return item
+
+    def drop(self, side):
+        folder = self.slot(side)
+        try:
+            entries = os.listdir(folder)
+        except OSError:
+            return
+        for entry in entries:
+            if entry.startswith((".part-", ".deck-")):
+                continue
+            try:
+                os.unlink(os.path.join(folder, entry))
+            except OSError:
+                pass
+        self.poke()
 
     def poke(self):
         with self.changed:
@@ -1669,11 +1687,14 @@ def clipboard_source(config):
 
     try:
         types = paste("--list-types").decode(errors="replace").split()
-        if "text/uri-list" in types:
-            for line in paste("--type", "text/uri-list").decode(errors="replace").splitlines():
-                if line.strip().startswith("file://"):
-                    return "file", urllib.parse.unquote(urllib.parse.urlsplit(line.strip()).path)
-        for prefix in ("image/", "video/"):
+        if SECRET in types:
+            return "secret", None
+        for kind in COPIED:
+            if kind in types:
+                for line in paste("--type", kind).decode(errors="replace").splitlines():
+                    if line.strip().startswith("file://"):
+                        return "file", urllib.parse.unquote(urllib.parse.urlsplit(line.strip()).path)
+        for prefix in ("image/", "video/", "audio/", "application/pdf"):
             found = [kind for kind in types if kind.startswith(prefix)]
             if found:
                 kind = "image/png" if "image/png" in found else found[0]
@@ -1687,14 +1708,18 @@ def clipboard_source(config):
     return None
 
 
-def vector_send(config, vector, argument=None):
-    if argument:
+def vector_send(config, vector, argument=None, text=None):
+    if text is not None:
+        source = ("data", text.encode(), "text/plain")
+    elif argument:
         path = urllib.parse.unquote(urllib.parse.urlsplit(argument).path) if argument.startswith("file://") else argument
         source = ("file", path)
     else:
         source = clipboard_source(config)
     if source is None:
         return {"error": "empty"}
+    if source[0] == "secret":
+        return {"error": "secret"}
     part = vector.part("out")
     try:
         if source[0] == "file":
@@ -1721,54 +1746,94 @@ def vector_send(config, vector, argument=None):
     finally:
         if os.path.exists(part):
             os.unlink(part)
-    return {"ok": True, "kind": item["kind"], "name": item["name"]}
-
-
-def vector_copy(config, vector):
-    item = vector.item("in")
-    if item is None:
-        return {"error": "empty"}
-    if item["kind"] == "file" or item["kind"] == "video":
-        command = [config["wlCopy"], "--type", "text/uri-list"]
-        data = ("file://" + urllib.parse.quote(item["path"]) + "\r\n").encode()
-    else:
-        command = [config["wlCopy"]] + (["--type", item["mime"]] if item["kind"] == "image" else [])
+    result = {"ok": True, "kind": item["kind"], "name": item["name"], "path": item["path"]}
+    if item["kind"] == "text":
         with open(item["path"], "rb") as file:
-            data = file.read()
+            result["preview"] = file.read(600).decode(errors="replace")
+    return result
+
+
+def vector_folder(config):
+    return config.get("vectorFolder") or os.path.join(os.path.expanduser("~"), "Vector")
+
+
+def vector_keep(config, vector, item):
+    folder = vector_folder(config)
+    os.makedirs(folder, exist_ok=True)
+    stem, extension = os.path.splitext(item["name"])
+    target = os.path.join(folder, item["name"])
+    number = 2
+    while os.path.lexists(target):
+        target = os.path.join(folder, f"{stem} ({number}){extension}")
+        number += 1
+    shutil.move(item["path"], target)
+    vector.drop("in")
+    return target
+
+
+def vector_copy(config, vector, item):
+    if item["kind"] == "text":
+        command = [config["wlCopy"]]
+    elif item["kind"] == "image":
+        command = [config["wlCopy"], "--type", item["mime"]]
+    else:
+        return {"error": "kind"}
+    with open(item["path"], "rb") as file:
+        data = file.read()
     try:
         done = subprocess.run(command, input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return {"error": "clipboard"}
-    return {"ok": True} if done.returncode == 0 else {"error": "clipboard"}
+    if done.returncode != 0:
+        return {"error": "clipboard"}
+    vector.drop("in")
+    return {"ok": True}
 
 
 def vector_command(config, action, argument):
     vector = Vector(config.get("vector"))
-    if action == "send":
-        result = vector_send(config, vector, argument)
-    elif action == "copy":
-        return vector_copy(config, vector)
-    elif action == "status":
-        item = vector.item("in")
-        result = {"in": dict(vector_item(item), path=item["path"], **{"from": item.get("from", "")}) if item else {"id": ""},
-                  "out": vector_item(vector.item("out"))}
-    else:
-        return {"error": "usage"}
-    if "error" in result:
+    if action in ("send", "text"):
+        result = vector_send(config, vector, *((None, argument or "") if action == "text" else (argument,)))
+        if "error" in result:
+            return result
+        try:
+            result["devices"] = ask({"op": "vector"}).get("devices", [])
+        except (OSError, ValueError):
+            result["devices"] = []
         return result
+    if action == "status":
+        item = vector.item("in")
+        return {"in": dict(vector_item(item), path=item["path"], **{"from": item.get("from", "")}) if item else {"id": ""},
+                "out": vector_item(vector.item("out"))}
+    if action not in ("copy", "save", "open", "clear"):
+        return {"error": "usage"}
+    item = vector.item("in")
+    if item is None:
+        return {"error": "empty"}
+    if action == "copy":
+        return vector_copy(config, vector, item)
+    if action == "clear":
+        vector.drop("in")
+        return {"ok": True}
     try:
-        result["devices"] = ask({"op": "vector"}).get("devices", [])
-    except (OSError, ValueError):
-        result["devices"] = []
-    return result
+        path = vector_keep(config, vector, item)
+    except OSError:
+        return {"error": "save"}
+    if action == "open":
+        try:
+            subprocess.Popen([config["open"], path], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
+        except OSError:
+            return {"error": "open", "path": path}
+    return {"ok": True, "path": path, "kind": item["kind"], "name": os.path.basename(path)}
 
 
 def main():
     parser = argparse.ArgumentParser(prog="nihil-deck", description="The phone as a deck for this computer (docs/deck.md).")
     parser.add_argument("--config", help="configuration written by home/deck/default.nix")
     parser.add_argument("command", nargs="?", default="devices", choices=["serve", "pair", "cancel", "devices", "forget", "vector"])
-    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; vector: send, copy or status")
-    parser.add_argument("argument", nargs="?", help="vector send: a file (the clipboard without one)")
+    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; vector: send, text, copy, save, open, clear or status")
+    parser.add_argument("argument", nargs="?", help="vector send: a file (the clipboard without one); vector text: the text")
     parser.add_argument("--json", action="store_true", help="for the shell")
     options = parser.parse_args()
 
@@ -1779,7 +1844,7 @@ def main():
     for key, command in (("ipc", "nihil-ipc"), ("volume", "osd-volume"),
                          ("notify", "notify-send"), ("openssl", "openssl"), ("qrencode", "qrencode"),
                          ("rsvg", "rsvg-convert"), ("ip", "ip"), ("wpctl", "wpctl"),
-                         ("wlCopy", "wl-copy"), ("wlPaste", "wl-paste")):
+                         ("wlCopy", "wl-copy"), ("wlPaste", "wl-paste"), ("open", "xdg-open")):
         config.setdefault(key, shutil.which(command) or command)
 
     if options.command == "serve":

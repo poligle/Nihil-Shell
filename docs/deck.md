@@ -219,7 +219,7 @@ computer says it sent the thing to it.
 
 `POST /v1/vector` gives the computer one: the bytes as the body, not JSON, with their
 `Content-Type`, `Content-Length` and the name percent-encoded in `X-Vector-Name`
-(`text.txt`, `image.png`… without one). It answers with what it kept, as `GET` does, and the
+(`Vector_2026-11-14_09.30.00.txt` and the like without one). It answers with what it kept, as `GET` does, and the
 dashboard shows it, with a notification of where it came from. `413` `big` past 100 MB,
 `400` `body` without one; the connection closes after it.
 
@@ -227,10 +227,17 @@ On the computer they are in `~/.cache/nihil/vector/`, `out/` and `in/`, each wit
 `.item.json`, and the shell uses them through the command:
 
 ```bash
-nihil-deck vector send [file]   # a file, or what the clipboard holds
-nihil-deck vector copy          # the last one that came, onto the clipboard
+nihil-deck vector send [FILE]   # a file, or what the clipboard holds (a file copied, a picture, a text)
+nihil-deck vector text TEXT
+nihil-deck vector copy          # what came, onto the clipboard: a text or a picture
+nihil-deck vector save          # what came, into ~/Vector
+nihil-deck vector open          # saved there, and opened
+nihil-deck vector clear
 nihil-deck vector status
 ```
+
+Copy, save, open and clear take what came out of `in/`. What a password manager copies
+(`x-kde-passwordManagerHint`) is not sent.
 
 ### `POST /v1/caffeine`, `POST /v1/night`
 
