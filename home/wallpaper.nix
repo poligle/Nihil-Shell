@@ -3,6 +3,8 @@
 # awww shows the NIHIL dot-matrix renders, one file per output at its native
 # size. `nihil-wallpaper` switches between them at runtime and remembers the
 # choice:  nihil-wallpaper [restore|next|prev|set <name>|list|current]
+# It keeps the smoked glass's too (Preferences, Look), which the lock screen
+# and the login follow:  nihil-wallpaper glass [on|off]
 
 { config, osConfig, pkgs, lib, ... }:
 let
@@ -11,10 +13,11 @@ let
 
 	nihil-wallpaper = pkgs.writeShellScriptBin "nihil-wallpaper" ''
 		set -euo pipefail
-		export PATH="${lib.makeBinPath [ pkgs.awww pkgs.jq pkgs.coreutils ]}:$PATH"
+		export PATH="${lib.makeBinPath [ pkgs.awww pkgs.jq pkgs.coreutils ]}:${config.home.profileDirectory}/bin:$PATH"
 
 		dir="${nihil.wallpapers}"
 		state="${config.xdg.stateHome}/nihil/wallpaper"
+		glass="${config.xdg.stateHome}/nihil/glass"
 		names=( ${lib.escapeShellArgs nihil.wallpapers.names} )
 
 		current() {
@@ -35,6 +38,7 @@ let
 			ln -sfn "$dir/$name" "$state-current"
 			if [ -w /var/lib/nihil/greeter ]; then
 				ln -sfn "$dir/$name/${nihil.primaryOutput}.png" /var/lib/nihil/greeter/wallpaper.png
+				look > /var/lib/nihil/greeter/glass
 			fi
 			for output in $(${hyprctl} -j monitors | jq -r '.[].name'); do
 				# An animated one (GIF) moves on the desktop; its first frame is the still.
@@ -43,6 +47,15 @@ let
 				[ -r "$file" ] || file="$dir/$name/${nihil.primaryOutput}.png"
 				awww img --outputs "$output" "$file"
 			done
+			# The lock screen's glass, made for this wallpaper (home/hyprlock.nix),
+			# once the desktop shows it.
+			if command -v nihil-lock-glass > /dev/null; then
+				nihil-lock-glass || true
+			fi
+		}
+
+		look() {
+			if [ "$(cat "$glass" 2> /dev/null)" = on ]; then echo on; else echo off; fi
 		}
 
 		step() {
@@ -64,7 +77,14 @@ let
 			set)     apply "''${2:?usage: nihil-wallpaper set <name>}" ;;
 			list)    printf '%s\n' "''${names[@]}" ;;
 			current) current ;;
-			*)       echo "usage: nihil-wallpaper [restore|next|prev|set <name>|list|current]" >&2; exit 2 ;;
+			glass)
+				case "''${2:-}" in
+					"") look ;;
+					on | off) mkdir -p "$(dirname "$glass")"; echo "$2" > "$glass"; apply "$(current)" ;;
+					*) echo "usage: nihil-wallpaper glass [on|off]" >&2; exit 2 ;;
+				esac
+				;;
+			*)       echo "usage: nihil-wallpaper [restore|next|prev|set <name>|list|current|glass [on|off]]" >&2; exit 2 ;;
 		esac
 	'';
 in

@@ -111,7 +111,7 @@ Flickable {
         Repeater {
             model: page.matches
 
-            Rectangle {
+            Surface {
                 required property string modelData
 
                 Layout.fillWidth: true

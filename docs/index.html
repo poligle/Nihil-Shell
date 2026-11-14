@@ -158,6 +158,8 @@ kbd {
 /* ---------- rules and palette ---------- */
 .rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 44px 0 72px; }
 .rules p { color: var(--dim); margin: 0; }
+.rules .keys { margin-top: 14px; }
+.rules.more { margin: 56px 0 0; }
 .palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 30px 18px; margin: 0; padding: 0; list-style: none; }
 .palette li { display: grid; gap: 2px; align-content: start; }
 .palette .led { width: 46px; height: 46px; border-radius: 50%; margin-bottom: 10px; border: 1px solid var(--line); }
@@ -359,7 +361,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/notification.png"><img src="assets/screens/small/notification-1200.webp" srcset="assets/screens/small/notification-640.webp 640w, assets/screens/small/notification-1200.webp 1200w, assets/screens/notification.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="A notification at the top right: nixos-rebuild, build finished, generation 214 is ready."></a>
           <figcaption>
             <h3>Light on the edge</h3>
-            <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red, like the battery warnings at 15, 10 and 5&nbsp;%. Plug in the charger and two lights climb both sides from the bottom until they meet at the top.</p>
+            <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red, like the battery warnings at 15, 10 and 5&nbsp;%. Plug in the charger and two lights climb both sides from the bottom until they meet at the top. A rebuild or a download fills the edge as far as it has got.</p>
             <button class="plug" type="button" id="plug">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2.5 5.5 13.5h6l-1 8 8-11.5h-6z"/></svg>
               Plug in
@@ -370,7 +372,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/clipboard.png"><img src="assets/screens/small/clipboard-1200.webp" srcset="assets/screens/small/clipboard-640.webp 640w, assets/screens/small/clipboard-1200.webp 1200w, assets/screens/clipboard.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The clipboard history out of the top edge: a picture with its size, a colour as a red LED, a command lit as the one chosen, and older copies under it."></a>
           <figcaption>
             <h3>Clipboard history</h3>
-            <p>Copy and paste with the same keys in every app. Hold the paste key and the history comes out; let go and the one lit is pasted. Pictures and colours too, and nothing a password manager copies.</p>
+            <p>Copy and paste with the same keys in every app. Hold the paste key and the history comes out; let go and the one lit is pasted. Pictures and colours too, and nothing a password manager copies. With the <a href="#deck">phone as a deck</a>, what you copy on one is on the other.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>C</kbd><span>Copy</span></div>
             <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>Paste; held, the history</span></div>
           </figcaption>
@@ -398,6 +400,23 @@ footer a:hover { color: var(--ink); }
             <p>The computer's name, Nilo and what runs its model, how much the clipboard keeps, the sound at boot, the fingerprint and SSH: every switch an option of the flake.</p>
           </figcaption>
         </figure>
+      </div>
+      <div class="rules more">
+        <div>
+          <h3>Every workspace</h3>
+          <p>The workspaces side by side out of the top edge, each with its windows where they are over the wallpaper. Hold SUPER and press A again to choose the next, with SHIFT the one before, and let go to be there; let go first and it stays for the arrows or a click.</p>
+          <div class="keys"><kbd>SUPER</kbd><kbd>A</kbd><span>held, choose; let go, go</span></div>
+        </div>
+        <div>
+          <h3>Screenshots</h3>
+          <p>Print takes the screen you are on, the snipping key an area you draw. Each is kept in Pictures and copied, ready to paste in a chat or a document.</p>
+          <div class="keys"><kbd>PRINT</kbd><span>the screen; the snipping key, an area</span></div>
+        </div>
+        <div>
+          <h3>Recording</h3>
+          <p>The same keys with SHIFT record the screen or an area, and stop it. While it records the bar's red LED is lit, as for the microphone; the video is kept in Videos and copied as a file.</p>
+          <div class="keys"><kbd>SHIFT</kbd><kbd>PRINT</kbd><span>record; again, stop</span></div>
+        </div>
       </div>
     </section>
 
@@ -490,7 +509,7 @@ nihil generations clean 7</code></pre>
         </div>
         <div>
           <h3>The frame is hardware</h3>
-          <p>Opaque and flat, with no shadows. Windows sit concentric with it: their rounding is the frame's minus the gap.</p>
+          <p>Opaque and flat, with no shadows. Windows sit concentric with it: their rounding is the frame's minus the gap. Or, if you choose it, smoked glass: dark, frosted, clear and bent at its edges, over what is really behind it, windows too.</p>
         </div>
       </div>
       <ul class="palette" aria-label="Palette">

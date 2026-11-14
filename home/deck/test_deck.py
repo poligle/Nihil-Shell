@@ -86,6 +86,16 @@ echo "wpctl $*" >> "$DECK_LOG"
 echo "Volume: 0.45"
 '''
 
+# The clipboard, a file: wl-copy writes it from stdin, wl-paste prints it.
+FAKE_WL_COPY = r'''#!/bin/sh
+cat > "$XDG_RUNTIME_DIR/clipboard"
+'''
+
+FAKE_WL_PASTE = r'''#!/bin/sh
+[ -s "$XDG_RUNTIME_DIR/clipboard" ] || exit 1
+cat "$XDG_RUNTIME_DIR/clipboard"
+'''
+
 FAKE_IP = r'''#!/bin/sh
 case "$*" in
     *"route get"*) echo '[{"dst":"192.0.2.1","gateway":"192.168.1.1","dev":"wlan0","prefsrc":"192.168.1.20"}]' ;;
@@ -171,6 +181,8 @@ class Base(unittest.TestCase):
             "notify": script(bin_dir, "notify-send", FAKE_LOGGER.replace("{name}", "notify-send")),
             "wpctl": script(bin_dir, "wpctl", FAKE_WPCTL),
             "ip": script(bin_dir, "ip", FAKE_IP),
+            "wlCopy": script(bin_dir, "wl-copy", FAKE_WL_COPY),
+            "wlPaste": script(bin_dir, "wl-paste", FAKE_WL_PASTE),
             "openssl": OPENSSL,
             "rsvg": "/nonexistent/rsvg-convert",
             "iconTheme": "Test-Theme",
@@ -395,6 +407,18 @@ class ServerTest(Base):
         self.assertEqual(self.phone.request("GET", "/v1/nothing")[0], 404)
         self.assertEqual(self.phone.request("POST", "/v1/unpair", {}), (200, {"ok": True}))
         self.assertEqual(self.phone.request("GET", "/v1/apps")[0], 401)
+
+    def test_the_clipboard_both_ways(self):
+        self.pair()
+        # Nothing copied yet: empty, not an error.
+        self.assertEqual(self.phone.request("GET", "/v1/clipboard"), (200, {"text": ""}))
+        text = "ex nihilo — ñandú " * 400
+        self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": text}), (200, {"ok": True}))
+        self.assertEqual(self.phone.request("GET", "/v1/clipboard"), (200, {"text": text}))
+        self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": ""})[0], 400)
+        self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": 42})[0], 400)
+        # Only a paired device.
+        self.assertEqual(self.phone.request("GET", "/v1/clipboard", token="nope")[0], 401)
 
     def test_without_the_shell(self):
         self.pair()

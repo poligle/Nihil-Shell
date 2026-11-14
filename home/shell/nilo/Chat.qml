@@ -506,7 +506,7 @@ Item {
                     }
 
                     // A command's last lines: live while it runs, then the end.
-                    Rectangle {
+                    Surface {
                         x: 16
                         visible: entry.name === "run_command" && entry.text !== ""
                         width: Math.min(entry.width - 16, 620)
@@ -537,7 +537,7 @@ Item {
             Component {
                 id: confirmView
 
-                Rectangle {
+                Surface {
                     id: card
 
                     readonly property var facts: { try { return JSON.parse(entry.info || "{}"); } catch (e) { return {}; } }
@@ -585,7 +585,7 @@ Item {
                         }
 
                         // The command, exactly as it will run.
-                        Rectangle {
+                        Surface {
                             visible: card.command
                             width: parent.width
                             height: visible ? commandText.implicitHeight + 20 : 0
@@ -641,7 +641,7 @@ Item {
                         }
 
                         // The change itself, as a diff: what goes in, what goes out.
-                        Rectangle {
+                        Surface {
                             visible: card.file
                             width: parent.width
                             height: visible ? lines.implicitHeight + 20 : 0

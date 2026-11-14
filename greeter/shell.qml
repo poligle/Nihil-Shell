@@ -200,17 +200,38 @@ ShellRoot {
             anchors.fill: parent
             opacity: 0
 
+            // Smoked glass, as the desktop has it (components/Surface.qml): the
+            // field sees the wallpaper through it, as dimmed as it is here.
+            property Item glassBackdrop: glassFlag.text().trim() === "on" && wall.status === Image.Ready ? glassSource : null
+
             Component.onCompleted: opacity = 1
 
             Behavior on opacity { NumberAnimation { duration: Tokens.animSlow; easing.type: Easing.OutCubic } }
 
+            FileView {
+                id: glassFlag
+                path: Config.glass
+                blockLoading: true
+            }
+
             // The desktop's wallpaper, as the lock screen dims it.
             Image {
+                id: wall
                 anchors.fill: parent
                 source: "file://" + Config.wallpaper
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
+                // The field's frost reads it blurred, from its mipmaps.
+                mipmap: true
                 opacity: 0.55
+            }
+
+            Item {
+                id: glassSource
+                readonly property Item texture: wall
+                readonly property vector2d origin: Qt.vector2d(0, 0)
+                readonly property vector2d screenSize: Qt.vector2d(window.width, window.height)
+                readonly property real dim: 0.55
             }
 
             Txt {
@@ -242,7 +263,7 @@ ShellRoot {
             // colours (a hairline, grey while it checks, red when it failed),
             // with the corners of the shell's fields. PAM's question in clear
             // when it isn't one (a visible prompt).
-            Rectangle {
+            Surface {
                 id: field
 
                 function clear(): void { input.text = ""; }
@@ -254,9 +275,10 @@ ShellRoot {
                 radius: 8
                 color: Tokens.black
                 border.width: 1
-                border.color: root.wrong ? Tokens.interrupt : root.sent || root.waiting !== "" ? Tokens.muted : Tokens.line
+                property color borderTint: root.wrong ? Tokens.interrupt : root.sent || root.waiting !== "" ? Tokens.muted : Tokens.line
+                border.color: borderTint
 
-                Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
+                Behavior on borderTint { ColorAnimation { duration: Tokens.animFast } }
 
                 TextInput {
                     id: input

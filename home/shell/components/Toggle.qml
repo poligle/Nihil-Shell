@@ -13,7 +13,7 @@ Item {
     implicitWidth: 34
     implicitHeight: 30
 
-    Rectangle {
+    Surface {
         id: track
         anchors.verticalCenter: parent.verticalCenter
         width: 34
@@ -21,12 +21,13 @@ Item {
         radius: 10
         color: root.on ? Tokens.ink : "transparent"
         border.width: 1
-        border.color: root.on ? Tokens.ink : area.containsMouse ? Tokens.muted : Tokens.off
+        property color borderTint: root.on ? Tokens.ink : area.containsMouse ? Tokens.muted : Tokens.off
+        border.color: borderTint
 
         Behavior on color { ColorAnimation { duration: Tokens.animFast } }
-        Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
+        Behavior on borderTint { ColorAnimation { duration: Tokens.animFast } }
 
-        Rectangle {
+        Surface {
             anchors.verticalCenter: parent.verticalCenter
             x: root.on ? parent.width - width - 4 : 4
             width: 12

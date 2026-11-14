@@ -81,12 +81,16 @@ let
 		pavucontrol = "${pkgs.pavucontrol}/bin/pavucontrol";
 		blueman = "${pkgs.blueman}/bin/blueman-manager";
 		terminal = "${profile}/kitty";
+		watch = "${profile}/nihil-watch";
 		editor = "${profile}/nvim";
 		lock = "${profile}/lock-screen";
 		powerOff = "${profile}/power-off";
 		micLedSync = "${profile}/mic-led-sync";
 		wallpaper = "${profile}/nihil-wallpaper";
 		clipboard = "${profile}/nihil-clipboard";
+		record = "${profile}/nihil-record";
+		shot = "${profile}/nihil-shot";
+		xdgUserDir = "${pkgs.xdg-user-dirs}/bin/xdg-user-dir";
 		hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
 		# Preferences applies through sudo and nihil apply (modules/nihil-cli.nix).
 		sudo = "/run/wrappers/bin/sudo";
@@ -139,9 +143,13 @@ let
 
 	langQml = qml.lang;
 
+	# The smoked glass's shaders, compiled (theme/shaders.nix).
+	shaders = import ../theme/shaders.nix { inherit pkgs; };
+
 	shell = pkgs.runCommand "nihil-shell" { } ''
 		cp -r ${./shell} $out
 		chmod -R u+w $out
+		cp ${shaders}/*.qsb $out/shaders/
 		mkdir -p $out/config
 		cp ${tokensQml} $out/theme/Tokens.qml
 		cp ${configQml} $out/config/Config.qml

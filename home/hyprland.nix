@@ -45,6 +45,9 @@ let
 		lock = exec "lock-screen";
 		settings = exec "nihil-ipc settings toggle";
 		wallpapers = exec "nihil-ipc drawers toggle wallpapers";
+		# Held, as the clipboard: again, the next workspace; letting go of its
+		# modifier, there (services/Switcher.qml; its submap, holdLua below).
+		overview = ''hl.dsp.global("quickshell:nihil-overview")'';
 		close = "hl.dsp.window.close()";
 		float = ''hl.dsp.window.float({ action = "toggle" })'';
 		maximize = withSound sound.fullscreen ''hl.dsp.window.fullscreen({ mode = "maximized" })'';
@@ -62,8 +65,18 @@ let
 
 	actionBinds = lib.mapAttrsToList (name: action: bind keys.${name} action)
 		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
+		# Screenshots (nihil-shot, home/scripts.nix), kept in Pictures and
+		# copied: the screen the pointer is on, or an area.
 		++ lib.optional (keys.screenshot != null)
-			(bindWith keys.screenshot (exec "hyprshot -m region --clipboard-only") { locked = true; });
+			(bindWith keys.screenshot (exec "nihil-shot screen") { locked = true; })
+		++ lib.optional (keys.snip or null != null)
+			(bindWith keys.snip (exec "nihil-shot region") { locked = true; })
+		# Recording (nihil-record, home/scripts.nix): SHIFT with the same key,
+		# the screen or an area; that again stops it.
+		++ lib.optional (keys.screenshot != null && !(hasShift keys.screenshot))
+			(bind "SHIFT + ${keys.screenshot}" (exec "nihil-record toggle screen"))
+		++ lib.optional (keys.snip or null != null && !(hasShift keys.snip))
+			(bind "SHIFT + ${keys.snip}" (exec "nihil-record toggle region"));
 
 	# Copy and paste on one modifier, SUPER by default (modules/binds.nix).
 	#
@@ -95,8 +108,18 @@ let
 	# it was pressed in (submapAtPress), so the SUPER held since before
 	# always gets here, even if the shell is gone. Neither key is bound when
 	# an action or a program has it already (a warning says so).
+	#
+	# The overview (SUPER + A, services/Switcher.qml) is held the same way,
+	# with a submap of its own, nihil-overview: A again and SHIFT + A, Tab
+	# and the arrows choose, Return goes and Escape leaves, as global
+	# shortcuts, so that SUPER + Tab or SUPER and an arrow don't move what is
+	# behind it. The shell enters it, when the overview comes out with the
+	# modifier down, and leaves it with the modifier; its key's own bind
+	# doesn't, as a bind that says a global shortcut runs again on its
+	# release, and that one could come after SUPER's.
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
+	hasShift = combo: lib.elem "SHIFT" (map lib.toUpper (parts combo));
 	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
 		(map (part: let up = lib.toUpper part; in if up == "CONTROL" then "CTRL" else up) (parts combo)));
 	takenBy = name: combo: combo != null && lib.elem (normal combo) (map normal (lib.filter (other: other != null)
@@ -123,12 +146,8 @@ let
 		SHIFT = [ "Shift_L" "Shift_R" ];
 	};
 	modifierAlias = { WIN = "SUPER"; LOGO = "SUPER"; MOD4 = "SUPER"; META = "SUPER"; CONTROL = "CTRL"; MOD1 = "ALT"; };
-	pasteModifier = if clipboardOn then
-		let
-			mods = lib.init (parts clipboardKey);
-			first = if mods == [ ] then "" else lib.toUpper (lib.head mods);
-		in modifierAlias.${first} or first
-	else "";
+	firstModifier = mods: let first = if mods == [ ] then "" else lib.toUpper (lib.head mods); in modifierAlias.${first} or first;
+	pasteModifier = if clipboardOn then firstModifier (lib.init (parts clipboardKey)) else "";
 	modifierSyms = modifierKeys.${pasteModifier} or [ ];
 
 	keyState = mods: key: state: ''hl.dispatch(hl.dsp.send_key_state({ mods = "${mods}", key = "${key}", state = "${state}" }))'';
@@ -153,43 +172,83 @@ let
 		++ map (key: { combo = withMods pasteMods key; name = "forget"; leave = false; }) [ "Delete" "BackSpace" ]
 		++ map (key: { combo = withMods pasteMods key; name = "paste"; leave = true; }) [ "Return" "KP_Enter" ]
 		++ [ { combo = withMods pasteMods "Escape"; name = "cancel"; leave = true; } ];
+	# The overview's key, held as the paste key: its modifier, and its keys
+	# in the submap. Back is SHIFT with them, unless the key has it.
+	overviewKey = keys.overview or null;
+	overviewMods = if overviewKey != null then lib.init (parts overviewKey) else [ ];
+	overviewLetter = if overviewKey != null then lib.last (parts overviewKey) else "";
+	overviewModifier = firstModifier overviewMods;
+	overviewHeld = modifierKeys ? ${overviewModifier};
+	overviewShifted = key: lib.optional (!lib.elem "SHIFT" (map lib.toUpper overviewMods)) (withMods (overviewMods ++ [ "SHIFT" ]) key);
+	overviewKeys =
+		map (key: { combo = withMods overviewMods key; name = "next"; leave = false; }) [ overviewLetter "Tab" "Right" ]
+		++ map (combo: { inherit combo; name = "back"; leave = false; }) (overviewShifted overviewLetter ++ overviewShifted "Tab")
+		++ map (key: { combo = withMods overviewMods key; name = "back"; leave = false; }) [ "Left" ]
+		++ map (key: { combo = withMods overviewMods key; name = "go"; leave = true; }) [ "Return" "KP_Enter" ]
+		++ [ { combo = withMods overviewMods "Escape"; name = "cancel"; leave = true; } ];
+
+	# The modifiers the shell hears going down and up (once each, SUPER for
+	# both by default), and the submaps each one leaves going up.
+	watched = lib.unique (lib.optional held pasteModifier ++ lib.optional overviewHeld overviewModifier);
+	leaves = modifier: lib.optional (held && modifier == pasteModifier) "nihil-clipboard"
+		++ lib.optional (overviewHeld && modifier == overviewModifier) "nihil-overview";
+	watchBinds = indent: lib.concatMapStringsSep "\n${indent}" (modifier:
+		"for _, sym in ipairs({ ${luaList modifierKeys.${modifier}} }) do hl.bind(sym, watcher(${luaString (lib.toLower modifier)}, { ${luaList (leaves modifier)} }), watch) end") watched;
+	submapKeys = prefix: list: lib.concatMapStringsSep "\n\t\t\t\t" (k: "key(${luaString k.combo}, ${luaString "${prefix}-${k.name}"}, ${lib.boolToString k.leave})") list;
+
 	luaString = builtins.toJSON;
 	luaList = lib.concatMapStringsSep ", " luaString;
-	clipboardLua = ''
-		-- NIHIL: paste and the clipboard history (home/hyprland.nix).
+	holdLua = ''
+		-- NIHIL: paste, the clipboard history and the overview, held (home/hyprland.nix).
 		do
 			local function say(name)
 				hl.dispatch(hl.dsp.global("quickshell:nihil-" .. name))
 			end
+	'' + lib.optionalString clipboardOn ''
 			hl.bind(${luaString clipboardKey}, function()
 				say("clipboard")
 				${lib.optionalString held ''hl.dispatch(hl.dsp.submap("nihil-clipboard"))''}
 			end)
-	'' + lib.optionalString held ''
-			-- Its modifier, down and up; going up leaves the history's keys.
-			local function modifier()
-				say(${luaString (lib.toLower pasteModifier)})
-				if hl.get_current_submap() == "nihil-clipboard" then
-					hl.dispatch(hl.dsp.submap("reset"))
+	'' + lib.optionalString (watched != [ ]) ''
+			-- A modifier, down and up; going up leaves the submaps held on it.
+			local function watcher(name, submaps)
+				return function()
+					say(name)
+					local now = hl.get_current_submap()
+					for _, submap in ipairs(submaps) do
+						if now == submap then
+							hl.dispatch(hl.dsp.submap("reset"))
+						end
+					end
 				end
 			end
 			local watch = { ignore_mods = true, transparent = true, non_consuming = true, dont_inhibit = true, locked = true }
-			for _, sym in ipairs({ ${luaList modifierSyms} }) do
-				hl.bind(sym, modifier, watch)
-			end
+			${watchBinds "\t\t\t"}
+	'' + lib.optionalString held ''
 			hl.define_submap("nihil-clipboard", function()
 				local function key(combo, name, leave)
 					hl.bind(combo, function()
-						say("clipboard-" .. name)
+						say(name)
 						if leave then
 							hl.dispatch(hl.dsp.submap("reset"))
 						end
 					end)
 				end
-				${lib.concatMapStringsSep "\n\t\t\t\t" (k: "key(${luaString k.combo}, ${luaString k.name}, ${lib.boolToString k.leave})") historyKeys}
-				for _, sym in ipairs({ ${luaList modifierSyms} }) do
-					hl.bind(sym, modifier, watch)
+				${submapKeys "clipboard" historyKeys}
+				${watchBinds "\t\t\t\t"}
+			end)
+	'' + lib.optionalString overviewHeld ''
+			hl.define_submap("nihil-overview", function()
+				local function key(combo, name, leave)
+					hl.bind(combo, function()
+						say(name)
+						if leave then
+							hl.dispatch(hl.dsp.submap("reset"))
+						end
+					end)
 				end
+				${submapKeys "overview" overviewKeys}
+				${watchBinds "\t\t\t\t"}
 			end)
 	'' + ''
 		end
@@ -309,7 +368,7 @@ in
 		package = null;
 		portalPackage = null;
 		configType = "lua";
-		extraConfig = lib.optionalString clipboardOn clipboardLua;
+		extraConfig = lib.optionalString (clipboardOn || overviewHeld) holdLua;
 
 		settings =
 		{
@@ -464,7 +523,6 @@ in
 				(bindWith "XF86MonBrightnessUp" (exec "osd-brightness up") { locked = true; repeating = true; })
 				(bindWith "XF86MonBrightnessDown" (exec "osd-brightness down") { locked = true; repeating = true; })
 
-				(bindWith "XF86SelectiveScreenshot" (exec "hyprshot -m region --clipboard-only") { locked = true; })
 				(bindWith "XF86AudioNext" (exec "playerctl next") { locked = true; })
 				(bindWith "XF86AudioPause" (exec "playerctl play-pause") { locked = true; })
 				(bindWith "XF86AudioPlay" (exec "playerctl play-pause") { locked = true; })

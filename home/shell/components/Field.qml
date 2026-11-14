@@ -6,7 +6,7 @@ import qs.theme
 // text. `value` is shown while the field does not have the focus; what is
 // typed goes out through edited(), and finished() says when it is done
 // (Enter, or the focus gone elsewhere).
-Rectangle {
+Surface {
     id: root
 
     property string value: ""

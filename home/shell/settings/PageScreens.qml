@@ -351,15 +351,16 @@ Flickable {
                     Behavior on height { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
 
                     // Drawn a little in, so two that touch show where one ends.
-                    Rectangle {
+                    Surface {
                         anchors.fill: parent
                         anchors.margins: 2
                         radius: 6
                         color: screen.picked ? Tokens.raised : Tokens.surface
                         border.width: 1
-                        border.color: screen.picked ? Tokens.ink : area.containsMouse ? Tokens.muted : Tokens.line
+                        property color borderTint: screen.picked ? Tokens.ink : area.containsMouse ? Tokens.muted : Tokens.line
+                        border.color: borderTint
 
-                        Behavior on border.color { ColorAnimation { duration: Tokens.animFast } }
+                        Behavior on borderTint { ColorAnimation { duration: Tokens.animFast } }
                     }
 
                     // The bar, along its left side.

@@ -69,7 +69,7 @@ Item {
         highlightMoveDuration: Tokens.animFast
         boundsBehavior: Flickable.StopAtBounds
 
-        delegate: Rectangle {
+        delegate: Surface {
             id: card
 
             required property string modelData

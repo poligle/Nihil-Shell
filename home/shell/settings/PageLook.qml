@@ -42,7 +42,7 @@ Flickable {
 
                     spacing: 8
 
-                    Rectangle {
+                    Surface {
                         width: 208
                         height: 132
                         radius: 12
@@ -73,6 +73,19 @@ Flickable {
                         color: card.chosen ? Tokens.ink : Tokens.muted
                     }
                 }
+            }
+        }
+
+        // Smoked glass: the frame, its drawers and everything in them, Preferences,
+        // the desktop's widgets, the lock screen and the login (components/Surface.qml).
+        Setting {
+            Layout.topMargin: 18
+            title: Lang.cfgGlass
+            sub: Lang.cfgGlassSub
+
+            Toggle {
+                on: Machine.glass
+                onToggled: Machine.setGlass(!on)
             }
         }
 

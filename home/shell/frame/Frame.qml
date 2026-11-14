@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import qs.theme
 import qs.config
 import qs.services
+import qs.components
 import qs.drawers
 import qs.nilo
 
@@ -49,7 +50,7 @@ Scope {
         // a modifier: then it is Exclusive, with no grab, until it pastes,
         // and Hyprland gives the keyboard back (refocusLastWindow).
         WlrLayershell.keyboardFocus: clipKeys ? WlrKeyboardFocus.Exclusive
-            : launcherOpen || wallOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
+            : launcherOpen || wallOpen || ovOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
         // While the clipboard history has the keyboard, Hyprland's own keys
@@ -75,6 +76,7 @@ Scope {
         readonly property bool launcherOpen: Drawers.isOpen("launcher", root.output)
         readonly property bool wallOpen: Drawers.isOpen("wallpapers", root.output)
         readonly property bool clipOpen: Drawers.isOpen("clipboard", root.output)
+        readonly property bool ovOpen: Drawers.isOpen("overview", root.output)
         readonly property bool clipKeys: clipOpen && Clipboard.keyboard
         readonly property bool osdOpen: Osd.shown && Osd.screen === root.output && !panelOpen
 
@@ -84,6 +86,7 @@ Scope {
         property real launcherP: launcherOpen ? 1 : 0
         property real wallP: wallOpen ? 1 : 0
         property real clipP: clipOpen ? 1 : 0
+        property real ovP: ovOpen ? 1 : 0
         property real osdP: osdOpen ? 1 : 0
 
         Behavior on dashP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
@@ -91,6 +94,7 @@ Scope {
         Behavior on launcherP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         Behavior on wallP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         Behavior on clipP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
+        Behavior on ovP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         Behavior on osdP { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
 
         // Content fades in at the end of the opening, like LEDs switching on.
@@ -116,6 +120,9 @@ Scope {
         readonly property real clipW: Math.min(680, innerW - 120)
         property real clipD: Math.min(clipboard.implicitHeight, height - 2 * root.edge - 96)
         Behavior on clipD { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
+        // The workspaces, from the top: as wide as they are, up to the screen's room.
+        readonly property real ovW: Math.min(innerW - 120, overview.implicitWidth)
+        readonly property real ovD: overview.implicitHeight
         readonly property real osdL: 300
         readonly property real osdD: 64
 
@@ -133,6 +140,7 @@ Scope {
         readonly property var bumps: [
             { edge: 0, a: centerX - dashW / 2, b: centerX + dashW / 2, d: dashD * dashP },
             { edge: 0, a: centerX - clipW / 2, b: centerX + clipW / 2, d: clipD * clipP },
+            { edge: 0, a: centerX - ovW / 2, b: centerX + ovW / 2, d: ovD * ovP },
             { edge: 1, a: root.edge, b: root.edge + panelL, d: panelD * panelP },
             { edge: 1, a: height / 2 - osdL / 2, b: height / 2 + osdL / 2, d: panelP > 0 ? 0 : osdD * osdP },
             { edge: 2, a: centerX - launcherW / 2, b: centerX + launcherW / 2, d: launcherD * launcherP },
@@ -151,6 +159,7 @@ Scope {
                 Region { item: launcherHit },
                 Region { item: wallHit },
                 Region { item: clipHit },
+                Region { item: ovHit },
                 Region { item: peekHit },
                 Region { item: popups }
             ]
@@ -164,7 +173,7 @@ Scope {
         // clear this grab as it does, and that must not close it.
         HyprlandFocusGrab {
             windows: [win]
-            active: win.launcherOpen || win.wallOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
+            active: win.launcherOpen || win.wallOpen || win.ovOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
             onCleared: {
                 if (Drawers.current !== "clipboard")
                     Drawers.close();
@@ -174,6 +183,26 @@ Scope {
         Item {
             id: scene
             anchors.fill: parent
+
+            // Smoked glass (Preferences, Look): what is behind this screen,
+            // for the frame and for every Surface in its drawers. The windows
+            // too while some glass can be over one: a drawer or a notification
+            // out, or a window reaching into the frame. The launcher's dim is
+            // behind its glass as well.
+            property Item glassBackdrop: Machine.glass ? backdrop.item : null
+
+            Loader {
+                id: backdrop
+                active: Machine.glass
+                sourceComponent: Backdrop {
+                    id: behind
+                    output: root.output
+                    screenSize: Qt.vector2d(win.width, win.height)
+                    dim: 1 - 0.5 * win.launcherP
+                    windows: win.bumps.some(bump => bump.d > 0.5) || popups.shown
+                        || Glass.underFrame(behind.monitor, root.inset, root.edge, win.width, win.height)
+                }
+            }
 
             // Dim the desktop behind the launcher; clicking it closes.
             Rectangle {
@@ -192,6 +221,16 @@ Scope {
 
             FrameShape {
                 anchors.fill: parent
+                visible: !glassFrame.visible
+                inset: root.inset
+                edge: root.edge
+                bumps: win.bumps
+            }
+
+            FrameGlass {
+                id: glassFrame
+                anchors.fill: parent
+                source: scene.glassBackdrop
                 inset: root.inset
                 edge: root.edge
                 bumps: win.bumps
@@ -287,6 +326,33 @@ Scope {
                         anchors.bottom: parent.bottom
                         active: win.clipKeys
                         opacity: win.reveal(win.clipP)
+                    }
+                }
+            }
+
+            // The workspaces (drawers/Overview.qml): from the top as well, with
+            // the keyboard however it opened.
+            Item {
+                id: ovHit
+                x: win.centerX - win.ovW / 2
+                y: 0
+                width: win.ovP > 0 ? win.ovW : 0
+                height: root.edge + win.ovD * win.ovP
+
+                Item {
+                    y: root.edge
+                    width: parent.width
+                    height: win.ovD * win.ovP
+                    clip: true
+
+                    Overview {
+                        id: overview
+                        output: root.output
+                        width: win.ovW
+                        height: win.ovD
+                        anchors.bottom: parent.bottom
+                        active: win.ovOpen
+                        opacity: win.reveal(win.ovP)
                     }
                 }
             }

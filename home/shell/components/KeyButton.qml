@@ -5,7 +5,7 @@ import qs.theme
 // Mono. `accent` lights it (ink, the name in black) for the one thing to
 // do; `danger` makes it red, for one that can't be undone (red only
 // interrupts).
-Rectangle {
+Surface {
     id: root
 
     property string text: ""

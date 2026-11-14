@@ -188,7 +188,7 @@ Item {
     }
 
     // Search field
-    Rectangle {
+    Surface {
         id: search
         x: 24
         y: 24 + root.niloP * (root.height - height - 74)
@@ -305,7 +305,7 @@ Item {
             width: grid.cellWidth
             height: grid.cellHeight
 
-            Rectangle {
+            Surface {
                 anchors.fill: parent
                 anchors.margins: 4
                 radius: 18
@@ -362,7 +362,7 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         highlightMoveDuration: 0
 
-        delegate: Rectangle {
+        delegate: Surface {
             id: row
 
             required property var modelData
