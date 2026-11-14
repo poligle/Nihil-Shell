@@ -103,8 +103,8 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   whole at least once on the way up and on the way down) with the power-off notes going
   up, unless the session was left muted, a greeter with the lock screen's face (its
   own, in Quickshell: the time in dots, the password as dots, a finger or the password) and
-  a lock screen with what is playing in a corner: the cover in dots, the progress in LEDs
-  and buttons you can click (hyprlock).
+  a lock screen with what is playing in a corner, on a panel of its own: the cover in dots,
+  the progress in LEDs and buttons you can click (hyprlock).
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
   NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
@@ -170,7 +170,9 @@ keeps its contrast; the hairlines become the glass's own edges, and a border tha
 something (focus, the one chosen, an error) stays. The shell draws it with two shaders
 (`home/shell/shaders/`) over one texture of what is behind, with its mipmaps for the
 frost (`components/Backdrop.qml`); hyprlock draws flat colours, so the lock screen's
-glass is made into its background, once per wallpaper (`home/lock/glass.py`). The terminal
+glass is made into its background, once per wallpaper (`home/lock/glass.py`), twice in fact:
+with the player's panel and without, and the lock shows one or the other as something plays
+or stops. The terminal
 goes with it: kitty's background lets a fifth through, which Hyprland blurs and darkens, and
 the switch reaches the kitties already open (they read their configuration again).
 
@@ -783,8 +785,9 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
 - **Lock screen media:** [`home/lock/media.sh`](home/lock/media.sh) asks the players
   (playerctl) at most once a second and hyprlock's labels read the result; covers are
   drawn as dot matrices by [`home/lock/cover.py`](home/lock/cover.py) and cached in
-  `$XDG_RUNTIME_DIR`. The cursor stays visible on the lock screen so the buttons can be
-  clicked; the media keys work as well.
+  `$XDG_RUNTIME_DIR`. The background has a variant with the player's panel baked in, and
+  hyprlock asks which one every two seconds (`media.sh backdrop`). The cursor stays visible on
+  the lock screen so the buttons can be clicked; the media keys work as well.
 - **Pre-existing files:** if a file Home Manager wants to manage already exists, it is
   renamed to `*.hm-backup` instead of aborting the activation.
 - **Own scripts:** packaged with `writeShellScriptBin` and explicit dependencies:

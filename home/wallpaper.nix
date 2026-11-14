@@ -39,7 +39,7 @@ let
 				awww img --outputs "$output" "$file"
 			done
 			if command -v nihil-lock-glass > /dev/null; then
-				nihil-lock-glass || true
+				nihil-lock-glass > /dev/null 2>&1 &
 			fi
 		}
 
