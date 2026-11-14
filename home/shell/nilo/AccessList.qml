@@ -11,13 +11,15 @@ Column {
     property string asking: ""
 
     readonly property string repo: Nilo.settings.repo ?? "~/nixos-config"
+    readonly property string level: Nilo.settings.access ?? "chat"
+    readonly property var levels: ["chat", "terminal", "system"]
     readonly property var items: [
-        { key: "web", title: Lang.accessWeb, sub: Lang.accessWebSub, guard: "" },
-        { key: "system", title: Lang.accessSystem, sub: Lang.accessSystemSub, guard: "" },
-        { key: "apps", title: Lang.accessApps, sub: Lang.accessAppsSub, guard: "" },
-        { key: "write", title: Lang.accessWrite, sub: Lang.accessWriteSub.arg(repo), guard: Lang.accessWriteGuard.arg(repo) },
-        { key: "git", title: Lang.accessGit, sub: Lang.accessGitSub.arg(repo), guard: Lang.accessGitGuard.arg(repo) },
-        { key: "shell", title: Lang.accessShell, sub: Lang.accessShellSub, guard: Lang.accessShellGuard }
+        { key: "web", level: false, title: Lang.accessWeb, sub: Lang.accessWebSub, guard: "" },
+        { key: "chat", level: true, title: Lang.accessChat, sub: Lang.accessChatSub, guard: "" },
+        { key: "terminal", level: true, title: Lang.accessTerminal, sub: Lang.accessTerminalSub.arg(repo),
+          guard: Lang.accessTerminalGuard.arg(repo) },
+        { key: "system", level: true, title: Lang.accessEverything, sub: Lang.accessEverythingSub,
+          guard: Lang.accessEverythingGuard }
     ]
     readonly property int count: items.length
 
@@ -27,12 +29,20 @@ Column {
 
     onVisibleChanged: if (!visible) asking = ""
 
+    function chosen(item: var): bool {
+        return item.level ? root.level === item.key : Nilo.settings[item.key] === true;
+    }
+
     function toggle(index: int): void {
         const item = items[index];
         if (!item) return;
-        const on = Nilo.settings[item.key] === true;
-        if (on || item.guard === "" || asking === item.key) {
-            Nilo.set(item.key, !on);
+        if (!item.level) {
+            Nilo.set(item.key, !chosen(item));
+            asking = "";
+        } else if (root.level === item.key) {
+            asking = "";
+        } else if (levels.indexOf(item.key) < levels.indexOf(root.level) || item.guard === "" || asking === item.key) {
+            Nilo.set("access", item.key);
             asking = "";
         } else {
             asking = item.key;
@@ -67,7 +77,8 @@ Column {
             title: modelData.title
             sub: modelData.sub
             guard: root.asking === modelData.key ? modelData.guard : ""
-            on: Nilo.settings[modelData.key] === true
+            on: root.chosen(modelData)
+            choice: modelData.level
             current: root.current === index
 
             onHeightChanged: if (asking) root.grew(row)

@@ -11,6 +11,7 @@ Item {
     property bool on: false
     property bool current: false
     property string guard: ""
+    property bool choice: false
 
     readonly property bool asking: guard !== ""
 
@@ -71,8 +72,21 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 16
         y: (56 - height) / 2
+        visible: !root.choice
         on: root.on
         onToggled: root.toggled()
+    }
+
+    Rectangle {
+        anchors.horizontalCenter: toggle.horizontalCenter
+        y: (56 - height) / 2
+        width: 8
+        height: 8
+        radius: 4
+        visible: root.choice
+        color: root.on ? Tokens.ink : Tokens.off
+
+        Behavior on color { ColorAnimation { duration: Tokens.animFast } }
     }
 
     Column {
