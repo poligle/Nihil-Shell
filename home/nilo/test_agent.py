@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 # test_agent.py by poligle
-#
-# Tests for Nilo's agent against a fake Ollama (scripted replies, tool calls,
-# pulls), a fake ddgr and a throwaway git repository with its own remote.
-# Nothing touches the network or a real model.
-#
-#   python3 -m unittest home/nilo/test_agent.py
 
 import http.server
 import json
@@ -26,7 +20,6 @@ import agent  # noqa: E402
 
 
 class FakeOllama(http.server.ThreadingHTTPServer):
-    """Just enough of Ollama's API for the agent."""
 
     daemon_threads = True
 
@@ -38,7 +31,7 @@ class FakeOllama(http.server.ThreadingHTTPServer):
         self.chats = []             # every /api/chat body
         self.loads = []             # every /api/generate body
         self.no_tools = set()       # models that refuse tools
-        self.down = False           # answer 503, as if it were still starting
+        self.down = False
         self.lock = threading.Lock()
 
     def handle_error(self, request, client_address):
@@ -277,7 +270,6 @@ class AgentProcess:
                 return event
 
     def until_done(self, timeout=15):
-        """Events of one answer, up to and including "done"."""
         seen = []
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -320,7 +312,6 @@ class AgentTest(unittest.TestCase):
                     '{"title": "No url", "url": "", "abstract": ""}]\n'
                     "EOF\n")
         os.chmod(self.ddgr, 0o755)
-        # systemctl: "show" says Ollama failed; "start" leaves a mark (and fails if told to).
         self.systemctl = os.path.join(self.dir, "systemctl")
         with open(self.systemctl, "w") as f:
             f.write("#!/bin/sh\n"
@@ -336,12 +327,10 @@ class AgentTest(unittest.TestCase):
             f.write("#!/bin/sh\necho 'Error: listen tcp 127.0.0.1:11434: bind: address already in use'\n")
         os.chmod(self.systemctl, 0o755)
         os.chmod(self.journalctl, 0o755)
-        # The terminal: writes down how it was called.
         self.terminal = os.path.join(self.dir, "kitty")
         with open(self.terminal, "w") as f:
             f.write("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$(dirname \"$0\")/kitty-args\"\n")
         os.chmod(self.terminal, 0o755)
-        # Memory to spare, unless a test says otherwise (Agent.room).
         self.meminfo = os.path.join(self.dir, "meminfo")
         with open(self.meminfo, "w") as f:
             f.write("MemTotal:       67108864 kB\nMemAvailable:   60000000 kB\n")
@@ -378,7 +367,6 @@ class AgentTest(unittest.TestCase):
     def text_of(self, events):
         return "".join(e["text"] for e in events if e["ev"] == "token")
 
-    # ---------------------------------------------------------------------------
 
     def test_hello_and_catalogue(self):
         hello = self.start()
@@ -396,7 +384,7 @@ class AgentTest(unittest.TestCase):
         self.start({"model": "qwen3.5:4b", "onboarded": True})
         self.agent.send(op="ask", text="Hola")
         events = self.agent.until_done()
-        kinds = [e["ev"] for e in events]  # the poller's "state" may come in between
+        kinds = [e["ev"] for e in events]
         self.assertLess(kinds.index("start"), kinds.index("token"))
         self.assertEqual(self.text_of(events).strip(), "¡Hola! Soy Nilo.")
         done = events[-1]
@@ -596,8 +584,6 @@ class AgentTest(unittest.TestCase):
         self.assertTrue(events[-1]["failed"])
 
     def test_no_room(self):
-        # A model bigger than the machine is not loaded: the question says so,
-        # Ollama is never asked and the eyes don't wake up for it.
         with open(self.meminfo, "w") as f:
             f.write("MemTotal:       16000000 kB\nMemAvailable:   12000000 kB\n")
         self.ollama.installed["qwen3.5:35b-a3b"] = 22_000_000_000
@@ -612,8 +598,6 @@ class AgentTest(unittest.TestCase):
         self.assertFalse(any(e["loading"] for e in self.agent.log if e["ev"] == "state"))
 
     def test_every_model_where_the_machine_says(self):
-        # The 35B as the 9B, with an integrated GPU too: the same options
-        # when it warms up and with each question, and Ollama places it.
         self.ollama.installed["qwen3.5:35b-a3b"] = 22_000_000_000
         self.write_config(models=MODELS + [{"tag": "qwen3.5:35b-a3b", "label": "Qwen 3.5 35B-A3B", "size": 22, "ram": 25}],
                           integratedGpu=True, acceleration="vulkan")
@@ -635,7 +619,7 @@ class AgentTest(unittest.TestCase):
         state = self.agent.wait("state", where=lambda e: e["loaded"])
         states = [(e["loading"], e["loaded"]) for e in self.agent.log if e["ev"] == "state"]
         woke = states[states.index((True, False)):states.index((False, True)) + 1]
-        self.assertNotIn((False, False), woke, states)  # it never looks asleep while waking
+        self.assertNotIn((False, False), woke, states)
         self.assertEqual(state["model"], "qwen3.5:4b")
         self.assertEqual(state["gpu"], 100)
         self.assertGreater(state["expires"], time.time())
@@ -807,7 +791,6 @@ class AgentTest(unittest.TestCase):
             f.write("x\n")
         nested, _ = tools.run("read_file", {"path": "sub/.git/config"}, agent.Cancel())
         self.assertIn(".git", nested["error"])
-        # Not UTF-8: it can be read, but not changed (the rest would come back altered).
         with open(os.path.join(repo, "latin.txt"), "wb") as f:
             f.write("caf\xe9 y m\xe1s\n".encode("latin-1"))
         read, _ = tools.run("read_file", {"path": "latin.txt"}, agent.Cancel())
@@ -816,7 +799,6 @@ class AgentTest(unittest.TestCase):
         self.assertIn("UTF-8", latin["error"])
         with open(os.path.join(repo, "latin.txt"), "rb") as f:
             self.assertEqual(f.read(), "caf\xe9 y m\xe1s\n".encode("latin-1"))
-        # Confirmed, a change keeps the file's line endings and mode.
         fake.ask_confirmation = lambda payload, cancel: True
         crlf = os.path.join(repo, "crlf.sh")
         with open(crlf, "wb") as f:
@@ -852,13 +834,11 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(self.agent.wait("settings")["settings"]["repo"], "~/code/codewizards")
 
     def test_default_repo(self):
-        # Nothing chosen yet: NIHIL's checkout, wherever it was cloned.
         home = os.path.join(self.dir, "home")
         os.makedirs(os.path.join(home, "Nihil-Shell", ".git"))
         env = dict(os.environ, HOME=home)
         self.assertEqual(self.start(env=env)["settings"]["repo"], "~/Nihil-Shell")
         self.agent.close()
-        # The one nihil dev builds from comes first.
         checkout = os.path.join(self.dir, "checkout")
         os.makedirs(os.path.join(checkout, ".git"))
         dev = os.path.join(self.dir, "dev")
@@ -866,7 +846,6 @@ class AgentTest(unittest.TestCase):
             f.write(checkout + "\n")
         self.write_config(devFile=dev)
         self.assertEqual(self.start(env=env)["settings"]["repo"], checkout)
-        # An empty path goes back to it; one chosen stays.
         self.agent.send(op="set", key="repo", value=os.path.join(home, "Nihil-Shell"))
         self.assertEqual(self.agent.wait("settings")["settings"]["repo"], "~/Nihil-Shell")
         self.agent.send(op="set", key="repo", value="")
@@ -876,13 +855,11 @@ class AgentTest(unittest.TestCase):
         self.agent.close()
         self.assertEqual(self.start(env=env)["settings"]["repo"], "~/Nihil-Shell")
         self.agent.close()
-        # Neither: the usual name.
         self.write_config()
         shutil.rmtree(os.path.join(home, "Nihil-Shell"))
         os.remove(self.state)
         self.assertEqual(self.start(env=env)["settings"]["repo"], "~/nixos-config")
 
-    # the terminal and the desktop
 
     def accept_all(self):
         confirms = []
@@ -1030,7 +1007,7 @@ class AgentTest(unittest.TestCase):
         self.agent.send(op="sleep")
         self.agent.wait("state", where=lambda e: not e["loaded"])
         unloaded = {b["model"] for b in self.ollama.loads if b.get("keep_alive") == 0}
-        self.assertLessEqual({"qwen3.5:2b", "qwen3.5:9b"}, unloaded)  # both were in memory: sleep frees both
+        self.assertLessEqual({"qwen3.5:2b", "qwen3.5:9b"}, unloaded)
 
     def test_context_in_the_prompt(self):
         repo = self.make_notes_repo()
@@ -1186,8 +1163,6 @@ class UnitTest(unittest.TestCase):
         self.assertNotIn("Terminal", shipped)
 
     def test_room(self):
-        # A model that can't run here at all is refused: bigger than the RAM
-        # less an eighth of it (2 GB at least). Anything smaller runs.
         a = agent.Agent.__new__(agent.Agent)
         a.config = {"models": MODELS + [{"tag": "qwen3.5:35b-a3b", "ram": 25}]}
 
@@ -1200,11 +1175,11 @@ class UnitTest(unittest.TestCase):
         try:
             agent.meminfo = lambda path: {"MemTotal": int(32e9 / 1024)}
             a.room("qwen3.5:35b-a3b")               # 25 of 32 - 4
-            a.room("custom")                        # not on the list: 8 and a quarter
+            a.room("custom")
             a.room("unknown")                       # nothing to go by: no guess
             agent.meminfo = lambda path: {"MemTotal": int(16e9 / 1024)}
             with self.assertRaises(agent.OllamaError) as caught:
-                a.room("qwen3.5:35b-a3b")           # 25 of 16 - 2, downloaded or not
+                a.room("qwen3.5:35b-a3b")
             self.assertEqual(caught.exception.code, "memory")
             a.room("qwen3.5:9b")
             agent.meminfo = lambda path: {}

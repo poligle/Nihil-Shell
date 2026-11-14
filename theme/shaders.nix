@@ -1,8 +1,4 @@
 # shaders.nix by poligle
-#
-# The smoked glass's shaders (home/shell/shaders/), compiled for Qt's RHI:
-# SPIR-V for Vulkan and GLSL for OpenGL 3.2 and up (and GLES 3). The shell
-# (home/shell.nix) and the greeter (modules/greeter.nix) both carry them.
 
 { pkgs }:
 pkgs.runCommand "nihil-glass-shaders" { } ''

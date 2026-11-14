@@ -4,8 +4,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// The first time Nilo opens: hello, how to call it, its model and what it
-// may do. Enter moves on; the settings (the gear) change all of it later.
 Item {
     id: root
 
@@ -17,7 +15,6 @@ Item {
 
     signal finished()
 
-    // Escape first drops an authorization that is waiting.
     function back(): bool {
         if (!asking) return false;
         access.asking = "";
@@ -25,10 +22,8 @@ Item {
     }
 
     function next(): void {
-        // Enter on a switch that asks for authorization gives it.
         if (asking) return access.authorize();
         if (page === 2) {
-            // Leaving the models page: the chosen one starts downloading.
             if (models.current >= 0) models.choose(models.current);
             if (!Nilo.installed && Nilo.current && !(Nilo.pull && Nilo.pull.status !== "error"))
                 Nilo.download(Nilo.current.tag);
@@ -54,8 +49,6 @@ Item {
         return false;
     }
 
-    // The switches scroll when they don't fit: show a row (and its
-    // authorization) whole.
     function reveal(row: Item): void {
         const y = row.mapToItem(access, 0, 0).y;
         if (y < accessFlick.contentY)
@@ -70,7 +63,6 @@ Item {
         return false;
     }
 
-    // One page at a time, fading in from a little lower.
     component Page: Item {
         property bool here: false
 
@@ -82,7 +74,6 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 220 } }
     }
 
-    // A way to call Nilo: its keys on the left, what they mean on the right.
     component Way: Row {
         id: way
         property alias keys: caps.model
@@ -247,8 +238,6 @@ Item {
                     }
                 }
 
-                // Six switches, with an authorization open under one, can be
-                // taller than the page: then they scroll.
                 Flickable {
                     id: accessFlick
                     width: parent.width
@@ -290,7 +279,6 @@ Item {
         }
     }
 
-    // Where we are, as LEDs, and the way on.
     Item {
         id: footer
         anchors.bottom: parent.bottom

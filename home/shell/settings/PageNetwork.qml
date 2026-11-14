@@ -5,8 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// A network, in the welcome when there is none: the Wi-Fi of quick settings
-// (services/Network.qml).
 Flickable {
     id: page
 

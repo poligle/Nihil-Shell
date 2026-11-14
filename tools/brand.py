@@ -1,27 +1,5 @@
 #!/usr/bin/env python3
 # brand.py by poligle
-#
-# NIHIL brand assets, all drawn with LED dots:
-#   mark     the NixOS snowflake in LEDs (theme/art/snowflake-19.txt), as the
-#            boot splash draws it
-#   logo     the mark plus "NIHIL" in a 5x7 dot-matrix face defined below
-#   nilo     Nilo's face for its account (its commits' co-author): the two
-#            eyes of home/shell/nilo/Eyes.qml, open, on black
-#   android  NIHIL Launcher's: the Android robot's head as its icon draws it, in
-#            the letters' own dots, plus "NIHIL"; its favicons and its social
-#            image, all in docs/android. Nihil-Launcher's README shows the same
-#            logo: copy android/nihil-logo-*.svg to its docs/brand.
-#   wear     NIHIL Wear's: a watch in the letters' dots, plus "NIHIL"; its round
-#            icon, its favicons and its social image, all in docs/wear.
-#
-#   python3 tools/brand.py [--wallpaper PNG] [--mono-font FONT]
-# Writes assets/brand/* and the favicons and images of the site in docs/,
-# including a preview of the boot splash made from its real frames.
-# Needs Pillow, and numpy for the social images (GitHub's preview and the
-# sites' og*.png): behind them, wallpapers/night.jpg as the desktop shows it
-# (theme/dotmatrix.py renders it), and their words in the site's Space Mono.
-# --wallpaper takes another render, --mono-font another font; a path that
-# isn't there stops it, rather than leave the images without them.
 
 import argparse
 import os
@@ -31,15 +9,9 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 INK, VOID, SIGNAL, UNLIT_DARK, UNLIT_LIGHT, DARK_INK = "#F2F2F2", "#000000", "#D71921", "#333333", "#D4D4D4", "#0E0E0E"
 
-# The colour of each kind of circle, on black and on white. Every drawing
-# takes one of these whole: the snowflake has dim LEDs, the word unlit ones.
 DARK = {"ink": INK, "dim": "#8A8A8A", "signal": SIGNAL, "unlit": UNLIT_DARK}
 LIGHT = {"ink": DARK_INK, "dim": "#7A7A7A", "signal": SIGNAL, "unlit": UNLIT_LIGHT}
 
-# The Android robot's head, as NIHIL Launcher's icon has it: only its lit dots.
-# The Android robot is reproduced or modified from work created and shared by
-# Google and used according to terms described in the Creative Commons 3.0
-# Attribution License.
 ROBOT = [
     "..#.......#..",
     "...#.....#...",
@@ -50,8 +22,6 @@ ROBOT = [
     "#############",
 ]
 
-# NIHIL Wear's mark: a watch, its hands at three, the crown to the right. Its
-# case is the first seven columns; the crown stands out of it.
 WATCH = [
     "..###...",
     ".#####..",
@@ -82,8 +52,6 @@ def word_columns(text):
 
 
 def snowflake(cx, cy, size, unlit=False):
-    """(x, y, r, colour_key) circles of the mark, in a size x size box: the
-    snowflake's grid, bright cells lit, faint ones dim."""
     path = os.path.join(ROOT, "theme", "art", "snowflake-19.txt")
     rows = [line.strip() for line in open(path) if line.strip()]
     pitch = size / len(rows)
@@ -101,19 +69,16 @@ def snowflake(cx, cy, size, unlit=False):
 
 
 def robot(x0, y0, pitch, size=0.36):
-    """(x, y, r, colour_key) circles of the robot's lit dots, its top-left cell at (x0, y0)."""
     return [(x0 + (i + 0.5) * pitch, y0 + (j + 0.5) * pitch, size * pitch, "ink")
             for j, row in enumerate(ROBOT) for i, cell in enumerate(row) if cell == "#"]
 
 
 def watch(x0, y0, pitch, size=0.36):
-    """(x, y, r, colour_key) circles of the watch's lit dots, its top-left cell at (x0, y0)."""
     return [(x0 + (i + 0.5) * pitch, y0 + (j + 0.5) * pitch, size * pitch, "ink")
             for j, row in enumerate(WATCH) for i, cell in enumerate(row) if cell == "#"]
 
 
 def word_circles(x0, y0, pitch, unlit=True):
-    """Circles of "NIHIL" in the 5x7 face, its top-left cell at (x0, y0)."""
     circles = []
     for i, col in enumerate(word_columns("NIHIL")):
         for j, on in enumerate(col):
@@ -126,7 +91,6 @@ def word_circles(x0, y0, pitch, unlit=True):
 
 
 def logo_circles(pitch=10.0, unlit=True):
-    """Circles of the full logo and its width/height in units of `pitch`."""
     mark = 9 * pitch
     circles = snowflake(mark / 2, mark / 2, mark)
     x0 = mark + 2 * pitch
@@ -136,9 +100,6 @@ def logo_circles(pitch=10.0, unlit=True):
 
 
 def android_logo_circles(pitch=10.0, unlit=True):
-    """The launcher's logo: the robot on the letters' grid and in their dots, as
-    tall as they are, two columns before them. Circles, width, height and the
-    width of the robot (where the letters' part begins, for the site's script)."""
     mark = len(ROBOT[0]) * pitch
     circles = robot(0, pitch, pitch)
     x0 = mark + 2 * pitch
@@ -148,15 +109,11 @@ def android_logo_circles(pitch=10.0, unlit=True):
 
 
 def android_icon_circles(size):
-    """The launcher's icon in a size x size box, as the app draws it: the robot
-    centred on a grid of 15 cells across 0.895 of the box."""
     pitch = 0.895 * size / 15
     return robot(size / 2 - len(ROBOT[0]) / 2 * pitch, size / 2 - len(ROBOT) / 2 * pitch, pitch)
 
 
 def wear_logo_circles(pitch=10.0, unlit=True):
-    """NIHIL Wear's logo: the watch as tall as the letters, two columns before
-    them, as the launcher's robot. Circles, width, height and the watch's width."""
     mark = len(WATCH[0]) * pitch
     circles = watch(0, pitch, pitch)
     x0 = mark + 2 * pitch
@@ -166,9 +123,6 @@ def wear_logo_circles(pitch=10.0, unlit=True):
 
 
 def wear_icon_circles(size):
-    """NIHIL Wear's icon in a size x size box: the watch on a grid of 11 cells
-    across 0.895 of the box (a watch's icons are small and round), its case
-    centred and the crown outside it."""
     pitch = 0.895 * size / 11
     return watch(size / 2 - 3.5 * pitch, size / 2 - len(WATCH) / 2 * pitch, pitch)
 
@@ -202,9 +156,6 @@ def raster(circles, width, height, colours, scale, background=None, radius=0, su
 
 
 def nilo_avatar(size=512):
-    """(svg text, png image) of Nilo's face: two upright pills in the
-    proportions of the eyes in the launcher (30 x 76, 46 apart), on black,
-    small enough for a round crop."""
     width, height, gap = 0.125 * size, 0.316 * size, 0.19 * size
     top = (size - height) / 2
     xs = (size / 2 - gap / 2 - width, size / 2 + gap / 2)
@@ -225,8 +176,6 @@ def favicon_circles():
 
 
 def motto(img, xy, font, fill, tracking=0.62, slant=0.22):
-    """"ex nihilo" as the site sets it: lowercase, spaced 0.62 em, in italics
-    (the slant a browser gives Space Mono, which has no italic of its own)."""
     size = font.size
     text = "ex nihilo"
     width = sum(font.getlength(ch) + tracking * size for ch in text)
@@ -249,7 +198,7 @@ def social(path, wallpaper, mono_font, logo=None, line="A monochrome, dot-matrix
         wall = Image.open(wallpaper).convert("RGB")
         wall = wall.resize((round(wall.width * H / wall.height), H), Image.LANCZOS)
         crop = wall.crop((wall.width - 700, 0, wall.width, H))
-        mask = Image.linear_gradient("L").rotate(90).resize((700, H))  # fades into the black on the left
+        mask = Image.linear_gradient("L").rotate(90).resize((700, H))
         img.paste(crop, (W - 700, 0), mask)
     circles, width, height = logo or logo_circles(pitch=14)
     picture = raster(circles, width, height, DARK, scale=1)
@@ -262,8 +211,6 @@ def social(path, wallpaper, mono_font, logo=None, line="A monochrome, dot-matrix
 
 
 def night(folder):
-    """wallpapers/night.jpg as the desktop shows it, a 1920 x 1200 dot matrix
-    (theme/dotmatrix.py): what the social images have behind them."""
     import subprocess
     import sys
     subprocess.run([sys.executable, os.path.join(ROOT, "theme", "dotmatrix.py"),
@@ -273,8 +220,6 @@ def night(folder):
 
 
 def boot_preview(path):
-    """The Plymouth animation as an animated WebP: the intro, then the sweep twice.
-    The frames are the theme's own (theme/plymouth.py), shown at 25 fps like on boot."""
     import subprocess
     import sys
     import tempfile

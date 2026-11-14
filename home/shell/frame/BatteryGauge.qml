@@ -3,8 +3,6 @@ import qs.theme
 import qs.services
 import qs.components
 
-// Battery as a column of ten LEDs. While charging a light scans upwards;
-// below 15 % the LEDs turn red.
 Item {
     id: root
 
@@ -31,7 +29,6 @@ Item {
         anchors.topMargin: 6
         anchors.horizontalCenter: parent.horizontalCenter
         text: String(Math.round(Battery.level * 100))
-        // The LEDs go red; the number, never small text in red, lights up.
         color: Battery.low ? Tokens.ink : Tokens.muted
     }
 

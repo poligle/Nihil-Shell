@@ -12,14 +12,11 @@ let
 	backgrounds = lib.mapAttrsToList (output: _:
 	{
 		monitor = output;
-		# The wallpaper the desktop has now (home/wallpaper.nix keeps the link),
-		# or, in smoked glass, the same with the field's glass in it (below).
 		path = "${state}/lock-current/${output}.png";
 		color = rgb t.palette.void;
 		brightness = 0.55;
 	}) nihil.outputs;
 
-	# The password field: where it sits, in logical px (y up, from the centre).
 	field = { width = 280; height = 46; y = -40; };
 
 	fieldStyle =
@@ -38,7 +35,6 @@ let
 		valign = "center";
 	};
 
-	# The field, as the lock screen has always drawn it.
 	plainLook = pkgs.writeText "hyprlock-plain.conf" (lib.hm.generators.toHyprconf
 	{
 		attrs."input-field" = fieldStyle //
@@ -53,10 +49,6 @@ let
 		};
 	});
 
-	# Smoked glass (Preferences, Look): the field is transparent over its glass,
-	# which glass.py puts in the background. One per output, placed by
-	# percentages of it, so the field and its glass meet in whatever units
-	# hyprlock counts; its outline only shows while it checks or has failed.
 	percent = part: whole: "${toString (part * 100.0 / whole)}%";
 	glassLook = pkgs.writeText "hyprlock-glass.conf" (lib.hm.generators.toHyprconf
 	{
@@ -74,10 +66,6 @@ let
 
 	glassPython = pkgs.python3.withPackages (ps: [ ps.numpy ps.pillow ]);
 
-	# The lock screen's look, from the choice nihil-wallpaper keeps
-	# ($XDG_STATE_HOME/nihil/glass): the links hyprlock reads, and in glass the
-	# backgrounds with the field's glass, made once per wallpaper. Anything
-	# wrong, and the lock screen stays as it always was.
 	lockGlass = pkgs.writeShellApplication
 	{
 		name = "nihil-lock-glass";
@@ -89,7 +77,6 @@ let
 				ln -sfn "$state/wallpaper-current" "$state/lock-current"
 				ln -sfn ${plainLook} "$state/hyprlock-look.conf"
 			}
-			# --links: only what hyprlock needs to exist, as it always was.
 			if [ "''${1:-}" = --links ]; then
 				[ -e "$state/hyprlock-look.conf" ] || plain
 				[ -L "$state/lock-current" ] || plain
@@ -123,14 +110,12 @@ let
 			fi
 			ln -sfn "$made" "$state/lock-current"
 			ln -sfn ${glassLook} "$state/hyprlock-look.conf"
-			# Only this wallpaper's: the others are made again when they come back.
 			find "$state/lock-glass" -mindepth 1 -maxdepth 1 ! -name "$key" -exec rm -rf {} +
 		'';
 	};
 
 	python = pkgs.python3.withPackages (ps: [ ps.numpy ps.pillow ]);
 
-	# cover renderer
 	cover = pkgs.runCommand "nihil-lock-cover"
 	{
 		nativeBuildInputs = [ python pkgs.makeWrapper ];
@@ -183,8 +168,6 @@ in
 
 	home.packages = [ lockGlass ];
 
-	# hyprlock reads its field and its backgrounds through two links: they exist
-	# from the start, as the lock screen always was (nihil-lock-glass).
 	home.activation.nihilLockLinks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
 		run ${lockGlass}/bin/nihil-lock-glass --links
 	'';
@@ -200,7 +183,6 @@ in
 				ignore_empty_input = true;
 			};
 
-			# The password field: plain or in glass (nihil-lock-glass picks).
 			source = [ "${state}/hyprlock-look.conf" ];
 
 			background = backgrounds;
@@ -255,7 +237,6 @@ in
 				}
 				{
 					monitor = "";
-					# Pango markup: hyprlock's labels are drawn with it.
 					text = "<i>${t.motto}</i>";
 					font_family = t.fonts.mono;
 					font_size = 10;
@@ -282,8 +263,6 @@ in
 
 			auth =
 			{
-				# Only with a reader (nihil.fingerprint): without fprintd, hyprlock
-				# would ask D-Bus for it on every lock.
 				"fingerprint:enabled" = nihil.fingerprint;
 				"fingerprint:ready_message" = s.fingerprintReady;
 				"fingerprint:present_message" = s.fingerprintPresent;

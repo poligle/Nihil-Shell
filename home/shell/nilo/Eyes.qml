@@ -2,12 +2,6 @@ import QtQuick
 import QtQuick.Shapes
 import qs.theme
 
-// Nilo's face: two white pills, and everything else black. `mood` decides
-// what they do:
-//   off, asleep, waking, idle, listening, thinking, searching, writing,
-//   happy, alert, error
-// `pulse` bounces them once per word written; with `looking`, `lookX` and
-// `lookY` (-1..1) point them somewhere (the pointer, the caret).
 Item {
     id: root
 
@@ -27,8 +21,6 @@ Item {
     readonly property bool closed: mood === "asleep" || mood === "off"
     readonly property bool tiny: eyeHeight < 24
 
-    // Shape: how open they are, how big, and how much they have turned into
-    // the arcs of a smile (^ ^).
     readonly property real openness: closed ? 0.14
         : mood === "waking" ? 0.55
         : mood === "thinking" ? 0.8
@@ -41,8 +33,6 @@ Item {
     property real smile: mood === "happy" ? 1 : 0
     property color tint: mood === "error" ? Tokens.interrupt : Tokens.ink
 
-    // Gaze, -1..1 on each axis. The timers below move it like eyes move:
-    // in quick jumps.
     property real gazeX: 0
     property real gazeY: 0
     property string previous: ""
@@ -56,7 +46,6 @@ Item {
 
     function random(a: real, b: real): real { return a + Math.random() * (b - a); }
 
-    // Where the mood looks, or the next glance for the moods that wander.
     function aim(): void {
         if (looking && (mood === "idle" || mood === "listening" || mood === "writing")) {
             gazeX = Math.max(-1, Math.min(1, lookX));
@@ -99,7 +88,6 @@ Item {
     onPulseChanged: if (live && !bounce.running) bounce.restart()
     Component.onCompleted: { previous = mood; aim(); }
 
-    // Waking up: a double blink once the eyes are open.
     Timer {
         id: wake
         interval: 260
@@ -147,7 +135,6 @@ Item {
         anchors.fill: parent
         opacity: root.mood === "off" ? 0.3 : 1
 
-        // Asleep, they breathe.
         SequentialAnimation on opacity {
             running: root.live && root.mood === "asleep"
             loops: Animation.Infinite
@@ -185,7 +172,6 @@ Item {
                     antialiasing: true
                 }
 
-                // Happy: each eye becomes an arc, like ^.
                 Shape {
                     id: arc
 

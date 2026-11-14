@@ -5,12 +5,6 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 
-// The phone as a deck (home/deck, docs/deck.md): the phones paired, and the
-// QR that pairs one more, from the service's own command, nihil-deck. The
-// service runs on its own; Preferences, Devices asks it while it is open.
-// While the QR is out, who paired every two seconds: a phone that wasn't
-// there before, and it goes; a new code before this one runs out, or as soon
-// as it stops pairing some other way (five wrong codes, a suspend).
 Singleton {
     id: root
 
@@ -21,9 +15,9 @@ Singleton {
 
     property bool pairing: false
     property bool pairFailed: false
-    property var rows: []           // the QR's modules: strings of 0 and 1
+    property var rows: []
     property real expires: 0
-    property var known: []          // ids of the phones when the QR came out
+    property var known: []
     property real opened: 0         // when it came out, ms
 
     function refresh(): void {

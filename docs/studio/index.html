@@ -24,7 +24,6 @@
 @font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "Doto"; src: url("../assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
 
-/* NIHIL tokens: the same as the desktop page */
 :root {
   --void: #000000;
   --surface: #0E0E0E;
@@ -66,7 +65,6 @@ code, kbd, pre { font-family: var(--mono); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
 
-/* ---------- frame, bar and Glyph light ---------- */
 .frame {
   position: fixed; z-index: 40; pointer-events: none;
   top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
@@ -102,7 +100,6 @@ code, kbd, pre { font-family: var(--mono); }
 .clock[hidden] { display: none; }
 .bar .word { display: none; }
 
-/* ---------- layout ---------- */
 main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
 .wrap { max-width: 1180px; margin: 0 auto; }
 section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
@@ -116,8 +113,6 @@ p { margin: 0 0 16px; }
 .quiet { color: var(--dim); }
 .meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
 
-
-/* ---------- hero ---------- */
 .hero { padding-bottom: 56px; }
 .motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 40px; text-transform: lowercase; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 22px; }
@@ -135,7 +130,6 @@ p { margin: 0 0 16px; }
 .pill[disabled] { opacity: 0.4; cursor: default; }
 button.pill, label.pill { cursor: pointer; }
 
-/* ---------- the studio ---------- */
 .studio { padding-bottom: 120px; }
 .stage {
   position: relative; border-radius: 18px; border: 1px solid var(--line); background: var(--void);
@@ -199,7 +193,7 @@ select { padding-right: 36px; appearance: none; cursor: pointer;
 
 .rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 40px 0 0; }
 .rules p { color: var(--dim); margin: 0; }
-/* ---------- code, steps, table ---------- */
+
 .code {
   display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
 }
@@ -228,23 +222,18 @@ td.what { color: var(--ink); }
 .note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
 .source { margin-top: 64px; max-width: 860px; }
 
-/* ---------- footer ---------- */
-/* the same side padding as main, so the frame and the bar never cover it */
 footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
 footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
 footer p { margin: 0 0 10px; max-width: 70ch; }
 footer a { color: var(--dim); }
 footer a:hover { color: var(--ink); }
 
-
-/* ---------- footer ---------- */
 footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
 footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
 footer p { margin: 0 0 10px; max-width: 70ch; }
 footer a { color: var(--dim); }
 footer a:hover { color: var(--ink); }
 
-/* ---------- narrow screens: the bar moves to the top ---------- */
 @media (max-width: 860px) {
   :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
   .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
@@ -423,12 +412,10 @@ nihil-wallpaper set night</code></pre></div>
   </div>
 </footer>
 
-<script>
-(() => {
+<script>(() => {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = id => document.getElementById(id);
 
-  // ---- Glyph light around the page's frame, as on the other pages
   const path = $("glyph-path");
   function layoutGlyph() {
     const css = getComputedStyle(document.documentElement);
@@ -452,11 +439,8 @@ nihil-wallpaper set night</code></pre></div>
   layoutGlyph();
   addEventListener("resize", layoutGlyph);
 
-  // ---- theme/dotmatrix.py, the same numbers: a cell of `pitch` px per LED.
   const DOTS = { gamma: 1.25, black: 0.10, star: 0.55, starGain: 0.9, off: 0.07 };
 
-  // The value below which a share of the pixels fall, from a histogram:
-  // numpy's percentile, to a 4096th.
   function percentile(hist, count, share) {
     const target = share * (count - 1);
     let seen = 0;
@@ -467,7 +451,6 @@ nihil-wallpaper set night</code></pre></div>
     return 1;
   }
 
-  // Each cell's LED level (0..1) from RGBA pixels already cut to the screen.
   function dotLevels(rgba, width, height, pitch) {
     const n = width * height, lum = new Float32Array(n), hist = new Uint32Array(4096);
     for (let i = 0, j = 0; i < n; i++, j += 4) {
@@ -499,11 +482,9 @@ nihil-wallpaper set night</code></pre></div>
     return { cols, rows, ox, oy, level };
   }
 
-  // The LEDs, one path per shade: the unlit ones first, the lit ones over them.
   function drawDots(ctx, width, height, pitch, d) {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, width, height);
-    // PIL draws them 3x larger with the edge included: 1/6 px more radius at 1x.
     const off = Math.round(255 * DOTS.off), rOff = 0.16 * pitch + 1 / 6, rMax = 0.44 * pitch;
     const shades = new Map();
     const dot = (grey, x, y, r) => {
@@ -528,12 +509,7 @@ nihil-wallpaper set night</code></pre></div>
     }
   }
 
-  // ---- GIF, both ways: the frames of a moving one where the browser has no
-  // ImageDecoder, and the LEDs back into one to download (256 greys: an LED
-  // is grey, so a pixel's grey is its index).
   const GIF = (() => {
-    // LZW as GIF packs it: codes of minSize + 1 bits growing to 12, a clear
-    // code to start again and one to end.
     function unpack(data, minSize, count) {
       const out = new Uint8Array(count);
       const clear = 1 << minSize, end = clear + 1;
@@ -570,8 +546,6 @@ nihil-wallpaper set night</code></pre></div>
       return out;
     }
 
-    // Every frame of a GIF as the browser shows it: the frames laid over each
-    // other as their disposal says, transparent where nothing was drawn.
     function* frames(bytes) {
       const text = (a, n) => String.fromCharCode(...bytes.subarray(a, a + n));
       if (text(0, 3) !== "GIF") throw new Error("not a GIF");
@@ -623,7 +597,6 @@ nihil-wallpaper set night</code></pre></div>
         }
         const minSize = bytes[at++];
         const indices = unpack(blocks(), minSize, w * h);
-        // What the frame before asked to be done with its rectangle.
         if (previous) {
           if (previous.disposal === 2) {
             for (let y = previous.top; y < previous.top + previous.h && y < height; y++)
@@ -633,7 +606,6 @@ nihil-wallpaper set night</code></pre></div>
           }
         }
         undo = disposal === 3 ? canvas.slice() : null;
-        // Interlaced rows come in four passes.
         const rows = [];
         if (packed & 0x40) {
           for (const [start, step] of [[0, 8], [4, 8], [2, 4], [1, 2]])
@@ -664,7 +636,6 @@ nihil-wallpaper set night</code></pre></div>
       }
     }
 
-    // How many frames, without unpacking them.
     function count(bytes) {
       let at = 13, n = 0;
       if (bytes[10] & 0x80) at += 3 << ((bytes[10] & 7) + 1);
@@ -684,7 +655,6 @@ nihil-wallpaper set night</code></pre></div>
       return n;
     }
 
-    // The other way: LZW codes into bytes, the way unpack() reads them.
     function pack(indices, minSize, out) {
       const clear = 1 << minSize, end = clear + 1;
       const codes = new Int16Array(4096 * 256), stamps = new Int32Array(4096 * 256);
@@ -717,7 +687,6 @@ nihil-wallpaper set night</code></pre></div>
       if (bits > 0) out.byte(acc & 255);
     }
 
-    // A growing buffer that cuts the image data into GIF's 255-byte blocks.
     function writer() {
       let buf = new Uint8Array(1 << 20), n = 0, block = -1;
       const grow = more => {
@@ -748,9 +717,6 @@ nihil-wallpaper set night</code></pre></div>
       };
     }
 
-    // Grey frames (one index a pixel, the grey itself) into an endless GIF.
-    // A frame stores only the rectangle that changed since the one before;
-    // one that doesn't change lengthens the one before.
     async function encode(width, height, count, frame, progress) {
       const out = writer();
       out.raw(..."GIF89a".split("").map(c => c.charCodeAt(0)));
@@ -815,7 +781,6 @@ nihil-wallpaper set night</code></pre></div>
     return { frames, count, encode };
   })();
 
-  // ---- Screens to draw for
   const dpr = devicePixelRatio || 1;
   const own = [Math.round(screen.width * dpr), Math.round(screen.height * dpr)];
   const sizes = [
@@ -831,13 +796,9 @@ nihil-wallpaper set night</code></pre></div>
   const sizeSelect = $("size");
   sizes.forEach((s, i) => sizeSelect.add(new Option(s.label, String(i))));
 
-  // ---- State and drawing
   const stage = $("stage"), screenBox = $("screen"), leds = $("leds"), original = $("original");
   const frame = $("frame"), status = $("status"), busy = $("busy"), empty = $("empty"), download = $("download");
   const downloadLabel = $("download-label");
-  // source: a still picture (an ImageBitmap), or one that moves: how many
-  // frames and each(use), which hands them over one by one. shown: the LEDs
-  // as drawn, every frame's when it moves, for the download.
   let source = null, name = "wallpaper", pitch = 9, drawing = 0, playing = 0, shown = null;
   const cancelled = {};
 
@@ -847,7 +808,6 @@ nihil-wallpaper set night</code></pre></div>
   }
 
   function layoutFrame(width, height) {
-    // The desktop's frame: 8 px round the screen, the bar 44 px on the left, corners of 20 px.
     const t = 8, bar = 44, r = 20, x0 = bar, y0 = t, x1 = width - t, y1 = height - t;
     frame.setAttribute("viewBox", `0 0 ${width} ${height}`);
     frame.firstElementChild.setAttribute("d",
@@ -856,7 +816,6 @@ nihil-wallpaper set night</code></pre></div>
     frame.style.display = $("frame-on").checked ? "block" : "none";
   }
 
-  // Cover: scale the picture to fill the screen and keep its middle.
   function cover(ctx, image, width, height) {
     const sw = image.displayWidth ?? image.width, sh = image.displayHeight ?? image.height;
     const scale = Math.max(width / sw, height / sh), cw = width / scale, ch = height / scale;
@@ -867,8 +826,6 @@ nihil-wallpaper set night</code></pre></div>
     ctx.drawImage(image, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, width, height);
   }
 
-  // A picture that moves plays in a loop, each frame's LEDs drawn when its
-  // turn comes (and the photo's, under Compare, when they were kept).
   function play() {
     const me = ++playing, ctx = leds.getContext("2d"), o = original.getContext("2d");
     let k = 0, due = performance.now() + shown.frames[0].delay;
@@ -896,7 +853,6 @@ nihil-wallpaper set night</code></pre></div>
     busy.textContent = "Drawing";
     busy.hidden = false;
     download.disabled = true;
-    // Let the page show "drawing" before the work starts.
     requestAnimationFrame(() => setTimeout(async () => {
       if (ticket !== drawing) return;
       const began = performance.now();
@@ -907,14 +863,11 @@ nihil-wallpaper set night</code></pre></div>
       const frames = [], thumbs = [];
       try {
         if (source.each) {
-          // Frame by frame, with the same numbers. Its own frames are kept
-          // too, for Compare, when they fit in memory.
           const keep = source.pixels * source.count <= 60e6;
           await source.each(async (image, delay, k) => {
             if (ticket !== drawing) throw cancelled;
             cover(o, image, width, height);
             const d = levels();
-            // Like a browser: a GIF's 0 or 10 ms is 100 ms.
             frames.push({ d, delay: delay > 10 ? delay : 100 });
             if (keep) thumbs.push(await createImageBitmap(image));
             if (k === 0) drawDots(ctx, width, height, pitch, d);
@@ -948,15 +901,11 @@ nihil-wallpaper set night</code></pre></div>
     }, 0));
   }
 
-  // What a file is by its first bytes, when the browser doesn't say.
   function sniff(b) {
     const at = (i, text) => [...text].every((c, j) => b[i + j] === c.charCodeAt(0));
     return at(0, "GIF8") ? "image/gif" : at(0, "RIFF") && at(8, "WEBP") ? "image/webp" : at(1, "PNG") ? "image/png" : "";
   }
 
-  // A picture that moves (a GIF, an animated WebP or PNG): its frames through
-  // the browser's ImageDecoder, or GIF.frames where there is none. null when
-  // it doesn't move, or this browser can't tell.
   async function moving(blob) {
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const type = blob.type || sniff(bytes);
@@ -1019,7 +968,6 @@ nihil-wallpaper set night</code></pre></div>
     }
   }
 
-  // ---- Ways in: a file, a drop, a paste, an address, or a night sky
   $("file").addEventListener("change", e => { const f = e.target.files[0]; if (f) open(f, f.name); e.target.value = ""; });
 
   ["dragenter", "dragover"].forEach(type => stage.addEventListener(type, e => { e.preventDefault(); stage.classList.add("over"); }));
@@ -1048,8 +996,6 @@ nihil-wallpaper set night</code></pre></div>
     return blob;
   }
 
-  // Straight from the site if it lets other pages read its pictures (CORS);
-  // most don't, so then through wsrv.nl, an open-source image proxy.
   async function fetchPicture(url) {
     if (!/^https?:\/\//i.test(url)) { say("That isn't a web address.", true); return; }
     const label = decodeURIComponent(url.split(/[?#]/)[0].split("/").pop() || "wallpaper");
@@ -1071,7 +1017,6 @@ nihil-wallpaper set night</code></pre></div>
   }
   $("url-form").addEventListener("submit", e => { e.preventDefault(); fetchPicture($("url").value.trim()); });
 
-  // A night sky drawn here: dark, a few stars, a glow behind the mountains.
   $("sample").addEventListener("click", e => {
     e.preventDefault();
     const w = 1600, h = 1000, c = document.createElement("canvas");
@@ -1097,7 +1042,6 @@ nihil-wallpaper set night</code></pre></div>
     c.toBlob(blob => open(blob, "night-sky"));
   });
 
-  // ---- Options
   sizeSelect.addEventListener("change", render);
   $("pitch").addEventListener("click", e => {
     const b = e.target.closest("button[data-pitch]");
@@ -1110,7 +1054,6 @@ nihil-wallpaper set night</code></pre></div>
   $("compare-on").addEventListener("change", e => stage.classList.toggle("compare", e.target.checked));
   $("actual-on").addEventListener("change", e => stage.classList.toggle("actual", e.target.checked));
 
-  // Compare: the photo on the left of the line, the LEDs on the right.
   function split(e) {
     if (!stage.classList.contains("compare")) return;
     const box = screenBox.getBoundingClientRect();
@@ -1131,8 +1074,6 @@ nihil-wallpaper set night</code></pre></div>
     glyph();
   }
 
-  // A still is the PNG of the LEDs; one that moves, a GIF of every frame,
-  // as NIHIL keeps its own (theme/dotmatrix.py).
   download.addEventListener("click", async () => {
     if (!shown) return;
     if (shown.frames.length < 2) {
@@ -1160,7 +1101,6 @@ nihil-wallpaper set night</code></pre></div>
     save(new Blob([bytes], { type: "image/gif" }), `${name}-nihil-${width}x${height}.gif`);
   });
 
-  // ---- Copy buttons on the commands
   document.querySelectorAll(".code").forEach(block => {
     if (!navigator.clipboard) return;
     const button = document.createElement("button");

@@ -5,13 +5,9 @@ import qs.config
 import qs.services
 import qs.components
 
-// The first time (services/Machine.qml): what NIHIL is and how it works,
-// then the settings that matter most, one a step. Shortcuts and everything
-// else wait in Preferences; the gestures, in settings.json.
 Item {
     id: root
 
-    // A network right after the hello, when there is none.
     property var steps: ["hello", "frame", "basics", "you", "region", "look", "system", "done"]
     readonly property var files: ({ network: "PageNetwork.qml", you: "PageYou.qml", region: "PageRegion.qml", look: "PageLook.qml", system: "PageSystem.qml" })
 
@@ -31,8 +27,6 @@ Item {
         return combo === null || combo === undefined ? "—" : combo;
     }
 
-    // With changes, apply them (the welcome is marked seen first: the
-    // rebuild restarts the shell); without, or once applying, close.
     function finish(): void {
         if (root.asking) {
             if (password.text === "" && !Machine.fingerprint) {

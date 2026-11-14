@@ -1,14 +1,6 @@
 # nihil.nix by poligle
-#
-# NIHIL design tokens — ex nihilo.
-# Plain data with no dependencies: the NixOS modules (Stylix, ReGreet),
-# Home Manager (Hyprland, hyprlock, Neovim, the prompt) and the Quickshell
-# shell all read from here, so the whole system follows a single source of
-# truth.
 
 let
-	# Monochrome hierarchy. Red is never decoration: it only interrupts.
-	# Contrast ratios against #000000 (WCAG 2.x relative luminance).
 	palette =
 	{
 		void    = "000000";   # frame, bar, drawers (OLED black)
@@ -24,14 +16,10 @@ let
 in
 {
 	name = "NIHIL";
-	# Lowercase, and in italics wherever the text can be.
 	motto = "ex nihilo";
 
 	inherit palette;
 
-	# Base16 view of the palette for Stylix. Accents become grey levels so
-	# syntax highlighting is driven by luminance; base08 keeps the red for
-	# errors, deletions and destructive actions.
 	base16 =
 	{
 		scheme = "NIHIL";
@@ -55,8 +43,6 @@ in
 		base0F = "6E6E6E";
 	};
 
-	# Three voices, like Nothing, with free fonts (Ndot is proprietary).
-	# Doto is only used from ~20 px upwards.
 	fonts =
 	{
 		dot   = "Doto";                     # dot matrix: clocks, big numbers
@@ -66,8 +52,6 @@ in
 		icons = "JetBrainsMono Nerd Font";  # Material Design glyphs (nf-md)
 	};
 
-	# Frame geometry (px). The left side widens into the bar on the outputs
-	# that have one.
 	frame =
 	{
 		thickness    = 8;
@@ -77,7 +61,6 @@ in
 		drawerRadius = 22;   # convex corners of the drawers
 	};
 
-	# Windows sit concentric with the frame: rounding = radius - gapsOut.
 	windows =
 	{
 		rounding = 12;
@@ -86,7 +69,6 @@ in
 		border   = 1;
 	};
 
-	# Motion (ms): decisive deceleration, no bounce.
 	motion =
 	{
 		fast   = 140;

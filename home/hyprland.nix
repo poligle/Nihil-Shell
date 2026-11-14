@@ -7,9 +7,6 @@ let
 	sound = osConfig.nihil.sounds;
 	rgb = hex: "rgb(${hex})";
 
-	# Screens come from the machine's settings (nihil.outputs): a laptop's
-	# own panel is the one called eDP, and the ones turned on their side
-	# stack their windows from the top.
 	outputs = osConfig.nihil.outputs;
 	panels = lib.filter (lib.hasPrefix "eDP") (builtins.attrNames outputs);
 	internalPanel = if panels != [ ] then lib.head panels else "eDP-1";
@@ -24,17 +21,11 @@ let
 	focusWorkspace = workspace: ''hl.dsp.focus({ workspace = "${workspace}" })'';
 	moveToWorkspace = workspace: ''hl.dsp.window.move({ workspace = "${workspace}" })'';
 
-	# Nilo (modules/nilo.nix). The Copilot key sends SUPER + SHIFT + F23
-	# (Linux 6.14 and later). Its name depends on xkeyboard-config (recent
-	# ones say XF86Assistant, older ones XF86TouchpadOff), so the bind goes
-	# by the keycode wev shows: 201. One bind only, or a press would toggle twice.
 	niloBinds = lib.optionals osConfig.nihil.nilo.enable
 	[
 		(bind "SUPER + SHIFT + code:201" (exec "nihil-ipc nilo toggle"))
 	];
 
-	# NIHIL's actions, on the keys the machine gives them (nihil.binds,
-	# modules/binds.nix): an action with null has no bind.
 	keys = osConfig.nihil.binds;
 	actions =
 	{
@@ -45,8 +36,6 @@ let
 		lock = exec "lock-screen";
 		settings = exec "nihil-ipc settings toggle";
 		wallpapers = exec "nihil-ipc drawers toggle wallpapers";
-		# Held, as the clipboard: again, the next workspace; letting go of its
-		# modifier, there (services/Switcher.qml; its submap, holdLua below).
 		overview = ''hl.dsp.global("quickshell:nihil-overview")'';
 		close = "hl.dsp.window.close()";
 		float = ''hl.dsp.window.float({ action = "toggle" })'';
@@ -59,64 +48,20 @@ let
 	{
 		nilo = exec "nihil-ipc nilo toggle";
 	};
-	# Programs: a command each, quoted for Lua.
 	programBinds = map (program: bind program.keys (exec (lib.escape [ "\\" "\"" ] program.exec)))
 		(builtins.filter (program: program.keys != null) osConfig.nihil.programs);
 
 	actionBinds = lib.mapAttrsToList (name: action: bind keys.${name} action)
 		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
-		# Screenshots (nihil-shot, home/scripts.nix), kept in Pictures and
-		# copied: the screen the pointer is on, or an area.
 		++ lib.optional (keys.screenshot != null)
 			(bindWith keys.screenshot (exec "nihil-shot screen") { locked = true; })
 		++ lib.optional (keys.snip or null != null)
 			(bindWith keys.snip (exec "nihil-shot region") { locked = true; })
-		# Recording (nihil-record, home/scripts.nix): SHIFT with the same key,
-		# the screen or an area; that again stops it.
 		++ lib.optional (keys.screenshot != null && !(hasShift keys.screenshot))
 			(bind "SHIFT + ${keys.screenshot}" (exec "nihil-record toggle screen"))
 		++ lib.optional (keys.snip or null != null && !(hasShift keys.snip))
 			(bind "SHIFT + ${keys.snip}" (exec "nihil-record toggle region"));
 
-	# Copy and paste on one modifier, SUPER by default (modules/binds.nix).
-	#
-	# SUPER + C: Hyprland sends the window CTRL + Insert, its own copy in GTK,
-	# Qt, browsers, Electron and kitty (home/kitty.nix), where CTRL + C would
-	# stop what runs in a terminal. send_key_state sends it with CTRL alone,
-	# SUPER held or not, and down and up at once, on the press: the bind's
-	# release would not come if SUPER went up first (below), and the window
-	# would be left with Insert down.
-	#
-	# SUPER + V and the history (services/Clipboard.qml, home/clipboard.nix):
-	# the key and its modifier going down and up reach the shell as global
-	# shortcuts (quickshell:nihil-clipboard, nihil-super), with no process
-	# for each. Letting go of SUPER is what pastes, and Hyprland 0.55 has no
-	# other way to tell: hl.is_key_down and a key event came with 0.56. A
-	# Lua bind's own release only comes while its modifiers still match, and
-	# a release bind of SUPER is shadowed once SUPER + V went off
-	# (KeybindManager.cpp, handleKeybinds and shadowKeybinds). A bind on
-	# Super_L itself with ignore_mods and transparent is neither:
-	# hl.dsp.global marks it releasePending, so its release always goes out.
-	# non_consuming leaves the window its key, dont_inhibit gets through an
-	# app's shortcut inhibitor, locked while the screen is locked.
-	#
-	# While the history is out the window keeps the keyboard (taking it would
-	# close what was open there: a menu, the address bar): SUPER + V enters a
-	# submap, nihil-clipboard, whose keys (V again, Tab, the arrows, Delete,
-	# Return, Escape) reach the shell as global shortcuts instead.
-	# SUPER going up leaves it: a key's release finds the binds of the submap
-	# it was pressed in (submapAtPress), so the SUPER held since before
-	# always gets here, even if the shell is gone. Neither key is bound when
-	# an action or a program has it already (a warning says so).
-	#
-	# The overview (SUPER + A, services/Switcher.qml) is held the same way,
-	# with a submap of its own, nihil-overview: A again and SHIFT + A, Tab
-	# and the arrows choose, Return goes and Escape leaves, as global
-	# shortcuts, so that SUPER + Tab or SUPER and an arrow don't move what is
-	# behind it. The shell enters it, when the overview comes out with the
-	# modifier down, and leaves it with the modifier; its key's own bind
-	# doesn't, as a bind that says a global shortcut runs again on its
-	# release, and that one could come after SUPER's.
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
 	hasShift = combo: lib.elem "SHIFT" (map lib.toUpper (parts combo));
@@ -129,15 +74,9 @@ let
 	copyKey = keys.copy or null;
 	clipboardTaken = takenBy "clipboard" clipboardKey;
 	copyTaken = takenBy "copy" copyKey;
-	# With the history off (nihil.clipboard = 0), SUPER + V still pastes.
 	clipboardOn = clipboardKey != null && !clipboardTaken;
 	copyOn = copyKey != null && !copyTaken;
 
-	# The paste key's first modifier, the one whose release pastes, and its
-	# keys, by the names a bind gives them: they reach the shell as
-	# quickshell:nihil-super (nihil-ctrl, nihil-alt or nihil-shift for a key
-	# on another one; services/Clipboard.qml has all four). None for a key
-	# without one: the history then pastes on Enter.
 	modifierKeys =
 	{
 		SUPER = [ "Super_L" "Super_R" ];
@@ -158,8 +97,6 @@ let
 		end
 	'');
 
-	# The paste key's modifiers and key ("SUPER" and "V"), and the history's
-	# keys on those modifiers. Back is SHIFT with them, unless the key has it.
 	pasteMods = if clipboardOn then lib.init (parts clipboardKey) else [ ];
 	pasteKey = if clipboardOn then lib.last (parts clipboardKey) else "";
 	held = modifierSyms != [ ];
@@ -172,8 +109,6 @@ let
 		++ map (key: { combo = withMods pasteMods key; name = "forget"; leave = false; }) [ "Delete" "BackSpace" ]
 		++ map (key: { combo = withMods pasteMods key; name = "paste"; leave = true; }) [ "Return" "KP_Enter" ]
 		++ [ { combo = withMods pasteMods "Escape"; name = "cancel"; leave = true; } ];
-	# The overview's key, held as the paste key: its modifier, and its keys
-	# in the submap. Back is SHIFT with them, unless the key has it.
 	overviewKey = keys.overview or null;
 	overviewMods = if overviewKey != null then lib.init (parts overviewKey) else [ ];
 	overviewLetter = if overviewKey != null then lib.last (parts overviewKey) else "";
@@ -187,8 +122,6 @@ let
 		++ map (key: { combo = withMods overviewMods key; name = "go"; leave = true; }) [ "Return" "KP_Enter" ]
 		++ [ { combo = withMods overviewMods "Escape"; name = "cancel"; leave = true; } ];
 
-	# The modifiers the shell hears going down and up (once each, SUPER for
-	# both by default), and the submaps each one leaves going up.
 	watched = lib.unique (lib.optional held pasteModifier ++ lib.optional overviewHeld overviewModifier);
 	leaves = modifier: lib.optional (held && modifier == pasteModifier) "nihil-clipboard"
 		++ lib.optional (overviewHeld && modifier == overviewModifier) "nihil-overview";
@@ -199,7 +132,6 @@ let
 	luaString = builtins.toJSON;
 	luaList = lib.concatMapStringsSep ", " luaString;
 	holdLua = ''
-		-- NIHIL: paste, the clipboard history and the overview, held (home/hyprland.nix).
 		do
 			local function say(name)
 				hl.dispatch(hl.dsp.global("quickshell:nihil-" .. name))
@@ -210,7 +142,6 @@ let
 				${lib.optionalString held ''hl.dispatch(hl.dsp.submap("nihil-clipboard"))''}
 			end)
 	'' + lib.optionalString (watched != [ ]) ''
-			-- A modifier, down and up; going up leaves the submaps held on it.
 			local function watcher(name, submaps)
 				return function()
 					say(name)
@@ -256,12 +187,6 @@ let
 
 	fingers = osConfig.nihil.gestures;
 
-	# Fingers spread (a pinch out) maximise the window as its key does
-	# (maximize, SUPER + F), and brought together (a pinch in) put it back,
-	# from fullscreen too; each only when it changes something, with the
-	# key's sound. libinput tells a pinch from a swipe, so the swipes keep
-	# the same fingers. The window's fullscreen is Hyprland's own number:
-	# 0 none, 1 maximised, 2 fullscreen.
 	maximizeGesture = spread: ''
 		function()
 			local window = hl.get_active_window()
@@ -301,10 +226,6 @@ let
 		move = "1270 50";
 	};
 
-	# The lid. Closed with another screen on, the laptop's panel goes off and
-	# the session stays on the other one (logind leaves a docked laptop
-	# awake, modules/hardware.nix). Closed without one, logind suspends it:
-	# this only locks and darkens the panel in the meantime.
 	lidClose = ''
 		function()
 			local docked = false
@@ -354,7 +275,6 @@ let
 	'';
 in
 {
-	# NIHIL owns every colour here (and awww the wallpaper), so Stylix stays out.
 	stylix.targets.hyprland.enable = false;
 
 	warnings = lib.optional clipboardTaken
@@ -387,10 +307,8 @@ in
 				'';
 			};
 
-			# Shared with the shell, for the apps opened from the launcher.
 			env = lib.mapAttrsToList envVar (import ./session-env.nix);
 
-			# Screens not in the settings get Hyprland's own: preferred, auto, 1.
 			monitor = lib.mapAttrsToList (name: output:
 			{
 				inherit (output) mode position scale transform;
@@ -416,7 +334,6 @@ in
 					layout = "master";
 				};
 
-				# Flat, like the frame: hairline borders instead of shadows.
 				decoration =
 				{
 					rounding = t.windows.rounding;
@@ -459,10 +376,6 @@ in
 				};
 			};
 
-			# Per-device input settings belong to the machine, in its home.nix:
-			# wayland.windowManager.hyprland.settings.device = [ … ];
-
-			# NIHIL motion: decisive deceleration, never a bounce.
 			curve =
 			[
 				(bezier "linear" [ [ 0 0 ] [ 1 1 ] ])
@@ -479,7 +392,6 @@ in
 				{ leaf = "workspaces"; enabled = true; speed = 3; bezier = "nihilInOut"; style = "slide"; }
 			];
 
-			# Each gesture with the fingers the machine gives it (nihil.gestures).
 			gesture = lib.filter (gesture: gesture.fingers != null)
 			[
 				{ fingers = fingers.workspaces; direction = "horizontal"; action = "workspace"; }
@@ -494,8 +406,6 @@ in
 			[
 				{ name = "suppress-maximize"; match.class = ".*"; suppress_event = "maximize"; }
 				{ name = "kitty-float"; match.class = "kitty"; float = true; size = "800 500"; center = true; }
-				# Every Thunar window floats; only the main ones ("Downloads - Thunar")
-				# get the size, so its dialogs (rename, progress) keep their own.
 				{ name = "thunar-float"; match.class = "thunar"; float = true; center = true; }
 				{ name = "thunar-size"; match.class = "thunar"; match.title = ".+ - Thunar"; size = "1000 700"; }
 				(floatingPanel "wifi-float" "nm-connection-editor")
@@ -503,7 +413,6 @@ in
 				(floatingPanel "vol-float" "org.pulseaudio.pavucontrol")
 			];
 
-			# The NIHIL shell animates its own surfaces (frame, drawers, widgets).
 			layer_rule =
 			[
 				{ name = "nihil-shell"; match.namespace = "^nihil-.*$"; no_anim = true; }

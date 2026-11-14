@@ -3,9 +3,6 @@ import Quickshell
 import qs.theme
 import qs.config
 
-// Copies `text` with a click: the icon turns into a tick with a little
-// jump, and "copied" shows next to it for a moment. `wordFirst` puts the
-// word before the icon, for a button at the right edge of something.
 Row {
     id: root
 
@@ -17,7 +14,6 @@ Row {
     layoutDirection: wordFirst ? Qt.RightToLeft : Qt.LeftToRight
 
     function copy(): void {
-        // "--": code that starts with a dash is not an option.
         Quickshell.execDetached([Config.cmd.wlCopy, "--", root.text]);
         root.copied = true;
         bump.restart();

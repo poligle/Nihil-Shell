@@ -26,7 +26,6 @@
 @font-face { font-family: "Space Mono"; src: url("../assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "Doto"; src: url("../assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
 
-/* NIHIL tokens: the same as the desktop page */
 :root {
   --void: #000000;
   --surface: #0E0E0E;
@@ -68,7 +67,6 @@ code, kbd, pre { font-family: var(--mono); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
 
-/* ---------- frame, bar and Glyph light ---------- */
 .frame {
   position: fixed; z-index: 40; pointer-events: none;
   top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
@@ -104,7 +102,6 @@ code, kbd, pre { font-family: var(--mono); }
 .clock[hidden] { display: none; }
 .bar .word { display: none; }
 
-/* ---------- layout ---------- */
 main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
 .wrap { max-width: 1180px; margin: 0 auto; }
 section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
@@ -118,7 +115,6 @@ p { margin: 0 0 16px; }
 .quiet { color: var(--dim); }
 .meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
 
-/* ---------- hero ---------- */
 .hero { padding-bottom: 120px; }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 56px; align-items: center; }
 .wordmark { width: min(628px, 100%); margin: 0 0 14px -4px; }
@@ -137,7 +133,6 @@ p { margin: 0 0 16px; }
 .pill svg { width: 18px; height: 18px; }
 .shot { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
 
-/* ---------- the phone, drawn by this page ---------- */
 .phone {
   position: relative; width: min(300px, 78vw); aspect-ratio: 9 / 19.5;
   border-radius: 46px; background: var(--void); border: 1px solid var(--line);
@@ -154,7 +149,7 @@ p { margin: 0 0 16px; }
   background-image: radial-gradient(circle, #191919 0 1.1px, transparent 1.5px);
   background-size: 8px 8px;
 }
-/* a dot-matrix wallpaper: LEDs that grow towards a bright horizon, a few stars */
+
 .phone .card i, .phone .card::after { content: ""; position: absolute; inset: 0; }
 .phone .card i { background-size: 8px 8px; }
 .phone .card .l3 {
@@ -188,7 +183,7 @@ p { margin: 0 0 16px; }
 .ledclock .off { fill: rgba(255, 255, 255, 0.18); }
 .ledclock .on { fill: var(--ink); opacity: 0; transition: opacity 480ms cubic-bezier(0.2, 0, 0, 1); }
 .ledclock .on.lit { opacity: 1; }
-/* the desktop's clock widget: a black card with a hairline, the time in dots, the day and the date */
+
 .pclock { width: 100%; box-sizing: border-box; padding: 14px 12px 12px; border-radius: 16px; background: var(--void); border: 1px solid var(--line); text-align: center; }
 .ptime { margin: 0; font: 700 40px/1 var(--dot); color: var(--ink); letter-spacing: 0.02em; }
 .pday { margin: 8px 0 0; font: 400 9.5px/1 var(--mono); color: var(--dim); }
@@ -211,7 +206,6 @@ p { margin: 0 0 16px; }
 .deck-shots figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--muted); }
 #tasks { margin-top: 88px; }
 
-/* ---------- screens ---------- */
 .phones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 48px; max-width: 980px; }
 .phones figure { margin: 0; }
 .phones a { display: block; border-radius: 28px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
@@ -221,7 +215,6 @@ p { margin: 0 0 16px; }
 .rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 56px 0 0; }
 .rules p { color: var(--dim); margin: 0; }
 
-/* ---------- drawer ---------- */
 .examples { display: grid; gap: 16px; margin: 36px 0 0; padding: 0; list-style: none; max-width: 860px; }
 .examples li { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: baseline; color: var(--dim); }
 .examples kbd { justify-self: start; }
@@ -231,13 +224,11 @@ kbd {
   font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
 }
 
-/* ---------- studio ---------- */
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
 .studio-shot { justify-self: center; width: min(300px, 78vw); margin: 0; }
 .studio-shot img { border-radius: 28px; border: 1px solid var(--line); }
 .studio-shot figcaption { padding: 14px 2px 0; font: 400 12px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--muted); }
 
-/* ---------- code, steps, table ---------- */
 .code {
   display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
 }
@@ -266,15 +257,12 @@ td.what { color: var(--ink); }
 .note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
 .source { margin-top: 64px; max-width: 860px; }
 
-/* ---------- footer ---------- */
-/* the same side padding as main, so the frame and the bar never cover it */
 footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
 footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
 footer p { margin: 0 0 10px; max-width: 70ch; }
 footer a { color: var(--dim); }
 footer a:hover { color: var(--ink); }
 
-/* ---------- narrow screens: the bar moves to the top ---------- */
 @media (max-width: 860px) {
   :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
   .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
@@ -305,7 +293,6 @@ footer a:hover { color: var(--ink); }
 }
 </style>
 <style>
-  /* The watch: its screens are round, black on black, with a hairline round them. */
   .watch-live { width: min(340px, 78vw); aspect-ratio: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .watch-live svg { display: block; width: 100%; height: 100%; }
   .watches img { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; border-radius: 50%; background: #000; box-shadow: 0 0 0 1px #2A2A2A; }
@@ -491,12 +478,10 @@ tools/watch invite               # the watch pairs with this computer</code></pr
   </div>
 </footer>
 
-<script>
-(() => {
+<script>(() => {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pad = n => String(n).padStart(2, "0");
 
-  // ---- Glyph light around the page's frame, as on the desktop page
   const path = document.getElementById("glyph-path");
   function frameMetrics() {
     const css = getComputedStyle(document.documentElement);
@@ -525,9 +510,6 @@ tools/watch invite               # the watch pairs with this computer</code></pr
   layoutGlyph();
   addEventListener("resize", layoutGlyph);
 
-  // ---- The watch: its face live, and the light on its edge as the watch draws it
-  // (ui/HaloView.kt): a run of LEDs once round in ink, twice in red, or climbing
-  // both sides from the bottom, one after another as it is tapped.
   const watch = document.getElementById("watch");
   const edge = [...watch.querySelectorAll("#w-edge circle")];
   const cells = [...watch.querySelectorAll("#w-battery circle")];
@@ -590,14 +572,12 @@ tools/watch invite               # the watch pairs with this computer</code></pr
     }).catch(paintBattery);
   }
   paintBattery();
-  // The face switches on, then the light runs round the watch.
   if (reduce) watchTick();
   else setTimeout(watchTick, 250);
   setInterval(watchTick, 1000);
   setTimeout(() => watchLight("notify"), 1400);
   watch.addEventListener("click", () => watchLight());
 
-  // ---- The wordmark lights up from nothing: the watch from the bottom up, then the letters
   const mark = document.getElementById("wordmark");
   fetch("nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
     const doc = new DOMParser().parseFromString(text, "image/svg+xml");
@@ -625,7 +605,6 @@ tools/watch invite               # the watch pairs with this computer</code></pr
     setTimeout(glyph, done + 520);
   }).catch(() => setTimeout(glyph, 300));
 
-  // ---- Copy buttons; each copy sends the light around the frame and the watch
   document.querySelectorAll(".code").forEach(block => {
     if (!navigator.clipboard) return;
     const button = document.createElement("button");
@@ -643,7 +622,6 @@ tools/watch invite               # the watch pairs with this computer</code></pr
     block.append(button);
   });
 
-  // ---- Section LEDs follow the scroll
   const navLeds = [...document.querySelectorAll(".leds a")];
   const targets = navLeds.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
   const seen = new Map();
@@ -655,7 +633,6 @@ tools/watch invite               # the watch pairs with this computer</code></pr
   }, { threshold: [0, 0.15, 0.3, 0.5, 0.75, 1] });
   targets.forEach(t => t && observer.observe(t));
 
-  // ---- The bar clock, in the visitor's time
   const clock = document.querySelector(".clock");
   function tick() {
     const d = new Date();

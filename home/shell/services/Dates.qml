@@ -4,9 +4,6 @@ import QtQuick
 import Quickshell
 import qs.config
 
-// When something happened, as NIHIL says it: "Hoy, 10:42", "Ayer, 22:10",
-// or the day as the language writes it (theme/i18n.nix's dateShort) and
-// the time. And sizes on a disk, in decimal units, as the disk's own say.
 Singleton {
     function moment(seconds: real): string {
         const date = new Date(seconds * 1000);
@@ -23,7 +20,6 @@ Singleton {
         return Case.sentence(date.toLocaleString(Qt.locale(Lang.locale), Lang.dateShort)) + ", " + time;
     }
 
-    // 1 decimal under 100 of a unit: 3,2 GB, 845 MB.
     function bytes(count: real): string {
         const units = ["B", "KB", "MB", "GB", "TB"];
         let value = Math.max(0, count);

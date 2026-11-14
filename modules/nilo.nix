@@ -1,11 +1,4 @@
 # nilo.nix by poligle
-#
-# Nilo: an optional assistant in the shell, with a local model on Ollama.
-# Off by default. With `nihil.nilo.enable` the system runs Ollama on
-# 127.0.0.1 and the shell gets Nilo (SUPER+I, the Copilot key, "?" in the
-# launcher). The model, what Nilo may do and how long it stays awake are
-# chosen in the shell and need no rebuild; this file decides whether it
-# exists, what runs the model and that Nilo may start Ollama when it is down.
 
 { config, lib, pkgs, ... }:
 let
@@ -83,8 +76,6 @@ in
         models = lib.mkOption
         {
             type = lib.types.listOf modelType;
-            # Download sizes from ollama.com/library/qwen3.5 (default tags);
-            # memory is an estimate with Nilo's context.
             default =
             [
                 { tag = "qwen3.5:0.8b"; label = "Qwen 3.5 0.8B"; size = 1.3; ram = 2; }
@@ -142,8 +133,6 @@ in
             default =
             {
                 name = "Nilo";
-                # The noreply address of github.com/nilo-nihil: GitHub ties it to
-                # that account, so its picture shows on the commit.
                 email = "351236008+nilo-nihil@users.noreply.github.com";
             };
             description = ''
@@ -174,48 +163,27 @@ in
             package = packages.${cfg.acceleration};
             environmentVariables = lib.mapAttrs (_: lib.mkDefault) (
             {
-                # Nilo sends its own keep-alive (its settings); this one is for
-                # everything else that talks to Ollama.
                 OLLAMA_KEEP_ALIVE = "5m";
-                # One model in memory at a time by default: switching models
-                # frees the old one.
                 OLLAMA_MAX_LOADED_MODELS = toString cfg.loadedModels;
-                # Local only: no models that run on ollama.com.
                 OLLAMA_NO_CLOUD = "1";
             }
             // lib.optionalAttrs cfg.integratedGpu
             {
                 OLLAMA_IGPU_ENABLE = "1";
-                # Such a GPU works in a window of the RAM (its GTT), and the
-                # compositor draws the screen from it too. llama-server, which
-                # Ollama starts with its own environment, would put there the part
-                # of a model it keeps for the CPU as well (its host buffer, on an
-                # integrated GPU: ggml-org/llama.cpp#27360); --no-host sends that
-                # part to plain memory. And what it places on the GPU by itself
-                # (--fit) leaves 4 GB of the window free. Every model runs where
-                # the acceleration says, the big ones too.
                 LLAMA_ARG_NO_HOST = "1";
                 LLAMA_ARG_FIT_TARGET = "4096";
             });
         };
 
-        # The upstream unit has no Restart=: if Ollama stops on its own (a
-        # crash, the GPU not ready yet at boot) it stays down, and Nilo can
-        # only say "connection refused". Back off up to a minute between tries.
         systemd.services.ollama.serviceConfig =
         {
             Restart = lib.mkDefault "on-failure";
             RestartSec = lib.mkDefault "2s";
             RestartSteps = lib.mkDefault 5;
             RestartMaxDelaySec = lib.mkDefault "1min";
-            # If memory runs out, the kernel stops Ollama first, never Hyprland
-            # or the shell.
             OOMScoreAdjust = lib.mkDefault 1000;
         };
 
-        # Nilo starts Ollama when it finds it stopped (and with its "start
-        # ollama" button): polkit lets wheel users start or restart this one
-        # unit without a password. Nothing else about systemd changes.
         security.polkit.enable = lib.mkDefault true;
         security.polkit.extraConfig = ''
             polkit.addRule(function(action, subject)

@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Effects
 import qs.theme
 
-// Shows an image through an LED mask: greyscale, seen through round holes.
-// Used for album art, so covers speak the same dot language as the wallpaper.
 Item {
     id: root
 
@@ -41,7 +39,6 @@ Item {
         maskSource: mask
     }
 
-    // White dots on transparent: MultiEffect keeps the image only under the dots.
     Canvas {
         id: mask
         anchors.fill: parent

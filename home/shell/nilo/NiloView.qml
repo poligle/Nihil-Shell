@@ -4,21 +4,17 @@ import qs.config
 import qs.services
 import qs.components
 
-// Nilo inside the launcher ("?"): its face, and under it the conversation,
-// the introduction (the first time) or the settings (the gear). The
-// launcher's field stays the input and hands its keys here: accept(),
-// key() and back() (escape).
 Item {
     id: root
 
     property bool active: false
     property string question: ""    // what follows the "?"
-    property real caret: 0.5        // where the caret is in the field, 0..1
+    property real caret: 0.5
     property string page: "chat"    // or "settings"
-    property string armed: ""       // a confirmation waiting for its second enter
+    property string armed: ""
 
-    signal cleared()                // the question went out: empty the field
-    signal refocus()                // give the keyboard back to the field
+    signal cleared()
+    signal refocus()
 
     readonly property string view: !Nilo.enabled ? "off" : !Nilo.known ? "starting" : !Nilo.onboarded ? "intro" : page
     readonly property bool hero: view === "off" || view === "starting" || view === "intro"
@@ -61,7 +57,6 @@ Item {
         return Lang.niloAsleep;
     }
 
-    // The first page of the introduction opens with a smile.
     function hello(): void {
         if (active && view === "intro" && intro.page === 0) {
             greeting = true;
@@ -79,7 +74,6 @@ Item {
         }
     }
 
-    // Opened from Preferences (Nilo.openSettings): the gear first.
     function gearFirst(): void {
         if (active && Nilo.gear) {
             Nilo.gear = false;
@@ -103,8 +97,6 @@ Item {
         function onConfirmChanged() { root.armed = ""; }
         function onSummoned() { root.gearFirst(); }
     }
-
-    // --- From the launcher's field ---------------------------------------------
 
     function accept(text: string): void {
         if (view === "intro") return intro.next();
@@ -143,7 +135,6 @@ Item {
         }
         if (view === "chat") {
             if ((event.modifiers & Qt.ControlModifier) && k === Qt.Key_N) { Nilo.reset(); return true; }
-            // Esc closes and the answer goes on (Nilo tells when it ends); ctrl+c stops it.
             if ((event.modifiers & Qt.ControlModifier) && k === Qt.Key_C && Nilo.busy) { Nilo.stop(); return true; }
             if (k === Qt.Key_PageUp || k === Qt.Key_PageDown) { chat.scroll((k === Qt.Key_PageUp ? -0.8 : 0.8) * chat.height); return true; }
             if (k === Qt.Key_Up || k === Qt.Key_Down) { chat.scroll(k === Qt.Key_Up ? -60 : 60); return true; }
@@ -151,7 +142,6 @@ Item {
         return false;
     }
 
-    // true when it was for Nilo; false lets the launcher close.
     function back(): bool {
         if (view === "settings") {
             if (!settings.back()) page = "chat";
@@ -161,8 +151,6 @@ Item {
         if (Nilo.confirm) { Nilo.answer(false); return true; }
         return false;
     }
-
-    // --- Header -----------------------------------------------------------------
 
     Column {
         x: 4
@@ -175,8 +163,6 @@ Item {
             font.pixelSize: 20
         }
 
-        // How it is, and the model, apart: the model's tag has a colon of
-        // its own (qwen3.5:9b).
         Row {
             spacing: 10
 
@@ -212,8 +198,6 @@ Item {
         }
     }
 
-    // --- The face ---------------------------------------------------------------
-
     HoverHandler { id: pointer }
 
     Eyes {
@@ -221,8 +205,6 @@ Item {
 
         readonly property real centerX: x + width / 2
         readonly property real centerY: y + height / 2
-        // Big, they stand 76 px tall: in an empty conversation, 40 px above
-        // the greeting (Chat.qml leaves them that room).
         readonly property real heroY: root.view === "intro" ? 6
             : root.view === "chat" ? body.y + chat.emptyTop - 40 - 76
             : root.height * 0.5 - 76
@@ -244,8 +226,6 @@ Item {
         Behavior on gap { NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
         Behavior on y { NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
     }
-
-    // --- Below it ---------------------------------------------------------------
 
     Item {
         id: body
@@ -301,7 +281,6 @@ Item {
                 font.pixelSize: 12
             }
 
-            // Where it is turned on, a key away (as in the gear).
             KeyButton {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Lang.setOpenPreferences

@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 # test_deck.py by poligle
-#
-# Tests for the deck's service: the real HTTPS server on 127.0.0.1, with a
-# throwaway certificate, a client that pins it as the phone does, and fake
-# nihil-ipc, osd-volume, wpctl, notify-send and ip that write down
-# what they were asked. Nothing leaves this computer. Needs openssl.
-#
-#   python3 -m unittest home/deck/test_deck.py
 
 import base64
 import errno
@@ -86,7 +79,6 @@ echo "wpctl $*" >> "$DECK_LOG"
 echo "Volume: 0.45"
 '''
 
-# The clipboard, a file: wl-copy writes it from stdin, wl-paste prints it.
 FAKE_WL_COPY = r'''#!/bin/sh
 cat > "$XDG_RUNTIME_DIR/clipboard"
 '''
@@ -113,15 +105,12 @@ def script(folder, name, text):
 
 
 def spki_pin_with_openssl(cert):
-    """The pin as openssl sees it: the SHA-256 of the public key, DER."""
     public = subprocess.run([OPENSSL, "x509", "-pubkey", "-noout", "-in", cert], check=True, capture_output=True).stdout
     der = subprocess.run([OPENSSL, "pkey", "-pubin", "-outform", "DER"], input=public, check=True, capture_output=True).stdout
     return base64.urlsafe_b64encode(hashlib.sha256(der).digest()).rstrip(b"=").decode()
 
 
 class Phone:
-    """A client as the phone is: any certificate, as long as its public key
-    is the one pinned."""
 
     def __init__(self, port, pin, token=""):
         self.port = port
@@ -209,7 +198,6 @@ class CertificateTest(Base):
         pin = deck.pin_of(cert)
         self.assertEqual(pin, spki_pin_with_openssl(cert))
         self.assertEqual(len(pin), 43)
-        # A second time it is the same one.
         again, _ = deck.ensure_certificate(state, OPENSSL)
         self.assertEqual(deck.pin_of(again), pin)
 
@@ -312,7 +300,6 @@ class IconTest(unittest.TestCase):
 
 class AddressesTest(Base):
     def test_the_default_route_first(self):
-        # docker0 and virbr0 are not where a phone finds it; Tailscale is.
         self.assertEqual(deck.addresses(self.config["ip"]), ["192.168.1.20", "100.64.0.7"])
 
 
@@ -353,13 +340,11 @@ class ServerTest(Base):
         status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "Pho\x07ne"})
         self.assertEqual(status, 200, body)
         self.assertEqual(body["name"], "nihil-test")
-        # Once: the same code no longer pairs.
         self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "other"})[0], 409)
 
         devices = self.deck.control({"op": "devices"})["devices"]
         self.assertEqual([(d["id"], d["name"]) for d in devices], [(body["device"], "Phone")])
         self.assertIn("notify-send -a NIHIL Phone is a deck now Forget it in Preferences.", self.logged())
-        # Only the token's hash is kept.
         with open(os.path.join(self.folder, "state", "devices.json")) as file:
             stored = file.read()
         self.assertNotIn(body["token"], stored)
@@ -410,14 +395,12 @@ class ServerTest(Base):
 
     def test_the_clipboard_both_ways(self):
         self.pair()
-        # Nothing copied yet: empty, not an error.
         self.assertEqual(self.phone.request("GET", "/v1/clipboard"), (200, {"text": ""}))
         text = "ex nihilo — ñandú " * 400
         self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": text}), (200, {"ok": True}))
         self.assertEqual(self.phone.request("GET", "/v1/clipboard"), (200, {"text": text}))
         self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": ""})[0], 400)
         self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": 42})[0], 400)
-        # Only a paired device.
         self.assertEqual(self.phone.request("GET", "/v1/clipboard", token="nope")[0], 401)
 
     def test_without_the_shell(self):
@@ -442,7 +425,6 @@ class ServerTest(Base):
         deck.theme_index.cache_clear()
         self.pair()
         self.assertEqual(self.phone.request("GET", "/v1/apps/kitty/icon"), (200, b"\x89PNG\r\n\x1a\nfake"))
-        # An SVG needs rsvg-convert, which is not here; an app not listed, nothing.
         self.assertEqual(self.phone.request("GET", "/v1/apps/zen-beta/icon")[0], 404)
         self.assertEqual(self.phone.request("GET", "/v1/apps/..%2F..%2Fetc/icon")[0], 404)
 
@@ -473,7 +455,6 @@ class ServerTest(Base):
         self.assertEqual([c["id"] for c in body["cards"]], ["p", "a"])
         self.assertEqual(body["cards"][0]["text"], "Phone card")
         self.assertEqual(body["removed"], {"z": 2})
-        # A card's rank in its column goes as it came; one that isn't a number is no rank.
         ranked = {"cards": [{"id": "r", "text": "Ranked", "column": 0, "textStamp": 1, "placeStamp": 1, "rank": 2.5}]}
         status, body = self.phone.request("POST", "/v1/tasks", ranked)
         self.assertEqual((status, body["cards"][0]["rank"]), (200, 2.5))
@@ -482,13 +463,10 @@ class ServerTest(Base):
         for bad in ({"cards": [{"id": "x", "text": "No column", "textStamp": 1, "placeStamp": 1}]},
                     {"cards": "nope"}, {"removed": {"x": "yesterday"}}):
             self.assertEqual(self.phone.request("POST", "/v1/tasks", bad)[0], 400)
-        # A whole kanban is more than other requests may carry.
         many = {"cards": [{"id": "c%d" % i, "text": "Task %d" % i, "column": 0, "textStamp": i, "placeStamp": i} for i in range(80)]}
         self.assertEqual(self.phone.request("POST", "/v1/tasks", many)[0], 200)
 
     def upgrade(self, path, protocol="nihil-trackpad"):
-        """The trackpad's request as the phone makes it: the status, the body
-        of an answer that isn't 101, and the connection."""
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
@@ -542,7 +520,6 @@ class ServerTest(Base):
         self.assertEqual(xs, [100, 120, 2800])          # past the edge: at the edge
         self.assertEqual(made[0].events[-2:], [(deck.EV_KEY, deck.BTN_TOUCH, 0), (deck.EV_SYN, deck.SYN_REPORT, 0)])
 
-        # A new stream from the same phone ends the one before.
         _, _, first = self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")
         _, _, second = self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")
         self.assertTrue(made[1].closed.wait(5))
@@ -551,7 +528,6 @@ class ServerTest(Base):
         second.close()
         self.assertTrue(made[2].closed.wait(5))
 
-        # A size it doesn't take, another protocol, and a session that may not make one.
         self.assertEqual(self.upgrade("/v1/trackpad?w=20&h=1200&r=20")[:2], (400, {"error": "invalid"}))
         self.assertEqual(self.upgrade("/v1/trackpad?w=2800&h=1200&r=20", protocol="websocket")[:2], (400, {"error": "invalid"}))
 
@@ -562,8 +538,6 @@ class ServerTest(Base):
         self.assertEqual(self.upgrade("/v1/trackpad?w=2800&h=1200&r=20")[:2], (503, {"error": "access"}))
 
     def test_several_devices_at_once(self):
-        # A phone, a tablet and a watch, each with a token of its own, asking at
-        # the same time; two of them trackpads together; one forgotten, the rest not.
         made = []
 
         class Pad:
@@ -638,7 +612,6 @@ class ServerTest(Base):
         status, body = self.phone.request("POST", "/v1/open", {"url": "https://example.com/" + "a" * deck.MAX_BODY})
         self.assertEqual((status, body), (400, {"error": "body"}))
         self.assertEqual(self.phone.last.getheader("Connection"), "close")
-        # An answer that keeps the connection doesn't say close.
         self.assertEqual(self.phone.request("GET", "/v1/hello")[0], 200)
         self.assertIsNone(self.phone.last.getheader("Connection"))
 
@@ -656,7 +629,6 @@ class ServerTest(Base):
 
 
 class ConnectionsTest(Base):
-    """No more connections at once than CONNECTIONS: one more is closed."""
 
     def setUp(self):
         super().setUp()
@@ -670,7 +642,6 @@ class ConnectionsTest(Base):
         self.phone = Phone(self.server.deck.port, self.server.deck.pin)
 
     def test_one_too_many_is_closed_and_the_rest_go_on(self):
-        # Two that never shake hands hold both.
         idle = [socket.create_connection(("127.0.0.1", self.server.deck.port)) for _ in range(2)]
         time.sleep(0.3)
         extra = socket.create_connection(("127.0.0.1", self.server.deck.port))
@@ -679,7 +650,6 @@ class ConnectionsTest(Base):
         extra.close()
         for connection in idle:
             connection.close()
-        # Their threads end, and the phone is answered again.
         for _ in range(50):
             try:
                 if self.phone.request("GET", "/v1/hello")[0] == 200:
@@ -709,7 +679,6 @@ PNG = deck.PNG_MAGIC + b"an icon"
 
 
 def ico(*entries):
-    """An .ico whose entries are (size, data)."""
     head = struct.pack("<HHH", 0, 1, len(entries))
     offset = 6 + 16 * len(entries)
     table, body = b"", b""
@@ -720,7 +689,6 @@ def ico(*entries):
 
 
 class Site:
-    """A web site on 127.0.0.1: path -> (status, type, body); counts requests."""
 
     def __init__(self, pages):
         site = self
@@ -768,7 +736,6 @@ class FaviconTest(unittest.TestCase):
         site = self.site({"/": (200, "text/html", page), "/small.png": (200, "image/png", PNG + b"16"),
                           "/touch.png": (200, "image/png", PNG + b"180"), "/late.png": (200, "image/png", PNG + b"late")})
         self.assertEqual(deck.favicon(site.url + "/some/page?q=1", "rsvg-convert", self.cache), (PNG + b"180", "image/png"))
-        # A week from here, without asking the site again.
         asked = len(site.asked)
         self.assertEqual(deck.favicon(site.url + "/other", "rsvg-convert", self.cache), (PNG + b"180", "image/png"))
         self.assertEqual(len(site.asked), asked)
@@ -804,7 +771,6 @@ class FaviconTest(unittest.TestCase):
 
 class TrackpadTest(unittest.TestCase):
     def test_the_kernels_numbers(self):
-        # As <linux/uinput.h> has them on x86 and ARM (asm-generic).
         self.assertEqual((deck.UI_DEV_CREATE, deck.UI_DEV_DESTROY, deck.UI_DEV_SETUP, deck.UI_ABS_SETUP),
                          (0x5501, 0x5502, 0x405C5503, 0x401C5504))
         self.assertEqual((deck.UI_SET_EVBIT, deck.UI_SET_KEYBIT, deck.UI_SET_ABSBIT, deck.UI_SET_PROPBIT),
@@ -820,19 +786,16 @@ class TrackpadTest(unittest.TestCase):
                           (A, deck.ABS_X, 100), (A, deck.ABS_Y, 200), sync])
         self.assertEqual(fingers.frame([(3, 100, 200), (5, 300, 400)]),
                          [(A, S, 1), (A, ID, 1), (A, X, 300), (A, Y, 400), (K, tools[0], 0), (K, tools[1], 1), sync])
-        # The second goes up and the first moves: the first is still where the pointer is.
         self.assertEqual(fingers.frame([(3, 110, 200)]),
                          [(A, ID, -1), (A, S, 0), (A, X, 110), (K, tools[1], 0), (K, tools[0], 1), (A, deck.ABS_X, 110), sync])
         self.assertEqual(fingers.release(), [(A, ID, -1), (K, tools[0], 0), (K, deck.BTN_TOUCH, 0), sync])
         self.assertEqual(fingers.release(), [])
-        # Five fingers at most, as a touchpad has.
         many = fingers.frame([(i, i, i) for i in range(6)])
         self.assertEqual(sum(1 for event in many if event[:2] == (A, ID)), 5)
         self.assertIn((K, tools[4], 1), many)
 
     def test_the_phones_pace(self):
         pace = deck.Pace(delay=0.025)
-        # Frames 8 ms apart on the phone: two on time, then three the network bunched.
         times = [(0.000, 10.010), (0.008, 10.018), (0.016, 10.060), (0.024, 10.060), (0.032, 10.061)]
         due = [pace.due(phone, arrived) for phone, arrived in times]
         self.assertAlmostEqual(due[0], 10.035)
@@ -841,7 +804,6 @@ class TrackpadTest(unittest.TestCase):
         for before, after in zip(due, due[1:]):
             self.assertGreaterEqual(after - before, 0.9 * 0.008 - 1e-9)
         self.assertLess(due[4], 10.061 + 0.025)
-        # Its milliseconds wrap at 32 bits and go on.
         clock = deck.Pace()
         self.assertAlmostEqual(clock.seconds(2 ** 32 - 6) + 0.011, clock.seconds(5))
 

@@ -8,13 +8,10 @@ state="$dir/state"
 sep=$'\x1f'
 format="{{status}}$sep{{playerInstance}}$sep{{playerName}}$sep{{title}}$sep{{artist}}$sep{{position}}$sep{{mpris:length}}$sep{{mpris:artUrl}}"
 
-# Material Design glyphs (UTF-8): skip-previous, play, pause, skip-next.
 glyph_prev=$'\xf3\xb0\x92\xae'
 glyph_play=$'\xf3\xb0\x90\x8a'
 glyph_pause=$'\xf3\xb0\x8f\xa4'
 glyph_next=$'\xf3\xb0\x92\xad'
-
-# --- State ------------------------------------------------------------------------
 
 refresh() {
 	local stamp=0 shown="" out line st inst playing="" paused="" own_playing="" own_paused="" t
@@ -52,7 +49,6 @@ refresh() {
 	exec 9>&-
 }
 
-# The state as variables. One older than 5 s is from an earlier lock (or the refresh is stuck): no player then.
 load() {
 	stamp=0 status="" instance="" name="" title="" artist="" position="" length="" art=""
 	[[ -s $state ]] || return 0
@@ -63,16 +59,12 @@ load() {
 	if (( ${EPOCHREALTIME//[!0-9]/} - stamp > 5000000 )); then status=""; fi
 }
 
-# REPLY = the path of a file:// URL, %XX decoded.
 decode() {
 	local s=${1#file://}
 	s=${s//'%'/'\x'}
 	printf -v REPLY '%b' "$s"
 }
 
-# --- Markup -------------------------------------------------------------------------
-
-# REPLY = TEXT made safe for Pango markup, at most N characters.
 clean() {
 	local s=$1 n=$2
 	s=${s//[[:cntrl:]]/}
@@ -83,13 +75,11 @@ clean() {
 	REPLY=$s
 }
 
-# span FONT POINTS COLOUR TEXT [LETTER_SPACING in 1/1024 pt]
 span() {
 	printf "<span font_family='%s' size='%d' foreground='#%s' letter_spacing='%d'>%s</span>" \
 		"$1" "$(( $2 * 1024 ))" "$3" "${5:-0}" "$4"
 }
 
-# REPLY = µs as m:ss, or h:mm:ss.
 duration() {
 	local s=$(( $1 / 1000000 ))
 	if (( s >= 3600 )); then
@@ -99,9 +89,6 @@ duration() {
 	fi
 }
 
-# --- Parts --------------------------------------------------------------------------
-
-# Player (and "paused"), title, artist: three lines, in sentence case.
 info() {
 	load
 	[[ -n $status ]] || return 0
@@ -120,13 +107,11 @@ info() {
 	fi
 }
 
-# Elapsed time, LEDs, length: always 46 columns of a monospace font.
 progress() {
 	refresh
 	load
 	[[ -n $status ]] || return 0
 	local pos=$position elapsed total cells lit i on="" off=""
-	# The state can be up to a second old: a playing track has moved on since.
 	if [[ $status == Playing && $stamp -gt 0 ]]; then
 		pos=$(( pos + ${EPOCHREALTIME//[!0-9]/} - stamp ))
 	fi
@@ -134,7 +119,6 @@ progress() {
 	duration "$pos"
 	elapsed=$REPLY
 	if (( length <= 0 )); then
-		# A stream: no length to show progress against.
 		span "$MONO" 9 "$DIM" "$elapsed"
 		return 0
 	fi
@@ -145,8 +129,6 @@ progress() {
 	for (( i = 0; i < cells; i++ )); do
 		if (( i < lit )); then on+="•"; else off+="•"; fi
 	done
-	# Over a wallpaper, the switched-off LEDs need more light than in the
-	# dashboard (OFF) to be seen at all.
 	span "$MONO" 9 "$DIM" "$elapsed  "
 	span "$ICONS" 9 "$INK" "$on"
 	span "$ICONS" 9 "$MUTED" "$off"
@@ -169,8 +151,6 @@ button() {
 	esac
 }
 
-# The path of the image to show: the cover rendered as a dot matrix, an empty
-# matrix while it renders (or without one), or a transparent pixel.
 cover() {
 	load
 	if [[ -z $status ]]; then
@@ -186,7 +166,6 @@ cover() {
 	key=${art//[!A-Za-z0-9._-]/_}
 	if (( ${#key} > 120 )); then key=${key: -120}; fi
 	png="$dir/cover-$key.png"
-	# A local file can change under the same name: render it again then.
 	if [[ -s $png && ( -z $src || ! $src -nt $png ) ]]; then
 		printf '%s\n' "$png"
 		return 0
@@ -199,7 +178,6 @@ cover() {
 	if [[ -d $png.job ]]; then
 		read -r started < "$png.job/started" 2>/dev/null || true
 		[[ $started =~ ^[0-9]+$ ]] || started=0
-		# A job that never finished (hyprlock killed it, say): start over.
 		if (( t - started > 60000000 )); then rm -rf "$png.job"; fi
 	fi
 	if mkdir "$png.job" 2>/dev/null; then
@@ -209,7 +187,6 @@ cover() {
 	printf '%s\n' "$NOART"
 }
 
-# render ART PNG: fetch the image (a local file or http) and draw it.
 render() {
 	local art=$1 png=$2 src tmp ok=0
 	tmp=$(mktemp "$dir/fetch.XXXXXX") || return 1
@@ -231,14 +208,11 @@ render() {
 	rm -f "$tmp"
 	if (( ok )); then
 		rm -f "$png.fail"
-		# Keep the newest 40 covers.
 		ls -1t "$dir"/cover-*.png 2>/dev/null | tail -n +41 | while IFS= read -r old; do rm -f "$old"; done
 	else
 		: > "$png.fail"
 	fi
 }
-
-# --- Buttons --------------------------------------------------------------------
 
 act() {
 	load
@@ -248,8 +222,6 @@ act() {
 		next) timeout 2 playerctl --player="$instance" next ;;
 		toggle) timeout 2 playerctl --player="$instance" play-pause ;;
 	esac > /dev/null 2>&1 || true
-	# The player takes a moment to change its state; the labels follow it on
-	# their next update.
 	sleep 0.25
 	refresh now
 	sleep 0.75

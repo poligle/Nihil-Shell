@@ -9,9 +9,6 @@ import qs.components
 import qs.drawers
 import qs.nilo
 
-// One per output: a fullscreen, click-through layer that draws the frame and
-// grows the drawers out of it. Only the bar, the open drawers and the
-// notifications take input (see `mask`).
 Scope {
     id: root
 
@@ -38,34 +35,17 @@ Scope {
 
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "nihil-frame"
-        // OnDemand, not Exclusive: Hyprland drops every focus grab when a layer
-        // turns exclusive (desktop/view/LayerSurface.cpp), which closed the
-        // launcher and the panel the moment they opened. The grab below hands
-        // the keyboard to this window instead. The launcher and the wallpapers
-        // take it however they opened, so you can type (or pick) as soon as
-        // they appear from the edge; the panel and the dashboard once they are
-        // kept (the Wi-Fi password, a new task in the kanban). The clipboard
-        // history leaves the keyboard to the window it pastes in (its keys
-        // come from Hyprland, services/Clipboard.qml), but for a key without
-        // a modifier: then it is Exclusive, with no grab, until it pastes,
-        // and Hyprland gives the keyboard back (refocusLastWindow).
+        // OnDemand, not Exclusive: Hyprland drops every focus grab when a layer turns exclusive.
         WlrLayershell.keyboardFocus: clipKeys ? WlrKeyboardFocus.Exclusive
             : launcherOpen || wallOpen || ovOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
-        // While the clipboard history has the keyboard, Hyprland's own keys
-        // wait: its key again reaches the history, SUPER + Tab goes through
-        // it and SUPER + Escape leaves it, rather than going to the next
-        // workspace or bringing out the scratchpad. ShortcutInhibitor came
-        // with Quickshell 0.3 (as Hyprland.usingLua, which Workspaces.qml
-        // needs): loaded apart all the same, an older one only goes without.
         Loader {
             active: win.clipKeys
             source: "ClipboardKeys.qml"
             onLoaded: item.window = win
         }
 
-        // Caffeine (services/Caffeine.qml): while it is on, hypridle waits.
         IdleInhibitor {
             window: win
             enabled: Caffeine.on
@@ -80,7 +60,6 @@ Scope {
         readonly property bool clipKeys: clipOpen && Clipboard.keyboard
         readonly property bool osdOpen: Osd.shown && Osd.screen === root.output && !panelOpen
 
-        // Opening progress of each drawer (0 closed, 1 open).
         property real dashP: dashOpen ? 1 : 0
         property real panelP: panelOpen ? 1 : 0
         property real launcherP: launcherOpen ? 1 : 0
@@ -97,37 +76,29 @@ Scope {
         Behavior on ovP { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
         Behavior on osdP { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
 
-        // Content fades in at the end of the opening, like LEDs switching on.
         function reveal(p: real): real { return Math.max(0, (p - 0.55) / 0.45); }
 
         readonly property real innerW: width - root.inset - root.edge
         readonly property real centerX: root.inset + innerW / 2
 
         readonly property real dashW: Math.min(980, innerW - 120)
-        // As deep as the dashboard asks: its kanban grows with the tasks.
         property real dashD: Math.min(dashboard.implicitHeight, height - 2 * root.edge - 96)
         Behavior on dashD { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
         readonly property real panelL: Math.min(height - 2 * root.edge - 96, 860)
         readonly property real panelD: 400
         readonly property real launcherW: Math.min(860, innerW - 120)
-        // Taller for Nilo ("?"), so the conversation has room.
         property real launcherD: launcher.niloMode ? Math.min(680, height - 2 * root.edge - 140) : 470
         Behavior on launcherD { NumberAnimation { duration: Tokens.animDrawer; easing.type: Easing.OutCubic } }
-        // The wallpapers, side by side: as wide as they are, up to the launcher's room.
         readonly property real wallW: Math.min(innerW - 120, Math.max(460, Config.wallpapers.length * 222 + 34))
         readonly property real wallD: 214
-        // The clipboard history, from the top: as deep as its copies.
         readonly property real clipW: Math.min(680, innerW - 120)
         property real clipD: Math.min(clipboard.implicitHeight, height - 2 * root.edge - 96)
         Behavior on clipD { NumberAnimation { duration: Tokens.animNormal; easing.type: Easing.OutCubic } }
-        // The workspaces, from the top: as wide as they are, up to the screen's room.
         readonly property real ovW: Math.min(innerW - 120, overview.implicitWidth)
         readonly property real ovD: overview.implicitHeight
         readonly property real osdL: 300
         readonly property real osdD: 64
 
-        // Nilo's panel, out of the bar next to its eyes (nilo/Peek.qml): its
-        // middle at the eyes, never into the frame's corners.
         readonly property bool peekOpen: root.hasBar && Nilo.peeking && Nilo.peekScreen === root.output
             && Drawers.current === ""
         property real peekP: peekOpen ? 1 : 0
@@ -165,12 +136,6 @@ Scope {
             ]
         }
 
-        // Clicking outside an open drawer closes it. The dashboard and the
-        // panel opened by hovering leave the keyboard where it was; all of
-        // them close when the pointer leaves, unless a click or a key (the
-        // launcher) kept them. The clipboard history takes the keyboard its
-        // own way (above): if it comes out over the launcher, Hyprland may
-        // clear this grab as it does, and that must not close it.
         HyprlandFocusGrab {
             windows: [win]
             active: win.launcherOpen || win.wallOpen || win.ovOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
@@ -184,11 +149,6 @@ Scope {
             id: scene
             anchors.fill: parent
 
-            // Smoked glass (Preferences, Look): what is behind this screen,
-            // for the frame and for every Surface in its drawers. The windows
-            // too while some glass can be over one: a drawer or a notification
-            // out, or a window reaching into the frame. The launcher's dim is
-            // behind its glass as well.
             property Item glassBackdrop: Machine.glass ? backdrop.item : null
 
             Loader {
@@ -204,7 +164,6 @@ Scope {
                 }
             }
 
-            // Dim the desktop behind the launcher; clicking it closes.
             Rectangle {
                 anchors.fill: parent
                 color: Tokens.black
@@ -252,7 +211,6 @@ Scope {
                 output: root.output
             }
 
-            // Dashboard: from the top edge, opened by hovering it or SUPER+D.
             MouseArea {
                 id: hotZone
                 x: win.centerX - win.dashW / 2
@@ -291,8 +249,6 @@ Scope {
                     }
                 }
 
-                // A click inside keeps a dashboard opened by hovering, and lets
-                // it take the keyboard. The press goes on to the dashboard.
                 MouseArea {
                     anchors.fill: parent
                     enabled: win.dashOpen && Drawers.byHover
@@ -303,9 +259,6 @@ Scope {
                 }
             }
 
-            // The clipboard history (services/Clipboard.qml): from the top
-            // too, with the keyboard while it is out; it gives it back to the
-            // window that had it before pasting there.
             Item {
                 id: clipHit
                 x: win.centerX - win.clipW / 2
@@ -330,8 +283,6 @@ Scope {
                 }
             }
 
-            // The workspaces (drawers/Overview.qml): from the top as well, with
-            // the keyboard however it opened.
             Item {
                 id: ovHit
                 x: win.centerX - win.ovW / 2
@@ -379,8 +330,6 @@ Scope {
                 }
             }
 
-            // The settings panel also opens by resting the pointer in the
-            // top-right corner for a moment. The zone stays inside the frame.
             MouseArea {
                 id: cornerZone
                 x: win.width - width
@@ -400,8 +349,6 @@ Scope {
                 }
             }
 
-            // Control panel: from the top-right corner, opened from the status
-            // icons, SUPER+P or by resting the pointer in the corner.
             Item {
                 id: panelHit
                 x: win.width - root.edge - win.panelD * win.panelP
@@ -423,8 +370,6 @@ Scope {
                     opacity: win.reveal(win.panelP)
                 }
 
-                // A click inside keeps a panel opened by hovering, as if it
-                // had been opened on purpose. The press goes on to the panel.
                 MouseArea {
                     anchors.fill: parent
                     enabled: win.panelOpen && Drawers.byHover
@@ -435,7 +380,6 @@ Scope {
                 }
             }
 
-            // On-screen display: from the middle of the right edge.
             Item {
                 x: win.width - root.edge - win.osdD * win.osdP
                 y: win.height / 2 - win.osdL / 2
@@ -451,8 +395,6 @@ Scope {
                 }
             }
 
-            // Launcher: from the bottom edge, SUPER+Space, three fingers up or
-            // resting the pointer on the middle of the bottom edge.
             Item {
                 x: win.centerX - win.launcherW / 2
                 y: win.height - root.edge - win.launcherD * win.launcherP
@@ -473,10 +415,6 @@ Scope {
                     opacity: win.reveal(win.launcherP)
                 }
 
-                // Opened by hovering, it takes the keyboard but closes when the
-                // pointer leaves; a click inside (or a key, Launcher.qml) keeps
-                // it open, as if it had come from SUPER+Space. The press goes on
-                // to the launcher.
                 MouseArea {
                     anchors.fill: parent
                     enabled: win.launcherOpen && Drawers.byHover
@@ -487,8 +425,6 @@ Scope {
                 }
             }
 
-            // Wallpapers (SUPER + W): from the bottom edge too, where the
-            // launcher comes out, while the desktop shows each one at once.
             Item {
                 id: wallHit
                 x: win.centerX - win.wallW / 2
@@ -505,9 +441,6 @@ Scope {
                 }
             }
 
-            // The zone sits on the edge itself, under the launcher's footprint.
-            // The pointer has to rest there a moment: it often lands on the
-            // bottom edge on its way to a window's status bar.
             MouseArea {
                 id: bottomZone
                 x: win.centerX - win.launcherW / 2
@@ -527,8 +460,6 @@ Scope {
                 }
             }
 
-            // Nilo's panel grows from the bar to the right, its content
-            // sliding out with it.
             Item {
                 id: peekHit
                 x: root.inset

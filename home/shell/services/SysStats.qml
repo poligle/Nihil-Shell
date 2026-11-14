@@ -5,8 +5,6 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 
-// CPU, memory, temperature and network throughput from /proc and /sys.
-// CPU/RAM/temperature are only sampled while the dashboard is open.
 Singleton {
     id: root
 
@@ -57,12 +55,6 @@ Singleton {
         }
     }
 
-    // The CPU's own sensor first (AMD, Intel, ARM), then the laptop's, then
-    // a thermal zone, then any sensor: every temp*_input of each, only one
-    // that reads a sane value. It is looked for again when the dashboard
-    // opens without one, and after five readings in a row fail, then without
-    // the one that failed; the journal says which
-    // (journalctl --user -u nihil-shell | grep temperature).
     Process {
         id: findTemp
         command: [Config.cmd.sh, "-c",

@@ -2,10 +2,6 @@ import QtQuick
 import qs.theme
 import qs.components
 
-// A row of the gear, as the drawers have theirs: what it is and what it
-// means on the left, its control on the right (a choice, a field, a key:
-// the shell's own, as Preferences has them). The switches are rows like
-// this one too (SwitchRow.qml).
 Item {
     id: root
 

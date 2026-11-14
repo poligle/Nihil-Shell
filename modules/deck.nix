@@ -1,12 +1,4 @@
 # deck.nix by poligle
-#
-# The phone as a deck for this computer (docs/deck.md): NIHIL Launcher, on
-# Android, opens apps and web pages here, plays and skips the music, turns
-# the volume, locks the screen and is its trackpad. Its service is the
-# user's, in the session (home/deck.nix); here, its port in the firewall, its
-# name on the local network (mDNS, through Avahi), so the phone finds it
-# again when its address changes, and uinput for the trackpad. settings.json's "deck": { "enable": true } turns it on
-# (Preferences, Devices).
 
 { config, lib, pkgs, ... }:
 let
@@ -25,7 +17,6 @@ in
         port = lib.mkOption
         {
             type = lib.types.port;
-            # NIHIL on a phone's keypad.
             default = 64445;
             description = "The deck's HTTPS port on the local network.";
         };
@@ -35,11 +26,6 @@ in
     {
         networking.firewall.allowedTCPPorts = [ cfg.port ];
 
-        # The trackpad (docs/deck.md): while the phone is one, the deck makes a
-        # touchpad here with uinput, as whoever is at the computer may (uaccess,
-        # as with Steam's controllers). It is a phone's screen and not the
-        # laptop's own, so libinput leaves it on with the lid closed and while
-        # typing.
         boot.kernelModules = [ "uinput" ];
         services.udev.packages =
         [
@@ -54,7 +40,6 @@ in
             })
         ];
 
-        # Its own address too, so the phone can resolve where the service is.
         services.avahi =
         {
             enable = true;

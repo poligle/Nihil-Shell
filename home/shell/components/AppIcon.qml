@@ -4,8 +4,6 @@ import Quickshell
 import Quickshell.Widgets
 import qs.theme
 
-// Application icon, desaturated like Nothing's monochrome icon pack.
-// It regains its colour when `colored` is true (selection, hover).
 Item {
     id: root
 

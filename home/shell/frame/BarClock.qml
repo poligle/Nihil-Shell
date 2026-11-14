@@ -4,7 +4,6 @@ import qs.theme
 import qs.services
 import qs.components
 
-// Hours over minutes in Doto. Click opens the dashboard.
 Item {
     id: root
 

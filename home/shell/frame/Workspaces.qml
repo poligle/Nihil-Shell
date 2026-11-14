@@ -4,8 +4,6 @@ import Quickshell.Hyprland
 import qs.theme
 import qs.config
 
-// Workspaces as LEDs: off = empty, lit = has windows, long pill = focused,
-// red = urgent. Scroll to move between workspaces.
 Column {
     id: root
 
@@ -15,7 +13,6 @@ Column {
     readonly property int count: Math.max(Config.persistentWorkspaces, ...list.map(w => w.id))
     readonly property int focused: Hyprland.focusedWorkspace?.id ?? 1
 
-    // Hyprland's Lua config (0.55+) takes Lua dispatchers; hyprlang takes the classic syntax.
     function go(target: string): void {
         Hyprland.dispatch(Hyprland.usingLua
             ? `hl.dsp.focus({ workspace = "${target}" })`

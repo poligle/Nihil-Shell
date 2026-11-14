@@ -1,17 +1,6 @@
 .pragma library
 
-// Geometry of the NIHIL frame.
-//
-// The frame is one shape: the screen rectangle minus an inner rounded
-// rectangle whose outline grows "bumps" where drawers come out. Drawers
-// therefore look like part of the frame (same black, concave joints).
-//
-// Edges are walked clockwise: 0 top, 1 right, 2 bottom, 3 left. Each edge
-// has an origin, a direction along the edge and an inward normal, so a bump
-// is described by a range along the edge (in absolute screen coordinates)
-// and a depth along the normal.
-
-const K = 0.5523; // cubic Bezier constant for a quarter circle
+const K = 0.5523;
 
 function fmt(p) {
     return (Math.round(p[0] * 100) / 100) + " " + (Math.round(p[1] * 100) / 100);
@@ -31,7 +20,6 @@ function at(e, s, n) {
     return [e.o[0] + e.d[0] * s + e.n[0] * n, e.o[1] + e.d[1] * s + e.n[1] * n];
 }
 
-// Rounded corner from a to b around the vertex v.
 function corner(a, v, b) {
     const c1 = [a[0] + K * (v[0] - a[0]), a[1] + K * (v[1] - a[1])];
     const c2 = [b[0] + K * (v[0] - b[0]), b[1] + K * (v[1] - b[1])];
@@ -52,12 +40,10 @@ function bump(e, b, fillet, radius) {
     return p;
 }
 
-// A drawer that starts right at the corner where `e` begins (prev -> e):
-// the frame corner disappears and the drawer merges with the previous edge.
 function cornerBump(prev, e, b, fillet, radius) {
     const f = Math.min(fillet, b.d / 2);
     const r = Math.max(0, Math.min(radius, b.d - f, b.s1 - f));
-    const side = prev.len - b.d; // the drawer's free side, along prev
+    const side = prev.len - b.d;
     let p = " L" + fmt(at(prev, side - f, 0));
     p += corner(at(prev, side - f, 0), at(prev, side, 0), at(prev, side, f));
     p += " L" + fmt(at(prev, side, b.s1 - r));
@@ -67,13 +53,11 @@ function cornerBump(prev, e, b, fillet, radius) {
     return p;
 }
 
-// Inner outline (SVG path), walking clockwise from the edge `start`.
 function outline(W, H, L, T, R, B, radius, fillet, drawerRadius, bumps, start) {
     if (W <= 0 || H <= 0) return "";
     const es = edges(W, H, L, T, R, B);
     const first = start || 0;
 
-    // Per edge: bumps in edge coordinates; one may sit on the starting corner.
     const lists = es.map((e, i) => (bumps || [])
         .filter(b => b.edge === i && b.d > 0.5)
         .map(b => {
@@ -103,14 +87,10 @@ function outline(W, H, L, T, R, B, radius, fillet, drawerRadius, bumps, start) {
     return p + " Z";
 }
 
-// Approximate length of the plain inner outline (for the glyph light).
 function ringLength(W, H, L, T, R, B, radius) {
     return 2 * ((W - L - R) + (H - T - B)) - 8 * radius + 2 * Math.PI * radius;
 }
 
-// Half of the plain inner outline: from the middle of the bottom edge, up
-// one side (1 right, -1 left), to the middle of the top edge. The charging
-// light rises along both. Each is ringLength / 2 long.
 function rise(W, H, L, T, R, B, radius, side) {
     if (W <= 0 || H <= 0) return "";
     const x0 = L, y0 = T, x1 = W - R, y1 = H - B;

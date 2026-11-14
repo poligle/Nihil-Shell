@@ -1,21 +1,4 @@
 # shell.nix by poligle
-#
-# NIHIL shell on Quickshell: frame and bar, drawers (dashboard, control
-# panel, launcher), notifications, OSD, desktop widgets, Preferences and the
-# welcome, and Nilo's side of the assistant. It replaces waybar, wofi, eww
-# and dunst.
-#
-# The QML lives in home/shell/. Tokens.qml, Config.qml and Lang.qml are
-# generated here from theme/nihil.nix, the machine's settings and
-# theme/i18n.nix, and every external program is referenced by its store
-# path, so the shell does not depend on $PATH.
-#
-#   nihil-ipc drawers toggle launcher|dashboard|panel|wallpapers
-#   nihil-ipc clipboard open|next|previous|released|paste|cancel (services/Clipboard.qml)
-#   nihil-ipc osd volume 40 false        nihil-ipc glyph test true
-#   nihil-ipc nilo toggle                (Nilo, modules/nilo.nix)
-#   nihil-ipc settings open|toggle|close|welcome (Preferences, settings/)
-#   journalctl --user -u nihil-shell -f  (logs)
 
 { config, osConfig, pkgs, lib, ... }:
 let
@@ -25,15 +8,12 @@ let
 	profile = "${config.home.profileDirectory}/bin";
 	iconTheme = config.gtk.iconTheme.name;
 
-	# Nilo (modules/nilo.nix): the shell starts the agent when it first opens.
 	nilo =
 	{
 		enabled = nihil.nilo.enable;
 		agent = lib.optionalString nihil.nilo.enable "${import ./nilo { inherit pkgs lib osConfig; inherit (commands) terminal; }}/bin/nilo-agent";
 	};
 
-	# The phone as a deck (home/deck.nix): Preferences, Devices pairs one
-	# through its command.
 	deck =
 	{
 		enabled = nihil.deck.enable;
@@ -41,11 +21,9 @@ let
 		inherit (nihil.deck) port;
 	};
 
-	# Tokens.qml and Lang.qml, as the greeter has them too (theme/qml.nix).
 	qml = import ../theme/qml.nix { inherit pkgs lib nihil; };
 	tokensQml = qml.tokens;
 
-	# Raw ASCII output for the dashboard visualiser: "3;5;0;...;\n" per frame.
 	cavaConfig = pkgs.writeText "nihil-cava.conf" (lib.generators.toINI { }
 	{
 		general = { bars = 24; framerate = 30; autosens = 1; };
@@ -92,7 +70,6 @@ let
 		shot = "${profile}/nihil-shot";
 		xdgUserDir = "${pkgs.xdg-user-dirs}/bin/xdg-user-dir";
 		hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
-		# Preferences applies through sudo and nihil apply (modules/nihil-cli.nix).
 		sudo = "/run/wrappers/bin/sudo";
 		nihil = "/run/current-system/sw/bin/nihil";
 		timedatectl = "${pkgs.systemd}/bin/timedatectl";
@@ -119,7 +96,6 @@ let
 		    readonly property var widgets: ${builtins.toJSON [ "clock" "network" "media" ]}
 		    readonly property var trayHidden: ${builtins.toJSON nihil.trayHidden}
 		    readonly property var wallpapers: ${builtins.toJSON nihil.wallpapers.names}
-		    // How many copies the clipboard history keeps; 0, none (home/clipboard.nix).
 		    readonly property int clipboard: ${toString nihil.clipboard}
 		    readonly property string cavaConfig: "${cavaConfig}"
 		    readonly property var sounds: (${builtins.toJSON sounds})
@@ -127,12 +103,9 @@ let
 		    readonly property var nilo: (${builtins.toJSON nilo})
 		    readonly property var deck: (${builtins.toJSON deck})
 
-		    // Preferences (settings/): the machine's settings.json, the wallpaper
-		    // renders, and the keys and fingers as built and as NIHIL has them.
 		    readonly property string settingsFile: "${nihil.flake}/settings.json"
 		    readonly property string wallpaperDir: "${nihil.wallpapers}"
 		    readonly property string user: "${nihil.user.name}"
-		    // The first name, for Nilo's greetings (settings.json's fullName).
 		    readonly property string greeting: ${builtins.toJSON nihil.user.greeting}
 		    readonly property var binds: (${builtins.toJSON nihil.binds})
 		    readonly property var bindDefaults: (${builtins.toJSON nihil.bindDefaults.keys})
@@ -143,7 +116,6 @@ let
 
 	langQml = qml.lang;
 
-	# The smoked glass's shaders, compiled (theme/shaders.nix).
 	shaders = import ../theme/shaders.nix { inherit pkgs; };
 
 	shell = pkgs.runCommand "nihil-shell" { } ''
@@ -177,7 +149,6 @@ in
 			Description = "NIHIL shell (Quickshell)";
 			After = [ "graphical-session.target" ];
 			PartOf = [ "graphical-session.target" ];
-			# A new build of the shell restarts the service on switch.
 			X-Restart-Triggers = [ "${shell}" ];
 		};
 
@@ -186,12 +157,7 @@ in
 			ExecStart = "${quickshell}/bin/qs -c nihil";
 			Restart = "on-failure";
 			RestartSec = 2;
-			# Apps opened from the launcher live in this cgroup: keep them
-			# running when the shell restarts.
 			KillMode = "process";
-			# They also inherit this environment, so it only adds what Hyprland
-			# gives the apps it starts (home/session-env.nix). PATH stays the
-			# session's; the shell's own settings are pragmas in shell.qml.
 			Environment = lib.mapAttrsToList (name: value: "${name}=${value}") (import ./session-env.nix);
 		};
 

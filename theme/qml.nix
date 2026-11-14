@@ -1,9 +1,4 @@
 # qml.nix by poligle
-#
-# The design tokens (theme/nihil.nix) and the strings of the selected
-# language (theme/i18n.nix) as QML singletons, theme/Tokens.qml and
-# config/Lang.qml, for the shell (home/shell.nix) and the greeter
-# (modules/greeter.nix) alike.
 
 { pkgs, lib, nihil }:
 let
@@ -28,7 +23,6 @@ in
 		    readonly property color ink: "#${t.palette.ink}"
 		    readonly property color interrupt: "#${t.palette.signal}"
 
-		    // An old google-fonts snapshot may lack Doto: fall back to Space Mono.
 		    readonly property string fontDot: Qt.fontFamilies().indexOf("${t.fonts.dot}") >= 0 ? "${t.fonts.dot}" : "${t.fonts.mono}"
 		    readonly property string fontSans: "${t.fonts.sans}"
 		    readonly property string fontMono: "${t.fonts.mono}"
@@ -47,7 +41,6 @@ in
 		}
 	'';
 
-	# As QML string literals.
 	lang = pkgs.writeText "Lang.qml" ''
 		pragma Singleton
 

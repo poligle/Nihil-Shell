@@ -5,9 +5,6 @@ import qs.config
 import qs.services
 import qs.components
 
-// What is waiting to be applied, and applying it, asked once: with a
-// fingerprint reader, a finger at once, or the password typed instead; without
-// one, the password (services/Machine.qml).
 Item {
     id: root
 
@@ -17,7 +14,6 @@ Item {
 
     implicitHeight: 56 + (showLog && hasLog ? logBox.height + 12 : 0)
 
-    // A finger is awaited: the field stays, for the password instead.
     readonly property bool fingerWait: Machine.phase === "auth" && Machine.auth === "finger"
 
     function go(): void {
@@ -29,9 +25,6 @@ Item {
         password.clear();
     }
 
-    // Neither the finger nor the password did it: the field again, when it
-    // was these settings (a generation asks on its own page). Once it
-    // applies, the field goes.
     Connections {
         target: Machine
         function onFailureChanged(): void {
@@ -46,7 +39,6 @@ Item {
         }
     }
 
-    // The end of /run/nihil/apply.log, following it while it applies.
     Surface {
         id: logBox
         visible: root.showLog && root.hasLog
@@ -154,7 +146,6 @@ Item {
                     root.go();
                 } else {
                     root.asking = true;
-                    // With a reader, a finger at once; the field is there too.
                     if (Machine.fingerprint)
                         Machine.apply("");
                     password.grab();

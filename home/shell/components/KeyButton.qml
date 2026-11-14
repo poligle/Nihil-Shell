@@ -1,10 +1,6 @@
 import QtQuick
 import qs.theme
 
-// A button as a key on the keyboard (nilo/Keycap.qml): hairline, Space
-// Mono. `accent` lights it (ink, the name in black) for the one thing to
-// do; `danger` makes it red, for one that can't be undone (red only
-// interrupts).
 Surface {
     id: root
 

@@ -1,10 +1,4 @@
 # stylix.nix by poligle
-#
-# Stylix applies the NIHIL palette system-wide (GTK, Qt, kitty, Neovim, Zen,
-# ReGreet, and VS Code or VSCodium on a machine that adds it, each through
-# its own Home Manager module); Hyprland, hyprlock and Plymouth are NIHIL's
-# own. The scheme is fixed and comes from theme/nihil.nix; the image is the
-# dot-matrix render of the default wallpaper on the primary output.
 
 { config, lib, pkgs, ... }:
 let

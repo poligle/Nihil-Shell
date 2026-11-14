@@ -5,25 +5,13 @@ import Quickshell
 import Quickshell.Io
 import "TaskMerge.js" as TaskMerge
 
-// The kanban in the dashboard (drawers/TaskBoard.qml): short tasks in three
-// columns, to do, doing and done, each in the order they are put. They live in
-// ~/.local/state/nihil/tasks.json, which can also be edited by hand: the board
-// follows the file. A phone with NIHIL Launcher keeps the same board through the
-// deck (tasks sync): each card carries when its text and its place (its column
-// and its rank there) were last set, a removed card leaves the time of its
-// removal, and TaskMerge.js puts two boards together.
-//   qs -c nihil ipc call tasks add "Entregar la práctica"     tasks list
 Singleton {
     id: root
 
     readonly property int columns: 3
     readonly property int maxLength: 160
-    // In display order: [{ id, text, column, textStamp, placeStamp, rank }], column 0
-    // to do, 1 doing, 2 done (a card from before ranks has none); removed: { id: when },
-    // kept 60 days.
     property var cards: []
     property var removed: ({})
-    // The last stamp given or seen: the next one is always later.
     property real clock: 0
     readonly property string path: {
         const home = Quickshell.env("HOME") ?? "";
@@ -39,7 +27,6 @@ Singleton {
         return String(text ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength);
     }
 
-    // At the end of "to do".
     function add(text: string): void {
         const typed = clean(text);
         if (typed === "") return;
@@ -50,7 +37,6 @@ Singleton {
         save();
     }
 
-    // Its text written again; empty, it stays as it was.
     function edit(id: string, text: string): void {
         const typed = clean(text);
         const card = cards.find(c => c.id === id);
@@ -60,7 +46,6 @@ Singleton {
         save();
     }
 
-    // To the end of another column.
     function move(id: string, column: int): void {
         const to = Math.max(0, Math.min(columns - 1, column));
         const card = cards.find(c => c.id === id);
@@ -68,7 +53,6 @@ Singleton {
         place(id, to, inColumn(to).length);
     }
 
-    // Where it is dropped: at [index] of [column], counted without it.
     function place(id: string, column: int, index: int): void {
         const to = Math.max(0, Math.min(columns - 1, column));
         const next = TaskMerge.place(cards, id, to, index, stamp());
@@ -103,7 +87,6 @@ Singleton {
         return Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36);
     }
 
-    // A phone's board (or anything in its shape) into this one: the result, for it too.
     function sync(board: var): var {
         const merged = TaskMerge.merge({ cards: cards, removed: removed }, board ?? {}, Date.now());
         clock = Math.max(clock, TaskMerge.latest(merged));
@@ -113,8 +96,6 @@ Singleton {
         return { cards: cards, removed: removed, now: Date.now() };
     }
 
-    // --- The file -----------------------------------------------------------------
-
     property string written: ""
 
     function parse(text: string): void {
@@ -123,9 +104,6 @@ Singleton {
         try { data = JSON.parse(text); } catch (e) { console.log("tasks: " + root.path + " is not valid JSON"); return; }
         const list = Array.isArray(data) ? data : data?.cards;
         if (!Array.isArray(list)) return;
-        // Version 1 (and a hand-written file) has no stamps: they start at 0, and the
-        // file's order is kept as the order the cards got to their column. Version 2
-        // has no ranks: a card without one is where it got to its column.
         const loaded = list
             .filter(c => c && String(c.text ?? "").trim() !== "")
             .map((c, i) => {
@@ -173,7 +151,6 @@ Singleton {
         function list(): string {
             return root.cards.map(c => ["[ ]", "[~]", "[x]"][c.column] + " " + c.text).join("\n");
         }
-        // For the deck (home/deck): the board as JSON, and a phone's board merged in.
         function state(): string {
             return JSON.stringify({ cards: root.cards, removed: root.removed, now: Date.now() });
         }

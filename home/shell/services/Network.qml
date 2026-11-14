@@ -5,9 +5,6 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 
-// NetworkManager through nmcli (works with any Quickshell version).
-// Port of the old wifi-menu.sh: saved networks, new ones with password,
-// and WPA-Enterprise handed over to nm-connection-editor.
 Singleton {
     id: root
 
@@ -15,7 +12,7 @@ Singleton {
     property string ssid: ""        // active Wi-Fi connection
     property int strength: 0
     property string ethernet: ""    // active wired connection
-    property var networks: []       // { ssid, signal, secure, enterprise, active, saved }
+    property var networks: []
     property var saved: []
     property bool scanning: false
     property string pending: ""     // SSID being connected
@@ -25,7 +22,6 @@ Singleton {
 
     readonly property bool connected: ssid !== "" || ethernet !== ""
 
-    // nmcli -t escapes ':' and '\' with a backslash.
     function fields(line: string): var {
         const out = [];
         let cur = "";
@@ -114,7 +110,6 @@ Singleton {
         root.run([Config.cmd.nmcli, "connection", "delete", "id", name], () => { root.refresh(); root.scan(); });
     }
 
-    // One action at a time, with a callback on exit.
     property var afterAction: null
 
     function run(command: var, callback: var): void {

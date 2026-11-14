@@ -3,9 +3,6 @@
 {
 	description = "NIHIL: a monochrome, dot-matrix desktop for NixOS";
 
-	# The NixOS every machine runs: nihil update takes flake.lock from here.
-	# nixpkgs, Home Manager and Stylix move to a new release together, and
-	# .github/workflows/update.yml brings them up to date every week.
 	inputs =
 	{
 		nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -22,8 +19,6 @@
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
 
-		# Zen on this nixpkgs too: its own (nixos-unstable) was a second nixpkgs
-		# to fetch and evaluate, and a second set of libraries in every machine.
 		zen-browser =
 		{
 			url = "github:0xc000022070/zen-browser-flake";
@@ -35,16 +30,11 @@
 	let
 		system = "x86_64-linux";
 
-		# Which NIHIL a machine is built from (nihil version): its commit, or
-		# "local" for a checkout (nihil dev), and when.
 		date = self.lastModifiedDate or "19700101000000";
 		at = start: length: builtins.substring start length date;
 		revision = "${self.shortRev or self.dirtyShortRev or "local"} (${at 0 4}-${at 4 2}-${at 6 2} ${at 8 2}:${at 10 2})";
 	in
 	{
-		# NIHIL on any machine: its NixOS module, Home Manager for its user
-		# included. A machine's own flake (templates/machine, in /etc/nixos)
-		# goes through lib.mkSystem.
 		nixosModules.default = { config, ... }:
 		{
 			imports =
@@ -64,16 +54,12 @@
 			};
 		};
 
-		# settings: the machine's settings.json (modules/settings.nix).
-		# modules: its hardware-configuration.nix and local.nix.
-		# home: its Home Manager additions (home.nix).
 		lib.mkSystem = { settings ? { }, modules ? [ ], home ? [ ] }: nixpkgs.lib.nixosSystem
 		{
 			inherit system;
 			modules = [ self.nixosModules.default { nihil = { inherit settings home revision; }; } ] ++ modules;
 		};
 
-		# The installer (installer/), and a machine as it leaves one, for CI.
 		nixosConfigurations =
 		{
 			installer = nixpkgs.lib.nixosSystem
