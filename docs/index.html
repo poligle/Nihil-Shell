@@ -324,7 +324,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/small/dashboard-1200.webp" srcset="assets/screens/small/dashboard-640.webp 640w, assets/screens/small/dashboard-1200.webp 1200w, assets/screens/dashboard.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: the motto and a dot-matrix clock, the caffeine switch, the player with its spectrum in LED columns, CPU, RAM and temperature dials, a network scope, and a kanban with tasks to do and doing."></a>
           <figcaption>
             <h3>Dashboard</h3>
-            <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, and a kanban you drag into order, in sync with the phone.</p>
+            <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a kanban you drag into order, in sync with the phone, and Vector: paste a text, a picture, a video or a file on it and it is on the phone.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or hover the top edge</span></div>
           </figcaption>
         </figure>
@@ -359,7 +359,7 @@ footer a:hover { color: var(--ink); }
           <a class="shot" href="assets/screens/clipboard.png"><img src="assets/screens/small/clipboard-1200.webp" srcset="assets/screens/small/clipboard-640.webp 640w, assets/screens/small/clipboard-1200.webp 1200w, assets/screens/clipboard.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The clipboard history out of the top edge: a picture with its size, a colour as a red LED, a command lit as the one chosen, and older copies under it."></a>
           <figcaption>
             <h3>Clipboard history</h3>
-            <p>Copy and paste with the same keys in every app. Hold the paste key and the history comes out; let go and the one lit is pasted. Pictures and colours too, and nothing a password manager copies. With the <a href="#deck">phone as a deck</a>, what you copy on one is on the other.</p>
+            <p>Copy and paste with the same keys in every app. Hold the paste key and the history comes out; let go and the one lit is pasted. Pictures and colours too, and nothing a password manager copies. With the <a href="#deck">phone as a deck</a>, the dashboard's Vector carries what you paste to it, and back.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>C</kbd><span>Copy</span></div>
             <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>Paste; held, the history</span></div>
           </figcaption>
@@ -470,7 +470,8 @@ nihil generations clean 7</code></pre>
     <section id="deck" aria-labelledby="deck-title">
       <div class="prose">
         <h2 id="deck-title">The phone as a deck</h2>
-        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume, locks it and is its trackpad. That is all: no commands, no files. On the phone it is one landscape screen in workspaces: the music in one; the apps and the webs in the next, each with its icon (the apps' from this computer's icon theme, the webs' found by this computer, so the phone talks to no one else); the trackpad in the last. The dashboard's kanban stays in sync with the phone's, its order too.</p>
+        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume, locks it and is its trackpad. That is all: no commands, and no files but the ones you hand to Vector. On the phone it is one landscape screen in workspaces: the music in one; the apps and the webs in the next, each with its icon (the apps' from this computer's icon theme, the webs' found by this computer, so the phone talks to no one else); the trackpad in the last. The dashboard's kanban stays in sync with the phone's, its order too.</p>
+        <p class="quiet">Vector carries one thing at a time, either way: a text, a picture, a video or any file up to 100 MB. Paste it or drop it on the dashboard's Vector and it waits on the phone, in Tasks, above the kanban; share it to Vector on the phone and it is on the dashboard, a click from the clipboard. Each side keeps only the last one.</p>
         <p class="quiet">With <a href="wear/">NIHIL for Wear OS</a>, the watch is one more deck: its music, its volume on the bezel or the crown, its caffeine, night light and lock. It pairs over adb with the same code the QR holds, and the phone, a tablet and the watch can all be decks at once.</p>
         <p class="quiet">The trackpad is a touchpad here: the phone streams its fingers, and libinput reads them as it reads the laptop's, with its settings. A tap clicks, two fingers right-click and scroll, three middle-click, a pinch zooms, and the gestures run.</p>
         <p class="quiet">The QR holds a code that pairs once, for five minutes, and the pin of the computer's own certificate: the phone talks HTTPS only to the computer whose key it was shown, with a token of its own, and finds it again on the network by mDNS. The protocol is in <a href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/deck.md"><code>docs/deck.md</code></a>.</p>
