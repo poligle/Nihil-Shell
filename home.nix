@@ -37,7 +37,8 @@
 		pkgs.networkmanagerapplet
 		pkgs.libnotify
 		pkgs.awww
-		pkgs.hyprshot
+		pkgs.grim
+		pkgs.slurp
 		pkgs.hyprpicker
 	];
 }

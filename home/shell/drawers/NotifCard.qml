@@ -16,7 +16,7 @@ Surface {
 
     readonly property bool critical: Notifs.isCritical(notification)
     readonly property var actions: (notification?.actions ?? []).filter(a => a.identifier !== "default")
-    readonly property string image: notification?.image ?? ""
+    readonly property string image: Notifs.picture(notification?.image ?? "")
 
     implicitHeight: content.implicitHeight + 28
     radius: 18
@@ -125,7 +125,8 @@ Surface {
             }
 
             Image {
-                visible: root.image !== ""
+                id: picture
+                visible: root.image !== "" && status !== Image.Error
                 Layout.preferredWidth: 48
                 Layout.preferredHeight: 48
                 source: root.image
