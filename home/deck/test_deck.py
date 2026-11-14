@@ -80,10 +80,15 @@ echo "Volume: 0.45"
 '''
 
 FAKE_WL_COPY = r'''#!/bin/sh
+echo "$*" > "$XDG_RUNTIME_DIR/clipboard.args"
 cat > "$XDG_RUNTIME_DIR/clipboard"
 '''
 
 FAKE_WL_PASTE = r'''#!/bin/sh
+if [ "$1" = --list-types ]; then
+    cat "$XDG_RUNTIME_DIR/clipboard.types" 2> /dev/null
+    exit 0
+fi
 [ -s "$XDG_RUNTIME_DIR/clipboard" ] || exit 1
 cat "$XDG_RUNTIME_DIR/clipboard"
 '''
@@ -136,6 +141,17 @@ class Phone:
             data = json.dumps(body).encode()
             headers["Content-Type"] = "application/json"
         connection.request(method, path, body=data, headers=headers)
+        return self.answer(connection)
+
+    def send(self, path, data, headers):
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        connection = http.client.HTTPSConnection("127.0.0.1", self.port, context=context, timeout=10)
+        connection.request("POST", path, body=data, headers=dict(headers, Authorization="Bearer " + self.token))
+        return self.answer(connection)
+
+    def answer(self, connection):
         response = connection.getresponse()
         self.last = response
         payload = response.read()
@@ -393,15 +409,102 @@ class ServerTest(Base):
         self.assertEqual(self.phone.request("POST", "/v1/unpair", {}), (200, {"ok": True}))
         self.assertEqual(self.phone.request("GET", "/v1/apps")[0], 401)
 
-    def test_the_clipboard_both_ways(self):
+    def test_vector_to_the_phone(self):
         self.pair()
-        self.assertEqual(self.phone.request("GET", "/v1/clipboard"), (200, {"text": ""}))
-        text = "ex nihilo — ñandú " * 400
-        self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": text}), (200, {"ok": True}))
-        self.assertEqual(self.phone.request("GET", "/v1/clipboard"), (200, {"text": text}))
-        self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": ""})[0], 400)
-        self.assertEqual(self.phone.request("POST", "/v1/clipboard", {"text": 42})[0], 400)
-        self.assertEqual(self.phone.request("GET", "/v1/clipboard", token="nope")[0], 401)
+        status, empty = self.phone.request("GET", "/v1/vector")
+        self.assertEqual((status, empty["id"]), (200, ""))
+        self.assertLess(abs(empty["now"] - time.time()), 5)
+        photo = os.path.join(self.folder, "Ñandú en la nieve.jpg")
+        with open(photo, "wb") as file:
+            file.write(b"\xff\xd8" + os.urandom(200000))
+        sent = deck.vector_send(self.config, self.deck.vector, photo)
+        self.assertEqual(sent, {"ok": True, "kind": "image", "name": "Ñandú en la nieve.jpg"})
+        status, item = self.phone.request("GET", "/v1/vector")
+        self.assertEqual((status, item["kind"], item["mime"], item["size"]), (200, "image", "image/jpeg", 200002))
+        self.assertLessEqual(item["time"], item["now"])
+        status, data = self.phone.request("GET", "/v1/vector/data?id=" + item["id"])
+        with open(photo, "rb") as file:
+            self.assertEqual((status, data), (200, file.read()))
+        self.assertIn("Ñandú", urllib.parse.unquote(self.phone.last.getheader("Content-Disposition")))
+        self.assertEqual(self.phone.request("GET", "/v1/vector/data?id=0000")[0], 404)
+        self.assertEqual(self.phone.request("GET", "/v1/vector", token="nope")[0], 401)
+
+        answers = []
+        waiting = threading.Thread(target=lambda: answers.append(
+            self.phone.request("GET", "/v1/vector?wait=8&since=" + item["id"])))
+        started = time.monotonic()
+        waiting.start()
+        time.sleep(0.5)
+        self.assertEqual(self.deck.control({"op": "vector"}), {"devices": ["Phone"]})
+        note = os.path.join(self.folder, "note")
+        with open(note, "w") as file:
+            file.write("ex nihilo")
+        deck.vector_send(self.config, self.deck.vector, "file://" + urllib.parse.quote(note))
+        waiting.join(10)
+        self.assertLess(time.monotonic() - started, 6)
+        status, newer = answers[0]
+        self.assertEqual((status, newer["name"], newer["kind"]), (200, "note", "file"))
+        self.assertNotEqual(newer["id"], item["id"])
+        self.assertEqual(sorted(os.listdir(self.deck.vector.slot("out"))), [".item.json", "note"])
+
+    def test_vector_from_the_phone(self):
+        self.pair()
+        video = os.urandom(300000)
+        status, item = self.phone.send("/v1/vector", video, {"Content-Type": "video/mp4",
+                                                             "X-Vector-Name": urllib.parse.quote("Café.mp4")})
+        self.assertEqual((status, item["kind"], item["name"], item["size"]), (200, "video", "Café.mp4", 300000))
+        received = self.deck.vector.item("in")
+        with open(received["path"], "rb") as file:
+            self.assertEqual(file.read(), video)
+        self.assertEqual(received["from"], "Phone")
+        self.assertIn("ipc vector received", self.logged())
+        status, text = self.phone.send("/v1/vector", "ñ".encode(), {"Content-Type": "text/plain; charset=utf-8"})
+        self.assertEqual((status, text["kind"], text["name"]), (200, "text", "text.txt"))
+        self.assertEqual(sorted(os.listdir(self.deck.vector.slot("in"))), [".item.json", "text.txt"])
+        status, hidden = self.phone.send("/v1/vector", b"x", {"X-Vector-Name": "../.item.json"})
+        self.assertEqual((status, hidden["name"], hidden["kind"]), (200, "file", "file"))
+        self.addCleanup(setattr, deck, "VECTOR_TEXT", deck.VECTOR_TEXT)
+        deck.VECTOR_TEXT = 4
+        status, long = self.phone.send("/v1/vector", b"hello", {"Content-Type": "text/plain", "X-Vector-Name": "notes.txt"})
+        self.assertEqual((status, long["kind"], long["name"]), (200, "file", "notes.txt"))
+        old = deck.VECTOR_MAX
+        deck.VECTOR_MAX = 10
+        self.addCleanup(setattr, deck, "VECTOR_MAX", old)
+        self.assertEqual(self.phone.send("/v1/vector", b"x" * 11, {"Content-Type": "image/png"})[0], 413)
+
+    def test_vector_and_the_clipboard(self):
+        self.pair()
+        vector = self.deck.vector
+        runtime = self.folder
+
+        def clipboard(data, types):
+            with open(os.path.join(runtime, "clipboard"), "wb") as file:
+                file.write(data)
+            with open(os.path.join(runtime, "clipboard.types"), "w") as file:
+                file.write("\n".join(types) + "\n")
+
+        clipboard(b"\x89PNG" + os.urandom(64), ["image/png", "text/html"])
+        self.assertEqual(deck.vector_send(self.config, vector), {"ok": True, "kind": "image", "name": "image.png"})
+        song = os.path.join(self.folder, "Song.ogg")
+        with open(song, "wb") as file:
+            file.write(b"OggS")
+        clipboard(("file://" + urllib.parse.quote(song) + "\r\n").encode(), ["text/uri-list", "text/plain"])
+        self.assertEqual(deck.vector_send(self.config, vector)["name"], "Song.ogg")
+        clipboard(b"hola", ["text/plain;charset=utf-8", "UTF8_STRING"])
+        self.assertEqual(deck.vector_send(self.config, vector), {"ok": True, "kind": "text", "name": "text.txt"})
+        clipboard(b"", [])
+        self.assertEqual(deck.vector_send(self.config, vector), {"error": "empty"})
+        self.assertEqual(deck.vector_send(self.config, vector, self.folder), {"error": "folder"})
+
+        self.assertEqual(deck.vector_copy(self.config, vector), {"error": "empty"})
+        self.phone.send("/v1/vector", b"PNG!", {"Content-Type": "image/png"})
+        self.assertEqual(deck.vector_copy(self.config, vector), {"ok": True})
+        with open(os.path.join(runtime, "clipboard.args")) as file:
+            self.assertEqual(file.read().split(), ["--type", "image/png"])
+        self.phone.send("/v1/vector", b"%PDF", {"Content-Type": "application/pdf", "X-Vector-Name": "Una factura.pdf"})
+        deck.vector_copy(self.config, vector)
+        with open(os.path.join(runtime, "clipboard"), "rb") as file:
+            self.assertEqual(file.read(), ("file://" + urllib.parse.quote(vector.item("in")["path"]) + "\r\n").encode())
 
     def test_without_the_shell(self):
         self.pair()

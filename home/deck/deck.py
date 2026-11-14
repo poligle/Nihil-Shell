@@ -15,6 +15,7 @@ import http.server
 import ipaddress
 import json
 import math
+import mimetypes
 import os
 import re
 import secrets
@@ -41,7 +42,11 @@ CODE_LIFETIME = 300             # seconds a code pairs
 CODE_ATTEMPTS = 5
 MAX_BODY = 4096
 TASKS_MAX = 256 * 1024     # a phone's whole kanban
-CLIP_MAX = 256 * 1024
+VECTOR_MAX = 100 * 1024 * 1024
+VECTOR_TEXT = 256 * 1024
+VECTOR_WAIT = 50
+VECTOR_LIVE = 120
+CHUNK = 64 * 1024
 COVER_MAX = 4 * 1024 * 1024
 CARDS_MAX = 1000
 FAIL_WINDOW = 60
@@ -52,6 +57,9 @@ SEEN_EVERY = 60
 ICON_SIZE = 128
 APPS_FOR = 20
 APP_ID = re.compile(r"[A-Za-z0-9._+-]{1,160}")
+MIME = re.compile(r"[a-z0-9][a-z0-9!#$&^_.+-]{0,63}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}")
+EXTENSIONS = {"text/plain": ".txt", "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
+              "image/webp": ".webp", "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 VIRTUAL = re.compile(r"(docker|br-|virbr|veth|vnet|lxcbr|lxdbr|podman|cni|flannel)")
 ACTIONS = {
     "media": ("toggle", "next", "previous"),
@@ -337,21 +345,6 @@ class Session:
 
     def ipc(self, *arguments):
         return self.run([self.config["ipc"], *arguments])
-
-    def clipboard(self, text=None):
-        if text is None:
-            try:
-                done = subprocess.run([self.config["wlPaste"], "--no-newline", "--type", "text"],
-                                      stdin=subprocess.DEVNULL, capture_output=True, timeout=6)
-            except (OSError, subprocess.SubprocessError):
-                return None
-            return done.stdout[:CLIP_MAX].decode("utf-8", errors="replace") if done.returncode == 0 else ""
-        try:
-            done = subprocess.run([self.config["wlCopy"]], input=text.encode("utf-8"),
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=6)
-        except (OSError, subprocess.SubprocessError):
-            return None
-        return text if done.returncode == 0 else None
 
     def apps(self, fresh=False):
         with self.lock:
@@ -1042,6 +1035,120 @@ def pair_uri(name, port, hosts, code, pin):
     return "nihil-deck://pair?" + query
 
 
+def vector_dir():
+    return os.path.join(home_dir("XDG_CACHE_HOME", ".cache"), "nihil", "vector")
+
+
+def kind_of(mime):
+    if mime.startswith("text/"):
+        return "text"
+    for kind in ("image", "video"):
+        if mime.startswith(kind + "/"):
+            return kind
+    return "file"
+
+
+def clean_mime(value):
+    mime = str(value or "").split(";")[0].strip().lower()
+    return mime if MIME.fullmatch(mime) else "application/octet-stream"
+
+
+def file_name(value, mime):
+    name = os.path.basename(str(value or "").replace("\\", "/"))
+    name = re.sub(r"[\x00-\x1f\x7f]", "", name).strip()[:160]
+    if name in ("", ".", "..") or name.startswith("."):
+        name = {"text": "text", "image": "image", "video": "video"}.get(kind_of(mime), "file") + EXTENSIONS.get(mime, "")
+    return name
+
+
+def vector_item(item):
+    if not item:
+        return {"id": ""}
+    return {key: item[key] for key in ("id", "kind", "name", "mime", "size", "time")}
+
+
+class Vector:
+
+    def __init__(self, folder=None):
+        self.folder = folder or vector_dir()
+        self.changed = threading.Condition()
+        self.waiting = collections.Counter()
+        self.heard = {}
+
+    def slot(self, side):
+        return os.path.join(self.folder, side)
+
+    def item(self, side):
+        try:
+            with open(os.path.join(self.slot(side), ".item.json")) as file:
+                item = json.load(file)
+            path = os.path.join(self.slot(side), item["name"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+        if not os.path.isfile(path):
+            return None
+        item["path"] = path
+        return item
+
+    def part(self, side):
+        folder = self.slot(side)
+        os.makedirs(folder, mode=0o700, exist_ok=True)
+        return os.path.join(folder, ".part-" + secrets.token_hex(6))
+
+    def store(self, side, part, name, mime, origin=""):
+        folder = self.slot(side)
+        mime = clean_mime(mime)
+        name = file_name(name, mime)
+        for entry in os.listdir(folder):
+            path = os.path.join(folder, entry)
+            if path == part or entry == ".item.json" or entry.startswith(".deck-"):
+                continue
+            if entry.startswith(".part-") and now() - os.path.getmtime(path) < 600:
+                continue
+            try:
+                if os.path.isdir(path) and not os.path.islink(path):
+                    shutil.rmtree(path)
+                else:
+                    os.unlink(path)
+            except OSError:
+                pass
+        target = os.path.join(folder, name)
+        os.replace(part, target)
+        size = os.path.getsize(target)
+        kind = kind_of(mime)
+        item = {"id": secrets.token_hex(8), "kind": "file" if kind == "text" and size > VECTOR_TEXT else kind,
+                "name": name, "mime": mime, "size": size, "time": round(now()), "from": origin}
+        write_private(os.path.join(folder, ".item.json"), json.dumps(item))
+        self.poke()
+        item["path"] = target
+        return item
+
+    def poke(self):
+        with self.changed:
+            self.changed.notify_all()
+
+    def wait(self, device, since, seconds):
+        deadline = now() + seconds
+        with self.changed:
+            self.waiting[device] += 1
+            try:
+                while True:
+                    item = self.item("out")
+                    if (item["id"] if item else "") != since or now() >= deadline:
+                        return item
+                    self.changed.wait(min(deadline - now(), 5))
+            finally:
+                self.waiting[device] -= 1
+                if self.waiting[device] <= 0:
+                    del self.waiting[device]
+                self.heard[device] = now()
+
+    def connected(self, devices):
+        live = {key for key, count in self.waiting.items() if count > 0}
+        live |= {key for key, seen in list(self.heard.items()) if now() - seen < VECTOR_LIVE}
+        return [device["name"] for device in devices.listing() if device["id"] in live]
+
+
 class Deck:
 
     def __init__(self, config, folder, pin):
@@ -1053,6 +1160,7 @@ class Deck:
         self.pairing = Pairing()
         self.throttle = Throttle()
         self.session = Session(config)
+        self.vector = Vector(config.get("vector"))
         self.strings = config.get("strings", {})
         self.make_trackpad = lambda width, height, resolution: Uinput(config.get("uinput", "/dev/uinput"), width, height, resolution)
         self.streams = {}
@@ -1075,6 +1183,9 @@ class Deck:
         if op == "status":
             return {"port": self.port, "pin": self.pin, "devices": len(self.devices.listing()),
                     "pairing": self.pairing.open_now}
+        if op == "vector":
+            self.vector.poke()
+            return {"devices": self.vector.connected(self.devices)}
         return {"error": "unknown"}
 
     def claim(self, device, connection):
@@ -1153,9 +1264,60 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.route("GET", {})
 
+    def send_file(self, item):
+        try:
+            file = open(item["path"], "rb")
+        except OSError:
+            self.reply(404, {"error": "vector"})
+            return
+        with file:
+            self.send_response(200)
+            self.send_header("Content-Type", item["mime"])
+            self.send_header("Content-Length", str(os.fstat(file.fileno()).st_size))
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(item["name"]))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            shutil.copyfileobj(file, self.wfile, CHUNK)
+
+    def receive(self, deck, device):
+        try:
+            length = int(self.headers.get("Content-Length") or -1)
+        except ValueError:
+            length = -1
+        if length <= 0 or length > VECTOR_MAX:
+            self.reply(413 if length > VECTOR_MAX else 400, {"error": "big" if length > VECTOR_MAX else "body"})
+            return
+        vector = deck.vector
+        part = vector.part("in")
+        try:
+            with open(part, "wb") as file:
+                left = length
+                while left:
+                    chunk = self.rfile.read(min(CHUNK, left))
+                    if not chunk:
+                        raise ConnectionError("short")
+                    file.write(chunk)
+                    left -= len(chunk)
+            name = urllib.parse.unquote(self.headers.get("X-Vector-Name", ""))
+            item = vector.store("in", part, name, self.headers.get("Content-Type"), device["name"])
+        except (OSError, ConnectionError, socket.timeout):
+            try:
+                os.unlink(part)
+            except OSError:
+                pass
+            self.reply(503, {"error": "vector"})
+            return
+        vector.heard[device["id"]] = now()
+        deck.session.ipc("vector", "received")
+        self.reply(200, vector_item(item))
+
     def do_POST(self):
         path = urllib.parse.urlsplit(self.path).path
-        body = self.read_body({"/v1/tasks": TASKS_MAX, "/v1/clipboard": CLIP_MAX}.get(path, MAX_BODY))
+        if path == "/v1/vector":
+            self.close_connection = True
+            self.route("POST", {})
+            return
+        body = self.read_body({"/v1/tasks": TASKS_MAX}.get(path, MAX_BODY))
         if body is None:
             self.reply(400, {"error": "body"})
             return
@@ -1310,20 +1472,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.reply(200, volume)
                 else:
                     self.reply(503, {"error": "volume"})
-        elif method == "GET" and path == "/v1/clipboard":
-            text = session.clipboard()
-            if text is None:
-                self.reply(503, {"error": "clipboard"})
+        elif method == "GET" and path == "/v1/vector":
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            try:
+                wait = max(0, min(VECTOR_WAIT, int(query.get("wait", ["0"])[0])))
+            except ValueError:
+                wait = 0
+            since = query.get("since", [""])[0]
+            deck.vector.heard[device["id"]] = now()
+            item = deck.vector.wait(device["id"], since, wait) if wait else deck.vector.item("out")
+            self.reply(200, dict(vector_item(item), now=round(now())))
+        elif method == "GET" and path == "/v1/vector/data":
+            wanted = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("id", [""])[0]
+            item = deck.vector.item("out")
+            if not item or item["id"] != wanted:
+                self.reply(404, {"error": "vector"})
             else:
-                self.reply(200, {"text": text})
-        elif method == "POST" and path == "/v1/clipboard":
-            text = body.get("text")
-            if not isinstance(text, str) or text == "":
-                self.reply(400, {"error": "invalid"})
-            elif session.clipboard(text) is None:
-                self.reply(503, {"error": "clipboard"})
-            else:
-                self.reply(200, {"ok": True})
+                deck.vector.heard[device["id"]] = now()
+                self.send_file(item)
+        elif method == "POST" and path == "/v1/vector":
+            self.receive(deck, device)
         elif method == "POST" and path == "/v1/lock":
             if session.lock_screen():
                 self.reply(200, {"ok": True})
@@ -1494,11 +1662,113 @@ def qr(uri, qrencode):
     return qr_rows(done.stdout)
 
 
+def clipboard_source(config):
+    def paste(*arguments):
+        return subprocess.run([config["wlPaste"], *arguments], stdin=subprocess.DEVNULL,
+                              capture_output=True, timeout=20).stdout
+
+    try:
+        types = paste("--list-types").decode(errors="replace").split()
+        if "text/uri-list" in types:
+            for line in paste("--type", "text/uri-list").decode(errors="replace").splitlines():
+                if line.strip().startswith("file://"):
+                    return "file", urllib.parse.unquote(urllib.parse.urlsplit(line.strip()).path)
+        for prefix in ("image/", "video/"):
+            found = [kind for kind in types if kind.startswith(prefix)]
+            if found:
+                kind = "image/png" if "image/png" in found else found[0]
+                return "data", paste("--type", kind), kind
+        for kind in ("text/plain;charset=utf-8", "text/plain", "UTF8_STRING", "STRING", "TEXT"):
+            if kind in types:
+                data = paste("--no-newline", "--type", kind)
+                return ("data", data, "text/plain") if data else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return None
+
+
+def vector_send(config, vector, argument=None):
+    if argument:
+        path = urllib.parse.unquote(urllib.parse.urlsplit(argument).path) if argument.startswith("file://") else argument
+        source = ("file", path)
+    else:
+        source = clipboard_source(config)
+    if source is None:
+        return {"error": "empty"}
+    part = vector.part("out")
+    try:
+        if source[0] == "file":
+            path = source[1]
+            if os.path.isdir(path):
+                return {"error": "folder"}
+            if not os.path.isfile(path):
+                return {"error": "empty"}
+            if os.path.getsize(path) > VECTOR_MAX:
+                return {"error": "big"}
+            shutil.copyfile(path, part)
+            name, mime = os.path.basename(path), mimetypes.guess_type(path)[0] or "application/octet-stream"
+        else:
+            data, mime, name = source[1], source[2], ""
+            if not data:
+                return {"error": "empty"}
+            if len(data) > VECTOR_MAX:
+                return {"error": "big"}
+            with open(part, "wb") as file:
+                file.write(data)
+        item = vector.store("out", part, name, mime)
+    except OSError:
+        return {"error": "vector"}
+    finally:
+        if os.path.exists(part):
+            os.unlink(part)
+    return {"ok": True, "kind": item["kind"], "name": item["name"]}
+
+
+def vector_copy(config, vector):
+    item = vector.item("in")
+    if item is None:
+        return {"error": "empty"}
+    if item["kind"] == "file" or item["kind"] == "video":
+        command = [config["wlCopy"], "--type", "text/uri-list"]
+        data = ("file://" + urllib.parse.quote(item["path"]) + "\r\n").encode()
+    else:
+        command = [config["wlCopy"]] + (["--type", item["mime"]] if item["kind"] == "image" else [])
+        with open(item["path"], "rb") as file:
+            data = file.read()
+    try:
+        done = subprocess.run(command, input=data, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return {"error": "clipboard"}
+    return {"ok": True} if done.returncode == 0 else {"error": "clipboard"}
+
+
+def vector_command(config, action, argument):
+    vector = Vector(config.get("vector"))
+    if action == "send":
+        result = vector_send(config, vector, argument)
+    elif action == "copy":
+        return vector_copy(config, vector)
+    elif action == "status":
+        item = vector.item("in")
+        result = {"in": dict(vector_item(item), path=item["path"], **{"from": item.get("from", "")}) if item else {"id": ""},
+                  "out": vector_item(vector.item("out"))}
+    else:
+        return {"error": "usage"}
+    if "error" in result:
+        return result
+    try:
+        result["devices"] = ask({"op": "vector"}).get("devices", [])
+    except (OSError, ValueError):
+        result["devices"] = []
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(prog="nihil-deck", description="The phone as a deck for this computer (docs/deck.md).")
     parser.add_argument("--config", help="configuration written by home/deck/default.nix")
-    parser.add_argument("command", nargs="?", default="devices", choices=["serve", "pair", "cancel", "devices", "forget"])
-    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all")
+    parser.add_argument("command", nargs="?", default="devices", choices=["serve", "pair", "cancel", "devices", "forget", "vector"])
+    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; vector: send, copy or status")
+    parser.add_argument("argument", nargs="?", help="vector send: a file (the clipboard without one)")
     parser.add_argument("--json", action="store_true", help="for the shell")
     options = parser.parse_args()
 
@@ -1515,6 +1785,10 @@ def main():
     if options.command == "serve":
         serve(config)
         return 0
+    if options.command == "vector":
+        result = vector_command(config, options.target, options.argument)
+        print(json.dumps(result))
+        return 1 if "error" in result else 0
 
     request = {"pair": {"op": "pair"}, "cancel": {"op": "cancel"}, "devices": {"op": "devices"},
                "forget": {"op": "forget", "id": options.target or ""}}[options.command]
