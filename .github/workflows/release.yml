@@ -31,6 +31,8 @@ jobs:
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
+            download-attempts = 10
+            http-connections = 16
 
       - name: A machine evaluates
         run: nix eval --raw .#nixosConfigurations.example.config.system.build.toplevel.drvPath
@@ -39,7 +41,13 @@ jobs:
         run: nix build .#nixosConfigurations.example.config.nihil.cli --no-link --print-build-logs
 
       - name: Build the ISO
-        run: nix build .#iso --print-build-logs
+        run: |
+          for attempt in 1 2 3; do
+            nix build .#iso --print-build-logs --fallback && exit 0
+            echo "::warning::The ISO build failed (attempt $attempt); trying again."
+            sleep 30
+          done
+          exit 1
 
       - name: Name it
         run: |
