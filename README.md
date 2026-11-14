@@ -50,7 +50,7 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   LED columns, CPU/RAM/temperature dials, a network oscilloscope, a kanban (to do, doing,
   done: drag a card where it goes, its pencil writes it again, a broom clears the done ones),
   and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
-  it goes to the phone; what the phone sends is there, a click to copy it.
+  it shrinks away to the phone; what the phone sends waits there, to copy, save or open.
 - **Settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
   locking or sleeping), segmented sliders, Wi-Fi (with passwords and
   WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
@@ -619,12 +619,14 @@ order of each column too: each side goes on when they are apart, and the next sy
 both did (`docs/deck.md`).
 
 Vector carries one thing at a time, 100 MB at most: a text, a picture, a video or any file.
-Pasted (`CTRL + V`) or dropped on the dashboard's Vector, or a click on it to send what the
-clipboard holds, it goes to the phone, and a notification says to which; on the phone it waits
-in Tasks, above the kanban, to be copied, shared or opened. From the phone, its Vector or
-**Vector** in the share sheet sends it here: the dashboard shows it, a notification says it came, and a
-click puts it on the clipboard (a file as a file, to paste in Thunar). Each side keeps only the
-last one; the next takes its place. `nihil-deck vector send FILE | copy | status` does the same
+Paste it on the dashboard's Vector (`CTRL + V`, or a click: what the clipboard holds, a file
+copied in Thunar too), or drag it to the top of the screen, where the dashboard opens, and drop
+it there: it shrinks away to the phone, and a notification says to which. On the phone it waits
+in Tasks, above the kanban, with a notification. What the phone sends (from its Vector, a tap
+to pick a picture or a file, or **Vector** in the share sheet) waits on the dashboard the same
+way: copy it, save it in `~/Vector` or open it from there, and its place is empty again. Each
+side keeps only the last one, and what a password manager copies is not sent.
+`nihil-deck vector send FILE | text TEXT | copy | save | open | clear | status` does the same
 from a terminal.
 
 The trackpad is a touchpad here (`GET /v1/trackpad`). The phone streams its fingers, every

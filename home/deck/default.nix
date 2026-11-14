@@ -20,6 +20,7 @@ let
         wpctl = lib.getExe' pkgs.wireplumber "wpctl";
         wlCopy = lib.getExe' pkgs.wl-clipboard "wl-copy";
         wlPaste = lib.getExe' pkgs.wl-clipboard "wl-paste";
+        open = lib.getExe' pkgs.xdg-utils "xdg-open";
     });
 in
 pkgs.writeShellScriptBin "nihil-deck" ''
