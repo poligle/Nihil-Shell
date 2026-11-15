@@ -114,8 +114,8 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
   the greeter and the scripts, and the language of their dates.
-- **Its own sound.** A set of short digital blips, synthesised by
-  [`tools/sounds.py`](tools/sounds.py); the previous sounds are one option away.
+- **Its own sound.** A set of short digital blips, synthesised for NIHIL; the previous
+  sounds are one option away.
 
 | | |
 |:---:|:---:|
@@ -567,8 +567,7 @@ model: the launcher's own search, when every name matches an app closely. Anythi
 `Co-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>` (`nilo.coauthor`), and the card
 shows it before you confirm. That is the noreply address of
 [github.com/nilo-nihil](https://github.com/nilo-nihil), so GitHub draws Nilo's face next
-to yours: [`assets/brand/nilo-avatar.png`](assets/brand/nilo-avatar.png), drawn by
-`tools/brand.py`.
+to yours: [`assets/brand/nilo-avatar.png`](assets/brand/nilo-avatar.png).
 
 <p align="center">
   <img src="docs/assets/screens/nilo-done.png" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, fastfetch in dots.">
@@ -718,7 +717,6 @@ Nihil-Shell/
 ├── home/             Home Manager: shell/, nilo/ (Nilo's agent), deck/ (the phone's), hyprland, hyprlock, …
 ├── greeter/          the login screen, in Quickshell under cage (modules/greeter.nix)
 ├── sounds/           interface sounds (nihil/ is the NIHIL pack)
-├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
 ├── docs/             the website, served by GitHub Pages from this folder; deck.md, the deck's protocol
 │                     assets/screens: the desktop as it comes, glass/ the same in smoked glass, android/ the phone's
@@ -810,7 +808,7 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   (`nihil-clipboard`) and the window keeps the keyboard; only a paste key without a
   modifier makes the frame `Exclusive` until it pastes.
 - **Charger:** plugging it in lights the frame from the bottom and plays `charge`, three
-  climbing notes (`tools/sounds.py`; the classic pack uses freedesktop's `power-plug`).
+  climbing notes (the classic pack uses freedesktop's `power-plug`).
 - **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables. At
   15, 10 and 5 % it sends a critical notification, once per threshold and discharge; each
   one replaces the last (`x-nihil-tag` hint) and plugging in the charger dismisses it.
