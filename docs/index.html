@@ -23,140 +23,23 @@
 document.documentElement.classList.add("js", "staging");
 try { if (localStorage.getItem("nihil-look") === "glass") document.documentElement.dataset.look = "glass"; } catch (e) {}
 </script>
+<link rel="stylesheet" href="assets/site.css">
 <style>
-@font-face { font-family: "Space Grotesk"; src: url("assets/fonts/space-grotesk.woff") format("woff"); font-weight: 300 700; font-display: swap; }
-@font-face { font-family: "Space Mono"; src: url("assets/fonts/space-mono-400.woff") format("woff"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Space Mono"; src: url("assets/fonts/space-mono-700.woff") format("woff"); font-weight: 700; font-display: swap; }
-@font-face { font-family: "Doto"; src: url("assets/fonts/doto-700.woff") format("woff"); font-weight: 700; font-display: swap; }
-
-:root {
-  --void: #000000;
-  --surface: #0E0E0E;
-  --raised: #1A1A1A;
-  --line: #2A2A2A;
-  --off: #333333;
-  --muted: #7A7A7A;
-  --dim: #A3A3A3;
-  --ink: #F2F2F2;
-  --signal: #D71921;
-
-  --sans: "Space Grotesk", system-ui, sans-serif;
-  --mono: "Space Mono", ui-monospace, monospace;
-
-  --t: 8px;
-  --top: 8px;
-  --left: 44px;
-  --r: 20px;
-  --pitch: 9px;
-  --gutter: 30px;
-  --joint: 22px;
-  --drawer: #000000;
-  --fast: 140ms;
-  --normal: 260ms;
-  --slow: 480ms;
-}
-[data-look="glass"] { --drawer: rgba(0, 0, 0, 0.5); }
-
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0;
-  color: var(--ink);
-  font: 400 18px/1.55 var(--sans);
-  background-color: var(--void);
-  background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px);
-  background-size: var(--pitch) var(--pitch);
-  background-attachment: fixed;
-}
-::selection { background: var(--ink); color: var(--void); }
-a { color: inherit; }
-:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
-img { display: block; max-width: 100%; height: auto; }
-figure { margin: 0; }
-code, kbd, pre { font-family: var(--mono); }
-button { font: inherit; color: inherit; }
-h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; }
-p { margin: 0 0 14px; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.skip:focus { position: fixed; z-index: 70; top: 14px; left: 14px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 8px; background: var(--ink); color: var(--void); text-decoration: none; }
-
-.frame {
-  position: fixed; z-index: 41; pointer-events: none;
-  top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
-  border-radius: var(--r);
-  box-shadow: 0 0 0 200vmax var(--void);
-  transition: box-shadow var(--slow), opacity var(--slow);
-}
-.frame::after {
-  content: ""; position: absolute; inset: -1px; border-radius: calc(var(--r) + 1px); padding: 1px;
-  background: linear-gradient(135deg, rgba(242, 242, 242, 0.42), rgba(242, 242, 242, 0.08) 24%, rgba(242, 242, 242, 0.04) 70%, rgba(242, 242, 242, 0.14));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  opacity: 0; transition: opacity var(--slow);
-}
-.smoke {
-  position: fixed; inset: 0; z-index: 40; pointer-events: none;
-  background: rgba(0, 0, 0, 0.58);
-  -webkit-backdrop-filter: blur(14px) saturate(0.7) brightness(0.72);
-  backdrop-filter: blur(14px) saturate(0.7) brightness(0.72);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
-  opacity: 0; visibility: hidden; transition: opacity var(--slow), visibility 0s linear var(--slow);
-}
-[data-look="glass"] .frame { box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0); }
-[data-look="glass"] .frame::after { opacity: 1; }
-[data-look="glass"] .smoke { opacity: 1; visibility: visible; transition: opacity var(--slow), visibility 0s; }
-
-.bar {
-  position: fixed; z-index: 50; left: 0; top: 0; bottom: 0; width: var(--left);
-  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-  padding: 16px 0 14px;
-  transition: opacity var(--slow), visibility 0s;
-}
-.staging .bar, .staging .frame, .staging .smoke { opacity: 0; visibility: hidden; transition: opacity var(--normal), visibility 0s linear var(--normal); }
-.bar-start { display: block; text-decoration: none; }
-.bar .mark, .bar .mark svg { display: block; width: 26px; height: 26px; }
-.bar .word { display: none; }
-.leds { display: flex; flex-direction: column; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
-.leds a, .rail .dot { position: relative; display: grid; place-items: center; width: 20px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
-.leds a::before, .rail .dot::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transition: height var(--normal), background-color var(--normal); }
-.leds a[aria-current="true"]::before, .rail .dot[aria-current="true"]::before { height: 20px; background: var(--ink); }
-.leds a:hover::before, .rail .dot:hover::before { background: var(--ink); }
-.tip {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  padding: 3px 9px; border-radius: 6px; background: var(--raised); border: 1px solid var(--line);
-  font: 400 11px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--dim); white-space: nowrap;
-  opacity: 0; pointer-events: none; transition: opacity var(--fast);
-}
-.leds .tip { left: 30px; }
-.rail .tip { right: 30px; }
-.leds a:hover .tip, .leds a:focus-visible .tip, .rail .dot:hover .tip, .rail .dot:focus-visible .tip, .rail .glass:hover .tip, .rail .glass:focus-visible .tip { opacity: 1; }
-.bar-end { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.bar-end a { display: grid; place-items: center; width: 26px; height: 26px; color: var(--dim); }
-.bar-end a:hover { color: var(--ink); }
-.bar-end svg { width: 18px; height: 18px; }
-
-.stage { position: relative; height: calc(var(--steps, 12) * 62svh + 100svh); background: var(--void); }
-.pin { position: sticky; top: 0; height: 100svh; overflow: hidden; display: grid; place-items: center; }
+.stage { background: var(--void); }
+.pin { display: grid; place-items: center; }
 .box {
   position: relative;
   width: min(calc(100vw - 2 * var(--gutter)), calc((100svh - 2 * var(--gutter)) * 1.6));
   aspect-ratio: 16 / 10;
 }
 .shots { position: absolute; inset: 0; }
-.shots img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity var(--normal) ease-out; }
-.shots img.on { opacity: 1; }
-.says { margin: 0; padding: 0; list-style: none; }
 .say {
   position: absolute; left: 7%; bottom: 0; z-index: 2;
   width: min(430px, 40%); padding: 22px 26px 20px;
   background: var(--drawer); border-radius: var(--joint) var(--joint) 0 0;
-  opacity: 0; visibility: hidden; transform: translateY(14px);
-  transition: opacity var(--normal), transform var(--normal) cubic-bezier(0.2, 0, 0, 1), visibility 0s linear var(--normal);
+  transform: translateY(14px);
 }
 .say.top { top: 0; bottom: auto; left: auto; right: 9%; border-radius: 0 0 var(--joint) var(--joint); transform: translateY(-14px); }
-.say.on { opacity: 1; visibility: visible; transform: none; transition: opacity var(--normal), transform var(--normal) cubic-bezier(0.2, 0, 0, 1), visibility 0s; }
 .say::before, .say::after { content: ""; position: absolute; bottom: 0; width: var(--joint); height: var(--joint); background: var(--drawer); }
 .say::before { left: calc(-1 * var(--joint)); -webkit-mask: radial-gradient(circle at 0 0, transparent calc(var(--joint) - 0.5px), #000 var(--joint)); mask: radial-gradient(circle at 0 0, transparent calc(var(--joint) - 0.5px), #000 var(--joint)); }
 .say::after { right: calc(-1 * var(--joint)); -webkit-mask: radial-gradient(circle at 100% 0, transparent calc(var(--joint) - 0.5px), #000 var(--joint)); mask: radial-gradient(circle at 100% 0, transparent calc(var(--joint) - 0.5px), #000 var(--joint)); }
@@ -168,70 +51,12 @@ p { margin: 0 0 14px; }
 }
 [data-look="glass"] .say { box-shadow: inset 0 1px 0 rgba(242, 242, 242, 0.16), inset 1px 0 0 rgba(242, 242, 242, 0.08), inset -1px 0 0 rgba(242, 242, 242, 0.05); }
 [data-look="glass"] .say.top { box-shadow: inset 0 -1px 0 rgba(242, 242, 242, 0.1), inset 1px 0 0 rgba(242, 242, 242, 0.08), inset -1px 0 0 rgba(242, 242, 242, 0.05); }
-.say h2 { font-size: 22px; line-height: 1.25; margin-bottom: 6px; }
-.say p { color: var(--dim); font-size: 16px; line-height: 1.5; margin: 0 0 12px; }
-.say p:last-child { margin: 0; }
 .say.hero { width: min(560px, 52%); padding: 26px 30px 24px; }
-.say.hero h1 { font-size: clamp(24px, 2.4vw, 34px); line-height: 1.12; margin: 18px 0 10px; }
-.wordmark { width: min(320px, 70%); }
-.wordmark svg, .wordmark img { display: block; width: 100%; height: auto; }
-.motto { font: 400 11px/1 var(--mono); letter-spacing: 0.6em; color: var(--muted); margin: 10px 0 0; }
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 18px; }
-.away { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; }
-.away a { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); text-decoration: none; font-size: 15px; }
-.away a:hover { color: var(--ink); }
-.away svg { width: 16px; height: 16px; flex: none; }
-
-.rail { position: absolute; z-index: 3; right: 6px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 22px; }
-.rail .dots { display: flex; flex-direction: column; align-items: center; gap: 7px; }
-.rail .glass { position: relative; display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
-.rail .glass:hover, .rail .glass[aria-pressed="true"] { color: var(--ink); }
-.rail .glass svg { width: 16px; height: 16px; }
 .look-note {
   position: absolute; z-index: 2; right: 2.2%; bottom: 2.5%; margin: 0; padding: 4px 9px; border-radius: 6px;
   background: rgba(0, 0, 0, 0.72); border: 1px solid var(--line); font: 400 11px/1.3 var(--mono); color: var(--dim);
 }
 .look-note[hidden] { display: none; }
-
-.keys { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; font: 400 12px/1 var(--mono); color: var(--muted); }
-kbd {
-  display: inline-block; padding: 5px 8px 4px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface);
-  font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
-}
-[data-look="glass"] kbd { background: rgba(14, 14, 14, 0.5); }
-
-.key {
-  display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 42px; padding: 0 22px;
-  border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--dim);
-  font: 500 15px/1 var(--sans); text-decoration: none; cursor: pointer;
-  transition: background-color var(--fast), border-color var(--fast), color var(--fast);
-}
-.key:hover { background: var(--raised); border-color: var(--muted); color: var(--ink); }
-.key.accent { background: var(--ink); border-color: var(--ink); color: var(--void); }
-.key.accent:hover { background: #ffffff; border-color: #ffffff; }
-.key.small { min-height: 30px; padding: 0 11px; border-radius: 8px; font: 400 12px/1 var(--mono); }
-
-.switch {
-  appearance: none; display: inline-flex; align-items: center; gap: 14px; padding: 6px 0; border: 0; background: none; cursor: pointer;
-  color: var(--dim); font: 400 15px/1 var(--sans);
-}
-.switch:hover { color: var(--ink); }
-.switch .track { position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; border: 1px solid var(--off); transition: background-color var(--fast), border-color var(--fast); }
-.switch .knob { position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 6px; background: var(--muted); transition: transform var(--fast) cubic-bezier(0.33, 1, 0.68, 1), background-color var(--fast); }
-.switch[aria-checked="true"] { color: var(--ink); }
-.switch[aria-checked="true"] .track { background: var(--ink); border-color: var(--ink); }
-.switch[aria-checked="true"] .knob { transform: translateX(14px); background: var(--void); }
-
-main { padding: calc(var(--top) + 96px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
-.wrap { max-width: 1180px; margin: 0 auto; }
-.block { scroll-margin-top: calc(var(--top) + 24px); padding-bottom: 140px; }
-.block h2 { font-size: clamp(28px, 3.2vw, 40px); line-height: 1.12; margin-bottom: 18px; }
-.quiet { color: var(--dim); }
-.prose { max-width: 58ch; }
-.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: center; }
-.shot { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
-.shot img { width: 100%; }
-.more { display: inline-block; margin-top: 18px; color: var(--ink); text-underline-offset: 4px; }
 
 .levels { margin: 26px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
 .levels li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
@@ -244,15 +69,6 @@ main { padding: calc(var(--top) + 96px) calc(var(--t) + 40px) 0 calc(var(--left)
 .devices { display: grid; grid-template-columns: 0.42fr 1.5fr 0.62fr; gap: 26px; align-items: center; margin-top: 40px; }
 .devices .phone { border-radius: 26px; }
 .devices .watch { border-radius: 50%; border: 1px solid var(--line); overflow: hidden; }
-.links { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 30px; }
-
-.ways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; margin-top: 34px; }
-.ways h3 { font-size: 20px; margin-bottom: 8px; }
-.ways p { color: var(--dim); }
-.code { display: flex; align-items: flex-start; min-width: 0; margin: 14px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
-.code pre { flex: 1 1 auto; min-width: 0; margin: 0; padding: 16px 20px; overflow-x: auto; font-size: 14px; line-height: 1.65; }
-.code .c { color: var(--muted); }
-.copy { flex: none; margin: 9px 9px 0 0; }
 
 .palette { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 18px; margin: 34px 0 0; padding: 0; list-style: none; }
 .palette li { display: grid; gap: 2px; justify-items: start; }
@@ -260,34 +76,15 @@ main { padding: calc(var(--top) + 96px) calc(var(--t) + 40px) 0 calc(var(--left)
 .palette b { font-weight: 500; font-size: 15px; }
 .palette code { font-size: 11px; color: var(--muted); }
 
-footer { padding: 0 calc(var(--t) + 40px) 64px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
-footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 0.8fr)); gap: 40px; }
-footer p { margin: 0 0 9px; max-width: 64ch; }
-footer a { color: var(--dim); }
-footer a:hover { color: var(--ink); }
-
-html:not(.js) .stage { height: auto; }
-html:not(.js) .pin { position: static; height: auto; display: block; padding: 24px; }
 html:not(.js) .box { width: auto; aspect-ratio: auto; }
 html:not(.js) .shots { position: relative; aspect-ratio: 16 / 10; }
-html:not(.js) .shots img:first-child { opacity: 1; }
-html:not(.js) .say { position: static; opacity: 1; visibility: visible; transform: none; width: auto; margin-top: 18px; border-radius: 14px; }
-html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .rail { display: none; }
+html:not(.js) .say { border-radius: 14px; }
+html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
 
 @media (max-width: 860px) {
-  :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
-  .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
-  .bar .leds { display: none; }
-  .bar-start { display: flex; align-items: center; gap: 12px; }
-  .bar .word { display: block; font: 400 13px/1 var(--mono); letter-spacing: 0.4em; color: var(--dim); }
-  .bar-end { flex-direction: row; }
-  main { padding: calc(var(--top) + 56px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
-  .block { padding-bottom: 100px; }
-  .split, .ways, footer .wrap { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .devices { grid-template-columns: 0.5fr 1fr; }
   .devices .deck { grid-column: span 2; order: -1; }
   .palette { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  footer { padding: 0 calc(var(--t) + 16px) 48px calc(var(--left) + 16px); }
 }
 
 @media (max-aspect-ratio: 1 / 1) {
@@ -295,23 +92,17 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .rail { dis
   .pin { display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 16px; padding: 18px 14px; }
   .box { display: contents; }
   .shots { position: relative; inset: auto; order: 1; width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; }
-  .rail { position: static; transform: none; order: 2; flex-direction: row; justify-content: space-between; margin-top: -4px; }
+  .rail { order: 2; margin-top: -4px; }
   .look-note { position: static; order: 3; align-self: flex-start; }
-  .says { position: relative; order: 4; min-height: 330px; }
-  .say, .say.top, .say.hero { position: absolute; inset: 0 0 auto 0; width: auto; padding: 0; background: none; border-radius: 0; box-shadow: none; transform: translateY(8px); }
-  .says .say.on { transform: none; }
+  .says { order: 4; display: grid; }
+  .say, .say.top, .say.hero { grid-area: 1 / 1; position: relative; inset: auto; width: auto; padding: 0; background: none; border-radius: 0; box-shadow: none; transform: translateY(8px); }
   .say::before, .say::after { display: none; }
   [data-look="glass"] .say, [data-look="glass"] .say.top { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
   .say.hero h1 { font-size: 26px; margin-top: 10px; }
   .wordmark { width: 220px; }
-  .rail .dots { flex-direction: row; }
-  .rail .dot { width: 22px; height: 20px; }
-  .rail .dot[aria-current="true"]::before { width: 18px; height: 5px; }
-  .rail .tip { display: none; }
 }
 
 @media (max-aspect-ratio: 1 / 1) and (max-height: 700px) {
-  .says { min-height: 260px; }
   .wordmark { width: 170px; }
   .say.hero h1 { font-size: 22px; }
   .say.hero h1 + p { display: none; }
@@ -322,9 +113,8 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .rail { dis
   .pin { display: flex; flex-direction: row; align-items: stretch; gap: 22px; padding: 12px 8px 12px 16px; }
   .box { display: contents; }
   .shots { position: relative; inset: auto; flex: none; align-self: center; width: min(58vw, calc((100svh - 24px) * 1.6)); aspect-ratio: 16 / 10; border-radius: 8px; overflow: hidden; }
-  .says { position: relative; flex: 1 1 auto; min-width: 0; }
-  .say, .say.top, .say.hero { position: absolute; inset: 0; width: auto; padding: 0; display: flex; flex-direction: column; justify-content: center; background: none; border-radius: 0; box-shadow: none; transform: translateY(8px); }
-  .says .say.on { transform: none; }
+  .says { flex: 1 1 auto; min-width: 0; display: grid; align-items: center; }
+  .say, .say.top, .say.hero { grid-area: 1 / 1; position: relative; inset: auto; width: auto; padding: 0; background: none; border-radius: 0; box-shadow: none; transform: translateY(8px); }
   .say::before, .say::after { display: none; }
   [data-look="glass"] .say, [data-look="glass"] .say.top { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
   .say h2 { font-size: 19px; }
@@ -337,10 +127,6 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .rail { dis
   .rail .dots { gap: 3px; }
   .rail .dot { height: 18px; }
   .rail .dot[aria-current="true"]::before { height: 14px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0s !important; }
 }
 </style>
 </head>
@@ -382,7 +168,7 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .rail { dis
       </div>
       <ol class="says">
         <li class="say hero on" data-name="The desktop" data-shot="desktop" data-looks="plain glass"
-          data-alt-plain="The NIHIL desktop: a black frame around a dot-matrix wallpaper, the bar on the left with its LEDs, and the clock, the network and what is playing."
+          data-alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper, the bar on the left with its LEDs, and the clock, the network and what is playing."
           data-alt-glass="The desktop in smoked glass: the frame and the widgets as dark glass over the wallpaper in dots.">
           <div class="wordmark" id="wordmark"><img src="assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
           <p class="motto"><i>ex nihilo</i></p>
@@ -398,76 +184,76 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .rail { dis
           </div>
         </li>
         <li class="say" data-name="Dashboard" data-shot="dashboard" data-looks="plain glass"
-          data-alt-plain="The dashboard out of the top edge: the clock in dots, what is playing, the system's dials and the kanban."
+          data-alt="The dashboard out of the top edge: the clock in dots, what is playing, the system's dials and the kanban."
           data-alt-glass="The dashboard in smoked glass out of the top edge, the windows behind it coming through.">
           <h2>Dashboard</h2>
           <p>Time, music in dots, the system's dials, a kanban, and Vector to and from the phone.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or the top edge</span></div>
         </li>
         <li class="say" data-name="Quick settings" data-shot="settings" data-looks="plain glass"
-          data-alt-plain="Quick settings on the right: round toggles, segmented sliders, the notifications and the session keys."
+          data-alt="Quick settings on the right: round toggles, segmented sliders, the notifications and the session keys."
           data-alt-glass="Quick settings in smoked glass, the wallpaper's dots coming through.">
           <h2>Quick settings</h2>
           <p>Wi&#8209;Fi, Bluetooth, sound, caffeine, and a screenshot or a recording at a tap.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>P</kbd><span>or the top-right corner</span></div>
         </li>
         <li class="say top" data-name="Launcher" data-shot="launcher" data-looks="plain glass"
-          data-alt-plain="The launcher out of the bottom edge, with its actions."
+          data-alt="The launcher out of the bottom edge, with its actions."
           data-alt-glass="The launcher in smoked glass out of the bottom edge.">
           <h2>Launcher</h2>
           <p>Apps stay grey until chosen. <code>&gt;</code> for actions, <code>=</code> to calculate, <code>?</code> to ask Nilo.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>SPACE</kbd><span>or three fingers up</span></div>
         </li>
         <li class="say" data-name="Clipboard" data-shot="clipboard" data-looks="plain glass"
-          data-alt-plain="The clipboard history out of the top edge: commands, links, a colour as a red LED and pictures, the chosen one lit."
+          data-alt="The clipboard history out of the top edge: commands, links, a colour as a red LED and pictures, the chosen one lit."
           data-alt-glass="The clipboard history in smoked glass out of the top edge, the chosen one lit.">
           <h2>Clipboard</h2>
           <p>Hold the paste key and the last copies come out, pictures too.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>held</span></div>
         </li>
         <li class="say top" data-name="Wallpapers" data-shot="wallpapers" data-looks="plain glass"
-          data-alt-plain="The wallpapers out of the bottom edge, each one in dots, the chosen one framed in white."
+          data-alt="The wallpapers out of the bottom edge, each one in dots, the chosen one framed in white."
           data-alt-glass="The wallpapers in smoked glass out of the bottom edge, each one in dots, the chosen one framed in white.">
           <h2>Wallpapers</h2>
           <p>Any picture, drawn as an LED matrix for each screen.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>W</kbd></div>
         </li>
         <li class="say" data-name="Every workspace" data-shot="overview" data-looks="plain glass"
-          data-alt-plain="Every workspace side by side out of the top edge, each with its windows."
+          data-alt="Every workspace side by side out of the top edge, each with its windows."
           data-alt-glass="Every workspace side by side in smoked glass out of the top edge, each with its windows.">
           <h2>Every workspace</h2>
           <p>All of them side by side, windows and all.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>A</kbd><span>held</span></div>
         </li>
         <li class="say" data-name="Notifications" data-shot="notification" data-looks="plain glass"
-          data-alt-plain="A notification at the top right: the build finished."
+          data-alt="A notification at the top right: the build finished."
           data-alt-glass="A notification in smoked glass at the top right: the build finished.">
           <h2>Light on the edge</h2>
           <p>Every notification runs a light around the frame; critical ones, twice and in red.</p>
         </li>
         <li class="say" data-name="Preferences" data-shot="preferences" data-looks="plain glass"
-          data-alt-plain="Preferences open on Desktop: the wallpapers in dots and the widgets."
+          data-alt="Preferences open on Desktop: the wallpapers in dots and the widgets."
           data-alt-glass="Preferences in smoked glass, open on Desktop: the wallpapers in dots.">
           <h2>Preferences</h2>
           <p>The whole system on one sheet, applied as a rebuild.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>O</kbd></div>
         </li>
         <li class="say top" data-name="Lock screen" data-shot="lock" data-looks="plain glass" data-probe
-          data-alt-plain="The lock screen: the clock in dots, and what is playing."
+          data-alt="The lock screen: the clock in dots, and what is playing."
           data-alt-glass="The lock screen in smoked glass: the clock in dots, and what is playing on a panel of its own.">
           <h2>Lock screen</h2>
           <p>The clock in dots, and what is playing, with buttons you can click.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>K</kbd></div>
         </li>
         <li class="say top" data-name="Nilo" data-shot="nilo" data-looks="plain glass"
-          data-alt-plain="Nilo in the launcher, writing: its two eyes, the question and the start of the answer."
+          data-alt="Nilo in the launcher, writing: its two eyes, the question and the start of the answer."
           data-alt-glass="Nilo in the launcher in smoked glass, writing: its two eyes, the question and the start of the answer.">
           <h2>Nilo</h2>
           <p>An assistant with a model that runs here, and as much of the system as you give it.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>I</kbd><span>or <code>?</code> in the launcher</span></div>
         </li>
         <li class="say" data-name="Smoked glass" data-shot="terminal" data-looks="plain glass"
-          data-alt-plain="kitty with fastfetch in dots, inside the black frame."
+          data-alt="kitty with fastfetch in dots, inside the black frame."
           data-alt-glass="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame in smoked glass.">
           <h2>Or all of it in smoked glass</h2>
           <p>One switch, and the frame and every drawer turn to dark glass over what is really behind them.</p>
@@ -590,219 +376,17 @@ nihil rebuild    <span class="c"># your changes to /etc/nixos</span></code></pre
   </div>
 </footer>
 
-<script>(() => {
-  const root = document.documentElement;
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const stage = document.getElementById("top");
-  const box = document.getElementById("box");
-  const pictures = [...box.querySelectorAll(".shots img")];
-  const note = box.querySelector(".look-note");
-  const all = [...box.querySelectorAll(".say")];
-  const dots = stage.querySelector(".rail .dots");
-  const switches = [...document.querySelectorAll("[data-glass-switch]")];
-  const toggles = [...document.querySelectorAll("[data-glass-toggle]")];
-  const missing = new Set();
-  const loads = new Map();
-  const found = new Set();
-  let look = root.dataset.look === "glass" ? "glass" : "plain";
-  let steps = [];
-  let index = -1;
-  let ticket = 0;
-
-  function width() {
-    const pixels = Math.min(innerWidth, innerHeight * 1.6) * (devicePixelRatio || 1);
-    return pixels > 1300 ? 1920 : pixels > 680 ? 1200 : 640;
-  }
-  function sources(step, which) {
+<script>
+window.nihil = {
+  sources(step, which) {
     const base = which === "glass" ? "assets/screens/glass/" : "assets/screens/";
     const name = step.dataset.shot;
-    const size = width();
+    const pixels = Math.min(innerWidth, innerHeight * 1.6) * (devicePixelRatio || 1);
     const png = `${base}${name}.png`;
-    return size === 1920 ? [png] : [`${base}small/${name}-${size}.webp`, png];
+    return pixels > 1300 ? [png] : [`${base}small/${name}-${pixels > 680 ? 1200 : 640}.webp`, png];
   }
-  function load(src) {
-    if (!loads.has(src)) {
-      loads.set(src, new Promise((done, fail) => {
-        const image = new Image();
-        image.onload = () => done(src);
-        image.onerror = () => fail(src);
-        image.src = src;
-      }));
-    }
-    return loads.get(src);
-  }
-  function order(step) {
-    const looks = step.dataset.looks.split(" ");
-    const preferred = look === "glass" ? ["glass", "plain"] : ["plain", "glass"];
-    return preferred.filter(which => looks.includes(which) && !missing.has(`${step.dataset.shot}:${which}`));
-  }
-  async function picture(step) {
-    for (const which of order(step)) {
-      for (const src of sources(step, which)) {
-        try {
-          await load(src);
-          return { which, src };
-        } catch (e) {}
-      }
-      missing.add(`${step.dataset.shot}:${which}`);
-    }
-    return null;
-  }
-
-  async function show(step) {
-    const mine = ++ticket;
-    const got = await picture(step);
-    if (mine !== ticket || !got) return;
-    note.hidden = got.which === look;
-    note.textContent = got.which === "glass" ? "Smoked glass" : "Plain";
-    const alt = step.dataset[got.which === "glass" ? "altGlass" : "altPlain"] || "";
-    const [front, back] = pictures[0].classList.contains("on") ? pictures : [pictures[1], pictures[0]];
-    if (front.getAttribute("src") === got.src) {
-      front.alt = alt;
-      return;
-    }
-    if (back.getAttribute("src") !== got.src) back.src = got.src;
-    try { await back.decode(); } catch (e) {}
-    if (mine !== ticket) return;
-    back.alt = alt;
-    front.alt = "";
-    back.classList.add("on");
-    front.classList.remove("on");
-  }
-
-  function go(i) {
-    index = i;
-    const step = steps[i];
-    all.forEach(s => s.classList.toggle("on", s === step));
-    [...dots.children].forEach((dot, k) => dot.setAttribute("aria-current", String(k === i)));
-    show(step);
-    steps.slice(i + 1, i + 3).forEach(next => picture(next));
-  }
-
-  function span() {
-    return Math.max(1, stage.offsetHeight - innerHeight);
-  }
-  function jump(i) {
-    const per = span() / steps.length;
-    scrollTo({ top: stage.offsetTop + per * i + per / 2, behavior: reduce ? "auto" : "smooth" });
-  }
-  function build() {
-    steps = all.filter(step => !("probe" in step.dataset) || found.has(step));
-    stage.style.setProperty("--steps", steps.length);
-    dots.replaceChildren(...steps.map((step, i) => {
-      const dot = document.createElement("button");
-      dot.type = "button";
-      dot.className = "dot";
-      dot.setAttribute("aria-label", step.dataset.name);
-      const tip = document.createElement("span");
-      tip.className = "tip";
-      tip.textContent = step.dataset.name;
-      dot.append(tip);
-      dot.addEventListener("click", () => jump(i));
-      return dot;
-    }));
-    index = -1;
-    update();
-  }
-
-  let frame = 0;
-  function update() {
-    frame = 0;
-    const top = stage.getBoundingClientRect().top;
-    const progress = Math.min(0.9999, Math.max(0, -top / span()));
-    const i = Math.floor(progress * steps.length);
-    if (i !== index) go(i);
-    root.classList.toggle("staging", stage.getBoundingClientRect().bottom > innerHeight * 0.45);
-  }
-  function soon() {
-    if (!frame) frame = requestAnimationFrame(update);
-  }
-  addEventListener("scroll", soon, { passive: true });
-  addEventListener("resize", () => { layoutSmoke(); soon(); if (steps[index]) show(steps[index]); });
-
-  function setLook(next, remember) {
-    look = next;
-    if (look === "glass") root.dataset.look = "glass"; else delete root.dataset.look;
-    switches.forEach(s => s.setAttribute("aria-checked", String(look === "glass")));
-    toggles.forEach(t => t.setAttribute("aria-pressed", String(look === "glass")));
-    if (remember) { try { localStorage.setItem("nihil-look", look); } catch (e) {} }
-    if (steps[index]) show(steps[index]);
-  }
-  [...switches, ...toggles].forEach(control => control.addEventListener("click", () => setLook(look === "glass" ? "plain" : "glass", true)));
-
-  const smoke = document.querySelector(".smoke");
-  function layoutSmoke() {
-    const css = getComputedStyle(root);
-    const px = name => parseFloat(css.getPropertyValue(name));
-    const w = innerWidth, h = innerHeight, r = px("--r");
-    const x0 = px("--left"), y0 = px("--top"), x1 = w - px("--t"), y1 = h - px("--t");
-    const hole = `M${x0 + r} ${y0}H${x1 - r}A${r} ${r} 0 0 1 ${x1} ${y0 + r}V${y1 - r}A${r} ${r} 0 0 1 ${x1 - r} ${y1}` +
-      `H${x0 + r}A${r} ${r} 0 0 1 ${x0} ${y1 - r}V${y0 + r}A${r} ${r} 0 0 1 ${x0 + r} ${y0}Z`;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path fill-rule="evenodd" d="M0 0H${w}V${h}H0Z${hole}"/></svg>`;
-    const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-    smoke.style.webkitMaskImage = url;
-    smoke.style.maskImage = url;
-  }
-  layoutSmoke();
-
-  all.filter(step => "probe" in step.dataset).forEach(step => {
-    picture(step).then(got => { if (got) { found.add(step); build(); } });
-  });
-  build();
-  setLook(look, false);
-
-  const mark = document.getElementById("wordmark");
-  fetch("assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
-    const svg = new DOMParser().parseFromString(text, "image/svg+xml").documentElement;
-    if (svg.nodeName !== "svg") return;
-    svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "NIHIL");
-    svg.removeAttribute("width");
-    svg.removeAttribute("height");
-    mark.replaceChildren(document.importNode(svg, true));
-    if (reduce) return;
-    const live = mark.querySelector("svg");
-    const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle, g[fill="#8A8A8A"] circle')];
-    const size = live.viewBox.baseVal.height;
-    const ring = ink.filter(c => +c.getAttribute("cx") < size);
-    const letters = ink.filter(c => +c.getAttribute("cx") >= size);
-    const centre = live.querySelector('g[fill="#D71921"] circle');
-    const far = c => Math.hypot(+c.getAttribute("cx") - size / 2, +c.getAttribute("cy") - size / 2);
-    ring.sort((a, b) => far(a) - far(b));
-    const on = (el, delay) => el.animate([{ opacity: 0.08 }, { opacity: 1 }], { duration: 180, delay, fill: "backwards", easing: "ease-out" });
-    const step = 1100 / Math.max(1, ring.length);
-    ring.forEach((c, i) => on(c, 120 + i * step));
-    const lit = 120 + ring.length * step;
-    if (centre) on(centre, lit + 60);
-    letters.forEach(c => on(c, lit + 220 + (+c.getAttribute("cx") - size) * 2.2));
-  }).catch(() => {});
-
-  document.querySelectorAll(".code").forEach(block => {
-    if (!navigator.clipboard) return;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "key small copy";
-    button.textContent = "Copy";
-    button.addEventListener("click", () => {
-      navigator.clipboard.writeText(block.querySelector("code").innerText).then(() => {
-        button.textContent = "Copied";
-        setTimeout(() => { button.textContent = "Copy"; }, 1600);
-      });
-    });
-    block.append(button);
-  });
-
-  const leds = [...document.querySelectorAll(".leds a")];
-  const targets = leds.map(a => document.querySelector(a.getAttribute("href")));
-  const seen = new Map();
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(e => seen.set(e.target, e.intersectionRatio));
-    let best = 0, ratio = -1;
-    targets.forEach((t, i) => { const v = seen.get(t) ?? 0; if (v > ratio) { ratio = v; best = i; } });
-    leds.forEach((a, i) => a.setAttribute("aria-current", String(i === best)));
-  }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
-  targets.forEach(t => t && observer.observe(t));
-})();
+};
 </script>
+<script src="assets/site.js"></script>
 </body>
 </html>
