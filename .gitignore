@@ -1,5 +1,7 @@
 # .gitignore by poligle
 
+tools/
+
 # Build results
 result
 result-*
@@ -25,6 +27,3 @@ result-*
 
 # Python (the tests of home/nilo and home/deck)
 __pycache__/
-
-# Scripts that stay on this computer
-tools/

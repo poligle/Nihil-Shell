@@ -14,12 +14,10 @@ Column {
     readonly property string level: Nilo.settings.access ?? "chat"
     readonly property var levels: ["chat", "terminal", "system"]
     readonly property var items: [
-        { key: "web", level: false, title: Lang.accessWeb, sub: Lang.accessWebSub, guard: "" },
-        { key: "chat", level: true, title: Lang.accessChat, sub: Lang.accessChatSub, guard: "" },
-        { key: "terminal", level: true, title: Lang.accessTerminal, sub: Lang.accessTerminalSub.arg(repo),
-          guard: Lang.accessTerminalGuard.arg(repo) },
-        { key: "system", level: true, title: Lang.accessEverything, sub: Lang.accessEverythingSub,
-          guard: Lang.accessEverythingGuard }
+        { key: "web", level: false, title: Lang.accessWeb, guard: "" },
+        { key: "chat", level: true, title: Lang.accessChat, guard: "" },
+        { key: "terminal", level: true, title: Lang.accessTerminal, guard: Lang.accessTerminalGuard.arg(repo) },
+        { key: "system", level: true, title: Lang.accessEverything, guard: Lang.accessEverythingGuard }
     ]
     readonly property int count: items.length
 
@@ -75,7 +73,6 @@ Column {
 
             width: root.width
             title: modelData.title
-            sub: modelData.sub
             guard: root.asking === modelData.key ? modelData.guard : ""
             on: root.chosen(modelData)
             choice: modelData.level

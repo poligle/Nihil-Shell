@@ -246,12 +246,6 @@
 		confirmSearch = "Buscar en internet";
 		confirmFetch = "Leer una página";
 		confirmOpenUrl = "Abrir una página";
-		whyTerminal = "es una terminal: lo que escriba se ejecuta";
-		whyKeys = "el atajo cierra o borra";
-		whyClose = "puede tener algo sin guardar";
-		whyWeb = "después de leer internet o la pantalla";
-		whyPrivate = "después de leer archivos tuyos o la pantalla: lo que salga a internet, que lo veas";
-		whyOutside = "es un archivo de fuera de tu carpeta";
 		confirmOk = "Confirmar";
 		confirmCancel = "Cancelar";
 		confirmDone = "Confirmado";
@@ -276,11 +270,8 @@
 		keySpace = "Espacio";
 		introSleep = "Si pasan %1 minutos sin preguntas, me duermo y dejo libre la memoria. Despierto en cuanto escribes.";
 		introModel = "Elige mi modelo";
-		introModelSub = "Tienes %1 GB de RAM. Los grandes saben más; los pequeños van más rápido.";
 		introAccess = "¿Qué puedo hacer?";
-		introAccessSub = "Lo cambias cuando quieras en el engranaje.";
 		introDone = "Listo.";
-		introDoneSub = "Pregúntame lo que quieras.";
 		introNext = "Seguir";
 		introStart = "Empezar";
 		introKeepsDownloading = "Sigue descargándose mientras tanto";
@@ -301,14 +292,10 @@
 		modelFailedMissing = "El registro de Ollama no lo tiene";
 
 		accessWeb = "Internet";
-		accessWebSub = "Buscar y leer páginas";
 		accessChat = "Charla";
-		accessChatSub = "Hablar, mirar este ordenador y abrir apps";
 		accessTerminal = "Terminal y repositorio";
-		accessTerminalSub = "Además archivos, git y comandos en %1, cada paso confirmado";
 		accessTerminalGuard = "Podré leer, crear y cambiar archivos de %1, hacer add, commit y push con tu usuario de git y ejecutar comandos como tú. Antes de cada cambio, commit o comando te enseño qué voy a hacer y espero a que confirmes; lo que pide sudo se abre en una terminal para que escribas tú la contraseña.";
 		accessEverything = "Todo el sistema";
-		accessEverythingSub = "Además ver y usar el escritorio, y los archivos de toda tu carpeta";
 		accessEverythingGuard = "Podré ver lo que tienes abierto y usarlo como tú: escribir y pulsar teclas en las ventanas, ponerte música, mover y cerrar ventanas, cambiar el volumen, el brillo o el fondo, mandar cosas al móvil y leer archivos de todo el ordenador, salvo claves, contraseñas y perfiles del navegador. Solo te preguntaré antes de cambiar archivos, hacer commits, ejecutar comandos que no solo leen, cerrar ventanas, escribir en una terminal y usar atajos que cierran o borran; y, si en esa respuesta he leído internet o la pantalla, también antes de escribir, leer tus archivos o enviar algo; si he leído tus archivos, antes de que algo salga a internet.";
 		accessAuthorize = "Autorizar";
 
@@ -783,12 +770,6 @@
 		confirmSearch = "Search the web";
 		confirmFetch = "Read a page";
 		confirmOpenUrl = "Open a page";
-		whyTerminal = "it's a terminal: what I type runs";
-		whyKeys = "the shortcut closes or deletes";
-		whyClose = "it may have something unsaved";
-		whyWeb = "after reading the web or the screen";
-		whyPrivate = "after reading your files or the screen: what goes out to the internet, you see first";
-		whyOutside = "it's a file from outside your folder";
 		confirmOk = "Confirm";
 		confirmCancel = "Cancel";
 		confirmDone = "Confirmed";
@@ -813,11 +794,8 @@
 		keySpace = "Space";
 		introSleep = "After %1 minutes without questions I go to sleep and free the memory. I wake up as soon as you type.";
 		introModel = "Choose my model";
-		introModelSub = "You have %1 GB of RAM. Bigger ones know more; smaller ones are faster.";
 		introAccess = "What may I do?";
-		introAccessSub = "Change it any time in the settings.";
 		introDone = "Ready.";
-		introDoneSub = "Ask me anything.";
 		introNext = "Next";
 		introStart = "Start";
 		introKeepsDownloading = "It keeps downloading meanwhile";
@@ -838,14 +816,10 @@
 		modelFailedMissing = "Ollama's registry doesn't have it";
 
 		accessWeb = "Internet";
-		accessWebSub = "Search and read pages";
 		accessChat = "Chat";
-		accessChatSub = "Talk, look at this computer and open apps";
 		accessTerminal = "Terminal and repository";
-		accessTerminalSub = "Also files, git and commands in %1, each step confirmed";
 		accessTerminalGuard = "I'll be able to read, create and change files in %1, add, commit and push as your git user, and run commands as you. Before each change, commit or command I show you what I'll do and wait for your confirmation; whatever needs sudo opens in a terminal for you to type the password.";
 		accessEverything = "The whole system";
-		accessEverythingSub = "Also seeing and using the desktop, and files across your folder";
 		accessEverythingGuard = "I'll be able to see what you have open and use it as you would: type and press keys in windows, put on music, move and close windows, change the volume, the brightness or the wallpaper, send things to your phone and read files across the computer, except keys, passwords and browser profiles. I'll only ask before changing files, committing, running commands that do more than read, closing windows, typing in a terminal and shortcuts that close or delete; and, once an answer has read the web or the screen, also before typing, reading your files or sending anything; once it has read your files, before anything goes out to the internet.";
 		accessAuthorize = "Authorize";
 

@@ -521,7 +521,7 @@ only the panel's history keeps it.
 
 - **Chat.** Talking; this computer's NixOS version and generation, memory, disk and
   battery; opening apps by name, and files, folders and web pages in whatever opens them.
-- **Terminal and repository.** Also reading, creating and changing files in one
+- **Terminal and repository.** Reading, creating and changing files in one
   repository, never outside it or inside `.git`; `git add -A`, commit and push there; and
   commands with bash, as you. Every change to a file shows its diff, every commit its files
   and message, and every command itself, where it runs and why, and each waits for enter
@@ -529,7 +529,7 @@ only the panel's history keeps it.
   change the system come in a red card; anything with `sudo` opens in a kitty window, where
   you type the password; the rest run in the background with their last lines under them,
   for two minutes at most.
-- **The whole system.** Also the desktop, as you would use it: which windows are open and,
+- **The whole system.** The desktop, as you would use it: which windows are open and,
   with a model that sees pictures (Qwen 3.5 does), a screenshot of the window or the
   screen; typing and shortcuts in a window (`wtype`); a window brought forward, moved to a
   workspace, enlarged, floated or closed; the music (`playerctl`: pause, the next one, or
