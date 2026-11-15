@@ -42,6 +42,7 @@ Item {
         try { data = JSON.parse(info || "{}"); } catch (e) {}
         const args = data.args ?? data;
         if (status === "failed") return Lang.toolFailed.arg(String(data.error ?? "").slice(0, 80));
+        if (status !== "running" && data.declined) return Lang.toolDeclined;
         const running = status === "running";
         switch (name) {
         case "web_search":
@@ -77,8 +78,70 @@ Item {
         }
         case "open_app":
             return running ? Lang.toolLaunching.arg(args.target ?? "") : Lang.toolLaunched.arg(data.opened || args.target || "");
+        case "list_windows":
+            return running ? Lang.toolWindows : Lang.toolWindowsDone.arg(data.count ?? 0);
+        case "look_at_screen":
+            if (running) return Lang.toolLooking;
+            return data.what === "screen" || !data.app ? Lang.toolLookedScreen : Lang.toolLookedWindow.arg(data.app);
+        case "use_window": {
+            const app = data.app || args.window || "";
+            if (running) return Lang.toolWindow.arg(app);
+            if (data.declined) return Lang.toolDeclined;
+            const done = { close: Lang.toolClose, fullscreen: Lang.toolFullscreen, maximize: Lang.toolMaximize,
+                           float: Lang.toolFloat }[data.action ?? args.action];
+            if ((data.action ?? args.action) === "move") return Lang.toolMove.arg(app).arg(data.workspace ?? args.workspace ?? "");
+            return (done ?? Lang.toolFocus).arg(app);
+        }
+        case "type_text":
+            if (running) return Lang.toolTyping.arg(args.window || "…");
+            return data.declined ? Lang.toolDeclined : Lang.toolTyped.arg(data.app || args.window || "");
+        case "press_keys":
+            if (running) return Lang.toolPressing.arg(args.keys ?? "");
+            return data.declined ? Lang.toolDeclined : Lang.toolPressed.arg(data.keys || args.keys || "").arg(data.app || "");
+        case "media": {
+            if (running) return args.query ? Lang.toolFinding.arg(args.query) : Lang.toolMedia;
+            if (data.playing) return Lang.toolPlaying.arg(data.playing);
+            if (data.state === "paused" || (data.action ?? args.action) === "pause") return Lang.toolPaused;
+            if (data.title) return Lang.toolPlaying.arg(data.title + (data.artist ? ", " + data.artist : ""));
+            return (data.action ?? args.action) === "previous" ? Lang.toolPrevious : Lang.toolNext;
+        }
+        case "control": {
+            const setting = data.setting ?? args.setting ?? "";
+            const label = root.settingName(setting);
+            if (running) return Lang.toolControl.arg(label.toLowerCase());
+            if (setting === "lock") return Lang.actLock;
+            if (setting === "wallpaper" && (data.value === "next" || data.value === "prev"))
+                return data.value === "next" ? Lang.actNextWallpaper : Lang.actPrevWallpaper;
+            const value = data.value === "on" ? Lang.toolOn : data.value === "off" ? Lang.toolOff
+                : (setting === "volume" || setting === "brightness") ? data.value + " %" : String(data.value ?? "");
+            return Lang.toolControlled.arg(label).arg(value);
+        }
+        case "send_to_phone":
+            if (running) return Lang.toolSending;
+            return data.declined ? Lang.toolDeclined : Lang.toolSent;
         }
         return name;
+    }
+
+    function settingName(setting: string): string {
+        return ({ volume: Lang.settingVolume, mute: Lang.settingMute, brightness: Lang.settingBrightness,
+                  dnd: Lang.settingDnd, caffeine: Lang.settingCaffeine, night: Lang.settingNight,
+                  wallpaper: Lang.settingWallpaper, glass: Lang.settingGlass, workspace: Lang.settingWorkspace,
+                  lock: Lang.settingLock })[setting] ?? setting;
+    }
+
+    function desktopTitle(facts: var): string {
+        switch (facts.what) {
+        case "type": return Lang.confirmType.arg(facts.app ?? "");
+        case "keys": return Lang.confirmKeys.arg(facts.app ?? "");
+        case "close": return Lang.confirmCloseWindow.arg(facts.app ?? "");
+        case "read": return Lang.confirmRead;
+        case "send": return Lang.confirmSend;
+        case "search": return Lang.confirmSearch;
+        case "fetch": return Lang.confirmFetch;
+        case "open": return Lang.confirmOpenUrl;
+        }
+        return "";
     }
 
     function dangerText(code: string): string {
@@ -186,7 +249,9 @@ Item {
                     { text: Lang.niloTryDisk, on: Nilo.settings.system === true },
                     { text: Lang.niloTryShell, on: Nilo.settings.shell === true },
                     { text: Lang.niloTryApps, on: Nilo.settings.apps === true },
-                    { text: Lang.niloTryFiles, on: Nilo.settings.write === true },
+                    { text: Lang.niloTryMusic, on: Nilo.settings.desktop === true && Nilo.settings.web === true },
+                    { text: Lang.niloTryWrite, on: Nilo.settings.desktop === true },
+                    { text: Lang.niloTryFiles, on: Nilo.settings.write === true && Nilo.settings.desktop !== true },
                     { text: Lang.niloTryPush, on: Nilo.settings.git === true }
                 ].filter(s => s.on).slice(0, 5)
 
@@ -517,7 +582,10 @@ Item {
                     readonly property var facts: { try { return JSON.parse(entry.info || "{}"); } catch (e) { return {}; } }
                     readonly property bool file: facts.action === "edit" || facts.action === "create"
                     readonly property bool command: facts.action === "run" || facts.action === "terminal"
+                    readonly property bool desktop: facts.action === "desktop"
+                    readonly property var why: desktop ? (facts.why ?? []) : []
                     readonly property bool risky: command && (facts.danger ?? []).length > 0
+                        || why.some(code => code !== "web" && code !== "private")
                     readonly property bool open: entry.status === "asking"
                     readonly property bool isArmed: open && root.armed === entry.cid
 
@@ -539,7 +607,8 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: card.file ? (card.facts.action === "create" ? Lang.confirmCreate : Lang.confirmEdit) + " " + Lang.confirmFile
+                            text: card.desktop ? root.desktopTitle(card.facts)
+                                : card.file ? (card.facts.action === "create" ? Lang.confirmCreate : Lang.confirmEdit) + " " + Lang.confirmFile
                                 : card.command ? Lang.confirmRun + (card.facts.action === "terminal" ? " " + Lang.confirmTerminal : "")
                                 : "git " + (card.facts.action === "commit-push" ? Lang.confirmCommitPush
                                     : card.facts.action === "push" ? Lang.confirmPush : Lang.confirmCommit)
@@ -548,8 +617,10 @@ Item {
 
                         Txt {
                             width: parent.width
-                            text: card.file
-                                ? (card.facts.repo ?? "") + "/" + (card.facts.path ?? "") + "   +" + (card.facts.added ?? 0)
+                            visible: text !== ""
+                            text: card.desktop ? (card.facts.path ?? card.facts.title ?? "")
+                                : card.file
+                                ? (card.facts.repo ? card.facts.repo + "/" : "") + (card.facts.path ?? "") + "   +" + (card.facts.added ?? 0)
                                     + ((card.facts.removed ?? 0) > 0 ? " −" + card.facts.removed : "")
                                 : card.command ? (card.facts.cwd ?? "")
                                 : (card.facts.repo ?? "") + " (" + (card.facts.branch ?? "") + ")" + (card.facts.remote ? "  →  " + card.facts.remote : "")
@@ -559,7 +630,7 @@ Item {
                         }
 
                         Surface {
-                            visible: card.command
+                            visible: card.command || card.desktop && (card.facts.text ?? card.facts.keys ?? "") !== ""
                             width: parent.width
                             height: visible ? commandText.implicitHeight + 20 : 0
                             radius: 12
@@ -572,7 +643,7 @@ Item {
                                 x: 12
                                 y: 10
                                 width: parent.width - 24
-                                text: "$ " + (card.facts.command ?? "")
+                                text: card.desktop ? (card.facts.text ?? card.facts.keys ?? "") : "$ " + (card.facts.command ?? "")
                                 textFormat: Text.PlainText
                                 color: Tokens.ink
                                 font.family: Tokens.fontMono
@@ -594,7 +665,7 @@ Item {
                         }
 
                         Row {
-                            visible: card.risky
+                            visible: card.command && card.risky
                             spacing: 8
 
                             Rectangle {
@@ -658,7 +729,7 @@ Item {
                         Column {
                             width: parent.width
                             spacing: 2
-                            visible: !card.file && !card.command
+                            visible: !card.file && !card.command && !card.desktop
 
                             Repeater {
                                 model: (card.facts.files ?? []).slice(0, 8)

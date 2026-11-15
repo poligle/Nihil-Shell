@@ -186,13 +186,6 @@ Item {
                     font.pixelSize: 20
                 }
 
-                Txt {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: Lang.introModelSub.arg(Math.round(Nilo.ramGB))
-                    color: Tokens.muted
-                    font.pixelSize: 13
-                }
-
                 Item { width: 1; height: 8 }
 
                 ModelList {
@@ -229,13 +222,6 @@ Item {
                         text: Lang.introAccess
                         font.pixelSize: 20
                     }
-
-                    Txt {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: Lang.introAccessSub
-                        color: Tokens.muted
-                        font.pixelSize: 13
-                    }
                 }
 
                 Flickable {
@@ -267,13 +253,6 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Lang.introDone
                     font.pixelSize: 34
-                }
-
-                Txt {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: Lang.introDoneSub
-                    color: Tokens.dim
-                    font.pixelSize: 15
                 }
             }
         }

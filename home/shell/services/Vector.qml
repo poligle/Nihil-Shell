@@ -150,6 +150,11 @@ Singleton {
     IpcHandler {
         target: "vector"
 
+        function reload(): void {
+            meta.reload();
+            root.read();
+        }
+
         function received(): void {
             meta.reload();
             root.read();

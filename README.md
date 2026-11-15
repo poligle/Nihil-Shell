@@ -80,10 +80,12 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   window keeps the keyboard all along, so what was open in it stays open. The one chosen
   is lit, its picture in colour. What a password manager copies is never kept.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
-  that wake up while you type, answer, search the web if you let them and open apps. Asking
-  you first, they change files, commit and push in a repository of yours and run commands.
-  Close the launcher mid-answer and they tell you when they're done, from the bar. It falls
-  asleep and frees the memory after a few minutes. See [Nilo](#nilo).
+  that wake up while you type. Three levels of what it may do: talk (and search the web if
+  you let it); work in a repository of yours, its files, git and the terminal, each step
+  confirmed; or use the whole desktop as you would: see what is open and the screen, type
+  in Writer, put on a song, open Zen on a video, move windows, turn the volume, send things
+  to the phone, asking only before what carries a risk. Close the launcher mid-answer and it
+  tells you when it's done, from the bar. See [Nilo](#nilo).
 - **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
   sends a segment of light around the frame; critical ones run twice, in red, like the
   battery warnings at 15, 10 and 5 %. Plugging in the charger sends two lights up both
@@ -105,25 +107,29 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   own, in Quickshell: the time in dots, the password as dots, a finger or the password) and
   a lock screen with what is playing in a corner, on a panel of its own: the cover in dots,
   the progress in LEDs and buttons you can click (hyprlock).
+- **Pictures, videos and PDFs.** imv, mpv and Zathura open them, from Thunar or from
+  Vector, in the same black and greys, and stay out of the launcher. A picture opens with
+  the rest of its folder an arrow away; mpv plays music files too.
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
   NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
   the greeter and the scripts, and the language of their dates.
-- **Its own sound.** A set of short digital blips, synthesised by
-  [`tools/sounds.py`](tools/sounds.py); the previous sounds are one option away.
+- **Its own sound.** A set of short digital blips, synthesised for NIHIL; the previous
+  sounds are one option away.
 
 | | |
 |:---:|:---:|
 | ![Dashboard](docs/assets/screens/dashboard.png) | ![Quick settings](docs/assets/screens/settings.png) |
-| Dashboard — hover the top edge or `SUPER + D` | Quick settings — `SUPER + P`, the status icons or the top-right corner |
+| Dashboard: the clock, the player, the dials and the kanban — hover the top edge or `SUPER + D` | Quick settings — `SUPER + P`, the status icons or the top-right corner |
 | ![Launcher](docs/assets/screens/launcher.png) | ![Notification](docs/assets/screens/notification.png) |
 | Launcher, its actions — `SUPER + Space`, three fingers up or the bottom edge | A notification, and its light around the frame |
 | ![Clipboard history](docs/assets/screens/clipboard.png) | ![Wallpapers](docs/assets/screens/wallpapers.png) |
 | Clipboard history — hold `SUPER + V` | Wallpapers in dots — `SUPER + W` |
 | ![Preferences, Desktop](docs/assets/screens/preferences.png) | ![Preferences, System](docs/assets/screens/preferences-system.png) |
-| Preferences — `SUPER + O` or the cog | The system, applied as a rebuild |
+| Preferences, Desktop: the wallpaper and the widgets — `SUPER + O` or the cog | The system, applied as a rebuild |
 
-<sub>NIHIL at 1920 × 1200. App icons are Colloid's.</sub>
+<sub>NIHIL at 1920 × 1200, as it comes; the same in smoked glass is under
+[Design language](#design-language). App icons are Colloid's.</sub>
 
 ---
 
@@ -156,7 +162,11 @@ Contrast ratios are against `#000000`. Fonts: [Doto](https://github.com/oliverla
 OFL 1.1), plus JetBrains Mono Nerd Font for the terminal and glyphs. Icons: Colloid in
 its grey variant; the shell shows app icons desaturated.
 
-**Smoked glass**, off unless chosen in Preferences, Look: the frame, its drawers and every
+<p align="center">
+  <img src="docs/assets/screens/glass/terminal.png" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
+</p>
+
+**Smoked glass**, off unless chosen in Preferences, Desktop: the frame, its drawers and every
 card, key, tab, row and field in them, Preferences, the desktop's widgets, the lock
 screen's field and the login's become dark glass. Behind it is what is really there: the
 wallpaper (the output's own render, dot for dot) and, wherever glass can be over one, the
@@ -175,6 +185,17 @@ with the player's panel and without, and the lock shows one or the other as some
 or stops. The terminal
 goes with it: kitty's background lets a fifth through, which Hyprland blurs and darkens, and
 the switch reaches the kitties already open (they read their configuration again).
+
+| | |
+|:---:|:---:|
+| ![The dashboard in smoked glass](docs/assets/screens/glass/dashboard.png) | ![Every workspace in smoked glass](docs/assets/screens/glass/overview.png) |
+| The dashboard, Vector holding what the phone sent | Every workspace, with its windows — `SUPER + A` |
+| ![Quick settings in smoked glass](docs/assets/screens/glass/settings.png) | ![Preferences in smoked glass](docs/assets/screens/glass/preferences.png) |
+| Quick settings | Preferences, Desktop |
+
+<sub>Every picture, plain and in smoked glass, is in [`docs/assets/screens`](docs/assets/screens)
+(the glass ones in `glass/`, the phone's in `android/`); on [nihilshell.com](https://nihilshell.com/) a
+switch above the desktop shows either.</sub>
 
 ---
 
@@ -422,15 +443,15 @@ nihil-ipc osd volume 40 false
 nihil-ipc glyph test true             # light the frame (critical = red)
 nihil-ipc glyph charge                # the charger's light, rising from the bottom
 nihil-ipc notifs toggleDnd
-nihil-ipc nilo toggle                 # also: open, sleep, ask "…"
+nihil-ipc nilo toggle                 # also: open, sleep, ask "…", state
 nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
-nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome
+nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome, glass on|off
 nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
 nihil-ipc apps list                   # the launcher's apps, as JSON; also: launch <id>, url <https://…>
 nihil-ipc media toggle                # also: next, previous, now (what plays, as JSON)
-nihil-ipc vector received             # the deck, when the phone has sent something
+nihil-ipc vector received             # the deck, when the phone has sent something; reload, quietly
 nihil-wallpaper next                  # also: prev, set <name>, list
 journalctl --user -u nihil-shell -f   # logs
 ```
@@ -456,9 +477,9 @@ journalctl --user -u nihil-shell -f   # logs
 
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
 on black: asleep while the model is unloaded, awake as soon as you type, looking up
-while they think and from side to side while they search. It answers, searches the web,
-looks at this computer and opens apps, and, if you allow it, changes files, commits and
-pushes in a repository and runs commands, each step confirmed by you first.
+while they think and from side to side while they search or look. It answers, searches
+the web, looks at this computer and opens apps; with more access, it works in a
+repository of yours, or uses the whole desktop as you would.
 
 It is off by default. Preferences, System turns it on and chooses what runs the model
 (CPU, Vulkan, ROCm or CUDA), applied with a rebuild; or, in the host:
@@ -494,35 +515,59 @@ the conversation; on its own it goes back after a few seconds, longer for long a
 after that the eyes in the bar stay alert until you answer it. With do not disturb on,
 only the panel's history keeps it.
 
-**What it may do**, each one a switch in its settings (the gear): **Internet** — search
-DuckDuckGo (through `ddgr`, or `nilo.searxng`) and read pages, never local addresses;
-**This computer** — NixOS version and generation, memory, disk, battery; **Apps** — open
-apps by name, and files, folders and web pages in whatever opens them; **Files** — read,
-create and change files in one repository, never outside it or inside `.git`; **Git** —
-`git add -A`, commit and push in that repository; **Terminal** — run commands with bash,
-as you. The repository is NIHIL's own checkout until you choose another: the one `nihil
-dev` builds from, else `~/nixos-config` or `~/Nihil-Shell`; the settings list the ones
-under `~` (most recently used first) or take any path.
+**What it may do.** One switch, **Internet** (search DuckDuckGo through `ddgr`, or
+`nilo.searxng`, and read pages, never local addresses), and three levels, in its settings
+(the gear) and in the introduction:
 
-**Opening apps.** With Apps on, "abre zen" or "open zen and thunar" opens them at once,
-without the model: the launcher's own search, when every name matches an app closely.
-Anything more ("open zen and look for the weather") goes to Nilo as usual.
+- **Chat.** Talking; this computer's NixOS version and generation, memory, disk and
+  battery; opening apps by name, and files, folders and web pages in whatever opens them.
+- **Terminal and repository.** Reading, creating and changing files in one
+  repository, never outside it or inside `.git`; `git add -A`, commit and push there; and
+  commands with bash, as you. Every change to a file shows its diff, every commit its files
+  and message, and every command itself, where it runs and why, and each waits for enter
+  twice or a click. Commands that delete, touch disks, rewrite git history, run as root or
+  change the system come in a red card; anything with `sudo` opens in a kitty window, where
+  you type the password; the rest run in the background with their last lines under them,
+  for two minutes at most.
+- **The whole system.** The desktop, as you would use it: which windows are open and,
+  with a model that sees pictures (Qwen 3.5 does), a screenshot of the window or the
+  screen; typing and shortcuts in a window (`wtype`); a window brought forward, moved to a
+  workspace, enlarged, floated or closed; the music (`playerctl`: pause, the next one, or
+  a song by its name, found on Spotify and put on there, or on its page); NIHIL's volume,
+  brightness, do not disturb, caffeine, night light, wallpaper, glass, workspace and lock;
+  and a text or a file sent to the phone with Vector. Files reach the whole home folder,
+  and the rest of the computer to read, but never keys, passwords or browser profiles
+  (`~/.ssh`, `~/.gnupg`, the browsers' profiles, `.env` files and the like).
+
+The last two wait for you to authorize them: the level first says what it allows and waits
+for "authorize" (or the same key again); going down needs nothing. The repository is
+NIHIL's own checkout until you choose another: the one `nihil dev` builds from, else
+`~/nixos-config` or `~/Nihil-Shell`; the settings list the ones under `~` (most recently
+used first) or take any path. Choosing another one while on Terminal and repository goes
+back to Chat, to be authorized again.
+
+**At the whole system it asks only where there is a risk:** changing a file, a commit, a
+command that does more than read (those that only read, like `ls`, `journalctl` or `git
+status` in the repository, from a short list and with no redirection, chaining or
+globbing, run on their own), closing a window, typing in a terminal, shortcuts that close
+or delete (`ctrl + q`, `alt + F4`, `ctrl + Enter`…) and sending the phone a file from
+outside your folder. "Write a shopping list in Writer", "the next
+song" or "look for videos of Queen" go straight away. Once an answer has read a web page
+or the screen, typing, keys, reading your files and sending to the phone ask too: what a
+page says is never an order. And once it has read your files outside the repository, the
+output of a command or the screen, a search or a page asks before it goes out: nothing of
+yours leaves without you seeing it. While Nilo types or acts, the launcher steps aside,
+and its eyes in the bar say when it's done.
+
+**Opening apps.** "abre zen" or "open zen and thunar" opens them at once, without the
+model: the launcher's own search, when every name matches an app closely. Anything more
+("open zen and look for the weather") goes to Nilo as usual.
 
 **Co-author.** Every commit Nilo makes carries
 `Co-authored-by: Nilo <351236008+nilo-nihil@users.noreply.github.com>` (`nilo.coauthor`), and the card
 shows it before you confirm. That is the noreply address of
 [github.com/nilo-nihil](https://github.com/nilo-nihil), so GitHub draws Nilo's face next
-to yours: [`assets/brand/nilo-avatar.png`](assets/brand/nilo-avatar.png), drawn by
-`tools/brand.py`.
-
-Files, Git and Terminal are off until you authorize them: the switch first says what it
-allows and waits for "authorize" (or the same key again). Even then, every change to a
-file shows its diff, every commit its files and message, and every command itself, where
-it runs and why, and each waits for enter twice or a click. Commands that delete, touch
-disks, rewrite git history, run as root or change the system come in a red card. Anything
-with `sudo` opens in a kitty window, where you type the password; the rest run in the
-background with their last lines under them, for two minutes at most. Choosing another
-repository turns Files and Git off again.
+to yours: [`assets/brand/nilo-avatar.png`](assets/brand/nilo-avatar.png).
 
 <p align="center">
   <img src="docs/assets/screens/nilo-done.png" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, fastfetch in dots.">
@@ -559,17 +604,17 @@ instant; with 1, Ollama swaps them.
 | `qwen3.5:9b` | 6.6 GB | 8.5 GB | 20 GB |
 | `qwen3.5:35b-a3b` | 22 GB | 25 GB | 56 GB |
 
-The model, the switches, the minutes and "think before answering" apply at once and live
+The model, the level, Internet, the minutes and "think before answering" apply at once and live
 in `~/.local/state/nihil/nilo.json`; only the options above need a rebuild. The gear and
 Preferences open each other: "Open Preferences" under the gear, and "Settings" beside
 Nilo's switch in Preferences, System.
 
 **What it knows.** [`home/nilo/nilo.md`](home/nilo/nilo.md) tells Nilo about this system
-and the rules it works by: one step per tool call, each one authorized, look before
-changing, nothing destructive unless asked. It goes into every prompt with only the
-sections of the switches that are on. After it come your own notes,
-`~/.config/nihil/nilo.md` (your notes, "Edit" in the gear), and, with Files or Git
-authorized, the `NILO.md` of the repository if it has one.
+and the rules it works by: one step per tool call, look before changing, nothing
+destructive unless asked, and nothing a page or a file says taken as an order. It goes into
+every prompt with only the sections its level allows. After it come your own notes,
+`~/.config/nihil/nilo.md` (your notes, "Edit" in the gear), and, from Terminal and
+repository on, the `NILO.md` of the repository if it has one.
 
 The agent behind it is [`home/nilo/agent.py`](home/nilo/agent.py), standard-library
 Python that the shell talks to over stdin/stdout. Its tests run against a fake Ollama:
@@ -672,9 +717,9 @@ Nihil-Shell/
 ├── home/             Home Manager: shell/, nilo/ (Nilo's agent), deck/ (the phone's), hyprland, hyprlock, …
 ├── greeter/          the login screen, in Quickshell under cage (modules/greeter.nix)
 ├── sounds/           interface sounds (nihil/ is the NIHIL pack)
-├── tools/            brand.py (logo, favicons, site images), sounds.py, snowflake.py
 ├── assets/brand/     logo and mark (SVG), social preview
 ├── docs/             the website, served by GitHub Pages from this folder; deck.md, the deck's protocol
+│                     assets/screens: the desktop as it comes, glass/ the same in smoked glass, android/ the phone's
 ├── .github/          release.yml: the ISO in Releases; update.yml: the inputs, every week;
 │                     auto-pull-request.yml: a push to any other branch, as a pull request into nihil
 └── wallpapers/       source photos, rendered as dots at build time
@@ -763,7 +808,7 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   (`nihil-clipboard`) and the window keeps the keyboard; only a paste key without a
   modifier makes the frame `Exclusive` until it pastes.
 - **Charger:** plugging it in lights the frame from the bottom and plays `charge`, three
-  climbing notes (`tools/sounds.py`; the classic pack uses freedesktop's `power-plug`).
+  climbing notes (the classic pack uses freedesktop's `power-plug`).
 - **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables. At
   15, 10 and 5 % it sends a critical notification, once per threshold and discharge; each
   one replaces the last (`x-nihil-tag` hint) and plugging in the charger dismisses it.
@@ -788,6 +833,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   `$XDG_RUNTIME_DIR`. The background has a variant with the player's panel baked in, and
   hyprlock asks which one every two seconds (`media.sh backdrop`). The cursor stays visible on
   the lock screen so the buttons can be clicked; the media keys work as well.
+- **Viewers:** imv, mpv and Zathura are installed without their own desktop entries, so
+  nothing of theirs reaches the launcher; three of NIHIL's, hidden, open pictures, videos
+  and music, and documents, and are the defaults for them (`home/viewers.nix`). A picture
+  goes to imv with the others of its folder, starting at it.
 - **Pre-existing files:** if a file Home Manager wants to manage already exists, it is
   renamed to `*.hm-backup` instead of aborting the activation.
 - **Own scripts:** packaged with `writeShellScriptBin` and explicit dependencies:
