@@ -130,11 +130,6 @@ Item {
                   lock: Lang.settingLock })[setting] ?? setting;
     }
 
-    function whyText(code: string): string {
-        return ({ terminal: Lang.whyTerminal, keys: Lang.whyKeys, close: Lang.whyClose, web: Lang.whyWeb,
-                  private: Lang.whyPrivate, outside: Lang.whyOutside })[code] ?? code;
-    }
-
     function desktopTitle(facts: var): string {
         switch (facts.what) {
         case "type": return Lang.confirmType.arg(facts.app ?? "");
@@ -670,7 +665,7 @@ Item {
                         }
 
                         Row {
-                            visible: card.risky || card.why.length > 0
+                            visible: card.command && card.risky
                             spacing: 8
 
                             Rectangle {
@@ -678,12 +673,11 @@ Item {
                                 width: 6
                                 height: 6
                                 radius: 3
-                                color: card.risky ? Tokens.interrupt : Tokens.muted
+                                color: Tokens.interrupt
                             }
 
                             Label {
-                                text: Case.sentence(card.desktop ? card.why.map(code => root.whyText(code)).join(", ")
-                                    : (card.facts.danger ?? []).map(code => root.dangerText(code)).join(", "))
+                                text: Case.sentence((card.facts.danger ?? []).map(code => root.dangerText(code)).join(", "))
                                 color: Tokens.dim
                             }
                         }

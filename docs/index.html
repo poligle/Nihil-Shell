@@ -75,7 +75,6 @@ button { font: inherit; color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 8px; background: var(--ink); color: var(--void); text-decoration: none; }
 
-/* The frame: black and flat, or smoked glass over what scrolls beneath it */
 .frame {
   position: fixed; z-index: 41; pointer-events: none;
   top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
@@ -146,7 +145,6 @@ p { margin: 0 0 16px; }
 .lede { color: var(--dim); font-size: 21px; line-height: 1.5; max-width: 52ch; margin-top: 22px; }
 .quiet { color: var(--dim); }
 
-/* Keys: the shell's own buttons, never pills */
 .key {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 0 24px;
   border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--dim);
@@ -169,7 +167,6 @@ p { margin: 0 0 16px; }
 .away a:hover { color: var(--ink); }
 .away svg { width: 17px; height: 17px; flex: none; }
 
-/* The screen, and the drawers it shows */
 .stage { padding-bottom: 150px; }
 .stage-head { display: flex; justify-content: flex-end; align-items: center; min-height: 40px; margin-bottom: 14px; }
 .screen {
@@ -220,7 +217,6 @@ kbd {
   font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
 }
 
-/* The shell's switch: a track and a knob */
 .switch {
   appearance: none; display: inline-flex; align-items: center; gap: 14px; padding: 6px 0; border: 0; background: none; cursor: pointer;
   color: var(--dim); font: 400 15px/1 var(--sans);
@@ -564,12 +560,12 @@ footer a:hover { color: var(--ink); }
         <li>
           <span class="meter" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i></i></span>
           <h3>Terminal and repository</h3>
-          <p>Also a repository of yours: its files, git and the terminal. Every change to a file comes as a diff first, every commit and every command that does more than read waits for enter twice or a click, and anything with sudo opens in a terminal for your password.</p>
+          <p>A repository of yours: its files, git and the terminal. Every change to a file comes as a diff first, every commit and every command that does more than read waits for enter twice or a click, and anything with sudo opens in a terminal for your password.</p>
         </li>
         <li>
           <span class="meter" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i></span>
           <h3>The whole system</h3>
-          <p>Also the desktop, as you would use it: it sees what is open and the screen, writes in Writer, puts on the song you name, opens Zen on a search, moves windows, turns the volume and sends things to your phone.</p>
+          <p>The desktop, as you would use it: it sees what is open and the screen, writes in Writer, puts on the song you name, opens Zen on a search, moves windows, turns the volume and sends things to your phone.</p>
         </li>
         <li>
           <span class="meter apart" aria-hidden="true"><i></i></span>
