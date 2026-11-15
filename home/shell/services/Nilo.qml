@@ -55,6 +55,7 @@ Singleton {
     signal summoned()
 
     property bool behind: false
+    property bool roaming: false
     property bool peeking: false
     property string peekKind: ""        // done, confirm or error
     property string peekScreen: ""
@@ -65,6 +66,7 @@ Singleton {
     onShownChanged: {
         if (shown) {
             behind = false;
+            roaming = false;
             unpeek();
             Notifs.dismissTag("nilo");
         } else if (busy) {
@@ -217,7 +219,10 @@ Singleton {
         return { ok: false, error: "NIHIL has no setting called " + setting };
     }
 
+    onBusyChanged: if (!busy) roaming = false
+
     function aside(id: string): void {
+        roaming = true;
         const open = Drawers.current !== "";
         Drawers.close();
         if (!open) {
