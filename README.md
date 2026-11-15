@@ -107,6 +107,9 @@ home screen in the same language: the frame, the desktop's clock, its light and 
   own, in Quickshell: the time in dots, the password as dots, a finger or the password) and
   a lock screen with what is playing in a corner, on a panel of its own: the cover in dots,
   the progress in LEDs and buttons you can click (hyprlock).
+- **Pictures, videos and PDFs.** imv, mpv and Zathura open them, from Thunar or from
+  Vector, in the same black and greys, and stay out of the launcher. A picture opens with
+  the rest of its folder an arrow away; mpv plays music files too.
 - **fastfetch in dots.** The same snowflake, drawn with `●` and `·`, monochrome keys in
   NIHIL's own greys and the palette as a row of LEDs.
 - **Spanish or English.** One option switches every string of the shell, the lock screen,
@@ -832,6 +835,10 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   `$XDG_RUNTIME_DIR`. The background has a variant with the player's panel baked in, and
   hyprlock asks which one every two seconds (`media.sh backdrop`). The cursor stays visible on
   the lock screen so the buttons can be clicked; the media keys work as well.
+- **Viewers:** imv, mpv and Zathura are installed without their own desktop entries, so
+  nothing of theirs reaches the launcher; three of NIHIL's, hidden, open pictures, videos
+  and music, and documents, and are the defaults for them (`home/viewers.nix`). A picture
+  goes to imv with the others of its folder, starting at it.
 - **Pre-existing files:** if a file Home Manager wants to manage already exists, it is
   renamed to `*.hm-backup` instead of aborting the activation.
 - **Own scripts:** packaged with `writeShellScriptBin` and explicit dependencies:

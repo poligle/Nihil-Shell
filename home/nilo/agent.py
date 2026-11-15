@@ -1465,7 +1465,7 @@ class Tools:
                  "libreoffice-impress": "LibreOffice Impress", "libreoffice-draw": "LibreOffice Draw",
                  "libreoffice-startcenter": "LibreOffice", "soffice": "LibreOffice", "zen": "Zen", "zen-beta": "Zen",
                  "zen-alpha": "Zen", "zen-twilight": "Zen", "thunar": "Thunar", "spotify": "Spotify",
-                 "kitty": "kitty", "foot": "foot"}
+                 "kitty": "kitty", "foot": "foot", "imv": "imv", "mpv": "mpv", "org.pwmt.zathura": "Zathura"}
         if name.lower() in known:
             return known[name.lower()]
         part = name.rsplit(".", 1)[-1]
