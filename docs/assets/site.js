@@ -11,7 +11,13 @@
     const note = stage.querySelector(".look-note");
     const all = [...stage.querySelectorAll(".say")];
     const dots = stage.querySelector(".rail .dots");
+    const up = stage.querySelector(".rail .up");
+    const down = stage.querySelector(".rail .down");
     const sources = config.sources || (step => [step.dataset.src]);
+    const marks = document.createElement("div");
+    marks.className = "marks";
+    marks.setAttribute("aria-hidden", "true");
+    stage.append(marks);
     const missing = new Set();
     const loads = new Map();
     const found = new Set();
@@ -71,28 +77,38 @@
       front.classList.remove("on");
     };
 
+    const span = () => Math.max(1, stage.offsetHeight - innerHeight);
+    const per = () => span() / Math.max(1, steps.length - 1);
+    const place = () => {
+      [...marks.children].forEach((mark, i) => { mark.style.top = `${Math.round(i * per())}px`; });
+    };
+
     const go = i => {
       index = i;
       const step = steps[i];
       all.forEach(s => s.classList.toggle("on", s === step));
       [...dots.children].forEach((dot, k) => dot.setAttribute("aria-current", String(k === i)));
+      if (up) up.disabled = i === 0;
       stage.dataset.shape = step.dataset.shape || "";
       show(step);
       steps.slice(i + 1, i + 3).forEach(next => picture(next));
     };
 
-    const span = () => Math.max(1, stage.offsetHeight - innerHeight);
     const jump = i => {
-      const per = span() / steps.length;
-      scrollTo({ top: stage.offsetTop + per * i + per / 2, behavior: reduce ? "auto" : "smooth" });
+      if (i < 0) return;
+      if (i >= steps.length) {
+        scrollTo({ top: stage.offsetTop + stage.offsetHeight, behavior: reduce ? "instant" : "smooth" });
+        return;
+      }
+      scrollTo({ top: stage.offsetTop + Math.round(i * per()), behavior: "instant" });
     };
 
     let frame = 0;
     const update = () => {
       frame = 0;
       const box = stage.getBoundingClientRect();
-      const progress = Math.min(0.9999, Math.max(0, -box.top / span()));
-      const i = Math.floor(progress * steps.length);
+      const progress = Math.min(1, Math.max(0, -box.top / span()));
+      const i = Math.round(progress * (steps.length - 1));
       if (i !== index) go(i);
       root.classList.toggle("staging", box.bottom > innerHeight * 0.45);
     };
@@ -115,12 +131,56 @@
         dot.addEventListener("click", () => jump(i));
         return dot;
       }));
+      marks.replaceChildren(...steps.map(() => document.createElement("i")));
+      place();
       index = -1;
       update();
     };
 
+    const stuck = () => {
+      const box = stage.getBoundingClientRect();
+      return box.top <= 1 && box.bottom >= innerHeight - 1;
+    };
+    let quiet = 0;
+    let sum = 0;
+    let last = 0;
+    addEventListener("wheel", e => {
+      if (e.ctrlKey || !stuck()) return;
+      const now = performance.now();
+      if (now < quiet) {
+        e.preventDefault();
+        quiet = Math.max(quiet, now + 140);
+        return;
+      }
+      const way = Math.sign(e.deltaY);
+      if (!way || (way < 0 && index <= 0) || (way > 0 && index >= steps.length - 1)) return;
+      e.preventDefault();
+      if (now - last > 240) sum = 0;
+      last = now;
+      sum += e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? innerHeight : 1);
+      if (Math.abs(sum) < 24) return;
+      sum = 0;
+      jump(index + way);
+      quiet = now + 480;
+    }, { passive: false });
+
+    addEventListener("keydown", e => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !stuck()) return;
+      if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === " " && e.target.closest("a, button")) return;
+      const next = e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey);
+      const back = e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey);
+      if ((!next && !back) || (back && index <= 0) || (next && index >= steps.length - 1)) return;
+      e.preventDefault();
+      jump(index + (next ? 1 : -1));
+    });
+
+    if (up) up.addEventListener("click", () => jump(index - 1));
+    if (down) down.addEventListener("click", () => jump(index + 1));
+
     addEventListener("scroll", soon, { passive: true });
     refresh = () => {
+      place();
       soon();
       if (steps[index]) show(steps[index]);
     };
@@ -134,6 +194,14 @@
       });
     });
     build();
+  } else {
+    const hero = document.querySelector("[data-hero]");
+    if (hero) {
+      const check = () => root.classList.toggle("staging", hero.getBoundingClientRect().bottom > innerHeight * 0.45);
+      addEventListener("scroll", check, { passive: true });
+      refresh = check;
+      check();
+    }
   }
 
   const smoke = document.querySelector(".smoke");
@@ -156,17 +224,25 @@
     refresh();
   });
 
-  const switches = [...document.querySelectorAll("[data-glass-switch]")];
-  const toggles = [...document.querySelectorAll("[data-glass-toggle]")];
-  if (switches.length || toggles.length) {
+  const choices = [...document.querySelectorAll("[data-look-set]")];
+  if (choices.length) {
     const setLook = (next, remember) => {
       if (next === "glass") root.dataset.look = "glass"; else delete root.dataset.look;
-      switches.forEach(s => s.setAttribute("aria-checked", String(next === "glass")));
-      toggles.forEach(t => t.setAttribute("aria-pressed", String(next === "glass")));
+      choices.forEach(c => c.setAttribute("aria-checked", String(c.dataset.lookSet === next)));
       if (remember) { try { localStorage.setItem("nihil-look", next); } catch (e) {} }
       refresh();
     };
-    [...switches, ...toggles].forEach(control => control.addEventListener("click", () => setLook(look() === "glass" ? "plain" : "glass", true)));
+    choices.forEach(c => {
+      c.addEventListener("click", () => setLook(c.dataset.lookSet, true));
+      c.addEventListener("keydown", e => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        const other = choices.find(o => o !== c && o.parentElement === c.parentElement);
+        if (!other) return;
+        setLook(other.dataset.lookSet, true);
+        other.focus();
+      });
+    });
     setLook(look(), false);
   }
 
