@@ -13,6 +13,10 @@ let
         ddgr = "${pkgs.ddgr}/bin/ddgr";
         git = "${pkgs.git}/bin/git";
         bash = "${pkgs.bash}/bin/bash";
+        hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
+        wtype = "${pkgs.wtype}/bin/wtype";
+        playerctl = "${pkgs.playerctl}/bin/playerctl";
+        grim = "${pkgs.grim}/bin/grim";
         inherit terminal;
         host = osConfig.networking.hostName;
         flake = osConfig.nihil.flake;

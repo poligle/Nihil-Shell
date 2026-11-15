@@ -38,7 +38,8 @@ Item {
         if (Nilo.phase === "confirm") return "alert";
         if (!Nilo.ollama) return Nilo.startingOllama ? "waking" : "asleep";
         if (Nilo.busy && (Nilo.loading || !Nilo.loaded)) return "waking";
-        if (Nilo.phase === "tool") return Nilo.tool === "web_search" || Nilo.tool === "open_url" ? "searching" : "thinking";
+        if (Nilo.phase === "tool")
+            return ["web_search", "open_url", "list_windows", "look_at_screen"].includes(Nilo.tool) ? "searching" : "thinking";
         if (Nilo.busy) return Nilo.phase === "writing" ? "writing" : "thinking";
         if (Nilo.loading) return "waking";
         if (!Nilo.loaded) return "asleep";
