@@ -4,82 +4,37 @@ template=/etc/nihil/template
 source=$(cat /etc/nihil/source)
 rev=$(cat /etc/nihil/rev)
 lang=en
+gui=no
+log=/tmp/nihil-install.log
+
+least=20000000000
+bootBytes=1073741824
+headroom=10000000000
 
 t() { if [ "$lang" = es ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
-say() { gum style --foreground 15 "$@"; }
-dim() { gum style --foreground 7 "$@"; }
-fail() { gum style --foreground 1 "$@" >&2; exit 1; }
+emit() { jq -cn --arg kind "$1" --arg text "$2" '{ kind: $kind, text: $text }' >&3; }
+say() { if [ "$gui" = yes ]; then emit step "$*"; else gum style --foreground 15 "$@"; fi; }
+dim() { if [ "$gui" = yes ]; then printf '%s\n' "$*"; else gum style --foreground 7 "$@"; fi; }
+fail() {
+    if [ "$gui" = yes ]; then emit error "$*"; else gum style --foreground 1 "$@" >&2; fi
+    trap - EXIT
+    exit 1
+}
 
 if [ "$(id -u)" != 0 ]; then
     exec sudo "$0" "$@"
 fi
 
-trap 'gum style --foreground 1 "$(t "The installation stopped here. sudo nihil-install starts it again." \
-    "La instalación se ha parado aquí. sudo nihil-install la vuelve a empezar.")" >&2' ERR
-
-clear
-gum style --foreground 15 --bold --margin "1 2" "N I H I L" "$(gum style --foreground 7 --italic 'ex nihilo')"
-
-[ -d /sys/firmware/efi ] || fail "NIHIL boots with systemd-boot, which needs UEFI: this machine started in legacy BIOS mode."
-
-language=$(gum choose --header "Language / Idioma" "English" "Español")
-if [ "$language" = "Español" ]; then
-    lang=es
-    locale=es_ES.UTF-8
-else
-    locale=en_US.UTF-8
-fi
-
-if [ -f /iso/nix-store.squashfs ]; then
-    if ! gum spin --title "$(t "Checking the USB stick…" "Comprobando el USB…")" -- cat /iso/nix-store.squashfs > /dev/null; then
-        fail "$(t "The USB stick cannot be read whole. Write the image to it again, checking its SHA256 (SHA256SUMS, next to it on Releases), or try another stick or port; \"Copy ISO Files to RAM\", among the boot menu's options, reads it all into memory before starting." \
-                  "No se puede leer el USB entero. Vuelve a grabar la imagen comprobando su SHA256 (SHA256SUMS, junto a ella en Releases), o prueba otro USB u otro puerto; «Copy ISO Files to RAM», en las opciones del menú de arranque, lo lee entero a memoria antes de empezar.")"
+exec 3>&1
+trap 'if [ "$?" != 0 ]; then
+    if [ "$gui" = yes ]; then
+        emit error "$(t "The installation stopped here." "La instalación se ha parado aquí.")"
+    else
+        gum style --foreground 1 "$(t "The installation stopped here. sudo nihil-install starts it again." \
+            "La instalación se ha parado aquí. sudo nihil-install la vuelve a empezar.")" >&2
     fi
-fi
+fi' EXIT
 
-until curl -fsI --max-time 6 https://cache.nixos.org >/dev/null; do
-    if ! nmcli -t -f TYPE device 2>/dev/null | grep -qx wifi; then
-        dim "$(t "No Wi-Fi card shows up (it may need a driver this image lacks). A cable, or a phone sharing its connection over USB, work too." \
-                 "No aparece ninguna tarjeta Wi-Fi (puede que necesite un driver que esta imagen no trae). Un cable, o un móvil compartiendo la conexión por USB, también sirven.")"
-    fi
-    wifi=$(t "Choose a Wi-Fi network" "Elegir una red Wi-Fi")
-    retry=$(t "Try again" "Probar otra vez")
-    leave=$(t "Leave the installer" "Salir del instalador")
-    case $(gum choose --header "$(t "There is no connection to the Internet." "No hay conexión a Internet.")" "$wifi" "$retry" "$leave") in
-        "$wifi") nmtui-connect || true ;;
-        "$leave")
-            dim "$(t "sudo nihil-install starts it again; nmcli device lists the network cards." \
-                     "sudo nihil-install lo vuelve a empezar; nmcli device muestra las tarjetas de red.")"
-            exit 0
-            ;;
-        *) sleep 2 ;;
-    esac
-done
-
-layout=$(gum choose --header "$(t "Keyboard" "Teclado")" us es gb de fr it pt latam other)
-if [ "$layout" = other ]; then
-    layout=$(gum input --header "$(t "Keyboard layout (xkb name)" "Distribución del teclado (nombre xkb)")" --placeholder "br")
-fi
-case $layout in
-    gb) keymap=uk ;;
-    pt) keymap=pt-latin1 ;;
-    latam) keymap=la-latin1 ;;
-    br) keymap=br-abnt2 ;;
-    *) keymap=$layout ;;
-esac
-if ! loadkeys "$keymap" >/dev/null 2>&1; then
-    dim "$(t "The console has no keymap called $keymap, so here the keys type as on a US keyboard: a password chosen now may not be what the same keys type at the login. Letters and digits are the safest." \
-             "La consola no tiene un mapa de teclado llamado $keymap, así que aquí las teclas escriben como en un teclado estadounidense: una contraseña elegida ahora puede no ser lo que esas teclas escriben al iniciar sesión. Lo más seguro son letras y cifras.")"
-fi
-
-zone=$(curl -fs --max-time 6 https://ipapi.co/timezone || true)
-if [ -z "$zone" ] || ! gum confirm "$(t "Time zone: $zone?" "Zona horaria: $zone?")" \
-        --affirmative "$(t "Yes" "Sí")" --negative "$(t "Another" "Otra")"; then
-    zone=$(timedatectl list-timezones | gum filter --header "$(t "Time zone" "Zona horaria")")
-fi
-
-fullname=$(gum input --header "$(t "Your name" "Tu nombre")" --placeholder "Ada Lovelace")
-suggested=$(printf '%s' "${fullname%% *}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
 reserved() {
     case $1 in
         root | nobody | nixbld* | systemd-* | messagebus | polkituser | sshd | nscd | dhcpcd | uuidd | tss \
@@ -87,40 +42,34 @@ reserved() {
     esac
     return 1
 }
-until [[ ${username:-} =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && ! reserved "$username"; do
-    username=$(gum input --header "$(t "User name (lowercase letters and digits)" "Nombre de usuario (minúsculas y cifras)")" \
-        --value "${suggested:-nihil}")
-done
-while true; do
-    password=$(gum input --password --header "$(t "Password" "Contraseña")")
-    again=$(gum input --password --header "$(t "Password, again" "La contraseña, otra vez")")
-    if [ -n "$password" ] && [ "$password" = "$again" ]; then
-        break
-    fi
-    dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
-done
-until [[ ${hostname:-} =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; do
-    hostname=$(gum input --header "$(t "Name of this computer" "Nombre de este ordenador")" --value "nihil")
-done
+valid_user() { [[ $1 =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && ! reserved "$1"; }
+valid_host() { [[ $1 =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; }
 
-live=$(lsblk -no PKNAME "$(findmnt -no SOURCE /iso 2>/dev/null || true)" 2>/dev/null || true)
-listed=$(lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="/dev/$live" -v least=20000000000 '
-    $4 == "disk" && $3 == 0 && $2 >= least && $1 != live &&
-    $1 !~ /^\/dev\/(fd|zram|ram|loop)[0-9]/ && $1 !~ /(boot[0-9]+|rpmb)$/ { print $1 }')
-[ -n "$listed" ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
-mapfile -t found <<< "$listed"
-disks=()
-for candidate in "${found[@]}"; do
-    disks+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")
-done
-disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disks[@]}")
-disk=${disk%% *}
+keymap_of() {
+    case $1 in
+        gb) echo uk ;;
+        pt) echo pt-latin1 ;;
+        latam) echo la-latin1 ;;
+        br) echo br-abnt2 ;;
+        *) echo "$1" ;;
+    esac
+}
 
-least=20000000000
-bootBytes=1073741824
-headroom=10000000000
-sector=$(blockdev --getss "$disk")
-align=$(( 1048576 / sector ))
+guess_zone() { curl -fs --max-time 6 https://ipapi.co/timezone || true; }
+
+list_disks() {
+    local live
+    live=$(lsblk -no PKNAME "$(findmnt -no SOURCE /iso 2>/dev/null || true)" 2>/dev/null || true)
+    lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="/dev/$live" -v least="$least" '
+        $4 == "disk" && $3 == 0 && $2 >= least && $1 != live &&
+        $1 !~ /^\/dev\/(fd|zram|ram|loop)[0-9]/ && $1 !~ /(boot[0-9]+|rpmb)$/ { print $1 }'
+}
+
+set_disk() {
+    disk=$1
+    sector=$(blockdev --getss "$disk")
+    align=$(( 1048576 / sector ))
+}
 
 size() { numfmt --to=si --suffix=B "$1"; }
 
@@ -303,8 +252,7 @@ how_much() {
     esac
 }
 
-plan_room() {
-    local entries=() labels=() index choice back need first last part fstype give label fstypes=""
+room_base() {
     if ! gpt; then
         dim "$(t "$disk has no GPT partition table (an old Windows on MBR, or nothing yet): NIHIL can only go next to another system on GPT. Erase the whole disk, or convert it from Windows (mbr2gpt)." \
                  "$disk no tiene tabla de particiones GPT (un Windows antiguo en MBR, o nada aún): NIHIL solo puede ir junto a otro sistema en GPT. Borra el disco entero, o conviértelo desde Windows (mbr2gpt).")"
@@ -328,6 +276,11 @@ plan_room() {
     if has_windows "$esp"; then
         windows=yes
     fi
+}
+
+plan_room() {
+    local entries=() labels=() index choice back part fstype give label fstypes=""
+    room_base || return 1
 
     while read -r first last; do
         entries+=("free $first $last")
@@ -389,8 +342,7 @@ plan_room() {
     fi
 }
 
-plan_partition() {
-    local roots=() boots=() choices=()
+part_base() {
     if ! gpt; then
         dim "$(t "$disk has no GPT partition table: make one in cfdisk, or erase the whole disk." "$disk no tiene tabla de particiones GPT: créala en cfdisk o borra el disco entero.")"
         return 1
@@ -401,6 +353,14 @@ plan_partition() {
         dim "$(t "No partition of 20 GB or more: make room for NIHIL instead." "No hay ninguna partición de 20 GB o más: haz sitio para NIHIL.")"
         return 1
     fi
+}
+
+boot_needed() { [ -z "$esp" ] || [ "$(blockdev --getsize64 "$esp")" -lt 500000000 ]; }
+
+plan_partition() {
+    local boots=() choices=()
+    roots=()
+    part_base || return 1
     mapfile -t choices < <(describe "${roots[@]}")
     root=$(gum choose --header "$(t "NIHIL goes on (it will be formatted)" "NIHIL va en (se formateará)")" "${choices[@]}") || return 1
     root=${root%% *}
@@ -490,239 +450,170 @@ make_partitions() {
     udevadm settle
 }
 
-mode=whole
-esp=""
-efi=""
-boot=""
-root=""
-windows=no
-room=""
-roomPart=""
-roomFs=""
-roomBytes=0
-roomFirst=0
-roomLast=0
-bootType=""
-nextTo=$(t "Next to what is on it (make room)" "Junto a lo que hay (hacer sitio)")
-all=$(t "Erase the whole disk" "Borrar el disco entero")
-pick=$(t "On one of its partitions (formatting it)" "En una de sus particiones (formateándola)")
-while true; do
-    lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
-    dim "$(t "To partition it by hand: another console (Alt+F2) has cfdisk and parted; then «On one of its partitions»." \
-             "Para particionarlo a mano: otra consola (Alt+F2) tiene cfdisk y parted; luego «En una de sus particiones».")"
-    choice=$(gum choose --header "$(t "Where on $disk" "Dónde en $disk")" "$nextTo" "$all" "$pick")
-    case $choice in
-        "$nextTo")
-            if plan_room; then
-                mode=room
-                break
-            fi
-            ;;
-        "$all")
-            mode=whole
-            break
-            ;;
-        "$pick")
-            if plan_partition; then
-                mode=part
-                break
-            fi
-            ;;
-    esac
-done
-
-encrypt=no
-if gum confirm "$(t "Encrypt the disk? It asks for a passphrase at every boot." "¿Cifrar el disco? Pedirá una contraseña en cada arranque.")" \
-        --affirmative "$(t "Encrypt" "Cifrar")" --negative "$(t "No" "No")" --default=false; then
-    encrypt=yes
-    while true; do
-        passphrase=$(gum input --password --header "$(t "Disk passphrase" "Contraseña del disco")")
-        again=$(gum input --password --header "$(t "Disk passphrase, again" "La contraseña del disco, otra vez")")
-        if [ -n "$passphrase" ] && [ "$passphrase" = "$again" ]; then
-            break
-        fi
-        dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
-    done
-fi
-
-if [ "$mode" = whole ]; then
-    gum style --foreground 1 --margin "1 0" "$(t "Everything on $disk will be erased." "Se borrará todo lo que hay en $disk.")"
-elif [ "$mode" = room ] && [ "$room" = shrink ]; then
-    gum style --foreground 1 --margin "1 0" \
-        "$(t "$roomPart will give $(size "$roomBytes") to NIHIL, keeping what it holds; the rest of $disk stays as it is." \
-             "$roomPart cederá $(size "$roomBytes") a NIHIL, conservando lo que guarda; el resto de $disk se queda como está.")" \
-        "$(t "Shrinking is safe, but a power cut halfway is not: keep a copy of what matters on it." \
-             "Encoger es seguro, pero un corte de luz a medias no: ten copia de lo importante.")"
-    if [ "$roomFs" = ntfs ]; then
-        dim "$(t "Windows will check its disk the first time it starts: let it finish." "Windows revisará su disco la primera vez que arranque: déjale terminar.")"
-    fi
-elif [ "$mode" = room ]; then
-    gum style --foreground 1 --margin "1 0" "$(t "NIHIL goes in $(size "$roomBytes") of free space on $disk; the rest stays as it is." \
-        "NIHIL va en $(size "$roomBytes") de espacio libre de $disk; el resto se queda como está.")"
-else
-    gum style --foreground 1 --margin "1 0" "$(t "$root will be formatted" "Se formateará $root")$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")$(t "; the rest of $disk stays as it is." "; el resto de $disk se queda como está.")"
-fi
-if [ "$mode" != whole ] && [ "$windows" = yes ]; then
-    dim "$(t "The boot menu will offer Windows too. If Windows uses BitLocker, it may ask for its recovery key the first time: keep it at hand." \
-             "El menú de arranque ofrecerá también Windows. Si Windows usa BitLocker, puede pedir su clave de recuperación la primera vez: tenla a mano.")"
-else
-    elsewhere=$(windows_elsewhere)
-    if [ -n "$elsewhere" ]; then
-        dim "$(t "Windows, on $elsewhere, stays in the computer's own boot menu (the key it shows as it starts: F12, F11, Esc…): NIHIL's lists what is on its own disk." \
-                 "Windows, en $elsewhere, sigue en el menú de arranque del propio ordenador (la tecla que indica al encenderse: F12, F11, Esc…): el de NIHIL muestra lo que hay en su disco.")"
-    fi
-fi
-gum confirm "$(t "Install NIHIL?" "¿Instalar NIHIL?")" --affirmative "$(t "Install" "Instalar")" --negative "$(t "Cancel" "Cancelar")" \
-    --default=false || exit 1
-
-say "$(t "Preparing the disk…" "Preparando el disco…")"
-umount -R /mnt 2>/dev/null || true
-cryptsetup close cryptroot 2>/dev/null || true
-if [ "$mode" = whole ]; then
-    wipefs -af "$disk" >/dev/null
-    sgdisk --zap-all "$disk" >/dev/null
-    sgdisk -n1:0:+1G -t1:ef00 -c1:BOOT -n2:0:0 -t2:8300 -c2:nixos "$disk" >/dev/null
-    partprobe "$disk"
-    udevadm settle
-    boot=$(part 1)
-    root=$(part 2)
-    mkfs.fat -F 32 -n BOOT "$boot" >/dev/null
-else
-    if [ "$mode" = room ]; then
-        if [ "$room" = shrink ]; then
-            say "$(t "Shrinking $roomPart: it can take a few minutes…" "Encogiendo $roomPart: puede tardar unos minutos…")"
-            partBytes=$(blockdev --getsize64 "$roomPart")
-            keep=$(( (partBytes - roomBytes) / 1048576 * 1048576 ))
-            shrink_filesystem "$roomPart" "$roomFs" "$keep"
-            stretch=$(shrink_partition "$roomPart" "$keep")
-            read -r roomFirst roomLast <<< "$stretch"
-        fi
-        make_partitions "$roomFirst" "$roomLast"
-    fi
-    types=(-t "$(number_of "$root"):8300")
-    if [ "$boot" != "$esp" ]; then
-        if [ -n "$esp" ]; then type=ea00; else type=ef00; fi
-        types+=(-t "$(number_of "$boot"):$type")
-    fi
-    sgdisk "${types[@]}" "$disk" >/dev/null
-    partprobe "$disk" || true
-    udevadm settle
-    if [ "$boot" != "$esp" ]; then
-        mkfs.fat -F 32 -n NIHIL "$boot" >/dev/null
-    fi
-    wipefs -af "$root" >/dev/null
-fi
-if [ "$encrypt" = yes ]; then
-    printf '%s' "$passphrase" | cryptsetup luksFormat --type luks2 --batch-mode --key-file=- "$root"
-    printf '%s' "$passphrase" | cryptsetup open --key-file=- "$root" cryptroot
-    root=/dev/mapper/cryptroot
-fi
-mkfs.btrfs -f -L nixos "$root" >/dev/null
-
-mount "$root" /mnt
-for volume in @ @home @nix @log; do
-    btrfs subvolume create "/mnt/$volume" >/dev/null
-done
-umount /mnt
-
-options=compress=zstd,noatime
-mount -o "subvol=@,$options" "$root" /mnt
-mkdir -p /mnt/home /mnt/nix /mnt/var/log /mnt/boot
-mount -o "subvol=@home,$options" "$root" /mnt/home
-mount -o "subvol=@nix,$options" "$root" /mnt/nix
-mount -o "subvol=@log,$options" "$root" /mnt/var/log
-mount -o umask=0077 "$boot" /mnt/boot
-if [ -n "$efi" ]; then
-    mkdir -p /mnt/efi
-    mount -o umask=0077 "$efi" /mnt/efi
-fi
-
-say "$(t "Writing this machine's configuration…" "Escribiendo la configuración de esta máquina…")"
-nixos-generate-config --root /mnt >/dev/null
-etc=/mnt/etc/nixos
-rm -f "$etc/configuration.nix"
-cp -r "$template/." "$etc/"
-chmod -R u+w "$etc"
-
-outputs='{}'
-for connector in /sys/class/drm/card*-*; do
-    [ "$(cat "$connector/status" 2>/dev/null)" = connected ] || continue
-    name=${connector##*/}
-    name=${name#card*-}
-    resolution=$(head -n 1 "$connector/modes" 2>/dev/null || true)
-    [[ $resolution =~ ^([0-9]+)x([0-9]+) ]] || continue
-    outputs=$(jq --arg name "$name" --argjson width "${BASH_REMATCH[1]}" --argjson height "${BASH_REMATCH[2]}" \
-        '. + { ($name): { width: $width, height: $height } }' <<< "$outputs")
-done
-[ "$outputs" != '{}' ] || outputs='{ "Virtual-1": { "width": 1920, "height": 1080 } }'
-
-model=""
-if grep -qi thinkpad /sys/class/dmi/id/product_version 2>/dev/null; then
-    model=thinkpad
-fi
-fingerprint=false
-if lsusb 2>/dev/null | grep -qiE 'fingerprint|synaptics.*(fp|finger)|goodix|elan.*fp|validity'; then
-    fingerprint=true
-fi
-
-jq -n \
-    --arg name "$username" --arg fullName "$fullname" --arg host "$hostname" \
-    --arg language "$lang" --arg locale "$locale" --arg zone "$zone" \
-    --arg layout "$layout" --arg model "$model" \
-    --argjson outputs "$outputs" --argjson fingerprint "$fingerprint" \
-    '{
-        version: 1,
-        user: { name: $name, fullName: $fullName },
-        host: { name: $host },
-        language: $language,
-        locale: $locale,
-        timeZone: $zone,
-        keyboard: { layout: $layout, variant: "", model: $model },
-        outputs: $outputs,
-        wallpaper: "night",
-        nilo: { enable: false, acceleration: "cpu", integratedGpu: false },
-        fingerprint: $fingerprint,
-        ssh: false
-    }' > "$etc/settings.json"
-
-gpu=""
-if lspci -nn | grep -Ei 'vga|3d|display' | grep -qiE 'amd|ati'; then
-    gpu="hardware.amdgpu.initrd.enable = true;"
-elif lspci -nn | grep -Ei 'vga|3d|display' | grep -qi intel; then
-    gpu="boot.initrd.kernelModules = [ \"i915\" ];"
-fi
-
-loader=""
-if [ -n "$efi" ]; then
-    loader+=$'\n\t# The EFI partition is small: systemd-boot there, the kernels on /boot (XBOOTLDR).'
-    loader+=$'\n\tboot.loader.efi.efiSysMountPoint = lib.mkForce "/efi";'
-    loader+=$'\n\tboot.loader.systemd-boot.xbootldrMountPoint = "/boot";\n'
-fi
-if [ "$windows" = yes ]; then
-    loader+=$'\n\t# Windows keeps the hardware clock in local time.'
-    loader+=$'\n\ttime.hardwareClockInLocalTime = true;\n'
-fi
-
-if [ "$mode" != whole ] && [ -n "$esp" ] && [ "$boot" = "$esp" ]; then
-    for dir in /mnt/boot/EFI/*/; do
-        [ -d "$dir" ] || continue
-        name=$(basename "$dir")
-        case ${name,,} in
-            boot|microsoft|systemd|linux|nixos) continue ;;
-        esac
-        for file in shimx64.efi grubx64.efi; do
-            if [ -f "$dir$file" ]; then
-                loader+=$(printf "\n\t# %s, on the EFI partition before NIHIL.\n\tboot.loader.systemd-boot.extraEntries.\"%s.conf\" = ''\n\t\ttitle %s\n\t\tefi /EFI/%s/%s\n\t'';" \
-                    "${name^}" "${name,,}" "${name^}" "$name" "$file")
-                loader+=$'\n'
-                break
+logged() {
+    local shown=-1
+    if [ "$gui" = yes ]; then
+        "$@" 2>&1 | while IFS= read -r line; do
+            printf '%s\n' "$line"
+            if [ "$SECONDS" != "$shown" ]; then
+                shown=$SECONDS
+                emit log "$line"
             fi
         done
-    done
-fi
+    else
+        "$@"
+    fi
+}
 
-release=$(nixos-version | cut -d . -f 1,2)
-cat > "$etc/local.nix" << EOF
+apply_plan() {
+    say "$(t "Preparing the disk…" "Preparando el disco…")"
+    umount -R /mnt 2>/dev/null || true
+    cryptsetup close cryptroot 2>/dev/null || true
+    if [ "$mode" = whole ]; then
+        wipefs -af "$disk" >/dev/null
+        sgdisk --zap-all "$disk" >/dev/null
+        sgdisk -n1:0:+1G -t1:ef00 -c1:BOOT -n2:0:0 -t2:8300 -c2:nixos "$disk" >/dev/null
+        partprobe "$disk"
+        udevadm settle
+        boot=$(part 1)
+        root=$(part 2)
+        mkfs.fat -F 32 -n BOOT "$boot" >/dev/null
+    else
+        if [ "$mode" = room ]; then
+            if [ "$room" = shrink ]; then
+                say "$(t "Shrinking $roomPart: it can take a few minutes…" "Encogiendo $roomPart: puede tardar unos minutos…")"
+                partBytes=$(blockdev --getsize64 "$roomPart")
+                keep=$(( (partBytes - roomBytes) / 1048576 * 1048576 ))
+                shrink_filesystem "$roomPart" "$roomFs" "$keep"
+                stretch=$(shrink_partition "$roomPart" "$keep")
+                read -r roomFirst roomLast <<< "$stretch"
+            fi
+            make_partitions "$roomFirst" "$roomLast"
+        fi
+        types=(-t "$(number_of "$root"):8300")
+        if [ "$boot" != "$esp" ]; then
+            if [ -n "$esp" ]; then type=ea00; else type=ef00; fi
+            types+=(-t "$(number_of "$boot"):$type")
+        fi
+        sgdisk "${types[@]}" "$disk" >/dev/null
+        partprobe "$disk" || true
+        udevadm settle
+        if [ "$boot" != "$esp" ]; then
+            mkfs.fat -F 32 -n NIHIL "$boot" >/dev/null
+        fi
+        wipefs -af "$root" >/dev/null
+    fi
+    if [ "$encrypt" = yes ]; then
+        printf '%s' "$passphrase" | cryptsetup luksFormat --type luks2 --batch-mode --key-file=- "$root"
+        printf '%s' "$passphrase" | cryptsetup open --key-file=- "$root" cryptroot
+        root=/dev/mapper/cryptroot
+    fi
+    mkfs.btrfs -f -L nixos "$root" >/dev/null
+
+    mount "$root" /mnt
+    for volume in @ @home @nix @log; do
+        btrfs subvolume create "/mnt/$volume" >/dev/null
+    done
+    umount /mnt
+
+    options=compress=zstd,noatime
+    mount -o "subvol=@,$options" "$root" /mnt
+    mkdir -p /mnt/home /mnt/nix /mnt/var/log /mnt/boot
+    mount -o "subvol=@home,$options" "$root" /mnt/home
+    mount -o "subvol=@nix,$options" "$root" /mnt/nix
+    mount -o "subvol=@log,$options" "$root" /mnt/var/log
+    mount -o umask=0077 "$boot" /mnt/boot
+    if [ -n "$efi" ]; then
+        mkdir -p /mnt/efi
+        mount -o umask=0077 "$efi" /mnt/efi
+    fi
+
+    say "$(t "Writing this machine's configuration…" "Escribiendo la configuración de esta máquina…")"
+    nixos-generate-config --root /mnt >/dev/null
+    etc=/mnt/etc/nixos
+    rm -f "$etc/configuration.nix"
+    cp -r "$template/." "$etc/"
+    chmod -R u+w "$etc"
+
+    outputs='{}'
+    for connector in /sys/class/drm/card*-*; do
+        [ "$(cat "$connector/status" 2>/dev/null)" = connected ] || continue
+        name=${connector##*/}
+        name=${name#card*-}
+        resolution=$(head -n 1 "$connector/modes" 2>/dev/null || true)
+        [[ $resolution =~ ^([0-9]+)x([0-9]+) ]] || continue
+        outputs=$(jq --arg name "$name" --argjson width "${BASH_REMATCH[1]}" --argjson height "${BASH_REMATCH[2]}" \
+            '. + { ($name): { width: $width, height: $height } }' <<< "$outputs")
+    done
+    [ "$outputs" != '{}' ] || outputs='{ "Virtual-1": { "width": 1920, "height": 1080 } }'
+
+    model=""
+    if grep -qi thinkpad /sys/class/dmi/id/product_version 2>/dev/null; then
+        model=thinkpad
+    fi
+    fingerprint=false
+    if lsusb 2>/dev/null | grep -qiE 'fingerprint|synaptics.*(fp|finger)|goodix|elan.*fp|validity'; then
+        fingerprint=true
+    fi
+
+    jq -n \
+        --arg name "$username" --arg fullName "$fullname" --arg host "$hostname" \
+        --arg language "$lang" --arg locale "$locale" --arg zone "$zone" \
+        --arg layout "$layout" --arg model "$model" \
+        --argjson outputs "$outputs" --argjson fingerprint "$fingerprint" \
+        '{
+            version: 1,
+            user: { name: $name, fullName: $fullName },
+            host: { name: $host },
+            language: $language,
+            locale: $locale,
+            timeZone: $zone,
+            keyboard: { layout: $layout, variant: "", model: $model },
+            outputs: $outputs,
+            wallpaper: "night",
+            nilo: { enable: false, acceleration: "cpu", integratedGpu: false },
+            fingerprint: $fingerprint,
+            ssh: false
+        }' > "$etc/settings.json"
+
+    gpu=""
+    if lspci -nn | grep -Ei 'vga|3d|display' | grep -qiE 'amd|ati'; then
+        gpu="hardware.amdgpu.initrd.enable = true;"
+    elif lspci -nn | grep -Ei 'vga|3d|display' | grep -qi intel; then
+        gpu="boot.initrd.kernelModules = [ \"i915\" ];"
+    fi
+
+    loader=""
+    if [ -n "$efi" ]; then
+        loader+=$'\n\t# The EFI partition is small: systemd-boot there, the kernels on /boot (XBOOTLDR).'
+        loader+=$'\n\tboot.loader.efi.efiSysMountPoint = lib.mkForce "/efi";'
+        loader+=$'\n\tboot.loader.systemd-boot.xbootldrMountPoint = "/boot";\n'
+    fi
+    if [ "$windows" = yes ]; then
+        loader+=$'\n\t# Windows keeps the hardware clock in local time.'
+        loader+=$'\n\ttime.hardwareClockInLocalTime = true;\n'
+    fi
+
+    if [ "$mode" != whole ] && [ -n "$esp" ] && [ "$boot" = "$esp" ]; then
+        for dir in /mnt/boot/EFI/*/; do
+            [ -d "$dir" ] || continue
+            name=$(basename "$dir")
+            case ${name,,} in
+                boot|microsoft|systemd|linux|nixos) continue ;;
+            esac
+            for file in shimx64.efi grubx64.efi; do
+                if [ -f "$dir$file" ]; then
+                    loader+=$(printf "\n\t# %s, on the EFI partition before NIHIL.\n\tboot.loader.systemd-boot.extraEntries.\"%s.conf\" = ''\n\t\ttitle %s\n\t\tefi /EFI/%s/%s\n\t'';" \
+                        "${name^}" "${name,,}" "${name^}" "$name" "$file")
+                    loader+=$'\n'
+                    break
+                fi
+            done
+        done
+    fi
+
+    release=$(nixos-version | cut -d . -f 1,2)
+    cat > "$etc/local.nix" << EOF
 
 { config, lib, pkgs, ... }:
 {
@@ -738,23 +629,442 @@ ${loader}
 }
 EOF
 
-if [ -n "$rev" ]; then
-    nix flake lock "$etc" --override-input nihil "$source/$rev"
-else
-    nix flake lock "$etc"
-fi
+    if [ -n "$rev" ]; then
+        nix flake lock "$etc" --override-input nihil "$source/$rev"
+    else
+        nix flake lock "$etc"
+    fi
 
-say "$(t "Installing. This takes a while: most of it is downloaded." "Instalando. Tarda un rato: casi todo se descarga.")"
-if ! nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy; then
-    say "$(t "Something could not be downloaded; trying once more…" "Algo no se ha podido descargar; se intenta otra vez…")"
-    nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy
-fi
+    say "$(t "Installing. This takes a while: most of it is downloaded." "Instalando. Tarda un rato: casi todo se descarga.")"
+    if ! logged nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy; then
+        say "$(t "Something could not be downloaded; trying once more…" "Algo no se ha podido descargar; se intenta otra vez…")"
+        logged nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy
+    fi
 
-printf '%s:%s\n' "$username" "$password" | nixos-enter --root /mnt -c chpasswd
+    printf '%s:%s\n' "$username" "$password" | nixos-enter --root /mnt -c chpasswd
 
-gum style --foreground 15 --margin "1 0" "$(t "NIHIL is installed." "NIHIL está instalado.")"
-if gum confirm "$(t "Restart now?" "¿Reiniciar ahora?")" --affirmative "$(t "Restart" "Reiniciar")" --negative "$(t "Later" "Luego")"; then
-    umount -R /mnt
-    [ "$encrypt" = no ] || cryptsetup close cryptroot
+    if [ "$gui" = no ]; then
+        gum style --foreground 15 --margin "1 0" "$(t "NIHIL is installed." "NIHIL está instalado.")"
+    fi
+}
+
+finish() {
+    umount -R /mnt 2>/dev/null || true
+    cryptsetup close cryptroot 2>/dev/null || true
     reboot
-fi
+}
+
+json_lines() { jq -R . | jq -sc '[ .[] | select(length > 0) ]'; }
+
+describe_json() {
+    local part out='[]'
+    for part in "$@"; do
+        out=$(jq --arg path "$part" --argjson size "$(blockdev --getsize64 "$part")" --arg fstype "$(fstype_of "$part")" \
+            --arg label "$(label_of "$part")" '. + [ { path: $path, size: $size, fstype: $fstype, label: $label } ]' <<< "$out")
+    done
+    printf '%s\n' "$out"
+}
+
+probe_disk() {
+    local notes free='[]' shrink='[]' unchecked='[]' parts roots_json='[]' boots_json='[]' part first last fstype give
+    local gptOk=false windowsHere=false needed=false espPath="" model elsewhere listed=()
+    set_disk "$1"
+    notes=$(mktemp)
+    if gpt; then gptOk=true; fi
+    mapfile -t listed < <(partitions 0 "")
+    parts=$(describe_json "${listed[@]}")
+    if room_base >> "$notes" 2>&1; then
+        while read -r first last; do
+            free=$(jq --argjson first "$first" --argjson last "$last" --argjson bytes $(( (last - first + 1) * sector )) \
+                '. + [ { first: $first, last: $last, bytes: $bytes } ]' <<< "$free")
+        done < <(free_stretches "$need")
+        while read -r part; do
+            if [ "$(fstype_of "$part")" = ext4 ] && ! resize2fs -P "$part" > /dev/null 2>&1; then
+                unchecked=$(jq --arg path "$part" '. + [ $path ]' <<< "$unchecked")
+            fi
+        done < <(partitions $(( need + headroom )) "")
+        while read -r part fstype give; do
+            shrink=$(jq --arg part "$part" --arg fstype "$fstype" --arg label "$(label_of "$part")" \
+                --argjson size "$(blockdev --getsize64 "$part")" --argjson give "$give" \
+                '. + [ { part: $part, fstype: $fstype, label: $label, size: $size, give: $give } ]' <<< "$shrink")
+        done < <(givers "$need" 2>> "$notes")
+        if jq -e 'any(.[]; .fstype == "BitLocker")' <<< "$parts" > /dev/null; then
+            dim "$(t "Windows is encrypted with BitLocker, so it can only be shrunk from Windows (Disk Management, Shrink Volume); its free space then shows up here. Keep its recovery key at hand: Windows may ask for it." \
+                     "Windows está cifrado con BitLocker, así que solo se puede encoger desde Windows (Administración de discos, Reducir volumen); su espacio libre aparece luego aquí. Ten a mano su clave de recuperación: Windows puede pedirla.")" >> "$notes"
+        fi
+    else
+        need=$least
+    fi
+    if [ "$gptOk" = true ]; then
+        espPath=$(esp_of)
+        esp=$espPath
+        if has_windows "$espPath"; then windowsHere=true; fi
+        if boot_needed; then needed=true; fi
+        mapfile -t listed < <(partitions "$least" "$espPath")
+        roots_json=$(describe_json "${listed[@]}")
+        mapfile -t listed < <(partitions 500000000 "$espPath")
+        boots_json=$(describe_json "${listed[@]}")
+    fi
+    model=$(lsblk -dno MODEL "$disk" | sed 's/ *$//')
+    elsewhere=$(windows_elsewhere)
+    jq -n --arg path "$disk" --argjson size "$(blockdev --getsize64 "$disk")" --arg model "$model" --arg elsewhere "$elsewhere" \
+        --argjson gpt "$gptOk" --argjson windows "$windowsHere" --arg esp "$espPath" --argjson need "$need" \
+        --argjson free "$free" --argjson shrink "$shrink" --argjson unchecked "$unchecked" \
+        --argjson roots "$roots_json" --argjson boots "$boots_json" --argjson bootNeeded "$needed" \
+        --argjson parts "$parts" --argjson notes "$(json_lines < "$notes")" \
+        '{ path: $path, size: $size, model: $model, gpt: $gpt, windows: $windows, elsewhere: $elsewhere, esp: $esp, need: $need,
+           room: { free: $free, shrink: $shrink, unchecked: $unchecked },
+           part: { roots: $roots, boots: $boots, bootNeeded: $bootNeeded },
+           partitions: $parts, notes: $notes }'
+    rm -f "$notes"
+}
+
+probe() {
+    local online=false wifi=false uefi=false zone="" disks='[]' candidate
+    if [ -d /sys/firmware/efi ]; then uefi=true; fi
+    if curl -fsI --max-time 6 https://cache.nixos.org > /dev/null 2>&1; then
+        online=true
+        zone=$(guess_zone)
+    fi
+    if nmcli -t -f TYPE device 2>/dev/null | grep -qx wifi; then wifi=true; fi
+    while read -r candidate; do
+        [ -n "$candidate" ] || continue
+        disks=$(jq --argjson disk "$(probe_disk "$candidate")" '. + [ $disk ]' <<< "$disks")
+    done < <(list_disks)
+    jq -n --argjson uefi "$uefi" --argjson online "$online" \
+        --argjson wifi "$wifi" --arg zone "$zone" --argjson disks "$disks" \
+        '{ uefi: $uefi, online: $online, wifi: $wifi, zone: $zone, disks: $disks }'
+}
+
+apply_answers() {
+    local answers="" kind first bytes found part fstype give entry candidate
+    IFS= read -r answers || [ -n "$answers" ] || fail "$(t "No answers came." "No han llegado respuestas.")"
+    exec < /dev/null
+    get() { jq -r "$1 // empty" <<< "$answers"; }
+    lang=$(get .language)
+    [ "$lang" = es ] || lang=en
+    exec >> "$log" 2>&1
+    if [ "$lang" = es ]; then locale=es_ES.UTF-8; else locale=en_US.UTF-8; fi
+    [ -d /sys/firmware/efi ] || fail "$(t "NIHIL boots with systemd-boot, which needs UEFI: this machine started in legacy BIOS mode." \
+        "NIHIL arranca con systemd-boot, que necesita UEFI: este ordenador ha arrancado en modo BIOS antiguo.")"
+    layout=$(get .layout)
+    [[ $layout =~ ^[a-z][a-z0-9_-]*$ ]] || layout=us
+    zone=$(get .zone)
+    timedatectl list-timezones | grep -qxF "$zone" || fail "$(t "Unknown time zone: $zone." "Zona horaria desconocida: $zone.")"
+    fullname=$(get .fullName)
+    username=$(get .user)
+    valid_user "$username" || fail "$(t "That user name can't be used." "Ese nombre de usuario no se puede usar.")"
+    password=$(get .password)
+    [ -n "$password" ] || fail "$(t "The password is empty." "La contraseña está vacía.")"
+    hostname=$(get .host)
+    valid_host "$hostname" || fail "$(t "That computer name can't be used." "Ese nombre de ordenador no se puede usar.")"
+    candidate=$(get .disk)
+    list_disks | grep -qxF "$candidate" || fail "$(t "That disk can't be used." "Ese disco no se puede usar.")"
+    set_disk "$candidate"
+    encrypt=no
+    passphrase=""
+    if [ "$(jq -r '.encrypt // false' <<< "$answers")" = true ]; then
+        encrypt=yes
+        passphrase=$(get .passphrase)
+        [ -n "$passphrase" ] || fail "$(t "The disk passphrase is empty." "La contraseña del disco está vacía.")"
+    fi
+    mode=$(get .mode)
+    esp=""
+    efi=""
+    boot=""
+    root=""
+    windows=no
+    room=""
+    roomPart=""
+    roomFs=""
+    roomBytes=0
+    roomFirst=0
+    roomLast=0
+    bootType=""
+    case $mode in
+        whole) ;;
+        room)
+            room_base > /dev/null || fail "$(t "$disk has no GPT partition table." "$disk no tiene tabla de particiones GPT.")"
+            kind=$(get .room.kind)
+            bytes=$(get .room.bytes)
+            [[ $bytes =~ ^[0-9]+$ ]] || fail "$(t "No size was given for NIHIL." "No se ha dado un tamaño para NIHIL.")"
+            bytes=$(( bytes / 1048576 * 1048576 ))
+            [ "$bytes" -ge "$need" ] || fail "$(t "NIHIL needs at least $(size "$need")." "NIHIL necesita al menos $(size "$need").")"
+            found=no
+            if [ "$kind" = free ]; then
+                first=$(get .room.first)
+                while read -r entry; do
+                    read -r roomFirst roomLast <<< "$entry"
+                    if [ "$roomFirst" = "$first" ] && [ "$bytes" -le $(( (roomLast - roomFirst + 1) * sector )) ]; then
+                        found=yes
+                        break
+                    fi
+                done < <(free_stretches "$need")
+                [ "$found" = yes ] || fail "$(t "That free space is no longer there." "Ese espacio libre ya no está.")"
+                room=free
+                roomBytes=$bytes
+                roomLast=$(( roomFirst + roomBytes / sector - 1 ))
+            elif [ "$kind" = shrink ]; then
+                part=$(get .room.part)
+                while read -r entry; do
+                    read -r roomPart fstype give <<< "$entry"
+                    if [ "$roomPart" = "$part" ] && [ "$bytes" -le "$give" ]; then
+                        found=yes
+                        roomFs=$fstype
+                        break
+                    fi
+                done < <(givers "$need" 2> /dev/null)
+                [ "$found" = yes ] || fail "$(t "$part can't give that much." "$part no puede dar tanto.")"
+                room=shrink
+                roomBytes=$bytes
+            else
+                fail "$(t "Where NIHIL goes was not chosen." "No se ha elegido dónde va NIHIL.")"
+            fi
+            ;;
+        part)
+            roots=()
+            part_base > /dev/null || fail "$(t "$disk has no partition NIHIL can go on." "$disk no tiene ninguna partición donde pueda ir NIHIL.")"
+            root=$(get .root)
+            printf '%s\n' "${roots[@]}" | grep -qxF "$root" || fail "$(t "NIHIL can't go on $root." "NIHIL no puede ir en $root.")"
+            boot=$esp
+            efi=""
+            if boot_needed; then
+                boot=$(get .boot)
+                if [ "$boot" = "$root" ] || ! partitions 500000000 "$esp $root" | grep -qxF "$boot"; then
+                    fail "$(t "NIHIL also needs a partition of 1 GB for booting." "NIHIL necesita también una partición de 1 GB para arrancar.")"
+                fi
+                efi=$esp
+            fi
+            if has_windows "$esp"; then
+                windows=yes
+            fi
+            ;;
+        *) fail "$(t "Where NIHIL goes was not chosen." "No se ha elegido dónde va NIHIL.")" ;;
+    esac
+    apply_plan
+    emit done "$(t "NIHIL is installed." "NIHIL está instalado.")"
+}
+
+check_media() {
+    if [ -f /iso/nix-store.squashfs ] && ! cat /iso/nix-store.squashfs > /dev/null; then
+        exit 1
+    fi
+}
+
+check_filesystem() {
+    if [ ! -b "$1" ] || [ "$(lsblk -dno TYPE "$1")" != part ] || [ "$(fstype_of "$1")" != ext4 ] \
+            || findmnt -rno TARGET -S "$1" > /dev/null; then
+        exit 1
+    fi
+    e2fsck -f -p "$1" > /dev/null 2>&1 || true
+}
+
+main_tui() {
+    clear
+    gum style --foreground 15 --bold --margin "1 2" "N I H I L" "$(gum style --foreground 7 --italic 'ex nihilo')"
+
+    [ -d /sys/firmware/efi ] || fail "NIHIL boots with systemd-boot, which needs UEFI: this machine started in legacy BIOS mode."
+
+    language=$(gum choose --header "Language / Idioma" "English" "Español")
+    if [ "$language" = "Español" ]; then
+        lang=es
+        locale=es_ES.UTF-8
+    else
+        locale=en_US.UTF-8
+    fi
+
+    if [ -f /iso/nix-store.squashfs ]; then
+        if ! gum spin --title "$(t "Checking the USB stick…" "Comprobando el USB…")" -- cat /iso/nix-store.squashfs > /dev/null; then
+            fail "$(t "The USB stick cannot be read whole. Write the image to it again, checking its SHA256 (SHA256SUMS, next to it on Releases), or try another stick or port; \"Copy ISO Files to RAM\", among the boot menu's options, reads it all into memory before starting." \
+                      "No se puede leer el USB entero. Vuelve a grabar la imagen comprobando su SHA256 (SHA256SUMS, junto a ella en Releases), o prueba otro USB u otro puerto; «Copy ISO Files to RAM», en las opciones del menú de arranque, lo lee entero a memoria antes de empezar.")"
+        fi
+    fi
+
+    until curl -fsI --max-time 6 https://cache.nixos.org >/dev/null; do
+        if ! nmcli -t -f TYPE device 2>/dev/null | grep -qx wifi; then
+            dim "$(t "No Wi-Fi card shows up (it may need a driver this image lacks). A cable, or a phone sharing its connection over USB, work too." \
+                     "No aparece ninguna tarjeta Wi-Fi (puede que necesite un driver que esta imagen no trae). Un cable, o un móvil compartiendo la conexión por USB, también sirven.")"
+        fi
+        wifi=$(t "Choose a Wi-Fi network" "Elegir una red Wi-Fi")
+        retry=$(t "Try again" "Probar otra vez")
+        leave=$(t "Leave the installer" "Salir del instalador")
+        case $(gum choose --header "$(t "There is no connection to the Internet." "No hay conexión a Internet.")" "$wifi" "$retry" "$leave") in
+            "$wifi") nmtui-connect || true ;;
+            "$leave")
+                dim "$(t "sudo nihil-install starts it again; nmcli device lists the network cards." \
+                         "sudo nihil-install lo vuelve a empezar; nmcli device muestra las tarjetas de red.")"
+                exit 0
+                ;;
+            *) sleep 2 ;;
+        esac
+    done
+
+    layout=$(gum choose --header "$(t "Keyboard" "Teclado")" us es gb de fr it pt latam other)
+    if [ "$layout" = other ]; then
+        layout=$(gum input --header "$(t "Keyboard layout (xkb name)" "Distribución del teclado (nombre xkb)")" --placeholder "br")
+    fi
+    keymap=$(keymap_of "$layout")
+    if ! loadkeys "$keymap" >/dev/null 2>&1; then
+        dim "$(t "The console has no keymap called $keymap, so here the keys type as on a US keyboard: a password chosen now may not be what the same keys type at the login. Letters and digits are the safest." \
+                 "La consola no tiene un mapa de teclado llamado $keymap, así que aquí las teclas escriben como en un teclado estadounidense: una contraseña elegida ahora puede no ser lo que esas teclas escriben al iniciar sesión. Lo más seguro son letras y cifras.")"
+    fi
+
+    zone=$(guess_zone)
+    if [ -z "$zone" ] || ! gum confirm "$(t "Time zone: $zone?" "Zona horaria: $zone?")" \
+            --affirmative "$(t "Yes" "Sí")" --negative "$(t "Another" "Otra")"; then
+        zone=$(timedatectl list-timezones | gum filter --header "$(t "Time zone" "Zona horaria")")
+    fi
+
+    fullname=$(gum input --header "$(t "Your name" "Tu nombre")" --placeholder "Ada Lovelace")
+    suggested=$(printf '%s' "${fullname%% *}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
+    until valid_user "${username:-}"; do
+        username=$(gum input --header "$(t "User name (lowercase letters and digits)" "Nombre de usuario (minúsculas y cifras)")" \
+            --value "${suggested:-nihil}")
+    done
+    while true; do
+        password=$(gum input --password --header "$(t "Password" "Contraseña")")
+        again=$(gum input --password --header "$(t "Password, again" "La contraseña, otra vez")")
+        if [ -n "$password" ] && [ "$password" = "$again" ]; then
+            break
+        fi
+        dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
+    done
+    until [[ ${hostname:-} =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; do
+        hostname=$(gum input --header "$(t "Name of this computer" "Nombre de este ordenador")" --value "nihil")
+    done
+
+    listed=$(list_disks)
+    [ -n "$listed" ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
+    mapfile -t found <<< "$listed"
+    disks=()
+    for candidate in "${found[@]}"; do
+        disks+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")
+    done
+    disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disks[@]}")
+    set_disk "${disk%% *}"
+
+    mode=whole
+    esp=""
+    efi=""
+    boot=""
+    root=""
+    windows=no
+    room=""
+    roomPart=""
+    roomFs=""
+    roomBytes=0
+    roomFirst=0
+    roomLast=0
+    bootType=""
+    nextTo=$(t "Next to what is on it (make room)" "Junto a lo que hay (hacer sitio)")
+    all=$(t "Erase the whole disk" "Borrar el disco entero")
+    pick=$(t "On one of its partitions (formatting it)" "En una de sus particiones (formateándola)")
+    while true; do
+        lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
+        dim "$(t "To partition it by hand: another console (Alt+F2) has cfdisk and parted; then «On one of its partitions»." \
+                 "Para particionarlo a mano: otra consola (Alt+F2) tiene cfdisk y parted; luego «En una de sus particiones».")"
+        choice=$(gum choose --header "$(t "Where on $disk" "Dónde en $disk")" "$nextTo" "$all" "$pick")
+        case $choice in
+            "$nextTo")
+                if plan_room; then
+                    mode=room
+                    break
+                fi
+                ;;
+            "$all")
+                mode=whole
+                break
+                ;;
+            "$pick")
+                if plan_partition; then
+                    mode=part
+                    break
+                fi
+                ;;
+        esac
+    done
+
+    encrypt=no
+    if gum confirm "$(t "Encrypt the disk? It asks for a passphrase at every boot." "¿Cifrar el disco? Pedirá una contraseña en cada arranque.")" \
+            --affirmative "$(t "Encrypt" "Cifrar")" --negative "$(t "No" "No")" --default=false; then
+        encrypt=yes
+        while true; do
+            passphrase=$(gum input --password --header "$(t "Disk passphrase" "Contraseña del disco")")
+            again=$(gum input --password --header "$(t "Disk passphrase, again" "La contraseña del disco, otra vez")")
+            if [ -n "$passphrase" ] && [ "$passphrase" = "$again" ]; then
+                break
+            fi
+            dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
+        done
+    fi
+
+    if [ "$mode" = whole ]; then
+        gum style --foreground 1 --margin "1 0" "$(t "Everything on $disk will be erased." "Se borrará todo lo que hay en $disk.")"
+    elif [ "$mode" = room ] && [ "$room" = shrink ]; then
+        gum style --foreground 1 --margin "1 0" \
+            "$(t "$roomPart will give $(size "$roomBytes") to NIHIL, keeping what it holds; the rest of $disk stays as it is." \
+                 "$roomPart cederá $(size "$roomBytes") a NIHIL, conservando lo que guarda; el resto de $disk se queda como está.")" \
+            "$(t "Shrinking is safe, but a power cut halfway is not: keep a copy of what matters on it." \
+                 "Encoger es seguro, pero un corte de luz a medias no: ten copia de lo importante.")"
+        if [ "$roomFs" = ntfs ]; then
+            dim "$(t "Windows will check its disk the first time it starts: let it finish." "Windows revisará su disco la primera vez que arranque: déjale terminar.")"
+        fi
+    elif [ "$mode" = room ]; then
+        gum style --foreground 1 --margin "1 0" "$(t "NIHIL goes in $(size "$roomBytes") of free space on $disk; the rest stays as it is." \
+            "NIHIL va en $(size "$roomBytes") de espacio libre de $disk; el resto se queda como está.")"
+    else
+        gum style --foreground 1 --margin "1 0" "$(t "$root will be formatted" "Se formateará $root")$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")$(t "; the rest of $disk stays as it is." "; el resto de $disk se queda como está.")"
+    fi
+    if [ "$mode" != whole ] && [ "$windows" = yes ]; then
+        dim "$(t "The boot menu will offer Windows too. If Windows uses BitLocker, it may ask for its recovery key the first time: keep it at hand." \
+                 "El menú de arranque ofrecerá también Windows. Si Windows usa BitLocker, puede pedir su clave de recuperación la primera vez: tenla a mano.")"
+    else
+        elsewhere=$(windows_elsewhere)
+        if [ -n "$elsewhere" ]; then
+            dim "$(t "Windows, on $elsewhere, stays in the computer's own boot menu (the key it shows as it starts: F12, F11, Esc…): NIHIL's lists what is on its own disk." \
+                     "Windows, en $elsewhere, sigue en el menú de arranque del propio ordenador (la tecla que indica al encenderse: F12, F11, Esc…): el de NIHIL muestra lo que hay en su disco.")"
+        fi
+    fi
+    gum confirm "$(t "Install NIHIL?" "¿Instalar NIHIL?")" --affirmative "$(t "Install" "Instalar")" --negative "$(t "Cancel" "Cancelar")" \
+        --default=false || exit 1
+
+    apply_plan
+
+    if gum confirm "$(t "Restart now?" "¿Reiniciar ahora?")" --affirmative "$(t "Restart" "Reiniciar")" --negative "$(t "Later" "Luego")"; then
+        finish
+    fi
+}
+
+case ${1:-} in
+    probe)
+        gui=yes
+        if [ "${2:-}" = es ]; then
+            lang=es
+        fi
+        exec 3>&2
+        probe
+        ;;
+    apply)
+        gui=yes
+        apply_answers
+        ;;
+    check-media)
+        gui=yes
+        check_media
+        ;;
+    check-filesystem)
+        gui=yes
+        check_filesystem "${2:?}"
+        ;;
+    finish)
+        finish
+        ;;
+    "")
+        main_tui
+        ;;
+    *)
+        echo "nihil-install [probe [es] | apply | check-media | check-filesystem PARTITION | finish]" >&2
+        trap - EXIT
+        exit 2
+        ;;
+esac
