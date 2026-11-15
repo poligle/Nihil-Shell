@@ -44,6 +44,10 @@ the conversation; on its own it goes back after a few seconds, longer for long a
 after that the eyes in the bar stay alert until you answer it. With do not disturb on,
 only the panel's history keeps it.
 
+**Out of the bar.** When Nilo works on the desktop itself, the launcher closes and its eyes
+leave the bar: they float over the screen, go to the window it is using, and wander while
+it thinks. A click on them opens the conversation; when it ends, they go back to the bar.
+
 **What it may do.** One switch, **Internet** (search DuckDuckGo through `ddgr`, or
 `nilo.searxng`, and read pages, never local addresses), and three levels, in its settings
 (the gear) and in the introduction:

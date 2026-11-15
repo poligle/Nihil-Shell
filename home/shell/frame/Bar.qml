@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import qs.theme
 import qs.services
 import qs.components
@@ -61,6 +62,9 @@ Item {
             height: 14
             visible: Nilo.enabled && (Nilo.loaded || Nilo.loading || Nilo.busy || Nilo.peeking
                 || (Nilo.pull !== null && Nilo.pull.status !== "error"))
+            opacity: Nilo.roaming && (Hyprland.focusedMonitor?.name ?? "") === root.output ? 0 : 1
+
+            Behavior on opacity { NumberAnimation { duration: Tokens.animDrawer } }
 
             Eyes {
                 anchors.centerIn: parent
