@@ -655,5 +655,6 @@ Singleton {
             root.ask(text);
         }
         function state(): string { return root.busy ? root.phase : "idle"; }
+        function reset(): void { root.reset(); }
     }
 }

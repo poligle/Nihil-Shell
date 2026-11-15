@@ -111,8 +111,8 @@ nihil-ipc drawers toggle launcher     # launcher | dashboard | panel | wallpaper
 nihil-ipc osd volume 40 false
 nihil-ipc glyph test true             # light the frame (critical = red)
 nihil-ipc glyph charge                # the charger's light, rising from the bottom
-nihil-ipc notifs toggleDnd
-nihil-ipc nilo toggle                 # also: open, sleep, ask "…", state
+nihil-ipc notifs toggleDnd            # also: hide (the popups, keeping the list), clear
+nihil-ipc nilo toggle                 # also: open, sleep, ask "…", state, reset
 nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
