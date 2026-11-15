@@ -19,6 +19,10 @@
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="assets/fonts/space-grotesk.woff" as="font" type="font/woff" crossorigin>
+<script>
+document.documentElement.classList.add("js");
+try { if (localStorage.getItem("nihil-look") === "glass") document.documentElement.dataset.look = "glass"; } catch (e) {}
+</script>
 <style>
 @font-face { font-family: "Space Grotesk"; src: url("assets/fonts/space-grotesk.woff") format("woff"); font-weight: 300 700; font-display: swap; }
 @font-face { font-family: "Space Mono"; src: url("assets/fonts/space-mono-400.woff") format("woff"); font-weight: 400; font-display: swap; }
@@ -45,6 +49,9 @@
   --left: 44px;
   --r: 20px;
   --pitch: 9px;
+  --fast: 140ms;
+  --normal: 240ms;
+  --slow: 480ms;
 }
 
 * { box-sizing: border-box; }
@@ -53,7 +60,6 @@ body {
   margin: 0;
   color: var(--ink);
   font: 400 18px/1.55 var(--sans);
-
   background-color: var(--void);
   background-image: radial-gradient(circle at center, #1b1b1b 0 1.15px, transparent 1.5px);
   background-size: var(--pitch) var(--pitch);
@@ -65,15 +71,39 @@ a { color: inherit; }
 img { display: block; max-width: 100%; height: auto; }
 figure { margin: 0; }
 code, kbd, pre { font-family: var(--mono); }
+button { font: inherit; color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: var(--void); text-decoration: none; }
+.skip:focus { position: fixed; z-index: 70; top: 14px; left: 56px; width: auto; height: auto; clip: auto; padding: 8px 14px; border-radius: 8px; background: var(--ink); color: var(--void); text-decoration: none; }
 
+/* The frame: black and flat, or smoked glass over what scrolls beneath it */
 .frame {
-  position: fixed; z-index: 40; pointer-events: none;
+  position: fixed; z-index: 41; pointer-events: none;
   top: var(--top); right: var(--t); bottom: var(--t); left: var(--left);
   border-radius: var(--r);
   box-shadow: 0 0 0 200vmax var(--void);
+  transition: box-shadow var(--slow);
 }
+.frame::after {
+  content: ""; position: absolute; inset: -1px; border-radius: calc(var(--r) + 1px); padding: 1px;
+  background: linear-gradient(135deg, rgba(242, 242, 242, 0.42), rgba(242, 242, 242, 0.08) 24%, rgba(242, 242, 242, 0.04) 70%, rgba(242, 242, 242, 0.14));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0; transition: opacity var(--slow);
+}
+.smoke {
+  position: fixed; inset: 0; z-index: 40; pointer-events: none;
+  background: rgba(0, 0, 0, 0.58);
+  -webkit-backdrop-filter: blur(14px) saturate(0.7) brightness(0.72);
+  backdrop-filter: blur(14px) saturate(0.7) brightness(0.72);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  opacity: 0; visibility: hidden; transition: opacity var(--slow), visibility 0s linear var(--slow);
+}
+[data-look="glass"] .frame { box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0); }
+[data-look="glass"] .frame::after { opacity: 1; }
+[data-look="glass"] .smoke { opacity: 1; visibility: visible; transition: opacity var(--slow), visibility 0s; }
+
 .glyph { position: fixed; inset: 0; z-index: 45; pointer-events: none; width: 100%; height: 100%; }
 .glyph path { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(242, 242, 242, 0.75)); }
 
@@ -82,30 +112,31 @@ code, kbd, pre { font-family: var(--mono); }
   display: flex; flex-direction: column; align-items: center; justify-content: space-between;
   padding: 16px 0 14px;
 }
-.bar .mark { display: block; width: 26px; height: 26px; border-radius: 50%; }
+.bar-start { display: block; text-decoration: none; }
+.bar .mark { display: block; width: 26px; height: 26px; }
 .bar .mark svg { display: block; width: 26px; height: 26px; }
 .leds { display: flex; flex-direction: column; align-items: center; gap: 9px; margin: 0; padding: 0; list-style: none; }
 .leds a { position: relative; display: grid; place-items: center; width: 20px; height: 22px; }
-.leds a::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transition: height 240ms, background-color 240ms; }
+.leds a::before { content: ""; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transition: height var(--normal), background-color var(--normal); }
 .leds a[aria-current="true"]::before { height: 20px; background: var(--ink); }
 .leds a:hover::before { background: var(--ink); }
 .leds .tip {
   position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
-  padding: 3px 9px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line);
-  font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--dim); white-space: nowrap;
-  opacity: 0; pointer-events: none; transition: opacity 140ms;
+  padding: 3px 9px; border-radius: 6px; background: var(--raised); border: 1px solid var(--line);
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--dim); white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity var(--fast);
 }
 .leds a:hover .tip, .leds a:focus-visible .tip { opacity: 1; }
 .bar-end { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.bar-end .gh { display: grid; place-items: center; width: 26px; height: 26px; color: var(--dim); }
-.bar-end .gh:hover { color: var(--ink); }
+.bar-end a { display: grid; place-items: center; width: 26px; height: 26px; color: var(--dim); }
+.bar-end a:hover { color: var(--ink); }
 .clock { font: 700 17px/0.95 var(--dot); color: var(--dim); text-align: center; letter-spacing: 0.02em; }
 .clock[hidden] { display: none; }
 .bar .word { display: none; }
 
 main { padding: calc(var(--top) + 56px) calc(var(--t) + 40px) 0 calc(var(--left) + 48px); }
 .wrap { max-width: 1180px; margin: 0 auto; }
-section { scroll-margin-top: calc(var(--top) + 24px); padding: 0 0 140px; }
+.block { scroll-margin-top: calc(var(--top) + 24px); padding-bottom: 150px; }
 .prose { max-width: 62ch; }
 h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; }
 h1 { font-size: clamp(36px, 5.2vw, 62px); line-height: 1.04; max-width: 15ch; }
@@ -114,45 +145,126 @@ h3 { font-size: 21px; line-height: 1.3; margin-bottom: 6px; }
 p { margin: 0 0 16px; }
 .lede { color: var(--dim); font-size: 21px; line-height: 1.5; max-width: 52ch; margin-top: 22px; }
 .quiet { color: var(--dim); }
-.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
 
-.hero { padding-bottom: 120px; }
+/* Keys: the shell's own buttons, never pills */
+.key {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 0 24px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--dim);
+  font: 500 16px/1 var(--sans); text-decoration: none; cursor: pointer;
+  transition: background-color var(--fast), border-color var(--fast), color var(--fast);
+}
+.key:hover { background: var(--raised); border-color: var(--muted); color: var(--ink); }
+.key.accent { background: var(--ink); border-color: var(--ink); color: var(--void); }
+.key.accent:hover { background: #ffffff; border-color: #ffffff; }
+.key svg { width: 16px; height: 16px; flex: none; }
+.key.small { min-height: 32px; padding: 0 12px; border-radius: 8px; font: 400 12px/1 var(--mono); letter-spacing: 0.02em; }
+
+.hero { padding-bottom: 72px; }
 .wordmark { width: min(560px, 100%); margin: 0 0 14px -4px; }
 .wordmark svg, .wordmark img { display: block; width: 100%; height: auto; }
-.motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 64px; text-transform: lowercase; }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 72px; }
-.pill {
-  display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 24px;
-  border-radius: 999px; border: 1px solid var(--line); text-decoration: none;
-  font: 500 16px/1 var(--sans); color: var(--ink); background: var(--void);
-  transition: border-color 140ms, background-color 140ms;
-}
-.pill:hover { border-color: var(--muted); }
-.pill.primary { background: var(--ink); color: var(--void); border-color: var(--ink); }
-.pill.primary:hover { background: #ffffff; }
-.pill svg { width: 18px; height: 18px; }
-.shot {
-  margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void);
-}
-a.shot { display: block; }
-a.shot:hover { border-color: var(--muted); }
-.hero .shot { box-shadow: 0 0 0 10px var(--void); }
-.deck-shot { margin-top: 40px; max-width: 980px; }
-.deck-shot a, .deck-shot img { display: block; width: 100%; height: auto; }
+.motto { font: 400 13px/1 var(--mono); letter-spacing: 0.62em; color: var(--muted); margin: 0 0 64px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 30px; margin: 36px 0 0; }
+.away { display: flex; flex-wrap: wrap; gap: 12px 26px; margin: 0; padding: 0; list-style: none; }
+.away a { display: inline-flex; align-items: center; gap: 9px; color: var(--dim); text-decoration: none; font-size: 16px; }
+.away a:hover { color: var(--ink); }
+.away svg { width: 17px; height: 17px; flex: none; }
 
-.tour { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 44px 32px; margin-top: 48px; }
-.tour figcaption { padding: 18px 2px 0; }
-.tour figcaption p { color: var(--dim); margin: 0 0 12px; max-width: 46ch; }
+/* The screen, and the drawers it shows */
+.stage { padding-bottom: 150px; }
+.stage-head { display: flex; justify-content: flex-end; align-items: center; min-height: 40px; margin-bottom: 14px; }
+.screen {
+  position: relative; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--void);
+  box-shadow: 0 0 0 10px var(--void);
+}
+.screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--normal) ease-out; }
+.screen img.on { opacity: 1; }
+html:not(.js) .screen img { opacity: 1; }
+.look-note {
+  position: absolute; left: 14px; bottom: 14px; margin: 0; padding: 5px 10px; border-radius: 6px;
+  background: rgba(0, 0, 0, 0.72); border: 1px solid var(--line);
+  font: 400 12px/1.3 var(--mono); color: var(--dim);
+}
+.look-note[hidden] { display: none; }
+
+.viewer {
+  display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 0 28px; align-items: start;
+  grid-template-areas: "tabs screen" "tabs captions";
+}
+.viewer .screen { grid-area: screen; }
+.tabs { grid-area: tabs; display: grid; gap: 2px; margin: 0 0 0 -12px; padding: 0; list-style: none; }
+.tab {
+  appearance: none; width: 100%; display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--dim); cursor: pointer; text-align: left;
+  font: 400 16px/1.2 var(--sans); transition: background-color var(--fast), color var(--fast);
+}
+.tab::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--off); transition: background-color var(--fast); }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--raised); color: var(--ink); }
+.tab[aria-selected="true"]::before { background: var(--ink); }
+.tab .name { flex: 1 1 auto; }
+.tab kbd { padding: 3px 7px 2px; font-size: 11px; }
+.captions { grid-area: captions; min-width: 0; margin-top: 28px; }
+.caption { max-width: 60ch; }
+.js .caption:not(.on) { display: none; }
+html:not(.js) .tabs { display: none; }
+html:not(.js) .caption { margin-bottom: 36px; }
+.caption h3 { font-size: 26px; margin-bottom: 12px; }
+.caption p { color: var(--dim); }
+.caption .keys { margin-top: 6px; }
+
 .keys { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 400 12px/1 var(--mono); color: var(--muted); }
+.keys + .keys { margin-top: 10px; }
 kbd {
   display: inline-block; padding: 5px 8px 4px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface);
   font: 400 12px/1 var(--mono); color: var(--dim); letter-spacing: 0.04em;
 }
 
+/* The shell's switch: a track and a knob */
+.switch {
+  appearance: none; display: inline-flex; align-items: center; gap: 14px; padding: 6px 0; border: 0; background: none; cursor: pointer;
+  color: var(--dim); font: 400 15px/1 var(--sans);
+}
+.switch:hover { color: var(--ink); }
+.switch .track { position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; border: 1px solid var(--off); transition: background-color var(--fast), border-color var(--fast); }
+.switch:hover .track { border-color: var(--muted); }
+.switch .knob { position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 6px; background: var(--muted); transition: transform var(--fast) cubic-bezier(0.33, 1, 0.68, 1), background-color var(--fast); }
+.switch[aria-checked="true"] { color: var(--ink); }
+.switch[aria-checked="true"] .track { background: var(--ink); border-color: var(--ink); }
+.switch[aria-checked="true"] .knob { transform: translateX(14px); background: var(--void); }
+html:not(.js) .switch { display: none; }
+
+.shot { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--void); }
+a.shot { display: block; }
+a.shot:hover { border-color: var(--muted); }
+.shot img { width: 100%; }
+
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+.split.top { align-items: start; }
 .rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 44px 0 72px; }
 .rules p { color: var(--dim); margin: 0; }
 .rules .keys { margin-top: 14px; }
-.rules.more { margin: 56px 0 0; }
+.also { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; margin-top: 72px; max-width: 900px; }
+.also p { color: var(--dim); margin: 0 0 14px; }
+
+.glass-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); }
+.glass-switch .switch { font-size: 17px; }
+.glass-switch span.meta { font: 400 13px/1.5 var(--mono); color: var(--muted); }
+
+.levels { margin: 40px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); max-width: 860px; }
+.levels li { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 4px 18px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.levels .meter { display: flex; gap: 7px; padding-top: 9px; grid-row: span 2; }
+.levels .meter i { width: 8px; height: 8px; border-radius: 4px; background: var(--off); }
+.levels .meter i.lit { background: var(--ink); }
+.levels .meter.apart i { border: 1px solid var(--muted); background: transparent; }
+.levels h3 { font-size: 19px; margin: 0; }
+.levels p { color: var(--dim); margin: 0; }
+.asks { max-width: 62ch; margin-top: 40px; }
+.nilo-done { margin-top: 72px; }
+
+.deck-shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; max-width: 980px; }
+.deck-shot { margin-top: 40px; max-width: 980px; }
+
 .palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 30px 18px; margin: 0; padding: 0; list-style: none; }
 .palette li { display: grid; gap: 2px; align-content: start; }
 .palette .led { width: 46px; height: 46px; border-radius: 50%; margin-bottom: 10px; border: 1px solid var(--line); }
@@ -160,26 +272,22 @@ kbd {
 .palette code { font-size: 12px; color: var(--dim); }
 .palette span { font-size: 14px; line-height: 1.4; color: var(--muted); }
 
-.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
-.boot-screen {
-  aspect-ratio: 16 / 10; border-radius: 20px; background: var(--void); border: 1px solid var(--line);
-  display: grid; place-items: center; overflow: hidden;
-}
-.boot-screen img { width: 46%; image-rendering: auto; }
-
+.boot-screen { aspect-ratio: 16 / 10; border-radius: 20px; background: var(--void); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+.boot-screen img { width: 46%; }
 .lang-shot { max-width: 864px; margin-top: 24px; }
 
-.code {
-  display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
-}
+.code { display: flex; align-items: flex-start; min-width: 0; margin: 12px 0 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
 .code pre { flex: 1 1 auto; min-width: 0; margin: 0; padding: 18px 20px; overflow-x: auto; font-size: 14px; line-height: 1.65; color: var(--ink); }
 .code .c { color: var(--muted); }
-.copy {
-  flex: none; margin: 10px 10px 0 0; appearance: none; cursor: pointer;
-  border: 1px solid var(--line); background: var(--void); color: var(--dim); border-radius: 999px;
-  min-height: 30px; padding: 0 12px; font: 400 12px/1 var(--mono);
+.code.narrow { max-width: 640px; margin-top: 56px; }
+.code.wide { max-width: 864px; }
+.copy { flex: none; margin: 10px 10px 0 0; }
+[data-look="glass"] .code, [data-look="glass"] kbd, [data-look="glass"] .key:not(.accent) {
+  background: rgba(14, 14, 14, 0.5);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
-.copy:hover { color: var(--ink); border-color: var(--muted); }
+[data-look="glass"] .tab[aria-selected="true"] { background: rgba(242, 242, 242, 0.07); box-shadow: inset 0 0 0 1px rgba(242, 242, 242, 0.08); }
+
 .steps { margin: 40px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; max-width: 860px; }
 .steps > li { counter-increment: step; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 14px; min-width: 0; }
 .steps > li::before {
@@ -187,25 +295,14 @@ kbd {
   border: 1px solid var(--line); display: grid; place-items: center; font: 700 15px/1 var(--dot); color: var(--dim);
 }
 .steps p { color: var(--dim); margin: 0; }
-.table { margin-top: 64px; max-width: 860px; }
+.steps .code { margin-top: 14px; }
+.way { margin-top: 64px; }
+.table { margin-top: 72px; max-width: 860px; }
 table { width: 100%; border-collapse: collapse; font-size: 16px; }
 th, td { text-align: left; vertical-align: top; padding: 13px 14px 13px 0; border-bottom: 1px solid var(--line); }
-th { font: 400 12px/1.4 var(--mono); color: var(--muted); font-weight: 400; }
+th { font: 400 12px/1.4 var(--mono); color: var(--muted); }
 td code { font-size: 14px; color: var(--ink); white-space: nowrap; }
 td { color: var(--dim); }
-.note { margin-top: 28px; color: var(--muted); font-size: 15px; max-width: 70ch; }
-
-.nilo-split { align-items: start; }
-.nilo-done { margin-top: 64px; }
-.nilo-done h3 + p { margin-bottom: 22px; }
-.nilo-code { max-width: 640px; margin-top: 64px; }
-.plug {
-  appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
-  border: 1px solid var(--line); background: var(--void); color: var(--dim); border-radius: 999px;
-  min-height: 30px; padding: 0 12px; font: 400 12px/1 var(--mono); letter-spacing: 0.04em;
-}
-.plug:hover { color: var(--ink); border-color: var(--muted); }
-.plug svg { width: 14px; height: 14px; }
 
 footer { padding: 0 calc(var(--t) + 40px) 72px calc(var(--left) + 48px); color: var(--muted); font-size: 15px; }
 footer .wrap { border-top: 1px solid var(--line); padding-top: 28px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 40px; }
@@ -217,31 +314,43 @@ footer a:hover { color: var(--ink); }
   :root { --t: 6px; --top: 52px; --left: 6px; --r: 16px; }
   .bar { right: 0; bottom: auto; width: auto; height: var(--top); flex-direction: row; padding: 0 16px; }
   .bar .leds, .bar .clock { display: none; }
-  .bar-start { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .bar-start { display: flex; align-items: center; gap: 12px; }
   .bar .word { display: block; font: 400 13px/1 var(--mono); letter-spacing: 0.4em; color: var(--dim); }
   .bar-end { flex-direction: row; }
   main { padding: calc(var(--top) + 36px) calc(var(--t) + 16px) 0 calc(var(--left) + 16px); }
-  section { padding-bottom: 96px; }
-  .tour, .rules, .split, footer .wrap { grid-template-columns: minmax(0, 1fr); }
-  .rules { gap: 28px; }
+  .block, .stage { padding-bottom: 104px; }
   .motto { margin-bottom: 44px; letter-spacing: 0.45em; }
-  .actions { margin-bottom: 52px; }
-  .hero .shot { box-shadow: none; }
+  .actions { gap: 18px; }
+  .screen { box-shadow: none; border-radius: 12px; }
+  .rules, .split, .also, .deck-shots, footer .wrap { grid-template-columns: minmax(0, 1fr); }
+  .rules, .also { gap: 28px; }
   .split { gap: 32px; }
+  .levels li { grid-template-columns: 58px minmax(0, 1fr); }
   .steps > li { grid-template-columns: 40px minmax(0, 1fr); }
   td code { white-space: normal; overflow-wrap: anywhere; }
   footer { padding: 0 calc(var(--t) + 16px) 48px calc(var(--left) + 16px); }
 }
 
+@media (max-width: 1100px) {
+  .viewer { grid-template-columns: minmax(0, 1fr); grid-template-areas: "screen" "tabs" "captions"; }
+  .tabs { display: flex; gap: 6px; margin: 16px -4px 0; padding: 0 4px 6px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs li { flex: none; scroll-snap-align: start; }
+  .tab { width: auto; white-space: nowrap; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .tab[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--muted); }
+  .captions { margin-top: 22px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .leds a::before { transition: none; }
+  *, *::before, *::after { transition-duration: 0s !important; }
 }
 </style>
 </head>
 <body>
 <a class="sr-only skip" href="#title">Skip to content</a>
 
+<div class="smoke" aria-hidden="true"></div>
 <div class="frame" aria-hidden="true"></div>
 <svg class="glyph" aria-hidden="true"><path id="glyph-path" d=""/><path id="rise-left-trail" d=""/><path id="rise-right-trail" d=""/><path id="rise-left" d=""/><path id="rise-right" d=""/></svg>
 
@@ -254,11 +363,11 @@ footer a:hover { color: var(--ink); }
   </a>
   <nav aria-label="Sections">
     <ul class="leds">
-      <li><a href="#top" aria-current="true"><span class="tip">Overview</span></a></li>
-      <li><a href="#tour"><span class="tip">Tour</span></a></li>
+      <li><a href="#top" aria-current="true"><span class="tip">The desktop</span></a></li>
+      <li><a href="#glass"><span class="tip">Smoked glass</span></a></li>
       <li><a href="#nilo"><span class="tip">Nilo</span></a></li>
+      <li><a href="#deck"><span class="tip">Phone and watch</span></a></li>
       <li><a href="#generations"><span class="tip">Generations</span></a></li>
-      <li><a href="#deck"><span class="tip">Deck</span></a></li>
       <li><a href="#rules"><span class="tip">Design</span></a></li>
       <li><a href="#boot"><span class="tip">Boot</span></a></li>
       <li><a href="#language"><span class="tip">Language</span></a></li>
@@ -266,16 +375,16 @@ footer a:hover { color: var(--ink); }
     </ul>
   </nav>
   <div class="bar-end">
-    <a class="gh" href="android/" aria-label="NIHIL for Android" title="NIHIL for Android">
+    <a href="android/" aria-label="NIHIL for Android" title="NIHIL for Android">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.3h2"/></svg>
     </a>
-    <a class="gh" href="wear/" aria-label="NIHIL for Wear OS" title="NIHIL for Wear OS">
+    <a href="wear/" aria-label="NIHIL for Wear OS" title="NIHIL for Wear OS">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.3"/><path d="M6 3.9 6.5 1.3h3L10 3.9M6 12.1l.5 2.6h3l.5-2.6M8 6.3V8l1.1.9"/></svg>
     </a>
-    <a class="gh" href="studio/" aria-label="Wallpaper studio" title="Wallpaper studio">
+    <a href="studio/" aria-label="Wallpaper studio" title="Wallpaper studio">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3.5" r="1.3"/><circle cx="8" cy="3.5" r="1.3"/><circle cx="12.5" cy="3.5" r="1.3"/><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.9"/><circle cx="12.5" cy="8" r="1.3"/><circle cx="3.5" cy="12.5" r="1.3"/><circle cx="8" cy="12.5" r="1.3"/><circle cx="12.5" cy="12.5" r="1.3"/></svg>
     </a>
-    <a class="gh" href="https://github.com/poligle/Nihil-Shell" aria-label="Source code on GitHub">
+    <a href="https://github.com/poligle/Nihil-Shell" aria-label="Source code on GitHub" title="Source code on GitHub">
       <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
     <div class="clock" hidden aria-hidden="true"><span id="hh">00</span><br><span id="mm">00</span></div>
@@ -291,109 +400,124 @@ footer a:hover { color: var(--ink); }
       <h1 id="title">A monochrome, dot&#8209;matrix desktop for NixOS</h1>
       <p class="lede">Caelestia's frame and drawers, dressed in the language of Nothing: greys for hierarchy, dots for display, red only to interrupt. All of it declared in Nix, from the boot splash to the lock screen.</p>
       <div class="actions">
-        <a class="pill primary" href="#install">Install</a>
-        <a class="pill" href="https://github.com/poligle/Nihil-Shell">
-          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          View the code
-        </a>
-        <a class="pill" href="android/">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.3h2"/></svg>
-          Launcher for Android
-        </a>
-        <a class="pill" href="wear/">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.3"/><path d="M6 3.9 6.5 1.3h3L10 3.9M6 12.1l.5 2.6h3l.5-2.6M8 6.3V8l1.1.9"/></svg>
-          Watch for Wear OS
-        </a>
-        <a class="pill" href="studio/">
-          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3.5" r="1.3"/><circle cx="8" cy="3.5" r="1.3"/><circle cx="12.5" cy="3.5" r="1.3"/><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.9"/><circle cx="12.5" cy="8" r="1.3"/><circle cx="3.5" cy="12.5" r="1.3"/><circle cx="8" cy="12.5" r="1.3"/><circle cx="12.5" cy="12.5" r="1.3"/></svg>
-          Wallpaper studio
-        </a>
+        <a class="key accent" href="#install">Install</a>
+        <ul class="away">
+          <li><a href="https://github.com/poligle/Nihil-Shell"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a></li>
+          <li><a href="android/"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><rect x="4.2" y="1.2" width="7.6" height="13.6" rx="1.8"/><path d="M7 12.3h2"/></svg>Launcher for Android</a></li>
+          <li><a href="wear/"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.3"/><path d="M6 3.9 6.5 1.3h3L10 3.9M6 12.1l.5 2.6h3l.5-2.6M8 6.3V8l1.1.9"/></svg>Watch for Wear OS</a></li>
+          <li><a href="studio/"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3.5" cy="3.5" r="1.3"/><circle cx="8" cy="3.5" r="1.3"/><circle cx="12.5" cy="3.5" r="1.3"/><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.9"/><circle cx="12.5" cy="8" r="1.3"/><circle cx="3.5" cy="12.5" r="1.3"/><circle cx="8" cy="12.5" r="1.3"/><circle cx="12.5" cy="12.5" r="1.3"/></svg>Wallpaper studio</a></li>
+        </ul>
       </div>
-      <figure class="shot">
-        <img src="assets/screens/desktop.png" width="1920" height="1200" alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper of a night sky over snowy mountains, the bar on the left with workspace LEDs, and widgets with the clock, the network and what is playing.">
-      </figure>
     </section>
 
-    <section id="tour" aria-labelledby="tour-title">
-      <div class="prose">
-        <h2 id="tour-title">One shape around the screen</h2>
-        <p class="quiet">The frame is a single black shape. Its left side widens into the bar, and the drawers grow out of it with concave joints, so they read as part of the hardware rather than windows on top.</p>
+    <section class="stage" id="tour" aria-label="The desktop, drawer by drawer">
+      <div class="stage-head">
+        <button class="switch" type="button" role="switch" aria-checked="false" data-glass-switch>Smoked glass<span class="track" aria-hidden="true"><span class="knob"></span></span></button>
       </div>
-      <div class="tour">
-        <figure>
-          <a class="shot" href="assets/screens/dashboard.png"><img src="assets/screens/small/dashboard-1200.webp" srcset="assets/screens/small/dashboard-640.webp 640w, assets/screens/small/dashboard-1200.webp 1200w, assets/screens/dashboard.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The dashboard drawer open at the top: the motto and a dot-matrix clock, the caffeine switch, the player with its spectrum in LED columns, CPU, RAM and temperature dials, a network scope, and a kanban with tasks to do and doing."></a>
-          <figcaption>
+      <div class="viewer">
+        <div class="screen" id="screen">
+          <img class="on" src="assets/screens/small/desktop-1200.webp" srcset="assets/screens/small/desktop-640.webp 640w, assets/screens/small/desktop-1200.webp 1200w, assets/screens/desktop.png 1920w" sizes="(max-width: 860px) 100vw, 1180px" width="1920" height="1200" alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper of a night sky over snowy mountains, the bar on the left with workspace LEDs, and widgets with the clock, the network and what is playing.">
+          <img alt="" width="1920" height="1200">
+          <p class="look-note" hidden></p>
+        </div>
+
+        <ul class="tabs" role="tablist" aria-label="Drawers" aria-orientation="vertical">
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-desktop" aria-controls="cap-desktop" aria-selected="true" data-shot="desktop" data-looks="plain glass"
+            data-alt-plain="The NIHIL desktop: a black frame around a dot-matrix wallpaper of a night sky over snowy mountains, the bar on the left with workspace LEDs, and widgets with the clock, the network and what is playing."
+            data-alt-glass="The desktop in smoked glass: the clock, the network and what is playing on glass over the wallpaper in dots."><span class="name">The desktop</span><kbd>ESC</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-dashboard" aria-controls="cap-dashboard" aria-selected="false" data-shot="dashboard" data-looks="plain glass"
+            data-alt-plain="The dashboard drawer open at the top: the motto and a dot-matrix clock, the caffeine switch, the player with its spectrum in LED columns, CPU, RAM and temperature dials, a network scope, and a kanban with tasks to do and doing."
+            data-alt-glass="The dashboard in smoked glass out of the top edge, kitty and Thunar behind it: the clock, what is playing, the dials, Vector holding a picture from the phone, and the kanban."><span class="name">Dashboard</span><kbd>D</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-settings" aria-controls="cap-settings" aria-selected="false" data-shot="settings" data-looks="plain glass"
+            data-alt-plain="Quick settings on the right: round toggles for Wi-Fi, Bluetooth, output, mic, silent and night, segmented sliders for volume, mic and brightness, the notifications, and the session keys with power off in red."
+            data-alt-glass="Quick settings in smoked glass: the round toggles, caffeine, capture and record among them, the sliders and the session keys, the wallpaper's dots coming through."><span class="name">Quick settings</span><kbd>P</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-launcher" aria-controls="cap-launcher" aria-selected="false" data-shot="launcher" data-looks="plain glass"
+            data-alt-plain="The launcher at the bottom with its actions: lock, suspend, restart, power off in red, log out, next and previous wallpaper, and its keys at the foot."
+            data-alt-glass="The launcher in smoked glass at the bottom: the search field and the apps in grey over the wallpaper."><span class="name">Launcher</span><kbd>SPACE</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-clipboard" aria-controls="cap-clipboard" aria-selected="false" data-shot="clipboard" data-looks="plain glass"
+            data-alt-plain="The clipboard history out of the top edge: a picture with its size, a colour as a red LED, a command lit as the one chosen, and older copies under it."
+            data-alt-glass="The clipboard history in smoked glass out of the top edge: a command lit as the one chosen, pictures with their size, a colour as a red LED and a link."><span class="name">Clipboard</span><kbd>V</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-wallpapers" aria-controls="cap-wallpapers" aria-selected="false" data-shot="wallpapers" data-looks="plain glass"
+            data-alt-plain="The wallpapers out of the bottom edge, each one in dots, Sisyphus framed in white, and the desktop already showing it."
+            data-alt-glass="The wallpapers in smoked glass out of the bottom edge, each one in dots, Night framed in white."><span class="name">Wallpapers</span><kbd>W</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-overview" aria-controls="cap-overview" aria-selected="false" data-shot="overview" data-looks="glass"
+            data-alt-glass="Every workspace side by side in smoked glass out of the top edge, the last one framed in white, over Thunar and kitty."><span class="name">Every workspace</span><kbd>A</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-notification" aria-controls="cap-notification" aria-selected="false" data-shot="notification" data-looks="plain glass"
+            data-alt-plain="A notification at the top right: nixos-rebuild, build finished, generation 214 is ready."
+            data-alt-glass="A notification in smoked glass at the top right, the build finished, over kitty with fastfetch and Thunar."><span class="name">Notifications</span></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-preferences" aria-controls="cap-preferences" aria-selected="false" data-shot="preferences" data-looks="plain glass"
+            data-alt-plain="Preferences open on Desktop: the wallpapers in dots, Night framed in white, and the widgets under them."
+            data-alt-glass="Preferences in smoked glass, open on the wallpapers, Night framed in white, over kitty with fastfetch."><span class="name">Preferences</span><kbd>O</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-system" aria-controls="cap-system" aria-selected="false" data-shot="preferences-system" data-looks="plain glass"
+            data-alt-plain="Preferences open on System: the computer's name, Nilo's switch with a Settings key, the acceleration chosen as Vulkan, the clipboard history at 8, and switches for the sound at boot, the fingerprint and SSH."
+            data-alt-glass="Preferences in smoked glass, open on System: the computer's name, Nilo, the acceleration, the clipboard history and the switches for the sound at boot, the fingerprint and SSH."><span class="name">The system</span></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-nilo" aria-controls="cap-nilo" aria-selected="false" data-shot="nilo" data-looks="plain"
+            data-alt-plain="Nilo in the launcher, writing: its two eyes, the model qwen3.5:9b chosen on its own, the question and the start of the answer."><span class="name">Nilo</span><kbd>I</kbd></button></li>
+        </ul>
+
+        <div class="captions">
+          <div class="caption on" role="tabpanel" id="cap-desktop" aria-labelledby="tab-desktop">
+            <h3>One shape around the screen</h3>
+            <p>The frame is a single black shape. Its left side widens into the bar, with the workspaces as LEDs and the clock in dots, and the drawers grow out of it with concave joints, so they read as part of the hardware rather than windows on top.</p>
+            <div class="keys"><kbd>ESC</kbd><span>closes whatever is out</span></div>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-dashboard" aria-labelledby="tab-dashboard">
             <h3>Dashboard</h3>
-            <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a kanban you drag into order, in sync with the phone, and Vector: paste a text, a picture, a video or a file on it and it is on the phone.</p>
+            <p>Time, music with its cover and spectrum drawn in dots, system dials, a network oscilloscope, a kanban you drag into order, in sync with the phone, and Vector: paste or drop a text, a picture, a video or any file on it and it shrinks away to the phone; what the phone sends waits there, to copy, save or open.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>D</kbd><span>or hover the top edge</span></div>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/settings.png"><img src="assets/screens/small/settings-1200.webp" srcset="assets/screens/small/settings-640.webp 640w, assets/screens/small/settings-1200.webp 1200w, assets/screens/settings.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="Quick settings on the right: round toggles for Wi-Fi, Bluetooth, output, mic, silent and night, segmented sliders for volume, mic and brightness, the notifications, and the session keys with power off in red."></a>
-          <figcaption>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-settings" aria-labelledby="tab-settings">
             <h3>Quick settings</h3>
-            <p>Wi&#8209;Fi with passwords, Bluetooth, audio output, caffeine to keep the screen awake, segmented sliders, the notification history and the session.</p>
+            <p>Wi&#8209;Fi with passwords, Bluetooth, audio output, caffeine to keep the screen awake, a screenshot or a recording at a tap, segmented sliders, the notification history and the session.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>P</kbd><span>or rest the pointer in the top-right corner</span></div>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/launcher.png"><img src="assets/screens/small/launcher-1200.webp" srcset="assets/screens/small/launcher-640.webp 640w, assets/screens/small/launcher-1200.webp 1200w, assets/screens/launcher.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The launcher at the bottom with its actions: lock, suspend, restart, power off in red, log out, next and previous wallpaper, and its keys at the foot."></a>
-          <figcaption>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-launcher" aria-labelledby="tab-launcher">
             <h3>Launcher</h3>
             <p>Apps stay grey until you select them. Type <code>&gt;</code> for actions, <code>=</code> to calculate and <code>?</code> to ask <a href="#nilo">Nilo</a>.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>SPACE</kbd><span>or three fingers up, or the bottom edge</span></div>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/notification.png"><img src="assets/screens/small/notification-1200.webp" srcset="assets/screens/small/notification-640.webp 640w, assets/screens/small/notification-1200.webp 1200w, assets/screens/notification.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="A notification at the top right: nixos-rebuild, build finished, generation 214 is ready."></a>
-          <figcaption>
-            <h3>Light on the edge</h3>
-            <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red, like the battery warnings at 15, 10 and 5&nbsp;%. Plug in the charger and two lights climb both sides from the bottom until they meet at the top. A rebuild or a download fills the edge as far as it has got.</p>
-            <button class="plug" type="button" id="plug">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2.5 5.5 13.5h6l-1 8 8-11.5h-6z"/></svg>
-              Plug in
-            </button>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/clipboard.png"><img src="assets/screens/small/clipboard-1200.webp" srcset="assets/screens/small/clipboard-640.webp 640w, assets/screens/small/clipboard-1200.webp 1200w, assets/screens/clipboard.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The clipboard history out of the top edge: a picture with its size, a colour as a red LED, a command lit as the one chosen, and older copies under it."></a>
-          <figcaption>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-clipboard" aria-labelledby="tab-clipboard">
             <h3>Clipboard history</h3>
             <p>Copy and paste with the same keys in every app. Hold the paste key and the history comes out; let go and the one lit is pasted. Pictures and colours too, and nothing a password manager copies. With the <a href="#deck">phone as a deck</a>, the dashboard's Vector carries what you paste to it, and back.</p>
-            <div class="keys"><kbd>SUPER</kbd><kbd>C</kbd><span>Copy</span></div>
-            <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>Paste; held, the history</span></div>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/wallpapers.png"><img src="assets/screens/small/wallpapers-1200.webp" srcset="assets/screens/small/wallpapers-640.webp 640w, assets/screens/small/wallpapers-1200.webp 1200w, assets/screens/wallpapers.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="The wallpapers out of the bottom edge, each one in dots, Sisyphus framed in white, and the desktop already showing it."></a>
-          <figcaption>
+            <div class="keys"><kbd>SUPER</kbd><kbd>C</kbd><span>copy</span></div>
+            <div class="keys"><kbd>SUPER</kbd><kbd>V</kbd><span>paste; held, the history</span></div>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-wallpapers" aria-labelledby="tab-wallpapers">
             <h3>Wallpapers</h3>
             <p>Every picture drawn as an LED matrix for each screen. The arrows show them on the desktop as you go; Enter keeps one and Escape goes back.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>W</kbd><span>or the launcher's actions</span></div>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/preferences.png"><img src="assets/screens/small/preferences-1200.webp" srcset="assets/screens/small/preferences-640.webp 640w, assets/screens/small/preferences-1200.webp 1200w, assets/screens/preferences.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="Preferences open on Desktop: the wallpapers in dots, Night framed in white, and the widgets under them."></a>
-          <figcaption>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-overview" aria-labelledby="tab-overview">
+            <h3>Every workspace</h3>
+            <p>The workspaces side by side, each with its windows over the wallpaper. Hold SUPER and press A again to choose, and let go to be there.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>A</kbd><span>held, choose; let go, go</span></div>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-notification" aria-labelledby="tab-notification">
+            <h3>Light on the edge</h3>
+            <p>Every notification sends a segment of light around the frame, and critical ones run twice, in red, like the battery warnings at 15, 10 and 5&nbsp;%. Plug in the charger and two lights climb both sides from the bottom until they meet at the top. A rebuild or a download fills the edge as far as it has got.</p>
+            <button class="key small" type="button" id="plug">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2.5 5.5 13.5h6l-1 8 8-11.5h-6z"/></svg>
+              Plug in
+            </button>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-preferences" aria-labelledby="tab-preferences">
             <h3>Preferences</h3>
-            <p>One sheet for the whole system: you, language and region, the desktop, screens, shortcuts, the system, its generations and the phone. Applying is a NixOS rebuild in the background, with a fingerprint or the password.</p>
+            <p>One sheet for the whole system: you, language and region, the look, plain or in smoked glass, screens, shortcuts, the system, its generations and the phone. Applying is a NixOS rebuild in the background, with a fingerprint or the password.</p>
             <div class="keys"><kbd>SUPER</kbd><kbd>O</kbd><span>or the cog in quick settings</span></div>
-          </figcaption>
-        </figure>
-        <figure>
-          <a class="shot" href="assets/screens/preferences-system.png"><img src="assets/screens/small/preferences-system-1200.webp" srcset="assets/screens/small/preferences-system-640.webp 640w, assets/screens/small/preferences-system-1200.webp 1200w, assets/screens/preferences-system.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="Preferences open on System: the computer's name, Nilo's switch with a Settings key, the acceleration chosen as Vulkan, the clipboard history at 8, and switches for the sound at boot, the fingerprint and SSH."></a>
-          <figcaption>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-system" aria-labelledby="tab-system">
             <h3>The system, too</h3>
             <p>The computer's name, Nilo and what runs its model, how much the clipboard keeps, the sound at boot, the fingerprint and SSH: every switch an option of the flake.</p>
-          </figcaption>
-        </figure>
-      </div>
-      <div class="rules more">
-        <div>
-          <h3>Every workspace</h3>
-          <p>The workspaces side by side out of the top edge, each with its windows where they are over the wallpaper. Hold SUPER and press A again to choose the next, with SHIFT the one before, and let go to be there; let go first and it stays for the arrows or a click.</p>
-          <div class="keys"><kbd>SUPER</kbd><kbd>A</kbd><span>held, choose; let go, go</span></div>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-nilo" aria-labelledby="tab-nilo">
+            <h3>Nilo</h3>
+            <p>Two white eyes in the launcher, and a model that runs on this computer. It answers, opens apps and, if you let it, works in a repository of yours or uses the whole desktop as you would. <a href="#nilo">More about Nilo</a>.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>I</kbd><span>the Copilot key, or <code>?</code> in the launcher</span></div>
+          </div>
         </div>
+      </div>
+
+      <div class="also">
         <div>
           <h3>Screenshots</h3>
           <p>Print takes the screen you are on, the snipping key an area you draw. Each is kept in Pictures and copied, ready to paste in a chat or a document.</p>
@@ -407,40 +531,93 @@ footer a:hover { color: var(--ink); }
       </div>
     </section>
 
-    <section id="nilo" aria-labelledby="nilo-title">
-      <div class="split nilo-split">
+    <section class="block" id="glass" aria-labelledby="glass-title">
+      <div class="split">
         <div class="prose">
-          <h2 id="nilo-title">Nilo, an assistant that lives here</h2>
-          <p class="quiet">Two white eyes in the launcher, and a model that runs on this computer: Qwen&nbsp;3.5 on Ollama, with no account and no cloud. They sleep while the model is unloaded, wake up as you type, look up while it thinks and from side to side while it searches.</p>
-          <p class="quiet">It answers, searches the web if you let it, looks at this computer and opens apps: <code>abre zen</code> opens it at once. Once you authorize it, it changes files, commits and pushes in one repository of yours and runs commands, and each of those waits for your confirmation. Close the launcher while it answers and it tells you when it's done, in a panel that comes out of the bar next to its eyes. Simple questions can go to a smaller, faster model, and after a few minutes without questions it falls asleep and the model leaves memory.</p>
-          <div class="keys"><kbd>SUPER</kbd><kbd>I</kbd><span>the Copilot key, or <code>?</code> in the launcher</span></div>
+          <h2 id="glass-title">Or all of it in smoked glass</h2>
+          <p class="quiet">One switch in Preferences, Desktop, and the frame, its drawers and every card, key and field in them turn to dark glass over what is really there: the wallpaper, dot for dot, and the windows, captured live where they are. A third of it comes through the smoke. The bevel is clear and bends it outwards, the face beyond is frosted, and a glint catches the edge from the top left.</p>
+          <p class="quiet">It goes everywhere: the terminal lets the wallpaper through, blurred and darkened, the lock screen and the login are glass too, and the player on the lock screen gets a panel of its own while something plays. Off, NIHIL is what it always was: black, flat, hardware.</p>
+          <div class="glass-switch">
+            <button class="switch" type="button" role="switch" aria-checked="false" data-glass-switch>Smoked glass<span class="track" aria-hidden="true"><span class="knob"></span></span></button>
+            <span class="meta">this page and its pictures too</span>
+          </div>
         </div>
         <figure>
-          <a class="shot" href="assets/screens/nilo.png"><img src="assets/screens/small/nilo-1200.webp" srcset="assets/screens/small/nilo-640.webp 640w, assets/screens/small/nilo-1200.webp 1200w, assets/screens/nilo.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="Nilo in the launcher, writing: its two eyes, the model qwen3.5:9b chosen on its own, the question and the start of the answer."></a>
+          <a class="shot" href="assets/screens/glass/terminal.png"><img src="assets/screens/glass/small/terminal-1200.webp" srcset="assets/screens/glass/small/terminal-640.webp 640w, assets/screens/glass/small/terminal-1200.webp 1200w, assets/screens/glass/terminal.png 1920w" sizes="(max-width: 860px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass."></a>
         </figure>
       </div>
+    </section>
+
+    <section class="block" id="nilo" aria-labelledby="nilo-title">
+      <div class="prose">
+        <h2 id="nilo-title">Nilo, an assistant that lives here</h2>
+        <p class="quiet">Two white eyes in the launcher, and a model that runs on this computer: Qwen&nbsp;3.5 on Ollama, with no account and no cloud. They sleep while the model is unloaded, wake up as you type, look up while it thinks and from side to side while it searches. Simple questions can go to a smaller, faster model, and after a few minutes without questions it falls asleep and the model leaves memory.</p>
+        <div class="keys"><kbd>SUPER</kbd><kbd>I</kbd><span>the Copilot key, or <code>?</code> in the launcher</span></div>
+      </div>
+
+      <ol class="levels" aria-label="What Nilo may do">
+        <li>
+          <span class="meter" aria-hidden="true"><i class="lit"></i><i></i><i></i></span>
+          <h3>Chat</h3>
+          <p>It answers, looks at this computer and opens apps: <code>abre zen</code> opens it at once.</p>
+        </li>
+        <li>
+          <span class="meter" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i></i></span>
+          <h3>Terminal and repository</h3>
+          <p>Also a repository of yours: its files, git and the terminal. Every change to a file comes as a diff first, every commit and every command that does more than read waits for enter twice or a click, and anything with sudo opens in a terminal for your password.</p>
+        </li>
+        <li>
+          <span class="meter" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i></span>
+          <h3>The whole system</h3>
+          <p>Also the desktop, as you would use it: it sees what is open and the screen, writes in Writer, puts on the song you name, opens Zen on a search, moves windows, turns the volume and sends things to your phone.</p>
+        </li>
+        <li>
+          <span class="meter apart" aria-hidden="true"><i></i></span>
+          <h3>Internet, apart</h3>
+          <p>Searching and reading pages is a switch of its own, at any level.</p>
+        </li>
+      </ol>
+
+      <div class="asks quiet">
+        <h3>What has a risk, asked</h3>
+        <p>You choose the level, and the last two wait for your authorization. Typing in a terminal, closing a window or a shortcut that deletes asks first; writing in Writer or skipping a song doesn't. Keys, passwords and browser profiles stay out of its reach. Once it has read a web page or the screen it asks before typing or sending anything, so what a page says is never an order; once it has read your files, it asks before anything goes out to the internet.</p>
+      </div>
+
       <div class="split nilo-done">
         <figure>
-          <a class="shot" href="assets/screens/nilo-done.png"><img src="assets/screens/small/nilo-done-1200.webp" srcset="assets/screens/small/nilo-done-640.webp 640w, assets/screens/small/nilo-done-1200.webp 1200w, assets/screens/nilo-done.png 1920w" sizes="(max-width: 900px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote: Nilo is done, the question and the answer in two points; behind it, fastfetch in dots in a terminal."></a>
+          <a class="shot" href="assets/screens/nilo-done.png"><img src="assets/screens/small/nilo-done-1200.webp" srcset="assets/screens/small/nilo-done-640.webp 640w, assets/screens/small/nilo-done-1200.webp 1200w, assets/screens/nilo-done.png 1920w" sizes="(max-width: 860px) 100vw, 560px" width="1920" height="1200" loading="lazy" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote: Nilo is done, the question and the answer in two points; behind it, fastfetch in dots in a terminal."></a>
         </figure>
         <div class="prose">
           <h3>It says when it's done</h3>
           <p class="quiet">Close the launcher while it thinks and it carries on. The answer comes out of the bar, next to its eyes, and a click takes you back to the conversation.</p>
-          <h3>Nothing without your say</h3>
-          <p class="quiet">Files, git and the terminal stay off until you authorize them. Every change to a file comes as a diff first and waits for enter twice or a click; commands that delete or change the system come in a red card, and anything with sudo opens in a terminal for your password.</p>
-        </div>
-      </div>
-      <div class="code nilo-code">
-        <pre><code><span class="c"># off by default: Preferences, System turns it on; or in /etc/nixos/local.nix</span>
+          <div class="code"><pre><code><span class="c"># off by default: Preferences, System turns it on; or in /etc/nixos/local.nix</span>
 nihil.nilo =
 {
     enable = true;
     acceleration = "vulkan";   <span class="c"># or "cpu", "rocm", "cuda"</span>
-};</code></pre>
+};</code></pre></div>
+        </div>
       </div>
     </section>
 
-    <section id="generations" aria-labelledby="generations-title">
+    <section class="block" id="deck" aria-labelledby="deck-title">
+      <div class="prose">
+        <h2 id="deck-title">The phone as a deck</h2>
+        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume, locks it and is its trackpad. That is all: no commands, and no files but the ones you hand to Vector. On the phone it is one landscape screen in workspaces: the music, the apps and the webs, and the trackpad. The dashboard's kanban stays in sync with the phone's, its order too.</p>
+        <p class="quiet">Vector carries one thing at a time, either way: a text, a picture, a video or any file up to 100 MB. Paste it on the dashboard's Vector, or drag it to the top of the screen and drop it there, and it waits on the phone, in Tasks, above the kanban; send it from the phone and it waits on the dashboard. Copy it, save it in a Vector folder or open it, and its place is empty again.</p>
+        <p class="quiet">With <a href="wear/">NIHIL for Wear OS</a>, the watch is one more deck: its music, its volume on the bezel or the crown, its caffeine, night light and lock. The phone, a tablet and the watch can all be decks at once.</p>
+        <p class="quiet">The trackpad is a touchpad here: the phone streams its fingers, and libinput reads them as it reads the laptop's, with its settings. The QR holds a code that pairs once, for five minutes, and the pin of the computer's own certificate: the phone talks HTTPS only to the computer whose key it was shown. The protocol is in <a href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/deck.md"><code>docs/deck.md</code></a>.</p>
+      </div>
+      <figure class="shot deck-shot">
+        <a href="assets/screens/android/deck-trackpad.webp"><img src="assets/screens/android/small/deck-trackpad-1000.webp" srcset="assets/screens/android/small/deck-trackpad-1000.webp 1000w, assets/screens/android/deck-trackpad.webp 2340w" sizes="(max-width: 860px) 100vw, 980px" width="2340" height="1080" loading="lazy" alt="The phone as this computer's trackpad, full screen: a field of dim dots from edge to edge, lit white around a finger."></a>
+      </figure>
+      <div class="deck-shots">
+        <a class="shot" href="assets/screens/android/deck-music.webp"><img src="assets/screens/android/small/deck-music-1000.webp" width="1000" height="462" loading="lazy" alt="The deck's music workspace on the phone: what this computer plays, its cover in dots, and its buttons."></a>
+        <a class="shot" href="assets/screens/android/deck-apps.webp"><img src="assets/screens/android/small/deck-apps-1000.webp" width="1000" height="462" loading="lazy" alt="The deck's apps and webs on the phone, each with its icon in grey, to open on this computer."></a>
+      </div>
+    </section>
+
+    <section class="block" id="generations" aria-labelledby="generations-title">
       <div class="prose">
         <h2 id="generations-title">Every generation, a click away</h2>
         <p class="quiet">Each rebuild is a whole system NixOS keeps, and Preferences lists them, newest first: when each was made, its NixOS, kernel and NIHIL, which one runs and which one boots.</p>
@@ -459,7 +636,7 @@ nihil.nilo =
           <p>How long they stay, 7, 30 or 90 days, which the weekly clean keeps. Cleaning now says what it freed.</p>
         </div>
       </div>
-      <div class="code nilo-code">
+      <div class="code narrow">
         <pre><code>nihil generations              <span class="c"># the same, in a terminal</span>
 nihil generations changes 212
 nihil generations switch 211   <span class="c"># or boot 211, the next boot only</span>
@@ -467,21 +644,7 @@ nihil generations clean 7</code></pre>
       </div>
     </section>
 
-    <section id="deck" aria-labelledby="deck-title">
-      <div class="prose">
-        <h2 id="deck-title">The phone as a deck</h2>
-        <p class="quiet">With <a href="android/">NIHIL Launcher</a> on Android, paired with a QR from Preferences, the phone opens this computer's apps and web pages, plays and skips its music, turns its volume, locks it and is its trackpad. That is all: no commands, and no files but the ones you hand to Vector. On the phone it is one landscape screen in workspaces: the music in one; the apps and the webs in the next, each with its icon (the apps' from this computer's icon theme, the webs' found by this computer, so the phone talks to no one else); the trackpad in the last. The dashboard's kanban stays in sync with the phone's, its order too.</p>
-        <p class="quiet">Vector carries one thing at a time, either way: a text, a picture, a video or any file up to 100 MB. Paste it on the dashboard's Vector, or drag it to the top of the screen and drop it there, and it waits on the phone, in Tasks, above the kanban; send it from the phone and it waits on the dashboard. Copy it, save it in a Vector folder or open it, and its place is empty again.</p>
-        <p class="quiet">With <a href="wear/">NIHIL for Wear OS</a>, the watch is one more deck: its music, its volume on the bezel or the crown, its caffeine, night light and lock. It pairs over adb with the same code the QR holds, and the phone, a tablet and the watch can all be decks at once.</p>
-        <p class="quiet">The trackpad is a touchpad here: the phone streams its fingers, and libinput reads them as it reads the laptop's, with its settings. A tap clicks, two fingers right-click and scroll, three middle-click, a pinch zooms, and the gestures run.</p>
-        <p class="quiet">The QR holds a code that pairs once, for five minutes, and the pin of the computer's own certificate: the phone talks HTTPS only to the computer whose key it was shown, with a token of its own, and finds it again on the network by mDNS. The protocol is in <a href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/deck.md"><code>docs/deck.md</code></a>.</p>
-      </div>
-      <figure class="shot deck-shot">
-        <a href="assets/screens/android-deck-trackpad.webp"><img src="assets/screens/small/android-deck-trackpad-1000.webp" srcset="assets/screens/small/android-deck-trackpad-1000.webp 1000w, assets/screens/android-deck-trackpad.webp 2340w" sizes="(max-width: 900px) 100vw, 980px" width="2340" height="1080" loading="lazy" alt="The phone as this computer's trackpad, full screen: a field of dim dots from edge to edge, lit white around a finger."></a>
-      </figure>
-    </section>
-
-    <section id="rules" aria-labelledby="rules-title">
+    <section class="block" id="rules" aria-labelledby="rules-title">
       <div class="prose">
         <h2 id="rules-title">Three rules</h2>
         <p class="quiet">One file, <code>theme/nihil.nix</code>, holds the tokens. GTK, the terminal, the editor, the compositor, the lock screen, the greeter, the boot splash and the shell are all generated from it.</p>
@@ -513,7 +676,7 @@ nihil generations clean 7</code></pre>
       </ul>
     </section>
 
-    <section id="boot" aria-labelledby="boot-title">
+    <section class="block" id="boot" aria-labelledby="boot-title">
       <div class="split">
         <div class="prose">
           <h2 id="boot-title">From nothing, at boot</h2>
@@ -526,7 +689,7 @@ nihil generations clean 7</code></pre>
       </div>
     </section>
 
-    <section id="language" aria-labelledby="language-title">
+    <section class="block" id="language" aria-labelledby="language-title">
       <div class="prose">
         <h2 id="language-title">Spanish or English</h2>
         <p class="quiet">One option sets every string of the shell, the lock screen and the greeter, and the language of their dates.</p>
@@ -534,19 +697,19 @@ nihil generations clean 7</code></pre>
       <div class="lang-shot">
         <img class="shot" src="assets/screens/actions-en.png" width="860" height="478" loading="lazy" alt="Launcher actions in English: Lock, Suspend, Restart, Power off, Log out, Next wallpaper, Previous wallpaper.">
       </div>
-      <div class="code" style="max-width:864px">
+      <div class="code wide">
         <pre><code><span class="c">/etc/nixos/settings.json</span>
 "language": "en"   <span class="c">// or "es"</span></code></pre>
       </div>
     </section>
 
-    <section id="install" aria-labelledby="install-title">
+    <section class="block" id="install" aria-labelledby="install-title">
       <div class="prose">
         <h2 id="install-title">Install</h2>
         <p class="quiet">Two ways in, to the same system: the installer, on any computer, or the NixOS you already have, from a clone of this repository. Each machine keeps what is its own in <code>/etc/nixos</code>: who uses it, its language, keyboard and screens. NIHIL comes from here, and updates never touch what is yours.</p>
       </div>
 
-      <div class="prose">
+      <div class="prose way">
         <h3>With the installer</h3>
       </div>
       <ol class="steps">
@@ -566,7 +729,7 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync</code></pre>
         </li>
       </ol>
 
-      <div class="prose">
+      <div class="prose way">
         <h3>On a NixOS you already have</h3>
         <p class="quiet">The classic way: clone NIHIL and rebuild from it. Any NixOS on UEFI will do; the switch brings it to the release NIHIL pins, booting with systemd-boot.</p>
       </div>
@@ -592,11 +755,11 @@ sudo NIX_CONFIG="experimental-features = nix-command flakes" \
         </li>
       </ol>
 
-      <div class="prose">
+      <div class="prose way">
         <h3>Keep it up to date</h3>
         <p class="quiet">One command brings the latest NIHIL and rebuilds (with a clone, <code>git pull</code> it first); another applies your own changes. <code>nihil dev</code> tries a checkout's changes before pushing them.</p>
       </div>
-      <div class="code" style="max-width:860px"><pre><code>nihil update
+      <div class="code wide"><pre><code>nihil update
 nihil rebuild
 nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></pre></div>
 
@@ -622,7 +785,6 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
             <tr><td><code>deck.<wbr>enable</code></td><td><code>false</code></td><td>The phone as a deck: its service, its port in the firewall, its name on the local network and uinput for the trackpad.</td></tr>
           </tbody>
         </table>
-
       </div>
     </section>
 
@@ -647,17 +809,22 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
 </footer>
 
 <script>(() => {
+  const root = document.documentElement;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const path = document.getElementById("glyph-path");
   function frameMetrics() {
-    const css = getComputedStyle(document.documentElement);
+    const css = getComputedStyle(root);
     const px = name => parseFloat(css.getPropertyValue(name));
     return { t: px("--t"), top: px("--top"), left: px("--left"), r: px("--r") };
   }
+  function frameBox() {
+    const m = frameMetrics();
+    return { x0: m.left, y0: m.top, x1: innerWidth - m.t, y1: innerHeight - m.t, r: m.r };
+  }
+
+  const path = document.getElementById("glyph-path");
   function layoutGlyph() {
-    const m = frameMetrics(), w = innerWidth, h = innerHeight;
-    const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r;
+    const { x0, y0, x1, y1, r } = frameBox();
     path.setAttribute("d",
       `M ${x1 - r} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y0 + r} L ${x1} ${y1 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y1} ` +
       `L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} Z`);
@@ -674,26 +841,42 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
       { strokeDashoffset: -(length - segment), opacity: 0 }
     ], { duration: 1500, easing: "cubic-bezier(0.45, 0, 0.25, 1)" });
   }
+
+  const smoke = document.querySelector(".smoke");
+  function layoutSmoke() {
+    const { x0, y0, x1, y1, r } = frameBox(), w = innerWidth, h = innerHeight;
+    const hole = `M${x0 + r} ${y0}H${x1 - r}A${r} ${r} 0 0 1 ${x1} ${y0 + r}V${y1 - r}A${r} ${r} 0 0 1 ${x1 - r} ${y1}` +
+      `H${x0 + r}A${r} ${r} 0 0 1 ${x0} ${y1 - r}V${y0 + r}A${r} ${r} 0 0 1 ${x0 + r} ${y0}Z`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+      `<path fill-rule="evenodd" d="M0 0H${w}V${h}H0Z${hole}"/></svg>`;
+    const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    smoke.style.webkitMaskImage = url;
+    smoke.style.maskImage = url;
+  }
+
+  let pending = 0;
+  function layout() {
+    cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(() => { layoutGlyph(); layoutSmoke(); });
+  }
   layoutGlyph();
-  addEventListener("resize", layoutGlyph);
+  layoutSmoke();
+  addEventListener("resize", layout);
 
   const rising = ["left", "right"].map(side => ({
     side, trail: document.getElementById(`rise-${side}-trail`), head: document.getElementById(`rise-${side}`)
   }));
-  function layoutRise() {
-    const m = frameMetrics(), w = innerWidth, h = innerHeight;
-    const x0 = m.left, y0 = m.top, x1 = w - m.t, y1 = h - m.t, r = m.r, cx = (x0 + x1) / 2;
+  function rise() {
+    if (reduce || !rising[0].head.animate) return;
+    const { x0, y0, x1, y1, r } = frameBox(), cx = (x0 + x1) / 2;
     const d = {
       right: `M ${cx} ${y1} L ${x1 - r} ${y1} A ${r} ${r} 0 0 0 ${x1} ${y1 - r} L ${x1} ${y0 + r} A ${r} ${r} 0 0 0 ${x1 - r} ${y0} L ${cx} ${y0}`,
       left: `M ${cx} ${y1} L ${x0 + r} ${y1} A ${r} ${r} 0 0 1 ${x0} ${y1 - r} L ${x0} ${y0 + r} A ${r} ${r} 0 0 1 ${x0 + r} ${y0} L ${cx} ${y0}`
     };
-    rising.forEach(p => { p.trail.setAttribute("d", d[p.side]); p.head.setAttribute("d", d[p.side]); });
-  }
-  function rise() {
-    if (reduce || !rising[0].head.animate) return;
-    layoutRise();
     const ease = "cubic-bezier(0.2, 0, 0, 1)";
-    rising.forEach(({ trail, head }) => {
+    rising.forEach(({ side, trail, head }) => {
+      trail.setAttribute("d", d[side]);
+      head.setAttribute("d", d[side]);
       const length = head.getTotalLength();
       const segment = Math.min(220, length * 0.14);
       head.style.strokeDasharray = `${segment} ${length + segment}`;
@@ -716,6 +899,91 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     battery.addEventListener("chargingchange", () => { if (battery.charging) rise(); });
   }).catch(() => {});
 
+  const screen = document.getElementById("screen");
+  const pictures = [...screen.querySelectorAll("img")];
+  const note = screen.querySelector(".look-note");
+  const tabs = [...document.querySelectorAll(".tab")];
+  const switches = [...document.querySelectorAll("[data-glass-switch]")];
+  let current = tabs[0];
+  let look = root.dataset.look === "glass" ? "glass" : "plain";
+  let shown = "";
+
+  function picture(tab) {
+    const looks = tab.dataset.looks.split(" ");
+    const which = looks.includes(look) ? look : looks[0];
+    const name = tab.dataset.shot;
+    const base = which === "glass" ? "assets/screens/glass/" : "assets/screens/";
+    return {
+      which,
+      src: `${base}small/${name}-1200.webp`,
+      srcset: `${base}small/${name}-640.webp 640w, ${base}small/${name}-1200.webp 1200w, ${base}${name}.png 1920w`,
+      alt: tab.dataset[which === "glass" ? "altGlass" : "altPlain"]
+    };
+  }
+
+  function show(tab) {
+    const next = picture(tab);
+    note.hidden = next.which === look;
+    note.textContent = next.which === "glass" ? "Smoked glass" : "Plain";
+    if (next.src === shown) return;
+    shown = next.src;
+    const [front, back] = pictures[0].classList.contains("on") ? pictures : [pictures[1], pictures[0]];
+    back.sizes = front.sizes;
+    back.srcset = next.srcset;
+    back.src = next.src;
+    back.alt = next.alt;
+    front.alt = "";
+    const swap = () => {
+      if (shown !== next.src) return;
+      back.classList.add("on");
+      front.classList.remove("on");
+    };
+    if (back.decode) back.decode().then(swap, swap); else back.onload = swap;
+  }
+
+  function choose(tab, focus) {
+    current = tab;
+    tabs.forEach(t => {
+      const on = t === tab;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).classList.toggle("on", on);
+    });
+    if (focus) tab.focus();
+    if (matchMedia("(max-width: 1100px)").matches) tab.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce ? "auto" : "smooth" });
+    show(tab);
+  }
+
+  tabs.forEach((tab, i) => {
+    tab.tabIndex = i === 0 ? 0 : -1;
+    tab.addEventListener("click", () => choose(tab, false));
+    tab.addEventListener("pointerenter", () => { new Image().src = picture(tab).src; }, { once: true });
+    tab.addEventListener("keydown", e => {
+      const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+      let to = -1;
+      if (step) to = (i + step + tabs.length) % tabs.length;
+      else if (e.key === "Home") to = 0;
+      else if (e.key === "End") to = tabs.length - 1;
+      if (to < 0) return;
+      e.preventDefault();
+      choose(tabs[to], true);
+    });
+  });
+  shown = picture(current).src;
+
+  function setLook(next, remember) {
+    look = next;
+    if (look === "glass") root.dataset.look = "glass"; else delete root.dataset.look;
+    switches.forEach(s => s.setAttribute("aria-checked", String(look === "glass")));
+    if (remember) { try { localStorage.setItem("nihil-look", look); } catch (e) {} }
+    show(current);
+  }
+  switches.forEach(s => s.addEventListener("click", () => {
+    setLook(look === "glass" ? "plain" : "glass", true);
+    glyph();
+  }));
+  setLook(look, false);
+
   const mark = document.getElementById("wordmark");
   fetch("assets/nihil-logo-dark.svg").then(r => r.ok ? r.text() : Promise.reject()).then(text => {
     const doc = new DOMParser().parseFromString(text, "image/svg+xml");
@@ -729,14 +997,13 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     if (reduce) { glyph(); return; }
     const live = mark.querySelector("svg");
     const ink = [...live.querySelectorAll('g[fill="#F2F2F2"] circle, g[fill="#8A8A8A"] circle')];
-    const box = live.viewBox.baseVal;
-    const markSize = box.height;
+    const markSize = live.viewBox.baseVal.height;
     const ring = ink.filter(c => +c.getAttribute("cx") < markSize);
     const letters = ink.filter(c => +c.getAttribute("cx") >= markSize);
     const centre = live.querySelector('g[fill="#D71921"] circle');
     const cx = markSize / 2;
+    const far = c => Math.hypot(+c.getAttribute("cx") - cx, +c.getAttribute("cy") - cx);
     ring.sort((a, b) => far(a) - far(b));
-    function far(c) { return Math.hypot(+c.getAttribute("cx") - cx, +c.getAttribute("cy") - cx); }
     const on = (el, delay) => el.animate([{ opacity: 0.08 }, { opacity: 1 }], { duration: 180, delay, fill: "backwards", easing: "ease-out" });
     const step = 1200 / Math.max(1, ring.length);
     ring.forEach((c, i) => on(c, 120 + i * step));
@@ -750,7 +1017,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
     if (!navigator.clipboard) return;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "copy";
+    button.className = "key small copy";
     button.textContent = "Copy";
     button.addEventListener("click", () => {
       navigator.clipboard.writeText(block.querySelector("code").innerText).then(() => {
@@ -763,7 +1030,7 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
   });
 
   const leds = [...document.querySelectorAll(".leds a")];
-  const targets = leds.map(a => document.querySelector(a.getAttribute("href") === "#top" ? ".hero" : a.getAttribute("href")));
+  const targets = leds.map(a => document.querySelector(a.getAttribute("href") === "#top" ? "#tour" : a.getAttribute("href")));
   const seen = new Map();
   const observer = new IntersectionObserver(entries => {
     entries.forEach(e => seen.set(e.target, e.intersectionRatio));
