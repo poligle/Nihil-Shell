@@ -13,7 +13,7 @@ Nihil-Shell/
 │   ├── qml.nix       Tokens.qml and Lang.qml, for the shell and the greeter
 │   └── art/          LED maps of the NixOS snowflake (19 for fastfetch, 29 for boot)
 ├── modules/          system modules (default.nix gathers them; settings.nix reads settings.json)
-├── installer/        the ISO and nihil-install
+├── installer/        the ISO, nihil-install and gui/ (the installer's window, in Quickshell under cage)
 ├── templates/        machine/: what the installer writes to /etc/nixos; example/: CI's machine
 ├── home/             Home Manager: shell/, nilo/ (Nilo's agent), deck/ (the phone's), hyprland, hyprlock, …
 ├── greeter/          the login screen, in Quickshell under cage (modules/greeter.nix)
