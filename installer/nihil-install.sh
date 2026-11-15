@@ -649,8 +649,8 @@ for connector in /sys/class/drm/card*-*; do
     [ "$(cat "$connector/status" 2>/dev/null)" = connected ] || continue
     name=${connector##*/}
     name=${name#card*-}
-    mode=$(head -n 1 "$connector/modes" 2>/dev/null || true)
-    [[ $mode =~ ^([0-9]+)x([0-9]+) ]] || continue
+    resolution=$(head -n 1 "$connector/modes" 2>/dev/null || true)
+    [[ $resolution =~ ^([0-9]+)x([0-9]+) ]] || continue
     outputs=$(jq --arg name "$name" --argjson width "${BASH_REMATCH[1]}" --argjson height "${BASH_REMATCH[2]}" \
         '. + { ($name): { width: $width, height: $height } }' <<< "$outputs")
 done

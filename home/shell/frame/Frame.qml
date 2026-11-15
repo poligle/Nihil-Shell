@@ -132,6 +132,7 @@ Scope {
                 Region { item: clipHit },
                 Region { item: ovHit },
                 Region { item: peekHit },
+                Region { item: wander.hit },
                 Region { item: popups }
             ]
         }
@@ -520,6 +521,15 @@ Scope {
                 anchors.rightMargin: root.edge + 14
                 output: root.output
                 suppressed: win.panelP > 0
+            }
+
+            Wander {
+                id: wander
+                output: root.output
+                inset: root.inset
+                edge: root.edge
+                homeX: root.hasBar ? root.inset / 2 : root.edge + 40
+                homeY: root.hasBar ? barHit.eyesY : root.edge + 40
             }
         }
     }
