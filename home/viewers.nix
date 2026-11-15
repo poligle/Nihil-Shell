@@ -95,56 +95,61 @@ in
 {
 	home.packages = [ imv mpv zathura ];
 
-	xdg.configFile."imv/config".text = ''
-		[options]
-		background = ${p.void}
-		overlay_font = ${f.mono}:11
-		overlay_text_color = ${p.dim}
-		overlay_background_color = ${p.void}
-		overlay_background_alpha = cc
-		overlay_position_bottom = true
-	'';
+	xdg.configFile."imv/config".text = lib.generators.toINI { }
+	{
+		options =
+		{
+			background = p.void;
+			overlay_font = "${f.mono}:11";
+			overlay_text_color = p.dim;
+			overlay_background_color = p.void;
+			overlay_background_alpha = "cc";
+			overlay_position_bottom = true;
+		};
+	};
 
-	xdg.configFile."mpv/mpv.conf".text = ''
-		osd-font="${f.sans}"
-		osd-color="#${p.ink}"
-		keep-open=yes
-		hwdec=auto-safe
-	'';
+	xdg.configFile."mpv/mpv.conf".text = lib.generators.toKeyValue { }
+	{
+		osd-font = "\"${f.sans}\"";
+		osd-color = "\"#${p.ink}\"";
+		keep-open = "yes";
+		hwdec = "auto-safe";
+	};
 
-	xdg.configFile."zathura/zathurarc".text = ''
-		set font "${f.mono} 10"
-		set default-bg "#${p.void}"
-		set default-fg "#${p.ink}"
-		set statusbar-bg "#${p.void}"
-		set statusbar-fg "#${p.dim}"
-		set inputbar-bg "#${p.void}"
-		set inputbar-fg "#${p.ink}"
-		set notification-bg "#${p.surface}"
-		set notification-fg "#${p.ink}"
-		set notification-warning-bg "#${p.surface}"
-		set notification-warning-fg "#${p.ink}"
-		set notification-error-bg "#${p.signal}"
-		set notification-error-fg "#${p.ink}"
-		set completion-bg "#${p.surface}"
-		set completion-fg "#${p.dim}"
-		set completion-group-bg "#${p.void}"
-		set completion-group-fg "#${p.muted}"
-		set completion-highlight-bg "#${p.raised}"
-		set completion-highlight-fg "#${p.ink}"
-		set index-bg "#${p.void}"
-		set index-fg "#${p.dim}"
-		set index-active-bg "#${p.raised}"
-		set index-active-fg "#${p.ink}"
-		set highlight-color "rgba(242, 242, 242, 0.25)"
-		set highlight-active-color "rgba(242, 242, 242, 0.5)"
-		set render-loading-bg "#${p.void}"
-		set render-loading-fg "#${p.muted}"
-		set recolor-lightcolor "#${p.void}"
-		set recolor-darkcolor "#${p.ink}"
-		set selection-clipboard clipboard
-		set window-title-basename true
-	'';
+	xdg.configFile."zathura/zathurarc".text = lib.concatStrings (lib.mapAttrsToList (name: value: "set ${name} ${value}\n")
+	{
+		font = "\"${f.mono} 10\"";
+		default-bg = "\"#${p.void}\"";
+		default-fg = "\"#${p.ink}\"";
+		statusbar-bg = "\"#${p.void}\"";
+		statusbar-fg = "\"#${p.dim}\"";
+		inputbar-bg = "\"#${p.void}\"";
+		inputbar-fg = "\"#${p.ink}\"";
+		notification-bg = "\"#${p.surface}\"";
+		notification-fg = "\"#${p.ink}\"";
+		notification-warning-bg = "\"#${p.surface}\"";
+		notification-warning-fg = "\"#${p.ink}\"";
+		notification-error-bg = "\"#${p.signal}\"";
+		notification-error-fg = "\"#${p.ink}\"";
+		completion-bg = "\"#${p.surface}\"";
+		completion-fg = "\"#${p.dim}\"";
+		completion-group-bg = "\"#${p.void}\"";
+		completion-group-fg = "\"#${p.muted}\"";
+		completion-highlight-bg = "\"#${p.raised}\"";
+		completion-highlight-fg = "\"#${p.ink}\"";
+		index-bg = "\"#${p.void}\"";
+		index-fg = "\"#${p.dim}\"";
+		index-active-bg = "\"#${p.raised}\"";
+		index-active-fg = "\"#${p.ink}\"";
+		highlight-color = "\"rgba(242, 242, 242, 0.25)\"";
+		highlight-active-color = "\"rgba(242, 242, 242, 0.5)\"";
+		render-loading-bg = "\"#${p.void}\"";
+		render-loading-fg = "\"#${p.muted}\"";
+		recolor-lightcolor = "\"#${p.void}\"";
+		recolor-darkcolor = "\"#${p.ink}\"";
+		selection-clipboard = "clipboard";
+		window-title-basename = "true";
+	});
 
 	xdg.desktopEntries =
 	{
