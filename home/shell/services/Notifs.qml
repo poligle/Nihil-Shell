@@ -49,6 +49,11 @@ Singleton {
         popups = keep;
     }
 
+    function hidePopups(): void {
+        popups = [];
+        deadlines = ({});
+    }
+
     function markSeen(): void {
         popups = popups.filter(p => isCritical(p));
     }
@@ -141,6 +146,7 @@ Singleton {
         target: "notifs"
 
         function clear(): void { root.clear(); }
+        function hide(): void { root.hidePopups(); }
         function toggleDnd(): void { root.dnd = !root.dnd; }
     }
 }
