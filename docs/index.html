@@ -436,7 +436,8 @@ footer a:hover { color: var(--ink); }
           <li role="presentation"><button class="tab" type="button" role="tab" id="tab-wallpapers" aria-controls="cap-wallpapers" aria-selected="false" data-shot="wallpapers" data-looks="plain glass"
             data-alt-plain="The wallpapers out of the bottom edge, each one in dots, Sisyphus framed in white, and the desktop already showing it."
             data-alt-glass="The wallpapers in smoked glass out of the bottom edge, each one in dots, Night framed in white."><span class="name">Wallpapers</span><kbd>W</kbd></button></li>
-          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-overview" aria-controls="cap-overview" aria-selected="false" data-shot="overview" data-looks="glass"
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-overview" aria-controls="cap-overview" aria-selected="false" data-shot="overview" data-looks="plain glass"
+            data-alt-plain="Every workspace side by side out of the top edge, each with its windows over the wallpaper."
             data-alt-glass="Every workspace side by side in smoked glass out of the top edge, the last one framed in white, over Thunar and kitty."><span class="name">Every workspace</span><kbd>A</kbd></button></li>
           <li role="presentation"><button class="tab" type="button" role="tab" id="tab-notification" aria-controls="cap-notification" aria-selected="false" data-shot="notification" data-looks="plain glass"
             data-alt-plain="A notification at the top right: nixos-rebuild, build finished, generation 214 is ready."
@@ -447,8 +448,12 @@ footer a:hover { color: var(--ink); }
           <li role="presentation"><button class="tab" type="button" role="tab" id="tab-system" aria-controls="cap-system" aria-selected="false" data-shot="preferences-system" data-looks="plain glass"
             data-alt-plain="Preferences open on System: the computer's name, Nilo's switch with a Settings key, the acceleration chosen as Vulkan, the clipboard history at 8, and switches for the sound at boot, the fingerprint and SSH."
             data-alt-glass="Preferences in smoked glass, open on System: the computer's name, Nilo, the acceleration, the clipboard history and the switches for the sound at boot, the fingerprint and SSH."><span class="name">The system</span></button></li>
-          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-nilo" aria-controls="cap-nilo" aria-selected="false" data-shot="nilo" data-looks="plain"
-            data-alt-plain="Nilo in the launcher, writing: its two eyes, the model qwen3.5:9b chosen on its own, the question and the start of the answer."><span class="name">Nilo</span><kbd>I</kbd></button></li>
+          <li role="presentation"><button class="tab" type="button" role="tab" id="tab-nilo" aria-controls="cap-nilo" aria-selected="false" data-shot="nilo" data-looks="plain glass"
+            data-alt-plain="Nilo in the launcher, writing: its two eyes, the model qwen3.5:9b chosen on its own, the question and the start of the answer."
+            data-alt-glass="Nilo in the launcher in smoked glass, writing: its two eyes, the question and the start of the answer."><span class="name">Nilo</span><kbd>I</kbd></button></li>
+          <li role="presentation" hidden><button class="tab" type="button" role="tab" id="tab-lock" aria-controls="cap-lock" aria-selected="false" data-shot="lock" data-looks="plain glass" data-probe
+            data-alt-plain="The lock screen: the clock in dots, and what is playing in a corner with its cover in dots."
+            data-alt-glass="The lock screen in smoked glass: the clock in dots, and what is playing on a panel of its own."><span class="name">Lock screen</span><kbd>K</kbd></button></li>
         </ul>
 
         <div class="captions">
@@ -504,6 +509,11 @@ footer a:hover { color: var(--ink); }
           <div class="caption" role="tabpanel" id="cap-system" aria-labelledby="tab-system">
             <h3>The system, too</h3>
             <p>The computer's name, Nilo and what runs its model, how much the clipboard keeps, the sound at boot, the fingerprint and SSH: every switch an option of the flake.</p>
+          </div>
+          <div class="caption" role="tabpanel" id="cap-lock" aria-labelledby="tab-lock" hidden>
+            <h3>Lock screen</h3>
+            <p>The clock in dots, and what is playing in a corner: the cover in dots, the progress in LEDs and buttons you can click. In smoked glass, the player gets a panel of its own.</p>
+            <div class="keys"><kbd>SUPER</kbd><kbd>K</kbd></div>
           </div>
           <div class="caption" role="tabpanel" id="cap-nilo" aria-labelledby="tab-nilo">
             <h3>Nilo</h3>
@@ -904,13 +914,17 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
   let look = root.dataset.look === "glass" ? "glass" : "plain";
   let shown = "";
 
-  function picture(tab) {
+  const missing = new Set();
+  function candidates(tab) {
     const looks = tab.dataset.looks.split(" ");
-    const which = looks.includes(look) ? look : looks[0];
+    const order = look === "glass" ? ["glass", "plain"] : ["plain", "glass"];
+    return order.filter(which => looks.includes(which) && !missing.has(`${tab.dataset.shot}:${which}`));
+  }
+
+  function picture(tab, which = candidates(tab)[0] ?? "plain") {
     const name = tab.dataset.shot;
     const base = which === "glass" ? "assets/screens/glass/" : "assets/screens/";
     return {
-      which,
       src: `${base}small/${name}-1200.webp`,
       srcset: `${base}small/${name}-640.webp 640w, ${base}small/${name}-1200.webp 1200w, ${base}${name}.png 1920w`,
       alt: tab.dataset[which === "glass" ? "altGlass" : "altPlain"]
@@ -918,9 +932,11 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
   }
 
   function show(tab) {
-    const next = picture(tab);
-    note.hidden = next.which === look;
-    note.textContent = next.which === "glass" ? "Smoked glass" : "Plain";
+    const which = candidates(tab)[0];
+    if (!which) return;
+    const next = picture(tab, which);
+    note.hidden = which === look;
+    note.textContent = which === "glass" ? "Smoked glass" : "Plain";
     if (next.src === shown) return;
     shown = next.src;
     const [front, back] = pictures[0].classList.contains("on") ? pictures : [pictures[1], pictures[0]];
@@ -934,7 +950,14 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
       back.classList.add("on");
       front.classList.remove("on");
     };
-    if (back.decode) back.decode().then(swap, swap); else back.onload = swap;
+    const fail = () => {
+      if (shown !== next.src) return;
+      missing.add(`${tab.dataset.shot}:${which}`);
+      shown = "";
+      if (tab === current) show(tab);
+    };
+    if (back.decode) back.decode().then(swap, fail);
+    else { back.onload = swap; back.onerror = fail; }
   }
 
   function choose(tab, focus) {
@@ -943,26 +966,39 @@ nihil dev ~/Nihil-Shell    <span class="c"># until nihil dev off</span></code></
       const on = t === tab;
       t.setAttribute("aria-selected", String(on));
       t.tabIndex = on ? 0 : -1;
-      document.getElementById(t.getAttribute("aria-controls")).classList.toggle("on", on);
+      const panel = document.getElementById(t.getAttribute("aria-controls"));
+      panel.classList.toggle("on", on);
+      if (on) panel.hidden = false;
     });
     if (focus) tab.focus();
     if (matchMedia("(max-width: 1100px)").matches) tab.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduce ? "auto" : "smooth" });
     show(tab);
   }
 
+  const listed = () => tabs.filter(t => !t.parentElement.hidden);
   tabs.forEach((tab, i) => {
     tab.tabIndex = i === 0 ? 0 : -1;
     tab.addEventListener("click", () => choose(tab, false));
     tab.addEventListener("pointerenter", () => { new Image().src = picture(tab).src; }, { once: true });
     tab.addEventListener("keydown", e => {
+      const list = listed();
+      const at = list.indexOf(tab);
       const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
       let to = -1;
-      if (step) to = (i + step + tabs.length) % tabs.length;
+      if (step) to = (at + step + list.length) % list.length;
       else if (e.key === "Home") to = 0;
-      else if (e.key === "End") to = tabs.length - 1;
+      else if (e.key === "End") to = list.length - 1;
       if (to < 0) return;
       e.preventDefault();
-      choose(tabs[to], true);
+      choose(list[to], true);
+    });
+  });
+  tabs.filter(tab => "probe" in tab.dataset).forEach(tab => {
+    tab.dataset.looks.split(" ").forEach(which => {
+      const probe = new Image();
+      probe.onload = () => { tab.parentElement.hidden = false; };
+      probe.onerror = () => { missing.add(`${tab.dataset.shot}:${which}`); };
+      probe.src = picture(tab, which).src;
     });
   });
   shown = picture(current).src;
