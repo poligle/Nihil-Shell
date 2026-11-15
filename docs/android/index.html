@@ -36,7 +36,7 @@
   transition: width var(--slow) var(--ease), height var(--slow) var(--ease);
 }
 [data-shape="wide"] .device { width: min(var(--wa), calc(var(--ha) * 2.1667)); height: min(calc(var(--wa) / 2.1667), var(--ha)); }
-.shots { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+.shots { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; --cell: 10px; }
 .says { position: relative; z-index: 1; flex: none; align-self: stretch; width: var(--drawer-w); display: grid; align-items: center; }
 .say {
   grid-area: 1 / 1; position: relative; margin-left: -1px; padding: 24px 28px 22px 30px;
@@ -56,7 +56,6 @@ html:not(.js) .say { border-radius: 14px; }
 html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
 
 @media (max-aspect-ratio: 1 / 1) {
-  .stage { height: calc(var(--steps, 12) * 48svh + 100svh); }
   .pin { flex-direction: column; justify-content: center; align-items: stretch; gap: 14px; padding: 16px; }
   .slot { display: grid; place-items: center; order: 1; height: 50svh; }
   .device { --ha: 50svh; --wa: calc(100vw - 32px); }
@@ -77,13 +76,14 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
 }
 
 @media (min-aspect-ratio: 1001 / 1000) and (max-height: 520px) {
-  .stage { --gutter: 12px; height: calc(var(--steps, 12) * 70svh + 100svh); }
+  .stage { --gutter: 12px; height: calc((var(--steps, 12) - 1) * 70svh + 100svh); }
   .say, .say.hero { padding: 16px 20px 16px 22px; }
   .say h2 { font-size: 19px; }
   .say p { font-size: 14px; }
   .say.hero h1 { font-size: 19px; margin: 8px 0 4px; }
   .say.hero h1 + p { display: none; }
   .say.hero .wordmark { width: 150px; }
+  .rail { gap: 4px; }
   .rail .dots { gap: 3px; }
   .rail .dot { height: 18px; }
   .rail .dot[aria-current="true"]::before { height: 14px; }
@@ -112,6 +112,7 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
   <div class="bar-end">
     <a href="../" aria-label="NIHIL for NixOS" title="NIHIL for NixOS"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="8.5" rx="1.6"/><path d="M6 14h4M8 11v3"/></svg></a>
     <a href="../wear/" aria-label="NIHIL for Wear OS" title="NIHIL for Wear OS"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.3"/><path d="M6 3.9 6.5 1.3h3L10 3.9M6 12.1l.5 2.6h3l.5-2.6M8 6.3V8l1.1.9"/></svg></a>
+    <a href="../studio/" aria-label="Wallpaper studio" title="Wallpaper studio"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="0.9"/><circle cx="8" cy="3" r="1.3"/><circle cx="13" cy="3" r="0.9"/><circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="2"/><circle cx="13" cy="8" r="1.3"/><circle cx="3" cy="13" r="0.9"/><circle cx="8" cy="13" r="1.3"/><circle cx="13" cy="13" r="0.9"/></svg></a>
     <a href="https://github.com/poligle/Nihil-Launcher" aria-label="Source code on GitHub" title="Source code on GitHub"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
   </div>
 </header>
@@ -132,13 +133,14 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
         <div class="wordmark" id="wordmark"><img src="nihil-logo-dark.svg" alt="NIHIL" width="370" height="90"></div>
         <p class="motto"><i>ex nihilo</i></p>
         <h1>A dot&#8209;matrix launcher for Android</h1>
-        <p>The desktop's frame, clock and light on the phone, and the phone as a deck for your computer.</p>
+        <p>The desktop's frame, clock and light on the phone, and the phone as your computer's deck.</p>
         <div class="actions">
           <a class="key accent" href="https://github.com/poligle/Nihil-Launcher/releases/latest">Download the APK</a>
           <ul class="away">
             <li><a href="https://github.com/poligle/Nihil-Launcher"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Source</a></li>
             <li><a href="../"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="8.5" rx="1.6"/><path d="M6 14h4M8 11v3"/></svg>NixOS</a></li>
             <li><a href="../wear/"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="4.3"/><path d="M6 3.9 6.5 1.3h3L10 3.9M6 12.1l.5 2.6h3l.5-2.6M8 6.3V8l1.1.9"/></svg>Wear OS</a></li>
+            <li><a href="../studio/"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="0.9"/><circle cx="8" cy="3" r="1.3"/><circle cx="13" cy="3" r="0.9"/><circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="2"/><circle cx="13" cy="8" r="1.3"/><circle cx="3" cy="13" r="0.9"/><circle cx="8" cy="13" r="1.3"/><circle cx="13" cy="13" r="0.9"/></svg>Studio</a></li>
           </ul>
         </div>
       </li>
@@ -151,17 +153,17 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
       <li class="say" data-name="Held" data-src="../assets/screens/android/menu.webp"
         data-alt="The home screen held: over the clock's card, the menu with NIHIL wallpaper, Add a web and NIHIL settings, each with its icon.">
         <h2>Hold the home screen</h2>
-        <p>For the wallpaper studio, a web kept as an app, and the settings.</p>
+        <p>The wallpaper studio, a web as an app, and the settings.</p>
       </li>
       <li class="say" data-name="Settings" data-src="../assets/screens/android/settings.webp"
         data-alt="Settings as the desktop's Preferences: NIHIL in dots, a heading for each section, each setting with its name on the left and its toggle on the right.">
         <h2>Settings</h2>
-        <p>The look, what NIHIL does when you touch it, and the computer it is a deck for.</p>
+        <p>The look, the touch, and the computer it's a deck for.</p>
       </li>
       <li class="say" data-name="Wallpaper studio" data-src="../assets/screens/android/studio-night.webp"
         data-alt="A photo of a night sky over snowy mountains as a phone wallpaper made of LEDs: stars as single dots, the mountains as fields of grey and white dots.">
         <h2>Photos become LEDs</h2>
-        <p>The studio turns a photo into a matrix at the screen's own resolution, and the photo never leaves the phone.</p>
+        <p>A photo as a matrix at the screen's own resolution. It never leaves the phone.</p>
       </li>
       <li class="say" data-name="Tasks" data-src="../assets/screens/android/tasks.webp"
         data-alt="Tasks on the phone, synced with the computer: To do, Doing and Done as tabs with how many cards each has, two cards to do with a pencil each, and the field for a new task at the bottom.">
@@ -171,12 +173,12 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
       <li class="say" data-name="The deck" data-shape="wide" data-src="../assets/screens/android/deck-music.webp"
         data-alt="The deck in landscape, its first workspace: what plays on the computer with its keys, and the volume in dots with the lock beside it.">
         <h2>The phone as a deck</h2>
-        <p>Paired by the QR in the computer's Preferences: its music, its volume and its lock, in landscape.</p>
+        <p>Paired with the QR in the computer's Preferences: its music, volume and lock, in landscape.</p>
       </li>
       <li class="say" data-name="Apps and webs" data-shape="wide" data-src="../assets/screens/android/deck-apps.webp"
         data-alt="The deck's second workspace: the computer's apps with their icons, and the webs kept on the phone with their favicons.">
         <h2>Its apps and webs</h2>
-        <p>The computer's apps open from the phone, with the computer's own icons.</p>
+        <p>The computer's apps, with its own icons, open from here.</p>
       </li>
       <li class="say" data-name="Trackpad" data-shape="wide" data-src="../assets/screens/android/deck-trackpad.webp"
         data-alt="The deck's trackpad full screen: a field of dim dots from edge to edge, lit white around a finger, and the key to leave full screen in its corner.">
@@ -185,7 +187,9 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
       </li>
     </ol>
     <div class="rail">
+      <button class="go up" type="button" aria-label="Previous"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10 8 5.5l4.5 4.5"/></svg></button>
       <div class="dots" role="group" aria-label="Screens"></div>
+      <button class="go down" type="button" aria-label="Next"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6"/></svg></button>
     </div>
   </div>
 </section>
@@ -199,7 +203,7 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
         <p class="quiet">NIHIL talks to nothing but your own computer, and only once you pair it as a deck. No ads, no analytics, no account.</p>
       </div>
       <dl class="rows">
-        <div><dt>SET_WALLPAPER</dt><dd>The wallpaper studio</dd></div>
+        <div><dt>SET_WALLPAPER</dt><dd>The wallpaper studio, and NIHIL's wallpaper the first time it is home</dd></div>
         <div><dt>EXPAND_STATUS_BAR</dt><dd>Swipe down for the notifications</dd></div>
         <div><dt>REQUEST_DELETE_PACKAGES</dt><dd>Uninstall, in an app's menu</dd></div>
         <div><dt>INTERNET</dt><dd>The deck, only ever to the computer it was paired with</dd></div>
@@ -221,7 +225,7 @@ html:not(.js) .say::before, html:not(.js) .say::after { display: none; }
             <li><h3>Install it</h3><p>Open it on the phone, and let your browser or file manager install apps when Android asks.</p></li>
             <li><h3>Make it your home screen</h3><p>Open NIHIL and tap Home app. The light on the frame and the double tap are off until you turn them on there.</p></li>
           </ol>
-          <div class="links"><a class="key accent" href="https://github.com/poligle/Nihil-Launcher/releases/latest">Download the APK</a></div>
+          <div class="links"><a class="key accent" href="https://github.com/poligle/Nihil-Launcher/releases/latest">Download the APK</a><a class="more" href="https://github.com/poligle/Nihil-Launcher/blob/HEAD/docs/install.md">The whole guide</a></div>
         </div>
         <div>
           <h3>From source</h3>
