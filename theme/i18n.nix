@@ -53,7 +53,6 @@
 		tileNight = "Noche";
 		tileShot = "Captura";
 		tileRecord = "Grabar";
-		vector = "Vector";
 		vectorSent = "Enviado a %1";
 		vectorWaiting = "Esperando a tus dispositivos";
 		vectorFrom = "Recibido de %1";
@@ -577,7 +576,6 @@
 		tileNight = "Night";
 		tileShot = "Screenshot";
 		tileRecord = "Record";
-		vector = "Vector";
 		vectorSent = "Sent to %1";
 		vectorWaiting = "Waiting for your devices";
 		vectorFrom = "Received from %1";
