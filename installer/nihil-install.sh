@@ -666,7 +666,7 @@ describe_json() {
 }
 
 probe_disk() {
-    local notes free='[]' shrink='[]' unchecked='[]' parts roots_json='[]' boots_json='[]' part first last fstype give
+    local notes free='[]' shrink='[]' unchecked_json='[]' parts roots_json='[]' boots_json='[]' part first last fstype give
     local gptOk=false windowsHere=false needed=false espPath="" model elsewhere listed=()
     set_disk "$1"
     notes=$(mktemp)
@@ -680,7 +680,7 @@ probe_disk() {
         done < <(free_stretches "$need")
         while read -r part; do
             if [ "$(fstype_of "$part")" = ext4 ] && ! resize2fs -P "$part" > /dev/null 2>&1; then
-                unchecked=$(jq --arg path "$part" '. + [ $path ]' <<< "$unchecked")
+                unchecked_json=$(jq --arg path "$part" '. + [ $path ]' <<< "$unchecked_json")
             fi
         done < <(partitions $(( need + headroom )) "")
         while read -r part fstype give; do
@@ -709,7 +709,7 @@ probe_disk() {
     elsewhere=$(windows_elsewhere)
     jq -n --arg path "$disk" --argjson size "$(blockdev --getsize64 "$disk")" --arg model "$model" --arg elsewhere "$elsewhere" \
         --argjson gpt "$gptOk" --argjson windows "$windowsHere" --arg esp "$espPath" --argjson need "$need" \
-        --argjson free "$free" --argjson shrink "$shrink" --argjson unchecked "$unchecked" \
+        --argjson free "$free" --argjson shrink "$shrink" --argjson unchecked "$unchecked_json" \
         --argjson roots "$roots_json" --argjson boots "$boots_json" --argjson bootNeeded "$needed" \
         --argjson parts "$parts" --argjson notes "$(json_lines < "$notes")" \
         '{ path: $path, size: $size, model: $model, gpt: $gpt, windows: $windows, elsewhere: $elsewhere, esp: $esp, need: $need,
@@ -842,7 +842,7 @@ apply_answers() {
         *) fail "$(t "Where NIHIL goes was not chosen." "No se ha elegido dónde va NIHIL.")" ;;
     esac
     apply_plan
-    emit done "$(t "NIHIL is installed." "NIHIL está instalado.")"
+    emit "done" "$(t "NIHIL is installed." "NIHIL está instalado.")"
 }
 
 check_media() {
