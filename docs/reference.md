@@ -114,6 +114,7 @@ nihil-ipc glyph charge                # the charger's light, rising from the bot
 nihil-ipc notifs toggleDnd            # also: hide (the popups, keeping the list), clear
 nihil-ipc nilo toggle                 # also: open, sleep, ask "…", state, reset
 nihil-ipc caffeine toggle             # also: on, off, status
+nihil-ipc night level 40              # the night light at 40 %; also: toggle, on, off, status
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome, glass on|off
