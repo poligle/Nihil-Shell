@@ -46,31 +46,37 @@ Item {
     }
 
     Row {
+        id: caption
         anchors.top: disc.bottom
         anchors.topMargin: 8
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: 2
+        spacing: 3
 
         Label {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.label
-            color: root.active ? Tokens.dim : Tokens.muted
+            color: more.containsMouse ? Tokens.ink : root.active ? Tokens.dim : Tokens.muted
         }
 
         Ico {
+            anchors.verticalCenter: parent.verticalCenter
             visible: root.expandable
             glyph: Icons.chevron
             font.pixelSize: 11
-            color: root.expanded ? Tokens.ink : Tokens.muted
+            color: root.expanded || more.containsMouse ? Tokens.ink : Tokens.muted
             rotation: root.expanded ? 90 : 0
 
             Behavior on rotation { NumberAnimation { duration: Tokens.animNormal } }
-
-            MouseArea {
-                anchors.fill: parent
-                anchors.margins: -6
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.expand()
-            }
         }
+    }
+
+    MouseArea {
+        id: more
+        visible: root.expandable
+        anchors.fill: caption
+        anchors.margins: -6
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.expand()
     }
 }

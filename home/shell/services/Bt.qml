@@ -48,6 +48,81 @@ Singleton {
         else { d.trusted = true; d.pair(); }
     }
 
+    property var reaching: null
+
+    function find(name: string, among: var): var {
+        const flat = t => String(t ?? "").toLowerCase().replace(/[\s_-]+/g, "");
+        const wanted = flat(name);
+        if (!wanted) return null;
+        const close = among.filter(d => flat(d.name).length > 2 && (flat(d.name).includes(wanted) || wanted.includes(flat(d.name))));
+        return among.find(d => flat(d.name) === wanted) ?? (close.length === 1 ? close[0] : null);
+    }
+
+    function reach(name: string, connect: bool, done: var): void {
+        if (!connect) {
+            const targets = name ? [root.find(name, root.connected)].filter(d => d) : root.connected;
+            if (targets.length === 0) {
+                done({ ok: false, error: name ? name + " is not connected" : "no Bluetooth device is connected" });
+                return;
+            }
+            for (const d of targets) d.disconnect();
+            done({ ok: true, value: targets.map(d => d.name).join(", ") });
+            return;
+        }
+        if (root.reaching) {
+            done({ ok: false, error: "Bluetooth is already connecting a device: try again in a moment" });
+            return;
+        }
+        root.reaching = { name: name, done: done, device: null, waited: 0 };
+        if (!root.enabled) root.setEnabled(true);
+        reacher.start();
+    }
+
+    function reached(answer: var): void {
+        const done = root.reaching?.done;
+        root.reaching = null;
+        reacher.stop();
+        if (done) done(answer);
+    }
+
+    Timer {
+        id: reacher
+        interval: 500
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            const r = root.reaching;
+            if (!r) {
+                stop();
+                return;
+            }
+            r.waited++;
+            if (!r.device) {
+                if (root.adapter?.state !== BluetoothAdapterState.Enabled) {
+                    if (r.waited > 30) root.reached({ ok: false, error: "Bluetooth did not come on" });
+                    return;
+                }
+                const paired = root.all.filter(d => d.paired);
+                const d = root.find(r.name, paired);
+                if (!d) {
+                    root.reached({ ok: false, error: paired.length === 0 ? "there are no paired devices: pair it once from the panel"
+                        : "no paired device called " + r.name + "; paired: " + paired.map(d => d.name).join(", ") });
+                    return;
+                }
+                if (d.connected) {
+                    root.reached({ ok: true, value: d.name });
+                    return;
+                }
+                r.device = d;
+                r.waited = 0;
+                d.connect();
+                return;
+            }
+            if (r.device.connected) root.reached({ ok: true, value: r.device.name });
+            else if (r.waited > 40) root.reached({ ok: false, error: r.device.name + " did not connect: is it on and nearby?" });
+        }
+    }
+
     Process {
         id: unblock
         command: [Config.cmd.rfkill, "unblock", "bluetooth"]

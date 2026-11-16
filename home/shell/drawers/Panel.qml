@@ -249,7 +249,10 @@ Item {
                     glyph: Icons.night
                     label: Lang.tileNight
                     active: Toggles.night
+                    expandable: true
+                    expanded: root.expanded === "night"
                     onToggled: Toggles.night = !Toggles.night
+                    onExpand: root.toggleSection("night")
                 }
 
                 Tile {
@@ -305,6 +308,15 @@ Item {
                     value: Brightness.value
                     onMoved: v => Brightness.set(v)
                 }
+            }
+
+            SliderRow {
+                Layout.fillWidth: true
+                visible: root.expanded === "night"
+                glyph: Icons.night
+                value: Toggles.nightLevel
+                onMoved: v => Toggles.setNightLevel(v)
+                onGlyphClicked: Toggles.night = !Toggles.night
             }
 
             ColumnLayout {

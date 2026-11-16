@@ -77,12 +77,17 @@ Item {
             return data.exit === 0 ? Lang.toolRanOk.arg(command) : Lang.toolRanFail.arg(command).arg(data.exit ?? "?");
         }
         case "open_app":
-            return running ? Lang.toolLaunching.arg(args.target ?? "") : Lang.toolLaunched.arg(data.opened || args.target || "");
+            if (running) return Lang.toolLaunching.arg(args.target ?? "");
+            return data.searched ? Lang.toolInBrowser.arg(data.opened || args.target || "")
+                : Lang.toolLaunched.arg(data.opened || args.target || "");
         case "list_windows":
             return running ? Lang.toolWindows : Lang.toolWindowsDone.arg(data.count ?? 0);
         case "look_at_screen":
             if (running) return Lang.toolLooking;
             return data.what === "screen" || !data.app ? Lang.toolLookedScreen : Lang.toolLookedWindow.arg(data.app);
+        case "click":
+            if (running) return Lang.toolClicking;
+            return data.app ? Lang.toolClicked.arg(data.app) : Lang.toolClickedScreen;
         case "use_window": {
             const app = data.app || args.window || "";
             if (running) return Lang.toolWindow.arg(app);
@@ -108,12 +113,13 @@ Item {
         case "control": {
             const setting = data.setting ?? args.setting ?? "";
             const label = root.settingName(setting);
-            if (running) return Lang.toolControl.arg(label.toLowerCase());
+            if (running) return setting === "screenshot" ? Lang.toolShooting : Lang.toolControl.arg(label.toLowerCase());
             if (setting === "lock") return Lang.actLock;
             if (setting === "wallpaper" && (data.value === "next" || data.value === "prev"))
                 return data.value === "next" ? Lang.actNextWallpaper : Lang.actPrevWallpaper;
+            if (setting === "screenshot") return Lang.toolShot;
             const value = data.value === "on" ? Lang.toolOn : data.value === "off" ? Lang.toolOff
-                : (setting === "volume" || setting === "brightness") ? data.value + " %" : String(data.value ?? "");
+                : (setting === "volume" || setting === "brightness" || setting === "night") ? data.value + " %" : String(data.value ?? "");
             return Lang.toolControlled.arg(label).arg(value);
         }
         case "send_to_phone":
@@ -124,9 +130,11 @@ Item {
     }
 
     function settingName(setting: string): string {
-        return ({ volume: Lang.settingVolume, mute: Lang.settingMute, brightness: Lang.settingBrightness,
-                  dnd: Lang.settingDnd, caffeine: Lang.settingCaffeine, night: Lang.settingNight,
-                  wallpaper: Lang.settingWallpaper, glass: Lang.settingGlass, workspace: Lang.settingWorkspace,
+        return ({ volume: Lang.settingVolume, mute: Lang.settingMute, mic: Lang.tileMic,
+                  brightness: Lang.settingBrightness, dnd: Lang.settingDnd, caffeine: Lang.settingCaffeine,
+                  night: Lang.settingNight, wifi: Lang.tileWifi, bluetooth: Lang.tileBluetooth,
+                  airplane: Lang.settingAirplane, wallpaper: Lang.settingWallpaper, glass: Lang.settingGlass,
+                  workspace: Lang.settingWorkspace, screenshot: Lang.tileShot, record: Lang.settingRecord,
                   lock: Lang.settingLock })[setting] ?? setting;
     }
 
@@ -134,8 +142,6 @@ Item {
         switch (facts.what) {
         case "type": return Lang.confirmType.arg(facts.app ?? "");
         case "keys": return Lang.confirmKeys.arg(facts.app ?? "");
-        case "close": return Lang.confirmCloseWindow.arg(facts.app ?? "");
-        case "read": return Lang.confirmRead;
         case "send": return Lang.confirmSend;
         case "search": return Lang.confirmSearch;
         case "fetch": return Lang.confirmFetch;
@@ -585,7 +591,7 @@ Item {
                     readonly property bool desktop: facts.action === "desktop"
                     readonly property var why: desktop ? (facts.why ?? []) : []
                     readonly property bool risky: command && (facts.danger ?? []).length > 0
-                        || why.some(code => code !== "web" && code !== "private")
+                        || why.some(code => code !== "private")
                     readonly property bool open: entry.status === "asking"
                     readonly property bool isArmed: open && root.armed === entry.cid
 
@@ -651,6 +657,13 @@ Item {
                                 wrapMode: Text.WrapAnywhere
                                 elide: Text.ElideNone
                             }
+                        }
+
+                        Label {
+                            visible: text !== ""
+                            text: card.why.includes("sensitive") ? Lang.whySensitive
+                                : card.why.includes("private") ? Lang.whyPrivate : ""
+                            color: Tokens.dim
                         }
 
                         Txt {

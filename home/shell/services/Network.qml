@@ -110,6 +110,43 @@ Singleton {
         root.run([Config.cmd.nmcli, "connection", "delete", "id", name], () => { root.refresh(); root.scan(); });
     }
 
+    property var joining: null
+
+    function join(name: string, done: var): void {
+        if (root.joining) {
+            done({ ok: false, error: "Wi-Fi is already joining a network: try again in a moment" });
+            return;
+        }
+        root.joining = { name: name, done: done };
+        joinLimit.restart();
+        looking.running = true;
+    }
+
+    function joined(answer: var): void {
+        const done = root.joining?.done;
+        root.joining = null;
+        joinLimit.stop();
+        root.refresh();
+        if (done) done(answer);
+    }
+
+    function pick(name: string, saved: var, seen: var): var {
+        const flat = t => String(t ?? "").toLowerCase().replace(/[\s_-]+/g, "");
+        const wanted = flat(name);
+        if (!wanted) return null;
+        const near = list => {
+            const same = list.filter(n => flat(n) === wanted);
+            if (same.length > 0) return same[0];
+            const close = list.filter(n => flat(n).length > 2 && (flat(n).includes(wanted) || wanted.includes(flat(n))));
+            return close.length === 1 ? close[0] : "";
+        };
+        const known = near(saved);
+        if (known) return { saved: known };
+        const visible = near(Object.keys(seen));
+        if (!visible) return null;
+        return { ssid: visible, secure: seen[visible] };
+    }
+
     property var afterAction: null
 
     function run(command: var, callback: var): void {
@@ -126,6 +163,67 @@ Singleton {
             root.afterAction = null;
             if (callback) callback(code);
         }
+    }
+
+    Process {
+        id: looking
+        command: [Config.cmd.sh, "-c", `nm=$1
+"$nm" radio wifi on
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    case "$("$nm" -t -f TYPE,STATE d)" in *wifi:disconnected*|*wifi:conn*) break ;; esac
+    sleep 0.3
+done
+"$nm" -t -f NAME,TYPE c show
+echo --nihil--
+"$nm" -t -f SSID,SECURITY d wifi list --rescan auto`, "sh", Config.cmd.nmcli]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!root.joining) return;
+                const name = root.joining.name;
+                const parts = text.split("--nihil--\n");
+                const saved = [], seen = {};
+                for (const line of (parts[0] ?? "").trim().split("\n")) {
+                    const f = root.fields(line);
+                    if (f[1] === "802-11-wireless") saved.push(f[0]);
+                }
+                for (const line of (parts[1] ?? "").trim().split("\n")) {
+                    const f = root.fields(line);
+                    if (f[0]) seen[f[0]] = seen[f[0]] || (f[1] !== "" && f[1] !== "--");
+                }
+                root.wifiEnabled = true;
+                const net = root.pick(name, saved, seen);
+                if (!net) {
+                    const around = Object.keys(seen).slice(0, 8);
+                    root.joined({ ok: false, error: "no Wi-Fi network called " + name
+                        + (saved.length ? "; saved: " + saved.join(", ") : "")
+                        + (around.length ? "; in range: " + around.join(", ") : "") });
+                } else if (!net.saved && net.secure) {
+                    root.joined({ ok: false, error: net.ssid + " needs its password: join it once from the panel" });
+                } else {
+                    joinUp.target = net.saved || net.ssid;
+                    joinUp.command = net.saved
+                        ? [Config.cmd.nmcli, "--wait", "30", "connection", "up", "id", net.saved]
+                        : [Config.cmd.nmcli, "--wait", "30", "device", "wifi", "connect", net.ssid];
+                    joinUp.running = true;
+                }
+            }
+        }
+    }
+
+    Process {
+        id: joinUp
+        property string target: ""
+        property string said: ""
+        onRunningChanged: if (running) said = ""
+        stderr: SplitParser { onRead: line => { if (line.trim() !== "") joinUp.said = line.trim(); } }
+        onExited: code => root.joined(code === 0 ? { ok: true, value: joinUp.target }
+            : { ok: false, error: "could not join " + joinUp.target + (joinUp.said ? ": " + joinUp.said : "") })
+    }
+
+    Timer {
+        id: joinLimit
+        interval: 50000
+        onTriggered: if (root.joining) root.joined({ ok: false, error: "Wi-Fi did not answer" })
     }
 
     Process {

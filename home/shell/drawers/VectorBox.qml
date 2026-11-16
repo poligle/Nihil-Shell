@@ -199,13 +199,6 @@ Item {
         }
     }
 
-    Label {
-        x: 14
-        y: 11
-        text: Lang.vector
-        color: root.over ? Tokens.dim : Tokens.muted
-    }
-
     Item {
         anchors.fill: parent
         opacity: outgoing.visible ? 0 : 1
@@ -218,7 +211,6 @@ Item {
 
             Ico {
                 anchors.centerIn: parent
-                anchors.verticalCenterOffset: 8
                 visible: !root.has
                 glyph: Icons.swap
                 color: root.over ? Tokens.dim : Tokens.off

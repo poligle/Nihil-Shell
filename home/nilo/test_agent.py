@@ -14,6 +14,8 @@ import threading
 import time
 import unittest
 
+NOTE = "Que la reunión es el jueves a las cinco en la sala azul\n"
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import agent  # noqa: E402
@@ -159,7 +161,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with s.lock:
             s.loaded[model] = time.time() + 300
         messages = body["messages"]
-        last_user = max(i for i, m in enumerate(messages) if m["role"] == "user")
+        last_user = max(i for i, m in enumerate(messages) if m["role"] == "user" and not m.get("images"))
         question = messages[last_user]["content"].lower()
         after = messages[last_user + 1:]
         tools_done = [m for m in after if m["role"] == "tool"]
@@ -207,6 +209,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.say("Abierto." if result.get("ok") else "No he podido: " + result.get("error", ""))
             elif question.startswith("captura de"):
                 self.say("Veo la ventana.")
+            elif "escribe la clave" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "type_text", "arguments": {
+                    "window": "Writer", "text": "password: hunter2"}}}])
+            elif "pulsa" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "look_at_screen", "arguments": {}}}])
+            elif "pulsa" in question and len(tools_done) == 1:
+                self.say(tool_calls=[{"function": {"name": "click", "arguments": {"x": 100, "y": 50, "double": True}}}])
+            elif "pulsa" in question:
+                result = json.loads(tools_done[-1]["content"])
+                self.say("Pulsado." if result.get("ok") else "No: " + result.get("error", ""))
+            elif "haz clic sin mirar" in question and not tools_done:
+                self.say(tool_calls=[{"function": {"name": "click", "arguments": {"x": 1, "y": 1}}}])
+            elif "mira la pantalla" in question and tools_done:
+                self.say("Veo la ventana.")
             elif ("escribe en" in question or "consulta y escribe" in question) and not tools_done:
                 if "consulta y escribe" in question:
                     self.say(tool_calls=[{"function": {"name": "web_search", "arguments": {"query": "receta"}}}])
@@ -217,7 +233,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif "consulta y escribe" in question and len(tools_done) == 1:
                 self.say(tool_calls=[{"function": {"name": "type_text", "arguments": {
                     "window": "Writer", "text": "Receta"}}}])
-            elif "escribe en" in question or "consulta y escribe" in question:
+            elif "escribe en" in question or "consulta y escribe" in question or "escribe la clave" in question:
                 result = json.loads(tools_done[-1]["content"])
                 self.say("Escrito." if result.get("ok") else "No he escrito: " + result.get("note", result.get("error", "")))
             elif "cierra" in question and not tools_done:
@@ -236,8 +252,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif "manda al móvil" in question and not tools_done:
                 self.say(tool_calls=[{"function": {"name": "send_to_phone", "arguments": {"text": "hola"}}}])
             elif tools_done and any(word in question for word in ("cierra", "qué hay abierto", "siguiente canción",
-                                                                  "pon queen", "mira la pantalla", "más volumen",
-                                                                  "manda al móvil")):
+                                                                  "pon queen", "más volumen", "manda al móvil",
+                                                                  "haz clic sin mirar")):
                 result = json.loads(tools_done[-1]["content"])
                 self.say("Hecho." if result.get("ok") else "No: " + result.get("note", result.get("error", "")))
             elif "lento" in question:
@@ -1030,6 +1046,24 @@ class AgentTest(unittest.TestCase):
         events = self.agent.until_done()
         self.assertIn("does not exist", self.text_of(events))
 
+    def test_what_is_not_an_app_is_searched(self):
+        self.start({"model": "qwen3.5:4b", "onboarded": True})
+        self.agent.send(op="ask", text="Abre las noticias de hoy")
+        launch = self.agent.wait("launch")
+        self.agent.send(op="launched", id=launch["id"], ok=False, similar=["Notas"])
+        search = self.agent.wait("launch", where=lambda e: e["id"] != launch["id"])
+        self.assertEqual((search["kind"], search["target"]),
+                         ("url", "https://duckduckgo.com/?q=las+noticias+de+hoy"))
+        self.agent.send(op="launched", id=search["id"], ok=True, name=search["target"])
+        events = self.agent.until_done()
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual((done["opened"], done["searched"]), ("las noticias de hoy", True))
+        self.agent.send(op="ask", text="Abre youtube.com")
+        launch = self.agent.wait("launch")
+        self.assertEqual((launch["kind"], launch["target"]), ("url", "https://youtube.com"))
+        self.agent.send(op="launched", id=launch["id"], ok=True, name="https://youtube.com")
+        self.agent.until_done()
+
     def test_auto_model(self):
         self.ollama.installed.update({"qwen3.5:2b": 2_700_000_000, "qwen3.5:9b": 6_600_000_000})
         hello = self.start({"model": "qwen3.5:9b", "onboarded": True, "auto": True})
@@ -1170,6 +1204,9 @@ class AgentTest(unittest.TestCase):
                     "d = os.path.dirname(os.path.abspath(__file__))\n"
                     "open(os.path.join(d, 'grim-args'), 'w').write(json.dumps(sys.argv[1:]))\n"
                     "sys.stdout.buffer.write(b'JPEGDATA')\n",
+            "wlrctl": "import json, os, sys\n"
+                      "d = os.path.dirname(os.path.abspath(__file__))\n"
+                      "open(os.path.join(d, 'wlrctl-log'), 'a').write(json.dumps(sys.argv[1:]) + '\\n')\n",
         }
         paths = {}
         for name, body in fakes.items():
@@ -1243,7 +1280,7 @@ class AgentTest(unittest.TestCase):
         self.assertEqual((done["app"], done["typed"]), ("LibreOffice Writer", 10))
         self.assertIn("Escrito.", self.text_of(events))
 
-    def test_a_terminal_and_the_web_ask_first(self):
+    def test_a_terminal_and_secrets_ask_first(self):
         self.desktop()
         self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
         confirms = []
@@ -1261,20 +1298,21 @@ class AgentTest(unittest.TestCase):
         self.assertIn("No he escrito", self.text_of(events))
         self.agent.send(op="ask", text="Consulta y escribe la receta")
         self.agent.until_done()
-        self.assertEqual((confirms[1]["what"], confirms[1]["why"], confirms[1]["text"]), ("type", ["web"], "Receta"))
-        self.assertEqual(self.logged("wtype-log"), [])
-        self.agent.send(op="ask", text="Escribe en Writer")
+        self.assertEqual(len(confirms), 1)
+        self.assertEqual(self.logged("wtype-log"), [[["-d", "2", "-"], "Receta"]])
+        self.agent.send(op="ask", text="Escribe la clave")
         self.agent.until_done()
-        self.assertEqual(len(confirms), 2)
-        self.assertEqual(len(self.logged("wtype-log")), 3)
+        self.assertEqual((confirms[1]["what"], confirms[1]["why"], confirms[1]["app"]),
+                         ("type", ["sensitive"], "LibreOffice Writer"))
+        self.assertEqual(len(self.logged("wtype-log")), 1)
 
-    def test_close_asks_and_windows_are_listed(self):
+    def test_close_and_windows_are_listed(self):
         self.desktop()
         self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
         confirms = self.accept_all()
         self.agent.send(op="ask", text="Cierra Writer")
         self.agent.until_done()
-        self.assertEqual((confirms[0]["what"], confirms[0]["why"]), ("close", ["close"]))
+        self.assertEqual(confirms, [])
         self.assertIn(["dispatch", "hl.dsp.window.close()"], self.logged("hypr-log"))
         self.agent.send(op="ask", text="¿Qué hay abierto?")
         events = self.agent.until_done()
@@ -1318,6 +1356,24 @@ class AgentTest(unittest.TestCase):
         self.agent.send(op="ask", text="Hola")
         self.agent.until_done()
         self.assertFalse(any("images" in m for m in self.ollama.chats[-1]["messages"]))
+
+    def test_click_where_it_looked(self):
+        self.desktop(vision=True)
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        confirms = self.accept_all()
+        self.agent.send(op="ask", text="Haz clic sin mirar")
+        events = self.agent.until_done()
+        self.assertIn("look at the screen first", self.text_of(events))
+        self.agent.send(op="ask", text="Pulsa el botón")
+        events = self.agent.until_done()
+        self.assertEqual(confirms, [])
+        self.assertIn(["dispatch", "hl.dsp.cursor.move({ x = 110, y = 60 })"], self.logged("hypr-log"))
+        self.assertEqual(self.logged("wlrctl-log"), [["pointer", "click", "left"], ["pointer", "click", "left"]])
+        done = [e for e in events if e["ev"] == "tool" and e["status"] == "done"][-1]
+        self.assertEqual((done["button"], done["double"], done["app"]), ("left", True, "kitty"))
+        self.assertIn("Pulsado.", self.text_of(events))
+        tools = {t["function"]["name"] for t in self.ollama.chats[-1]["tools"]}
+        self.assertIn("click", tools)
 
     def test_control_and_the_phone(self):
         self.desktop()
@@ -1423,7 +1479,8 @@ class UnitTest(unittest.TestCase):
         self.assertEqual(agent.parse_keys("Control+Supr")[0], [(["ctrl"], "Delete")])
         self.assertIn("SUPER", agent.parse_keys("super+q")[1])
         self.assertIn("modifier", agent.parse_keys("hyper+q")[1])
-        self.assertTrue(agent.risky_keys(agent.parse_keys("alt+f4")[0]))
+        self.assertTrue(agent.risky_keys(agent.parse_keys("shift+Delete")[0]))
+        self.assertFalse(agent.risky_keys(agent.parse_keys("alt+f4 ctrl+w")[0]))
         self.assertTrue(agent.risky_keys(agent.parse_keys("ctrl+Enter")[0]))
         self.assertFalse(agent.risky_keys(agent.parse_keys("ctrl+s ctrl+b")[0]))
         self.assertTrue(agent.secret("~/.ssh/config"))
@@ -1435,7 +1492,7 @@ class UnitTest(unittest.TestCase):
                          {"web": False, "system": True, "apps": True, "write": True, "git": True, "shell": True,
                           "desktop": False, "home": False})
 
-    def test_the_web_taints_wherever_it_is_read(self):
+    def test_play_by_name_without_spotify(self):
         folder = tempfile.mkdtemp(prefix="nilo-ddgr-")
         try:
             ddgr = os.path.join(folder, "ddgr")
@@ -1444,13 +1501,12 @@ class UnitTest(unittest.TestCase):
                         "\"url\": \"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC\", \"abstract\": \"\"}]'\n")
             os.chmod(ddgr, 0o755)
             fake = type("A", (), {"settings": {"access": "system", "web": True}, "config": {"ddgr": ddgr},
-                                  "tainted": False, "private": False, "sees": lambda self: False,
+                                  "seen": "", "sees": lambda self: False,
                                   "call_shell": lambda self, ev, detail, cancel, seconds=8: {"ok": False}})()
             tools = agent.Tools(fake)
             tools.players = lambda: []
             result = tools.play_by_name("Song", agent.Cancel())
             self.assertEqual(result["error"], "Spotify is not installed and its page did not open")
-            self.assertTrue(fake.tainted)
         finally:
             shutil.rmtree(folder, ignore_errors=True)
 
@@ -1458,20 +1514,20 @@ class UnitTest(unittest.TestCase):
         home = tempfile.mkdtemp(prefix="nilo-home-")
         old = os.environ.get("HOME")
         os.environ["HOME"] = home
+        state = os.environ.pop("XDG_STATE_HOME", None)
         try:
             os.makedirs(os.path.join(home, ".ssh"))
-            for name, text in (("notas.txt", "hola\n"), (".ssh/id_ed25519", "key\n")):
+            for name, text in (("notas.txt", NOTE), (".ssh/id_ed25519", "key\n")):
                 with open(os.path.join(home, name), "w") as f:
                     f.write(text)
             asked = []
             fake = type("A", (), {"settings": {"access": "system", "repo": "~/nada", "web": True}, "config": {},
-                                  "tainted": False,
-                                  "private": False,
+                                  "seen": "", "saw": agent.Agent.saw,
                                   "short_path": staticmethod(agent.Agent.short_path), "sees": lambda self: False,
                                   "ask_confirmation": lambda self, detail, cancel: asked.append(detail) or False})()
             tools = agent.Tools(fake)
             read, _ = tools.run("read_file", {"path": "~/notas.txt"}, agent.Cancel())
-            self.assertEqual((read["text"], read["path"]), ("hola\n", "~/notas.txt"))
+            self.assertEqual((read["text"], read["path"]), (NOTE, "~/notas.txt"))
             listed, _ = tools.run("list_files", {"path": "~"}, agent.Cancel())
             self.assertEqual(listed["files"], ["notas.txt"])
             key, _ = tools.run("read_file", {"path": "~/.ssh/id_ed25519"}, agent.Cancel())
@@ -1479,32 +1535,60 @@ class UnitTest(unittest.TestCase):
             outside, _ = tools.run("write_file", {"path": "/tmp/nilo-x", "content": "y"}, agent.Cancel())
             self.assertIn("only reads", outside["error"])
             self.assertEqual(asked, [])
-            self.assertTrue(fake.private)
-            searched, facts = tools.run("web_search", {"query": "lo que pone en notas"}, agent.Cancel())
+            self.assertIn("el jueves a las cinco", fake.seen)
+            leak = "Que la reunión es el jueves a las cinco"
+            searched, facts = tools.run("web_search", {"query": leak}, agent.Cancel())
             self.assertTrue(searched["declined"] and facts["declined"])
-            self.assertEqual((asked[0]["what"], asked[0]["text"], asked[0]["why"]),
-                             ("search", "lo que pone en notas", ["private"]))
+            self.assertEqual((asked[0]["what"], asked[0]["text"], asked[0]["why"]), ("search", leak, ["private"]))
+            secret, _ = tools.run("web_search", {"query": "password: hunter2"}, agent.Cancel())
+            self.assertTrue(secret["declined"])
+            self.assertEqual(asked[1]["why"], ["sensitive"])
+            plain, _ = tools.run("web_search", {"query": "receta de lentejas"}, agent.Cancel())
+            self.assertNotIn("declined", plain)
+            self.assertEqual(len(asked), 2)
             fake.settings["access"] = "chat"
-            opened, _ = tools.run("open_app", {"target": "https://ejemplo.com/?d=hola"}, agent.Cancel())
+            opened, _ = tools.run("open_app", {"target": "https://ejemplo.com/?d=" + NOTE}, agent.Cancel())
             self.assertTrue(opened["declined"])
-            self.assertEqual((asked[1]["what"], asked[1]["text"]), ("open", "https://ejemplo.com/?d=hola"))
+            self.assertEqual((asked[2]["what"], asked[2]["why"]), ("open", ["private"]))
             fake.settings["access"] = "system"
-            fake.tainted = True
-            again, _ = tools.run("read_file", {"path": "~/notas.txt"}, agent.Cancel())
-            self.assertTrue(again["declined"])
-            self.assertEqual((asked[2]["what"], asked[2]["path"], asked[2]["why"]), ("read", "~/notas.txt", ["web"]))
-            fake.tainted = False
             fake.call_shell = lambda ev, detail, cancel, seconds=8: {"ok": True}
             sent, _ = tools.run("send_to_phone", {"path": "/etc/hostname"}, agent.Cancel())
             self.assertTrue(sent["declined"])
             self.assertEqual((asked[3]["what"], asked[3]["why"]), ("send", ["outside"]))
             mine, _ = tools.run("send_to_phone", {"path": "~/notas.txt"}, agent.Cancel())
             self.assertEqual((mine["ok"], mine["sent"], len(asked)), (True, "notas.txt", 4))
+            written, facts = tools.run("write_file", {"path": "~/notas.txt", "content": "otra cosa\n"}, agent.Cancel())
+            self.assertEqual((written["ok"], facts["auto"], len(asked)), (True, True, 4))
+            kept = os.path.join(home, ".local", "state", "nihil", "nilo", "before")
+            with open(os.path.join(kept, os.listdir(kept)[0])) as f:
+                self.assertEqual(f.read(), NOTE)
+            created, _ = tools.run("write_file", {"path": "~/Documentos/lista.md", "content": "- pan\n"}, agent.Cancel())
+            self.assertTrue(created["ok"])
+            for path in ("~/arranque.sh", "~/.config/algo.conf"):
+                refused, facts = tools.run("write_file", {"path": path, "content": "x\n"}, agent.Cancel())
+                self.assertTrue(refused["declined"] and facts["declined"])
+                self.assertFalse(os.path.exists(os.path.expanduser(path)))
+            self.assertEqual([a["action"] for a in asked[4:]], ["create", "create"])
             environ, _ = tools.run("read_file", {"path": "/proc/self/environ"}, agent.Cancel())
             self.assertIn("keys", environ["error"])
         finally:
             os.environ["HOME"] = old
+            if state is not None:
+                os.environ["XDG_STATE_HOME"] = state
             shutil.rmtree(home, ignore_errors=True)
+
+    def test_sensitive(self):
+        for text in ("-----BEGIN OPENSSH PRIVATE KEY-----", "ghp_" + "a" * 36, "contraseña: algo", "4111 1111 1111 1111",
+                     "ES91 2100 0418 4502 0005 1332", "token=abc"):
+            self.assertTrue(agent.sensitive(text), text)
+        for text in ("receta de lentejas", "1234 5678 9012 3456", "llámame al 600 123 456", "la clave del éxito"):
+            self.assertFalse(agent.sensitive(text), text)
+
+    def test_outward(self):
+        for name in ("zen", "firefox", "org.telegram.desktop", "google-chrome", "thunderbird"):
+            self.assertTrue(agent.Tools.outward({"class": name}), name)
+        for name in ("libreoffice-writer", "io.elementary.code", "kitty", "org.gnome.Nautilus"):
+            self.assertFalse(agent.Tools.outward({"class": name}), name)
 
     def test_parse_time(self):
         self.assertAlmostEqual(agent.parse_time("2026-10-29T10:00:00.123456789Z"), 1793268000.123456, places=3)

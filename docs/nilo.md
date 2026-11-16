@@ -53,7 +53,8 @@ it thinks. A click on them opens the conversation; when it ends, they go back to
 (the gear) and in the introduction:
 
 - **Chat.** Talking; this computer's NixOS version and generation, memory, disk and
-  battery; opening apps by name, and files, folders and web pages in whatever opens them.
+  battery; opening apps by name, and files, folders and web pages in whatever opens them;
+  what is not an app, searched in the browser.
 - **Terminal and repository.** Reading, creating and changing files in one
   repository, never outside it or inside `.git`; `git add -A`, commit and push there; and
   commands with bash, as you. Every change to a file shows its diff, every commit its files
@@ -64,13 +65,17 @@ it thinks. A click on them opens the conversation; when it ends, they go back to
   for two minutes at most.
 - **The whole system.** The desktop, as you would use it: which windows are open and,
   with a model that sees pictures (Qwen 3.5 does), a screenshot of the window or the
-  screen; typing and shortcuts in a window (`wtype`); a window brought forward, moved to a
-  workspace, enlarged, floated or closed; the music (`playerctl`: pause, the next one, or
-  a song by its name, found on Spotify and put on there, or on its page); NIHIL's volume,
-  brightness, do not disturb, caffeine, night light, wallpaper, glass, workspace and lock;
-  and a text or a file sent to the phone with Vector. Files reach the whole home folder,
-  and the rest of the computer to read, but never keys, passwords or browser profiles
-  (`~/.ssh`, `~/.gnupg`, the browsers' profiles, `.env` files and the like).
+  screen and a click wherever it sees something (`wlrctl`), so any program works through
+  its own buttons, looked up on the web when Nilo doesn't know it; typing and shortcuts in
+  a window (`wtype`); a window brought forward, moved to a workspace, enlarged, floated or
+  closed; the music (`playerctl`: pause, the next one, or a song by its name, found on
+  Spotify and put on there, or on its page); NIHIL's volume, microphone, brightness, do not
+  disturb, caffeine, night light and its intensity, Wi-Fi and Bluetooth (a saved network or
+  a paired device, by its name), airplane mode, wallpaper, glass, workspace, screenshots,
+  screen recording and lock; and a text or a file sent to the phone with Vector. Files
+  reach the whole home folder, and the rest of the computer to read, but never keys,
+  passwords or browser profiles (`~/.ssh`, `~/.gnupg`, the browsers' profiles, `.env`
+  files and the like).
 
 The last two wait for you to authorize them: the level first says what it allows and waits
 for "authorize" (or the same key again); going down needs nothing. The repository is
@@ -79,18 +84,18 @@ NIHIL's own checkout until you choose another: the one `nihil dev` builds from, 
 used first) or take any path. Choosing another one while on Terminal and repository goes
 back to Chat, to be authorized again.
 
-**At the whole system it asks only where there is a risk:** changing a file, a commit, a
-command that does more than read (those that only read, like `ls`, `journalctl` or `git
-status` in the repository, from a short list and with no redirection, chaining or
-globbing, run on their own), closing a window, typing in a terminal, shortcuts that close
-or delete (`ctrl + q`, `alt + F4`, `ctrl + Enter`…) and sending the phone a file from
-outside your folder. "Write a shopping list in Writer", "the next
-song" or "look for videos of Queen" go straight away. Once an answer has read a web page
-or the screen, typing, keys, reading your files and sending to the phone ask too: what a
-page says is never an order. And once it has read your files outside the repository, the
-output of a command or the screen, a search or a page asks before it goes out: nothing of
-yours leaves without you seeing it. While Nilo types or acts, the launcher steps aside,
-and its eyes in the bar say when it's done.
+**At the whole system it asks only where there is a risk:** changing code, configuration,
+hidden files or anything in a git checkout (documents change on their own, and the one
+before stays in `~/.local/state/nihil/nilo/before`); a commit; a command that does more
+than read (those that only read, like `ls`, `journalctl` or `git status` in the
+repository, from a short list and with no redirection, chaining or globbing, run on their
+own); typing in a terminal; shortcuts that delete or send (`shift + Delete`, `ctrl +
+Enter`…); sending the phone a file from outside your folder; and whatever looks like a
+password, a key or bank details, or carries what it read of your files or a command, on
+its way to a search, a page, a browser or a chat. "Write a shopping list in Writer",
+"close Spotify", "the next song" or "look for videos of Queen" go straight away. What a
+page or the screen says is never an order. While Nilo types or acts, the launcher steps
+aside, and its eyes in the bar say when it's done.
 
 **Opening apps.** "abre zen" or "open zen and thunar" opens them at once, without the
 model: the launcher's own search, when every name matches an app closely. Anything more

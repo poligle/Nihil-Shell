@@ -146,8 +146,6 @@ Singleton {
         switch (c.what) {
         case "type": return Lang.confirmType.arg(c.app ?? "") + ": " + plain(c.text ?? "");
         case "keys": return Lang.confirmKeys.arg(c.app ?? "") + ": " + (c.keys ?? "");
-        case "close": return Lang.confirmCloseWindow.arg(c.app ?? "");
-        case "read": return Lang.confirmRead + " " + (c.path ?? "");
         case "send": return Lang.confirmSend + ": " + (c.path ?? plain(c.text ?? ""));
         case "search": return Lang.confirmSearch + ": " + plain(c.text ?? "");
         case "fetch": return Lang.confirmFetch + ": " + (c.text ?? "");
@@ -174,13 +172,47 @@ Singleton {
         return null;
     }
 
-    function control(setting: string, value: string): var {
+    function control(setting: string, value: string, id: string): var {
+        const t = String(value ?? "").trim();
+        const word = t.toLowerCase();
+        if (setting === "night" && /^[+-]?\d/.test(word)) {
+            const v = amount(word, Toggles.nightLevel);
+            if (isNaN(v)) return { ok: false, error: "night takes on, off or a strength from 0 to 100" };
+            Toggles.setNightLevel(v);
+            return { ok: true, value: String(Math.round(v * 100)) };
+        }
+        if (setting === "wifi" && word === "disconnect") {
+            if (!Network.ssid) return { ok: false, error: "there is no Wi-Fi network to leave" };
+            Network.disconnect();
+            return { ok: true, value: Network.ssid };
+        }
+        if (setting === "wifi" && flag(word, false) === null) {
+            Network.join(t, answer => send(Object.assign({ op: "answer", id: id }, answer)));
+            return null;
+        }
+        if (setting === "bluetooth" && flag(word, false) === null) {
+            const leave = /^disconnect\b/.test(word);
+            Bt.reach(leave ? t.replace(/^disconnect\s*/i, "") : t, !leave,
+                     answer => send(Object.assign({ op: "answer", id: id }, answer)));
+            return null;
+        }
+        if (setting === "screenshot") {
+            const mode = word === "region" ? "region" : "screen";
+            Drawers.close();
+            Recorder.capture(mode);
+            return { ok: true, value: mode };
+        }
         const switches = {
             dnd: [Notifs.dnd, on => Notifs.dnd = on],
             caffeine: [Caffeine.on, on => Caffeine.set(on)],
             night: [Toggles.night, on => Toggles.night = on],
             glass: [Machine.glass, on => Machine.setGlass(on)],
-            mute: [Audio.muted, on => { if (on !== Audio.muted) Audio.toggleMute(); }]
+            mute: [Audio.muted, on => { if (on !== Audio.muted) Audio.toggleMute(); }],
+            mic: [!Audio.micMuted, on => { if (on === Audio.micMuted) Audio.toggleMic(); }],
+            wifi: [Network.wifiEnabled, on => Network.setWifi(on)],
+            bluetooth: [Bt.enabled, on => Bt.setEnabled(on)],
+            airplane: [Toggles.airplane, on => Toggles.setAirplane(on)],
+            record: [Recorder.recording, on => { if (on !== Recorder.recording) { Drawers.close(); Recorder.toggle(); } }]
         };
         if (switches[setting]) {
             const on = flag(value, switches[setting][0]);
@@ -519,9 +551,11 @@ Singleton {
         case "aside":
             aside(e.id);
             break;
-        case "control":
-            send(Object.assign({ op: "answer", id: e.id }, control(String(e.setting ?? ""), String(e.value ?? ""))));
+        case "control": {
+            const answer = control(String(e.setting ?? ""), String(e.value ?? ""), e.id);
+            if (answer) send(Object.assign({ op: "answer", id: e.id }, answer));
             break;
+        }
         case "vector":
             send(Object.assign({ op: "answer", id: e.id }, toPhone(e)));
             break;
