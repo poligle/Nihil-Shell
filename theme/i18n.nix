@@ -177,6 +177,7 @@
 		toolRanOk = "Ejecutado %1";
 		toolRanFail = "%1 terminó con código %2";
 		toolInTerminal = "%1, en una terminal";
+		toolInBrowser = "%1, en el navegador";
 		toolLaunching = "Abriendo %1";
 		toolLaunched = "Abierto %1";
 		toolWindows = "Mirando qué hay abierto";
@@ -184,6 +185,9 @@
 		toolLooking = "Mirando la pantalla";
 		toolLookedWindow = "Vista la ventana de %1";
 		toolLookedScreen = "Vista la pantalla";
+		toolClicking = "Pulsando";
+		toolClicked = "Pulsado en %1";
+		toolClickedScreen = "Pulsado en la pantalla";
 		toolFocus = "Al frente %1";
 		toolClose = "Cerrado %1";
 		toolFullscreen = "Pantalla completa %1";
@@ -205,6 +209,8 @@
 		toolControlled = "%1: %2";
 		toolOn = "sí";
 		toolOff = "no";
+		toolShooting = "Haciendo una captura";
+		toolShot = "Captura hecha";
 		toolSending = "Enviando al móvil";
 		toolSent = "Enviado al móvil";
 		settingVolume = "Volumen";
@@ -216,6 +222,8 @@
 		settingWallpaper = "Fondo";
 		settingGlass = "Cristal";
 		settingWorkspace = "Escritorio";
+		settingAirplane = "Modo avión";
+		settingRecord = "Grabación";
 		settingLock = "Bloqueo";
 
 		confirmCommitPush = "Commit y push";
@@ -239,12 +247,12 @@
 		dangerInternet = "ejecuta un script de internet";
 		confirmType = "Escribir en %1";
 		confirmKeys = "Pulsar en %1";
-		confirmCloseWindow = "Cerrar %1";
-		confirmRead = "Leer";
 		confirmSend = "Enviar al móvil";
 		confirmSearch = "Buscar en internet";
 		confirmFetch = "Leer una página";
 		confirmOpenUrl = "Abrir una página";
+		whySensitive = "Parece una contraseña, una clave o un dato bancario";
+		whyPrivate = "Lleva algo de tus archivos";
 		confirmOk = "Confirmar";
 		confirmCancel = "Cancelar";
 		confirmDone = "Confirmado";
@@ -700,6 +708,7 @@
 		toolRanOk = "Ran %1";
 		toolRanFail = "%1 exited with code %2";
 		toolInTerminal = "%1, in a terminal";
+		toolInBrowser = "%1, in the browser";
 		toolLaunching = "Opening %1";
 		toolLaunched = "Opened %1";
 		toolWindows = "Looking at what is open";
@@ -707,6 +716,9 @@
 		toolLooking = "Looking at the screen";
 		toolLookedWindow = "Seen the window of %1";
 		toolLookedScreen = "Seen the screen";
+		toolClicking = "Clicking";
+		toolClicked = "Clicked in %1";
+		toolClickedScreen = "Clicked on the screen";
 		toolFocus = "%1 in front";
 		toolClose = "Closed %1";
 		toolFullscreen = "%1 fullscreen";
@@ -728,6 +740,8 @@
 		toolControlled = "%1: %2";
 		toolOn = "on";
 		toolOff = "off";
+		toolShooting = "Taking a screenshot";
+		toolShot = "Screenshot taken";
 		toolSending = "Sending to the phone";
 		toolSent = "Sent to the phone";
 		settingVolume = "Volume";
@@ -739,6 +753,8 @@
 		settingWallpaper = "Wallpaper";
 		settingGlass = "Glass";
 		settingWorkspace = "Workspace";
+		settingAirplane = "Airplane mode";
+		settingRecord = "Recording";
 		settingLock = "Lock";
 
 		confirmCommitPush = "Commit and push";
@@ -762,12 +778,12 @@
 		dangerInternet = "runs a script from the internet";
 		confirmType = "Type in %1";
 		confirmKeys = "Press in %1";
-		confirmCloseWindow = "Close %1";
-		confirmRead = "Read";
 		confirmSend = "Send to the phone";
 		confirmSearch = "Search the web";
 		confirmFetch = "Read a page";
 		confirmOpenUrl = "Open a page";
+		whySensitive = "It looks like a password, a key or bank details";
+		whyPrivate = "It carries something from your files";
 		confirmOk = "Confirm";
 		confirmCancel = "Cancel";
 		confirmDone = "Confirmed";
