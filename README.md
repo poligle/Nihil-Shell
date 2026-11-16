@@ -23,8 +23,7 @@ NIHIL is a personal NixOS configuration. It takes the structure of
 drawers that grow out of it, and dresses it in the language of Nothing: monochrome,
 dot-matrix type, red only to interrupt, and light that runs along the edge. All of it is
 declared in Nix, and one file, [`theme/nihil.nix`](theme/nihil.nix), holds the tokens that
-GTK, the terminal, the compositor, the lock screen, the boot splash and the shell are made
-from.
+GTK, the terminal, the compositor, the lock screen and the shell are made from.
 
 > *Nihil* is Latin for "nothing", the way *caelestia* is Latin for "the heavenly". And
 > *ex nihilo*, from nothing, is also what NixOS does: the whole system, rebuilt from a
