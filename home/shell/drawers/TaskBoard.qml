@@ -207,15 +207,6 @@ Item {
                         width: parent.width
                         spacing: 8
 
-                        Rectangle {
-                            implicitWidth: 6
-                            implicitHeight: 6
-                            radius: 3
-                            color: lane.column === 1 ? Tokens.ink : lane.column === 2 ? Tokens.dim : "transparent"
-                            border.width: lane.column === 0 ? 1 : 0
-                            border.color: Tokens.muted
-                        }
-
                         Label {
                             text: root.titles[lane.column] + " (" + lane.cards.length + ")"
                             color: lane.column === 1 && lane.cards.length > 0 ? Tokens.dim : Tokens.muted
