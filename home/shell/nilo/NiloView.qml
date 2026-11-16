@@ -126,12 +126,15 @@ Item {
         }
         if (view === "settings") {
             if (up || down) { settings.move(up ? -1 : 1); return true; }
-            if (k === Qt.Key_Space) { settings.activate(); return true; }
-            if (k === Qt.Key_Left || k === Qt.Key_Right) {
-                if (root.question.length > 0) return false;
+            if (k === Qt.Key_Space && root.question.length === 0) { settings.activate(); return true; }
+            if ((k === Qt.Key_Left || k === Qt.Key_Right) && root.question.length === 0) {
                 settings.sleepStep(k === Qt.Key_Left ? -1 : 1);
                 return true;
             }
+            if (k === Qt.Key_Backspace && root.question.length === 0) { page = "chat"; return true; }
+            const plain = !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier));
+            if (k === Qt.Key_Backspace || k === Qt.Key_Delete || plain && event.text.length > 0 && event.text.charCodeAt(0) >= 32)
+                page = "chat";
             return false;
         }
         if (view === "chat") {
