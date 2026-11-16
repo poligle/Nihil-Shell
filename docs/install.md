@@ -10,15 +10,16 @@ have, from a clone of this repository. Either way the machine keeps what is its 
 from every push, or a tagged version; it installs the NIHIL of the commit it was built from.
 Check it against `SHA256SUMS`, next to it, write it to a USB stick, boot it (UEFI, with
 Secure Boot off in the firmware: NixOS isn't signed for it) and the installer starts on
-its own:
+its own, in a window of its own like the login screen; should that not start, its text
+version takes its place (`sudo nihil-install`, from any console):
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
 sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: the stick
 ```
 
-1. Language; then it reads the whole stick, and a stick that cannot be read stops it there,
-   saying so. A network if there is no cable (`nmtui`), keyboard and time zone.
+1. Language and keyboard, a network if there is no cable, and the time zone. Meanwhile it
+   reads the whole stick: one that cannot be read stops it before installing, saying so.
 2. Your name, user name, password and the computer's name.
 3. The disk, and where on it: next to what is there, in its free space or in room a
    partition gives up (Windows' NTFS, an ext4 or a btrfs, shrunk keeping what it holds;
@@ -28,7 +29,7 @@ sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: th
    or the other system too; if there is none, or it is small (Windows' is 100 MB),
    NIHIL adds 1 GB for the kernels (XBOOTLDR). A Linux booted by GRUB gets its own entry
    (systemd-boot finds Windows by itself). To partition by hand, another console
-   (`Alt+F2`) has cfdisk and parted; then "On one of its partitions".
+   (`Ctrl+Alt+F2`) has cfdisk and parted; then "Look again" and "On one of its partitions".
    NIHIL is btrfs with subvolumes for `/`, `/home`, `/nix` and `/var/log`, compressed,
    inside LUKS if you choose to encrypt.
 4. The first login opens the welcome: what NIHIL is and how its frame works, then your
