@@ -11,8 +11,9 @@
   and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
   it shrinks away to the phone; what the phone sends waits there, to copy, save or open.
 - **Settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
-  locking or sleeping), segmented sliders, Wi-Fi (with passwords and
-  WPA-Enterprise hand-off), Bluetooth, audio output, notification history, session.
+  locking or sleeping; the night light, with its intensity), segmented sliders, Wi-Fi (with
+  passwords and WPA-Enterprise hand-off), Bluetooth, audio output, notification history,
+  session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
   and desktop widgets, the screens, shortcuts and programs, the computer's name, Nilo,
   the clipboard history, the boot sound, fingerprint and SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
