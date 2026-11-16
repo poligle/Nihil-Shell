@@ -18,7 +18,11 @@ Singleton {
     }
 
     function shot(): void {
-        later.run([Config.cmd.shot, "region"]);
+        root.capture("region");
+    }
+
+    function capture(mode: string): void {
+        later.run([Config.cmd.shot, mode]);
     }
 
     IpcHandler {

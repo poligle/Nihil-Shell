@@ -42,9 +42,10 @@
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type. Three levels of what it may do: talk (and search the web if
   you let it); work in a repository of yours, its files, git and the terminal, each step
-  confirmed; or use the whole desktop as you would: see what is open and the screen, type
-  in Writer, put on a song, open Zen on a video, move windows, turn the volume, send things
-  to the phone, asking only before what carries a risk. Close the launcher mid-answer and it
+  confirmed; or use the whole desktop as you would: see what is open and the screen, click
+  through any program, type in Writer, put on a song, open Zen on a video, move windows,
+  turn the volume, the night light, Wi-Fi or Bluetooth, send things to the phone, asking
+  only before what carries a risk. Close the launcher mid-answer and it
   tells you when it's done, from the bar. See [Nilo](nilo.md).
 - **Light on the edge.** In the spirit of Nothing's Glyph Interface, every notification
   sends a segment of light around the frame; critical ones run twice, in red, like the

@@ -17,6 +17,7 @@ let
         wtype = "${pkgs.wtype}/bin/wtype";
         playerctl = "${pkgs.playerctl}/bin/playerctl";
         grim = "${pkgs.grim}/bin/grim";
+        wlrctl = "${pkgs.wlrctl}/bin/wlrctl";
         inherit terminal;
         host = osConfig.networking.hostName;
         flake = osConfig.nihil.flake;
