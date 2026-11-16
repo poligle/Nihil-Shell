@@ -363,6 +363,14 @@ in
 				{
 					force_default_wallpaper = 0;
 					disable_hyprland_logo = true;
+					disable_splash_rendering = true;
+					background_color = rgb t.palette.void;
+				};
+
+				ecosystem =
+				{
+					no_update_news = true;
+					no_donation_nag = true;
 				};
 
 				input =
