@@ -667,12 +667,12 @@ describe_json() {
 
 probe_disk() {
     local notes free='[]' shrink='[]' unchecked_json='[]' parts roots_json='[]' boots_json='[]' part first last fstype give
-    local gptOk=false windowsHere=false needed=false espPath="" model elsewhere listed=()
+    local gptOk=false windowsHere=false needed=false espPath="" model elsewhere partition_list=()
     set_disk "$1"
     notes=$(mktemp)
     if gpt; then gptOk=true; fi
-    mapfile -t listed < <(partitions 0 "")
-    parts=$(describe_json "${listed[@]}")
+    mapfile -t partition_list < <(partitions 0 "")
+    parts=$(describe_json "${partition_list[@]}")
     if room_base >> "$notes" 2>&1; then
         while read -r first last; do
             free=$(jq --argjson first "$first" --argjson last "$last" --argjson bytes $(( (last - first + 1) * sector )) \
@@ -700,10 +700,10 @@ probe_disk() {
         esp=$espPath
         if has_windows "$espPath"; then windowsHere=true; fi
         if boot_needed; then needed=true; fi
-        mapfile -t listed < <(partitions "$least" "$espPath")
-        roots_json=$(describe_json "${listed[@]}")
-        mapfile -t listed < <(partitions 500000000 "$espPath")
-        boots_json=$(describe_json "${listed[@]}")
+        mapfile -t partition_list < <(partitions "$least" "$espPath")
+        roots_json=$(describe_json "${partition_list[@]}")
+        mapfile -t partition_list < <(partitions 500000000 "$espPath")
+        boots_json=$(describe_json "${partition_list[@]}")
     fi
     model=$(lsblk -dno MODEL "$disk" | sed 's/ *$//')
     elsewhere=$(windows_elsewhere)
@@ -720,7 +720,7 @@ probe_disk() {
 }
 
 probe() {
-    local online=false wifi=false uefi=false zone="" disks='[]' candidate
+    local online=false wifi=false uefi=false zone="" disks_json='[]' candidate
     if [ -d /sys/firmware/efi ]; then uefi=true; fi
     if curl -fsI --max-time 6 https://cache.nixos.org > /dev/null 2>&1; then
         online=true
@@ -729,10 +729,10 @@ probe() {
     if nmcli -t -f TYPE device 2>/dev/null | grep -qx wifi; then wifi=true; fi
     while read -r candidate; do
         [ -n "$candidate" ] || continue
-        disks=$(jq --argjson disk "$(probe_disk "$candidate")" '. + [ $disk ]' <<< "$disks")
+        disks_json=$(jq --argjson disk "$(probe_disk "$candidate")" '. + [ $disk ]' <<< "$disks_json")
     done < <(list_disks)
     jq -n --argjson uefi "$uefi" --argjson online "$online" \
-        --argjson wifi "$wifi" --arg zone "$zone" --argjson disks "$disks" \
+        --argjson wifi "$wifi" --arg zone "$zone" --argjson disks "$disks_json" \
         '{ uefi: $uefi, online: $online, wifi: $wifi, zone: $zone, disks: $disks }'
 }
 
@@ -860,6 +860,7 @@ check_filesystem() {
 }
 
 main_tui() {
+    local disk_candidates=() disk_options=()
     clear
     gum style --foreground 15 --bold --margin "1 2" "N I H I L" "$(gum style --foreground 7 --italic 'ex nihilo')"
 
@@ -933,14 +934,13 @@ main_tui() {
         hostname=$(gum input --header "$(t "Name of this computer" "Nombre de este ordenador")" --value "nihil")
     done
 
-    listed=$(list_disks)
-    [ -n "$listed" ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
-    mapfile -t found <<< "$listed"
-    disks=()
-    for candidate in "${found[@]}"; do
-        disks+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")
+    mapfile -t disk_candidates < <(list_disks)
+    [ "${#disk_candidates[@]}" -gt 0 ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
+    disk_options=()
+    for candidate in "${disk_candidates[@]}"; do
+        disk_options+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")
     done
-    disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disks[@]}")
+    disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disk_options[@]}")
     set_disk "${disk%% *}"
 
     mode=whole
