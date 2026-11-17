@@ -1,6 +1,27 @@
 .pragma library
 
 var KEEP_REMOVED = 60 * 24 * 60 * 60 * 1000;
+var AHEAD = 24 * 60 * 60 * 1000;
+
+// A stamp from elsewhere (a device, tasks.json), as the merge can use it: whole milliseconds, at
+// most a day ahead of now, or else the oldest. One past 2^53, or Infinity, would stop the clock
+// for good, and every edit made here would lose from then on.
+function stampOf(value, now) {
+    return Number.isSafeInteger(value) && value >= 0 && value <= now + AHEAD ? value : 0;
+}
+
+function trusted(board, now) {
+    const cards = (Array.isArray(board?.cards) ? board.cards : []).filter(c => c && typeof c === "object")
+        .map(c => Object.assign({}, c, { textStamp: stampOf(c.textStamp, now), placeStamp: stampOf(c.placeStamp, now) }));
+    const gone = board?.removed && typeof board.removed === "object" && !Array.isArray(board.removed) ? board.removed : {};
+    const removed = {};
+    Object.keys(gone).forEach(id => {
+        const at = stampOf(gone[id], now);
+        if (at > 0)
+            removed[id] = at;
+    });
+    return { cards: cards, removed: removed };
+}
 
 function merge(a, b, now) {
     const mine = {};

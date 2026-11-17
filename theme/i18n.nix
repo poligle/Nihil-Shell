@@ -512,6 +512,7 @@
 		cfgPhone = "Dispositivos";
 		deckUse = "Usar dispositivos";
 		deckApply = "Se enciende al aplicar.";
+		deckNetworks = "Apágalo en redes que no son tuyas: cualquiera en ellas llega a su puerto";
 		deckDown = "El servicio no responde: systemctl --user status nihil-deck";
 		deckPairTitle = "Emparejar";
 		deckWatchTitle = "Un reloj";
@@ -1063,6 +1064,7 @@
 		cfgPhone = "Devices";
 		deckUse = "Use devices";
 		deckApply = "It turns on when applied.";
+		deckNetworks = "Turn it off on networks that aren't yours: anyone on them reaches its port";
 		deckDown = "The service doesn't answer: systemctl --user status nihil-deck";
 		deckPairTitle = "Pairing";
 		deckWatchTitle = "A watch";

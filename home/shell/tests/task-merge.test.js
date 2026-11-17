@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
 const source = fs.readFileSync(path.join(__dirname, "../services/TaskMerge.js"), "utf8").replace(".pragma library", "");
-const M = new Function(source + "\nreturn { merge, ordered, latest, KEEP_REMOVED, place, rankAt };")();
+const M = new Function(source + "\nreturn { merge, ordered, latest, KEEP_REMOVED, AHEAD, place, rankAt, stampOf, trusted };")();
 
 const now = 1800000000000;
 const card = (id, text, column, t, p = t) => ({ id, text, column, textStamp: now + t, placeStamp: now + p });
@@ -76,6 +76,20 @@ test("no room between two: the column is ranked again", () => {
     assert.deepStrictEqual(cards.map(c => c.rank), [now + 10, now + 11, now + 12]);
     assert.ok(cards.every(c => c.placeStamp === now + 10));
     assert.strictEqual(M.rankAt([], 0, now), now);
+});
+
+test("a stamp from elsewhere can't stop the clock", () => {
+    const later = now + M.AHEAD + 1;
+    const board = { cards: [card("a", "Huge", 0, 0), card("b", "Fine", 1, 5)], removed: { x: Infinity, y: now + 3, z: 1e20 } };
+    board.cards[0].textStamp = 1e400;
+    board.cards[0].placeStamp = later;
+    const clean = M.trusted(board, now);
+    assert.deepStrictEqual(clean.cards.map(c => [c.textStamp, c.placeStamp]), [[0, 0], [now + 5, now + 5]]);
+    assert.deepStrictEqual(clean.removed, { y: now + 3 });
+    assert.ok(Number.isSafeInteger(M.latest(M.merge(clean, {}, now))));
+    assert.strictEqual(M.stampOf(now + M.AHEAD, now), now + M.AHEAD);
+    for (const bad of [-1, 1.5, NaN, null, "5", Infinity, 2 ** 53])
+        assert.strictEqual(M.stampOf(bad, now), 0);
 });
 
 console.log(passed + " passed");

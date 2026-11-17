@@ -24,20 +24,22 @@ Singleton {
         root.run(["send"].concat(source !== "" ? [source] : []), done);
     }
 
+    // Through stdin: an argument can't pass 128 KiB, and anyone could read it in /proc.
     function sendText(value: string, done: var): void {
         if (value !== "")
-            root.run(["text", value], done);
+            root.run(["text", "-"], done, value);
         else if (done)
             done({ error: "empty" });
     }
 
-    function run(words: var, done: var): void {
+    function run(words: var, done: var, input: string): void {
         if (!root.enabled || sender.running) {
             if (done)
                 done({ error: root.enabled ? "busy" : "off" });
             return;
         }
         sender.done = done ?? null;
+        sender.input = input ?? "";
         sender.command = [Config.deck.command, "vector"].concat(words);
         sender.running = true;
     }
@@ -116,6 +118,15 @@ Singleton {
         id: sender
 
         property var done: null
+        property string input: ""
+
+        stdinEnabled: true
+        onStarted: {
+            write(input);
+            input = "";
+            stdinEnabled = false;
+        }
+        onExited: stdinEnabled = true
 
         stdout: StdioCollector {
             onStreamFinished: {

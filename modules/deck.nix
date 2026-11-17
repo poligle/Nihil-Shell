@@ -20,11 +20,20 @@ in
             default = 64445;
             description = "The deck's HTTPS port on the local network.";
         };
+
+        interfaces = lib.mkOption
+        {
+            type = lib.types.listOf lib.types.str;
+            default = [ ];
+            example = [ "enp3s0" ];
+            description = "The network interfaces where the deck can be reached and is announced; every one when empty.";
+        };
     };
 
     config = lib.mkIf cfg.enable
     {
-        networking.firewall.allowedTCPPorts = [ cfg.port ];
+        networking.firewall.allowedTCPPorts = lib.mkIf (cfg.interfaces == [ ]) [ cfg.port ];
+        networking.firewall.interfaces = lib.genAttrs cfg.interfaces (_: { allowedTCPPorts = [ cfg.port ]; });
 
         boot.kernelModules = [ "uinput" ];
         services.udev.packages =
@@ -43,6 +52,7 @@ in
         services.avahi =
         {
             enable = true;
+            allowInterfaces = lib.mkIf (cfg.interfaces != [ ]) cfg.interfaces;
             publish =
             {
                 enable = true;

@@ -9,6 +9,11 @@ The computer's side is `nihil-deck` ([`home/deck/deck.py`](../home/deck/deck.py)
 service in the user's session. Preferences, Devices turns it on (`settings.json`'s
 `"deck": { "enable": true }`, a rebuild) and pairs phones with a QR.
 
+Its port is open to the networks the computer joins: on one that isn't yours (a café,
+eduroam), anyone there reaches it, and Preferences says to turn it off there. To keep it to
+some interfaces (a desk's Ethernet, a VPN), `"deck": { "interfaces": ["enp3s0"] }`
+(`nihil.deck.interfaces`) opens the port and announces it there only.
+
 It does only what is listed here. There is no way to run a command, read a file or type
 on the computer: an app can only be one the launcher shows, a page only `http` or
 `https`, Vector gives only what was sent to it and keeps what comes in its own folder, and
@@ -230,7 +235,7 @@ On the computer they are in `~/.cache/nihil/vector/`, `out/` and `in/`, each wit
 
 ```bash
 nihil-deck vector send [FILE]   # a file, or what the clipboard holds (a file copied, a picture, a text)
-nihil-deck vector text TEXT
+nihil-deck vector text TEXT      # or -, to read it from stdin, as the shell does: no argument passes 128 KiB
 nihil-deck vector copy          # what came, onto the clipboard: a text or a picture
 nihil-deck vector save          # what came, into ~/Vector
 nihil-deck vector open          # saved there, and opened
@@ -286,7 +291,7 @@ A status and `{ "error": "…" }`:
 | 409 | `closed` | No code open: show the QR again |
 | 410 | `expired` | The code ran out: show the QR again |
 | 413 | `big` | More than Vector takes, 100 MB |
-| 429 | `wait` | Ten failures (a token, a code) from that address in a minute: wait one |
+| 429 | `wait` | Ten failures (a token, a code) from that address in a minute: wait one. With IPv6, an address counts with the rest of its /64, which one device can take any of |
 | 503 | `shell`, `volume`, `lock`, `trackpad`, `vector` | The shell (or the sound, the lock, the trackpad, Vector) is not answering |
 | 503 | `access` | This session may not make the trackpad yet: log out and in once |
 
@@ -323,8 +328,9 @@ often, so two sides that both changed while apart each keep what the other did.
 
 - `GET /v1/tasks`: the board, and `now`, the computer's clock.
 - `POST /v1/tasks` with the phone's whole board (256 KB, 1000 cards at most; a `rank`, when
-  there is one, a finite number): the shell merges
-  it in and answers with the result and `now`. The phone merges that again (for what changed
+  there is one, a finite number; stamps whole milliseconds, a day ahead of the computer's
+  clock at most, or `400`: one far ahead would win every merge from then on): the shell
+  merges it in, through a file of the user's, and answers with the result and `now`. The phone merges that again (for what changed
   meanwhile) and stamps its own changes in the computer's time from then on.
 
 ## The trackpad
@@ -355,7 +361,8 @@ stream from the same phone ends the one before.
 The frames reach the touchpad 25 ms after the quickest of them came, as far apart as the
 phone saw them: libinput reads speed from those times, and takes frames the network bunched
 together for jumps. One that comes later still goes at once, and the ones after it close up
-to their time again.
+to their time again; none goes later than half a second after it came, and when 256 wait,
+the oldest goes (each frame says where every finger is).
 
 `400` `invalid` for a size it doesn't take or another protocol, `503` `access` when this
 session may not make the touchpad yet (once after turning the deck on, until logging in

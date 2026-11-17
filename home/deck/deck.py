@@ -49,11 +49,14 @@ VECTOR_LIVE = 120
 CHUNK = 64 * 1024
 COVER_MAX = 4 * 1024 * 1024
 CARDS_MAX = 1000
+AHEAD = 86_400_000          # how far ahead of this clock a stamp may be, in ms: a day
 FAIL_WINDOW = 60
 FAIL_LIMIT = 10
 FAIL_KEPT = 1024
 CONNECTIONS = 32
 PER_ADDRESS = 16            # connections at once from one address: half, so one can't take them all
+QUEUED = 256                # trackpad frames waiting to be played
+LATEST = 0.5                # the furthest ahead a frame is played, in seconds
 REQUEST_SECONDS = 10        # to send a request, however slowly, before it's cut
 PAIR_WAIT = 8               # for the computer to allow a pairing: the launcher waits 9
 SEEN_EVERY = 60
@@ -77,6 +80,20 @@ ACTIONS = {
 
 def now():
     return time.time()
+
+
+def origin(address):
+    """Who an address is, to count its failures and connections: with IPv6, a device takes any
+    address of its /64, so the /64 is the one counted."""
+    try:
+        ip = ipaddress.ip_address(address.split("%")[0])
+    except ValueError:
+        return address
+    if ip.version == 6 and ip.ipv4_mapped:
+        return str(ip.ipv4_mapped)
+    if ip.version == 6:
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip)
 
 
 def b64url(data):
@@ -473,7 +490,22 @@ class Session:
         return found
 
     def tasks(self, board=None):
-        text = self.ipc("tasks", "state") if board is None else self.ipc("tasks", "sync", json.dumps(board))
+        if board is None:
+            text = self.ipc("tasks", "state")
+        else:
+            # A file of this user's rather than an argument: one can't pass 128 KiB, and anyone sees it in /proc.
+            path = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or state_dir(),
+                                f"nihil-deck-tasks-{secrets.token_hex(8)}.json")
+            try:
+                write_private(path, json.dumps(board))
+                text = self.ipc("tasks", "syncFile", path)
+            except OSError:
+                text = None
+            finally:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
         try:
             found = json.loads(text or "")
         except ValueError:
@@ -613,6 +645,12 @@ def icon_png(path, rsvg, cache):
     return out
 
 
+def stamped(stamp):
+    # Milliseconds, up to a day ahead of this clock: one past 2^53 (or 10^400, Infinity to the
+    # shell) would stop its clock for good, and every edit on the computer would lose from then on.
+    return isinstance(stamp, int) and not isinstance(stamp, bool) and 0 <= stamp <= int(now() * 1000) + AHEAD
+
+
 def clean_board(body):
     cards = body.get("cards", [])
     removed = body.get("removed", {})
@@ -628,7 +666,7 @@ def clean_board(body):
             return None
         if not isinstance(column, int) or isinstance(column, bool) or not 0 <= column <= 2:
             return None
-        if not all(isinstance(t, int) and not isinstance(t, bool) and t >= 0 for t in stamps):
+        if not all(stamped(t) for t in stamps):
             return None
         kept = {"id": ident, "text": " ".join(text.split())[:160], "column": column,
                 "textStamp": stamps[0], "placeStamp": stamps[1]}
@@ -640,7 +678,7 @@ def clean_board(body):
         clean.append(kept)
     gone = {}
     for ident, when in removed.items():
-        if not isinstance(ident, str) or not 0 < len(ident) <= 64 or not isinstance(when, int) or isinstance(when, bool) or when < 0:
+        if not isinstance(ident, str) or not 0 < len(ident) <= 64 or not stamped(when):
             return None
         gone[ident] = when
     return {"cards": clean, "removed": gone}
@@ -705,14 +743,20 @@ class Uinput:
         fcntl.ioctl(self.fd, UI_ABS_SETUP, struct.pack("=HH6i", code, 0, 0, 0, top, 0, 0, resolution))
 
     def write(self, events):
+        # Once closed, its number may be another file's: never written to again.
+        if self.fd < 0:
+            raise OSError(errno.EBADF, "the trackpad is closed")
         os.write(self.fd, b"".join(struct.pack("@llHHi", 0, 0, kind, code, value) for kind, code, value in events))
 
     def close(self):
+        if self.fd < 0:
+            return
+        fd, self.fd = self.fd, -1
         try:
-            fcntl.ioctl(self.fd, UI_DEV_DESTROY)
+            fcntl.ioctl(fd, UI_DEV_DESTROY)
         except OSError:
             pass
-        os.close(self.fd)
+        os.close(fd)
 
 
 class Fingers:
@@ -817,7 +861,8 @@ class Pace:
         due = phone + self.quickest[0][1] + self.delay
         if self.last is not None and 0 <= phone - self.last[0] < 0.1:
             due = max(due, self.last[1] + self.SQUEEZE * (phone - self.last[0]))
-        due = max(due, arrived)
+        # Never long after it came: a phone's clock running ahead would push every frame later.
+        due = min(max(due, arrived), arrived + LATEST)
         self.last = (phone, due)
         return due
 
@@ -825,7 +870,8 @@ class Pace:
 def stream(reader, writer, pad, clock=time.monotonic):
     fingers = Fingers()
     pace = Pace()
-    queue = collections.deque()
+    # Each frame says where every finger is, so the oldest can go when too many wait.
+    queue = collections.deque(maxlen=QUEUED)
     ready = threading.Condition()
     finished = []
 
@@ -838,9 +884,10 @@ def stream(reader, writer, pad, clock=time.monotonic):
                     if not queue:
                         break
                     due, contacts = queue.popleft()
-                wait = due - clock()
-                if wait > 0:
-                    time.sleep(wait)
+                    # Each waits for its moment, unless the stream ends: then what's left goes at once.
+                    wait = due - clock()
+                    if wait > 0 and not finished:
+                        ready.wait_for(lambda: finished, timeout=wait)
                 pad.write(fingers.frame(contacts))
         except OSError:
             pass
@@ -886,7 +933,9 @@ def stream(reader, writer, pad, clock=time.monotonic):
         with ready:
             finished.append(True)
             ready.notify()
-        worker.join(timeout=2)
+        # Until it's done: the pad closes after, and a writer left behind would write to whatever
+        # file got its number next.
+        worker.join()
 
 
 FAVICON_DAYS = 7
@@ -1415,7 +1464,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def route(self, method, body):
         self.deadline.cancel()
         deck = self.server.deck
-        address = self.client_address[0]
+        address = origin(self.client_address[0])
         path = urllib.parse.urlsplit(self.path).path
         if deck.throttle.blocked(address):
             self.close_connection = True
@@ -1629,7 +1678,7 @@ class DeckServer(http.server.ThreadingHTTPServer):
         super().__init__((host, port), Handler)
 
     def process_request(self, request, client_address):
-        address = client_address[0]
+        address = origin(client_address[0])
         with self.per_address_lock:
             if self.per_address.get(address, 0) >= PER_ADDRESS:
                 self.shutdown_request(request)
@@ -1659,7 +1708,7 @@ class DeckServer(http.server.ThreadingHTTPServer):
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
-            self.leave(client_address[0])
+            self.leave(origin(client_address[0]))
 
     def server_bind(self):
         if self.address_family == socket.AF_INET6:
@@ -1942,7 +1991,8 @@ def main():
     parser.add_argument("command", nargs="?", default="devices",
                         choices=["serve", "pair", "cancel", "devices", "forget", "allow", "deny", "vector"])
     parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; vector: send, text, copy, save, open, clear or status")
-    parser.add_argument("argument", nargs="?", help="vector send: a file (the clipboard without one); vector text: the text")
+    parser.add_argument("argument", nargs="?",
+                        help="vector send: a file (the clipboard without one); vector text: the text, or - to read it")
     parser.add_argument("--json", action="store_true", help="for the shell")
     options = parser.parse_args()
 
@@ -1960,7 +2010,15 @@ def main():
         serve(config)
         return 0
     if options.command == "vector":
-        result = vector_command(config, options.target, options.argument)
+        argument = options.argument
+        if options.target == "text" and argument == "-":
+            # From stdin: no limit of an argument's 128 KiB, and nothing in /proc for others to read.
+            data = sys.stdin.buffer.read(VECTOR_MAX + 1)
+            if len(data) > VECTOR_MAX:
+                print(json.dumps({"error": "big"}))
+                return 1
+            argument = data.decode("utf-8", "replace")
+        result = vector_command(config, options.target, argument)
         print(json.dumps(result))
         return 1 if "error" in result else 0
 

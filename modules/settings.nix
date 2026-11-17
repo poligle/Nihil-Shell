@@ -94,6 +94,7 @@ in
         users.users.${config.nihil.user.name}.openssh.authorizedKeys.keys = sshKeys;
         nihil.generations.days = lib.mkDefault (get [ "generations" "days" ] 7);
         nihil.deck.enable = lib.mkDefault (get [ "deck" "enable" ] false);
+        nihil.deck.interfaces = lib.mkDefault (get [ "deck" "interfaces" ] [ ]);
 
         nihil.binds = get [ "binds" ] { };
         nihil.gestures = get [ "gestures" ] { };
