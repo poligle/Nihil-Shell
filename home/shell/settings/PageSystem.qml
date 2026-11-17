@@ -25,15 +25,14 @@ Flickable {
 
         Setting {
             title: Lang.cfgHost
+            sub: page.hostName.test(Machine.get("host.name", "nihil")) ? "" : Lang.cfgHostRule
 
             Field {
                 width: 240
-                value: Machine.get("host.name", "")
+                value: Machine.get("host.name", "nihil")
                 invalid: !page.hostName.test(text)
-                onEdited: text => {
-                    if (page.hostName.test(text))
-                        Machine.set("host.name", text);
-                }
+                // Saved as typed: what isn't valid stays red and Apply refuses it.
+                onEdited: text => Machine.set("host.name", text)
             }
         }
 
