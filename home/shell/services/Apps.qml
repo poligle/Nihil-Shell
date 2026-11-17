@@ -35,12 +35,22 @@ Singleton {
             .map(x => x.e);
     }
 
+    // Apps start in a scope of their own (uwsm app), not inside the shell's service: they live on
+    // when the shell restarts, and the session closes them properly when it ends.
+    function run(command: var): void {
+        Quickshell.execDetached([Config.cmd.uwsm, "app", "--"].concat(command));
+    }
+
+    function open(target: string): void {
+        root.run([Config.cmd.xdgOpen, target]);
+    }
+
     function launch(e): void {
         if (e.runInTerminal) {
             const command = e.command && e.command.length ? e.command : [Config.cmd.sh, "-c", e.execString];
-            Quickshell.execDetached([Config.cmd.terminal, "-e"].concat(command));
+            root.run([Config.cmd.terminal, "-e"].concat(command));
         } else {
-            e.execute();
+            root.run([e.id + ".desktop"]);
         }
     }
 
@@ -60,7 +70,7 @@ Singleton {
         function url(address: string): string {
             if (!/^https?:\/\/[^\s\/?#]+[^\s]*$/i.test(address))
                 return "invalid";
-            Qt.openUrlExternally(address);
+            root.open(address);
             return "ok";
         }
     }

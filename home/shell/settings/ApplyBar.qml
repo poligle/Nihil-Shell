@@ -105,7 +105,8 @@ Item {
             Label {
                 width: parent.width
                 visible: text !== ""
-                text: Machine.statusSub
+                text: Machine.statusSub !== "" ? Machine.statusSub
+                    : root.asking && !Machine.busy && Updates.dev !== "" ? Lang.cfgDevBuilds.arg(Updates.dev) : ""
             }
         }
 
@@ -130,10 +131,12 @@ Item {
             onClicked: {
                 if (root.fingerWait)
                     Machine.cancelFinger();
-                if (root.asking)
+                if (root.asking) {
                     root.asking = false;
-                else
+                    password.clear();
+                } else {
                     Machine.discard();
+                }
             }
         }
 
@@ -146,6 +149,7 @@ Item {
                     root.go();
                 } else {
                     root.asking = true;
+                    Updates.readDev();
                     if (Machine.fingerprint)
                         Machine.apply("");
                     password.grab();

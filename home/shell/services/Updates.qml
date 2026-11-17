@@ -29,6 +29,13 @@ Singleton {
         checker.running = true;
     }
 
+    // The checkout nihil dev builds, read here on its own: Preferences says so where the
+    // password that builds it as root is asked, and nihil dev may have changed meanwhile.
+    function readDev(): void {
+        if (!devReader.running)
+            devReader.running = true;
+    }
+
     function maybeCheck(): void {
         if (Date.now() - checkedAt > 30 * 60 * 1000)
             check();
@@ -45,6 +52,14 @@ Singleton {
         running: true
         repeat: true
         onTriggered: root.check()
+    }
+
+    Process {
+        id: devReader
+        command: [Config.cmd.sh, "-c", "d=$(head -n 1 /var/lib/nihil/dev 2>/dev/null) && [ -f \"$d/flake.nix\" ] && printf '%s' \"$d\""]
+        stdout: StdioCollector {
+            onStreamFinished: root.dev = text.trim()
+        }
     }
 
     Process {

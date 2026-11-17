@@ -56,6 +56,7 @@ let
 		wlCopy = "${pkgs.wl-clipboard}/bin/wl-copy";
 		systemctl = "${pkgs.systemd}/bin/systemctl";
 		uwsm = "${osConfig.programs.uwsm.package}/bin/uwsm";
+		xdgOpen = "${pkgs.xdg-utils}/bin/xdg-open";
 		pavucontrol = "${pkgs.pavucontrol}/bin/pavucontrol";
 		blueman = "${pkgs.blueman}/bin/blueman-manager";
 		terminal = "${profile}/kitty";
@@ -83,6 +84,17 @@ let
 		charge = "${nihil.sounds.charge}";
 	};
 
+	# Every keyboard layout and its variants, from the xkb data the system uses: Region offers and
+	# checks only what exists.
+	xkbLayouts = pkgs.runCommand "xkb-layouts.json" { } ''
+		${pkgs.gawk}/bin/awk '
+			/^! / { section = $2; next }
+			section == "layout" && NF { layouts[$1] = 1 }
+			section == "variant" && NF { l = $2; sub(":", "", l); v[l] = v[l] (v[l] == "" ? "" : ",") "\"" $1 "\"" }
+			END { printf "{"; n = 0; for (l in layouts) printf "%s\"%s\":[%s]", (n++ ? "," : ""), l, v[l]; print "}" }
+		' ${osConfig.services.xserver.xkb.dir}/rules/base.lst > $out
+	'';
+
 	configQml = pkgs.writeText "Config.qml" ''
 		pragma Singleton
 
@@ -98,6 +110,7 @@ let
 		    readonly property var wallpapers: ${builtins.toJSON nihil.wallpapers.names}
 		    readonly property int clipboard: ${toString nihil.clipboard}
 		    readonly property string cavaConfig: "${cavaConfig}"
+		    readonly property string xkbLayouts: "${xkbLayouts}"
 		    readonly property var sounds: (${builtins.toJSON sounds})
 		    readonly property var cmd: (${builtins.toJSON commands})
 		    readonly property var nilo: (${builtins.toJSON nilo})
@@ -157,6 +170,8 @@ in
 			ExecStart = "${quickshell}/bin/qs -c nihil";
 			Restart = "on-failure";
 			RestartSec = 2;
+			# Apps start in scopes of their own (Apps.run); this keeps the small helpers it leaves
+			# behind, like wl-copy holding what was copied, through a restart of the shell.
 			KillMode = "process";
 			Environment = lib.mapAttrsToList (name: value: "${name}=${value}") (import ./session-env.nix);
 		};

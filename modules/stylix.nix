@@ -11,45 +11,45 @@ in
         enable = true;
         image = "${nihil.wallpapers}/${nihil.wallpaper}/${nihil.primaryOutput}.png";
         base16Scheme = tokens.base16;
-        polarity = "dark";
+        polarity = lib.mkDefault "dark";
 
         cursor = 
         {
-            package = pkgs.bibata-cursors;
-            name = "Bibata-Modern-Classic";
-            size = 15;
+            package = lib.mkDefault pkgs.bibata-cursors;
+            name = lib.mkDefault "Bibata-Modern-Classic";
+            size = lib.mkDefault 15;
         };
 
         fonts = 
         {
             monospace = 
             {
-                package = pkgs.nerd-fonts.jetbrains-mono;
-                name = tokens.fonts.code;
+                package = lib.mkDefault pkgs.nerd-fonts.jetbrains-mono;
+                name = lib.mkDefault tokens.fonts.code;
             };
             sansSerif = 
             {
-                package = nihil.fonts;
-                name = tokens.fonts.sans;
+                package = lib.mkDefault nihil.fonts;
+                name = lib.mkDefault tokens.fonts.sans;
             };
             emoji = 
             {
-                package = pkgs.noto-fonts-color-emoji;
-                name = "Noto Color Emoji";
+                package = lib.mkDefault pkgs.noto-fonts-color-emoji;
+                name = lib.mkDefault "Noto Color Emoji";
             };
             sizes = 
             {
-                terminal = 11;
-                applications = 11;
-                desktop = 10;
-                popups = 10;
+                terminal = lib.mkDefault 11;
+                applications = lib.mkDefault 11;
+                desktop = lib.mkDefault 10;
+                popups = lib.mkDefault 10;
             };
         };
 
         opacity = 
         {
-            terminal = 0.9;
-            popups = 0.8;
+            terminal = lib.mkDefault 0.9;
+            popups = lib.mkDefault 0.8;
         };
     };
 }

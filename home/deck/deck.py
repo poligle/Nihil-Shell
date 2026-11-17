@@ -53,6 +53,9 @@ FAIL_WINDOW = 60
 FAIL_LIMIT = 10
 FAIL_KEPT = 1024
 CONNECTIONS = 32
+PER_ADDRESS = 16            # connections at once from one address: half, so one can't take them all
+REQUEST_SECONDS = 10        # to send a request, however slowly, before it's cut
+PAIR_WAIT = 8               # for the computer to allow a pairing: the launcher waits 9
 SEEN_EVERY = 60
 ICON_SIZE = 128
 APPS_FOR = 20
@@ -228,6 +231,10 @@ class Devices:
             if self.items or os.path.exists(self.path):
                 self._save()
 
+    def known(self, device):
+        with self.lock:
+            return any(item["id"] == device for item in self.items)
+
     def forget(self, device):
         with self.lock:
             kept = [item for item in self.items if device != "all" and item["id"] != device]
@@ -249,6 +256,7 @@ class Pairing:
         self.code = None
         self.expires = 0
         self.attempts = 0
+        self.asking = {}            # devices with the right code, waiting for the computer to allow them
 
     def open(self):
         with self.lock:
@@ -281,6 +289,30 @@ class Pairing:
                 return "wrong"
             self.code = None
             return "ok"
+
+    # The code alone doesn't pair: whoever saw the QR could have it. The computer is asked first.
+    def ask(self, name):
+        asking = {"id": secrets.token_hex(4), "name": name, "event": threading.Event(), "allowed": False}
+        with self.lock:
+            self.asking[asking["id"]] = asking
+        return asking
+
+    def answer(self, asked, allowed):
+        with self.lock:
+            asking = self.asking.get(asked)
+        if asking is None:
+            return False
+        asking["allowed"] = bool(allowed)
+        asking["event"].set()
+        return True
+
+    def done(self, asked):
+        with self.lock:
+            self.asking.pop(asked, None)
+
+    def waiting(self):
+        with self.lock:
+            return [{"id": asking["id"], "name": asking["name"]} for asking in self.asking.values()]
 
 
 class Throttle:
@@ -324,7 +356,8 @@ def valid_url(url):
 
 
 def clean_name(name, fallback):
-    text = "".join(char for char in str(name or "") if char.isprintable()).strip()
+    # Not starting with -, which a command line would take for an option.
+    text = "".join(char for char in str(name or "") if char.isprintable()).strip().lstrip("-").strip()
     return text[:40] or fallback
 
 
@@ -474,7 +507,7 @@ class Session:
         return self.toggles().get(kind)
 
     def notify(self, title, body):
-        command = [self.config["notify"], "-a", "NIHIL", title]
+        command = [self.config["notify"], "-a", "NIHIL", "--", title]
         if body:
             command.append(body)
         self.run(command)
@@ -1195,9 +1228,16 @@ class Deck:
             self.pairing.close()
             return {"ok": True}
         if op == "devices":
-            return {"devices": self.devices.listing(), "pairing": self.pairing.open_now}
+            return {"devices": self.devices.listing(), "pairing": self.pairing.open_now,
+                    "asking": self.pairing.waiting()}
+        if op in ("allow", "deny"):
+            return {"ok": self.pairing.answer(str(request.get("id", "")), op == "allow")}
         if op == "forget":
-            return {"ok": self.devices.forget(str(request.get("id", "")))}
+            target = str(request.get("id", ""))
+            ok = self.devices.forget(target)
+            if ok:
+                self.cut(target)
+            return {"ok": ok}
         if op == "status":
             return {"port": self.port, "pin": self.pin, "devices": len(self.devices.listing()),
                     "pairing": self.pairing.open_now}
@@ -1213,6 +1253,16 @@ class Deck:
         if before is not None and before is not connection:
             try:
                 socket.socket.shutdown(before, socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+    # A forgotten device loses its trackpad at once: a stream never authenticates again.
+    def cut(self, target):
+        with self.streams_lock:
+            gone = [connection for device, connection in self.streams.items() if target in ("all", device)]
+        for connection in gone:
+            try:
+                socket.socket.shutdown(connection, socket.SHUT_RDWR)
             except OSError:
                 pass
 
@@ -1232,9 +1282,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "nihil-deck/" + str(API)
     sys_version = ""
 
+    # A request has REQUEST_SECONDS to arrive, handshake, line, headers and body, however slowly it
+    # drips, so a slot isn't held by someone who never gets to authenticate. route() lifts it.
     def setup(self):
+        self.deadline = threading.Timer(REQUEST_SECONDS, self.cut)
+        self.deadline.daemon = True
+        self.deadline.start()
         self.request.do_handshake()
         super().setup()
+
+    def handle_one_request(self):
+        self.deadline.cancel()
+        self.deadline = threading.Timer(REQUEST_SECONDS, self.cut)
+        self.deadline.daemon = True
+        self.deadline.start()
+        try:
+            super().handle_one_request()
+        finally:
+            self.deadline.cancel()
+
+    def cut(self):
+        try:
+            socket.socket.shutdown(self.request, socket.SHUT_RDWR)
+        except OSError:
+            pass
 
     def log_message(self, format, *args):
         pass
@@ -1342,6 +1413,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.route("POST", body)
 
     def route(self, method, body):
+        self.deadline.cancel()
         deck = self.server.deck
         address = self.client_address[0]
         path = urllib.parse.urlsplit(self.path).path
@@ -1371,6 +1443,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.reply({"closed": 409, "expired": 410, "wrong": 403}[result], {"error": result})
             return
         name = clean_name(body.get("device"), "Android")
+        asking = deck.pairing.ask(name)
+        deck.session.ipc("deck", "asking")
+        try:
+            allowed = asking["event"].wait(PAIR_WAIT) and asking["allowed"]
+        finally:
+            deck.pairing.done(asking["id"])
+            deck.session.ipc("deck", "asking")
+        if not allowed:
+            self.reply(403, {"error": "declined"})
+            return
         device, token = deck.devices.add(name)
         deck.paired(name)
         self.reply(200, {"token": token, "device": device, "name": deck.name})
@@ -1392,6 +1474,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         deck.claim(device["id"], self.connection)
         try:
+            # Forgotten while it was starting: the cut only reaches what was claimed by then.
+            if not deck.devices.known(device["id"]):
+                self.reply(401, {"error": "unpaired"})
+                return
             time.sleep(TRACKPAD_SETTLE)
             self.send_response(101)
             self.send_header("Upgrade", TRACKPAD_PROTOCOL)
@@ -1499,6 +1585,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             since = query.get("since", [""])[0]
             deck.vector.heard[device["id"]] = now()
             item = deck.vector.wait(device["id"], since, wait) if wait else deck.vector.item("out")
+            if not deck.devices.known(device["id"]):
+                self.reply(401, {"error": "unpaired"})
+                return
             self.reply(200, dict(vector_item(item), now=round(now())))
         elif method == "GET" and path == "/v1/vector/data":
             wanted = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("id", [""])[0]
@@ -1533,25 +1622,44 @@ class DeckServer(http.server.ThreadingHTTPServer):
         self.deck = deck
         self.context = context
         self.slots = threading.BoundedSemaphore(CONNECTIONS)
+        self.per_address = {}
+        self.per_address_lock = threading.Lock()
         host, port = address
         self.address_family = socket.AF_INET6 if ":" in host else socket.AF_INET
         super().__init__((host, port), Handler)
 
     def process_request(self, request, client_address):
+        address = client_address[0]
+        with self.per_address_lock:
+            if self.per_address.get(address, 0) >= PER_ADDRESS:
+                self.shutdown_request(request)
+                return
+            self.per_address[address] = self.per_address.get(address, 0) + 1
         if not self.slots.acquire(blocking=False):
+            self.leave(address)
             self.shutdown_request(request)
             return
         try:
             super().process_request(request, client_address)
         except BaseException:
             self.slots.release()
+            self.leave(address)
             raise
+
+    def leave(self, address):
+        with self.per_address_lock:
+            left = self.per_address.get(address, 1) - 1
+            if left > 0:
+                self.per_address[address] = left
+            else:
+                self.per_address.pop(address, None)
 
     def process_request_thread(self, request, client_address):
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
+            self.leave(client_address[0])
 
     def server_bind(self):
         if self.address_family == socket.AF_INET6:
@@ -1831,7 +1939,8 @@ def vector_command(config, action, argument):
 def main():
     parser = argparse.ArgumentParser(prog="nihil-deck", description="The phone as a deck for this computer (docs/deck.md).")
     parser.add_argument("--config", help="configuration written by home/deck/default.nix")
-    parser.add_argument("command", nargs="?", default="devices", choices=["serve", "pair", "cancel", "devices", "forget", "vector"])
+    parser.add_argument("command", nargs="?", default="devices",
+                        choices=["serve", "pair", "cancel", "devices", "forget", "allow", "deny", "vector"])
     parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; vector: send, text, copy, save, open, clear or status")
     parser.add_argument("argument", nargs="?", help="vector send: a file (the clipboard without one); vector text: the text")
     parser.add_argument("--json", action="store_true", help="for the shell")
@@ -1856,7 +1965,8 @@ def main():
         return 1 if "error" in result else 0
 
     request = {"pair": {"op": "pair"}, "cancel": {"op": "cancel"}, "devices": {"op": "devices"},
-               "forget": {"op": "forget", "id": options.target or ""}}[options.command]
+               "forget": {"op": "forget", "id": options.target or ""}, "allow": {"op": "allow", "id": options.target or ""},
+               "deny": {"op": "deny", "id": options.target or ""}}[options.command]
     if options.command == "forget" and not options.target:
         print("nihil-deck forget ID|all", file=sys.stderr)
         return 2

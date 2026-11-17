@@ -13,6 +13,7 @@ let
         ddgr = "${pkgs.ddgr}/bin/ddgr";
         git = "${pkgs.git}/bin/git";
         bash = "${pkgs.bash}/bin/bash";
+        bwrap = "${pkgs.bubblewrap}/bin/bwrap";
         hyprctl = "${osConfig.programs.hyprland.package}/bin/hyprctl";
         wtype = "${pkgs.wtype}/bin/wtype";
         playerctl = "${pkgs.playerctl}/bin/playerctl";

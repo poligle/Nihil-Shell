@@ -49,6 +49,9 @@
 				useGlobalPkgs = true;
 				useUserPackages = true;
 				backupFileExtension = "hm-backup";
+				# A second collision (an app rewrites mimeapps.list again) would find the old backup
+				# there and stop Home Manager on every rebuild; the newest one replaces it.
+				overwriteBackup = true;
 				extraSpecialArgs = { inherit inputs; };
 				users.${config.nihil.user.name}.imports = [ ./home.nix ] ++ config.nihil.home;
 			};

@@ -35,7 +35,9 @@ READ_LINES = 400
 READ_CHARS = 16000      # and at most this much text
 FILE_BYTES = 512_000
 LIST_FILES = 300        # names list_files shows
-CARD_LINES = 80
+DIFF_LINES = 3000           # the most lines a change can have and still go on one card
+LINE_CHARS = 4000           # and the longest line
+CARD_FILES = 2000
 COMMAND_CHARS = 4000
 COMMAND_SECONDS = 120
 OUTPUT_KEEP = 65536
@@ -47,8 +49,6 @@ TYPE_CHUNK = 120
 WINDOW_WAIT = 15
 PLAYER_WAIT = 20
 SHOT_SIDE = 1280
-SEEN_CHARS = 400_000
-LEAK_RUN = 24
 KEPT_COPIES = 50
 PULL_ATTEMPTS = 4
 PULL_WAIT = 5
@@ -390,6 +390,18 @@ def clip(text, limit):
     return text if len(text) <= limit else text[:limit].rstrip() + " …"
 
 
+def hidden(text):
+    """Control and invisible format characters (bidi marks, zero widths…), apart from new lines and tabs."""
+    return [c for c in text if c not in "\n\t" and unicodedata.category(c) in ("Cc", "Cf")]
+
+
+def visible(text):
+    """What a card shows: the same text, with those characters written out so none goes unseen."""
+    text = str(text or "")
+    return "".join(f"⟨U+{ord(c):04X}⟩" if c not in "\n\t" and unicodedata.category(c) in ("Cc", "Cf") else c
+                   for c in text)
+
+
 def schema(name, description, properties=None, required=()):
     return {"type": "function", "function": {
         "name": name, "description": description,
@@ -399,6 +411,11 @@ def schema(name, description, properties=None, required=()):
 
 CONTROLS = ("volume", "mute", "mic", "brightness", "dnd", "caffeine", "night", "wifi", "bluetooth", "airplane",
             "wallpaper", "glass", "workspace", "screenshot", "record", "lock")
+
+# What marks the chat as having read the user's things, and the answer as having read the outside;
+# read_file, list_files and run_command mark the chat themselves, only for what isn't the repo.
+PRIVATE_READS = {"system_info", "list_windows", "look_at_screen"}
+OUTSIDE_READS = {"web_search", "open_url", "look_at_screen"}
 
 SCHEMAS = {
     "web_search": ("web", schema(
@@ -644,7 +661,7 @@ def important(full):
 
 SAFE = {"ls", "cat", "head", "tail", "wc", "stat", "file", "du", "df", "free", "uptime", "uname", "whoami", "id",
         "date", "cal", "which", "pwd", "tree", "realpath", "readlink", "basename", "dirname", "sort", "uniq", "cut",
-        "jq", "lsblk", "lscpu", "lsusb", "lspci", "sensors", "nproc", "ps", "pgrep", "fastfetch", "echo", "printf",
+        "lsblk", "lscpu", "lsusb", "lspci", "sensors", "nproc", "ps", "pgrep", "fastfetch", "echo", "printf",
         "true", "column", "fc-list", "hostname", "locale", "diff", "cmp", "md5sum", "sha256sum", "nixos-version",
         "lsmod", "grep", "rg", "find", "git", "nix", "systemctl", "journalctl", "hyprctl", "playerctl", "wpctl",
         "nmcli", "ip", "xdg-mime", "loginctl"}
@@ -662,6 +679,23 @@ NMCLI_WRITES = {"up", "down", "add", "modify", "delete", "edit", "connect", "dis
                 "--show-secrets", "-s", "--wait"}
 IP_WRITES = {"add", "del", "delete", "change", "set", "flush", "replace", "append", "prepend", "save", "restore",
              "exec", "netns", "monitor"}
+BRANCH_LISTING = {"--list", "--all", "--remotes", "--verbose", "--contains", "--no-contains", "--merged", "--no-merged",
+                  "--points-at"}
+BRANCH_OPTIONS = BRANCH_LISTING | {"--show-current", "--sort", "--format", "--color", "--no-color", "--column",
+                                   "--no-column", "--ignore-case", "--abbrev", "--no-abbrev", "--omit-empty"}
+TAG_LISTING = {"--list", "--contains", "--no-contains", "--merged", "--no-merged", "--points-at"}
+TAG_OPTIONS = TAG_LISTING | {"--sort", "--format", "--color", "--no-color", "--column", "--no-column", "--ignore-case",
+                             "--omit-empty"}
+CONFIG_READS = {"--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"}
+CONFIG_OPTIONS = CONFIG_READS | {"--global", "--system", "--local", "--worktree", "--file", "-f", "--blob",
+                                 "--show-origin", "--show-scope", "--show-names", "--null", "-z", "--name-only",
+                                 "--type", "--bool", "--int", "--bool-or-int", "--path", "--expiry-date", "--default",
+                                 "--includes", "--no-includes", "--fixed-value", "--all", "--regexp", "--value", "--url"}
+GIT_RISKY = ("--output", "--ext-diff", "--exec", "--open-files-in-pager", "--textconv", "--filters", "--upload-pack",
+             "--receive-pack", "--config-env", "--no-index")
+JOURNAL_RISKY = ("--vacuum-size", "--vacuum-time", "--vacuum-files", "--rotate", "--flush", "--sync", "--relinquish-var",
+                 "--smart-relinquish-var", "--setup-keys", "--update-catalog", "--cursor-file", "--machine", "--root",
+                 "--image")
 
 
 def words(argv):
@@ -670,6 +704,39 @@ def words(argv):
 
 def prefix(word, *names):
     return any(word and name.startswith(word) for name in names)
+
+
+# Options are read the way the programs read them, not as written: getopt_long and git take any
+# unambiguous start of a long option (--compress-prog=x is --compress-program), and short ones
+# go together (-iO… holds -O).
+def gnu(arg, *names):
+    head = arg.split("=", 1)[0]
+    return head.startswith("--") and len(head) > 2 and any(name.startswith(head) for name in names)
+
+
+def short(arg, letters):
+    return len(arg) > 1 and arg[0] == "-" and arg[1] != "-" and any(c in letters for c in arg[1:])
+
+
+def only(arg, letters):
+    return re.fullmatch(f"-[{letters}]+", arg) is not None
+
+
+def operands(args):
+    """What isn't an option, counting - (the standard input) and everything after --."""
+    found, rest = [], False
+    for a in args:
+        if rest or a == "-" or not a.startswith("-"):
+            found.append(a)
+        elif a == "--":
+            rest = True
+    return found
+
+
+def tricky(word):
+    """A path bash reads differently: ~+, ~- and ~user, or /proc/self, which for the check is Nilo itself."""
+    return word.startswith("~") and word != "~" and not word.startswith("~/") \
+        or re.search(r"/proc/(self|thread-self)(/|$)|/dev/fd/", word) is not None
 
 
 def nmcli_reads(named):
@@ -711,18 +778,24 @@ def harmless_stage(argv, cwd, inside):
     named = words(argv)
     for arg in args:
         path = arg.split("=", 1)[1] if arg.startswith("-") and "=" in arg else arg
-        if not path.startswith("-") and secret(os.path.join(cwd, os.path.expanduser(path))):
-            return False
+        attached = arg[2:] if len(arg) > 2 and arg[0] == "-" and arg[1] != "-" else ""
+        for word in filter(None, (path, attached)):
+            if tricky(word) or not word.startswith("-") and secret(os.path.join(cwd, os.path.expanduser(word))):
+                return False
 
     def flags(*starts):
         return any(a.startswith(starts) for a in args)
 
-    if program == "grep":
-        recursive = any(a in ("--recursive", "--dereference-recursive") or re.fullmatch(r"-[a-zA-Z]*[rR][a-zA-Z]*", a)
-                        for a in args)
-        return not recursive or all(inside(p) for p in named[1:] or ["."])
-    if program == "rg":
-        return not flags("--pre", "--hostname-bin") and all(inside(p) for p in named[1:] or ["."])
+    if program in ("grep", "rg"):
+        if program == "rg" and any(gnu(a, "--pre", "--hostname-bin") for a in args):
+            return False
+        found = operands(args)
+        # With -e or -f the pattern isn't among the operands, and --files takes none: all are paths.
+        given = any(short(a, "ef") or gnu(a, "--regexp", "--file") for a in args) \
+            or program == "rg" and any(gnu(a, "--files", "--type-list") for a in args)
+        recursive = program == "rg" or any(short(a, "rRd") or gnu(a, "--recursive", "--dereference-recursive",
+                                                                  "--directories") for a in args)
+        return not recursive or all(inside(p) for p in (found if given else found[1:]) or ["."])
     if program == "find":
         return not any(a in ("-delete", "-fls") or a.startswith(("-exec", "-ok", "-fprint")) for a in args)
     if program == "git":
@@ -740,29 +813,28 @@ def harmless_stage(argv, cwd, inside):
         if i >= len(argv) or argv[i] not in GIT_READS:
             return False
         sub, rest = argv[i], argv[i + 1:]
-        if any(a.startswith(("--output", "--ext-diff", "--exec", "-O", "--open-files-in-pager", "--textconv",
-                             "--filters", "--upload-pack", "--receive-pack", "--config-env")) for a in rest):
+        if any(short(a, "O") or gnu(a, *GIT_RISKY) for a in rest):
             return False
         kept = words(["", *rest])
+        options = [a.split("=", 1)[0] for a in rest if a.startswith("-") and a != "-"]
+        # branch, tag and config only list or read with options from these lists, written in full.
         if sub == "branch":
-            listing = any(a in ("-a", "-r", "-l", "--list", "--all", "-v", "-vv", "--contains", "--merged",
-                                "--no-merged", "--show-current") for a in rest)
-            changing = any(a in ("-d", "-D", "-m", "-M", "-c", "-C", "--delete", "--move", "--copy", "-u", "-f",
-                                 "--force", "--set-upstream-to", "--unset-upstream", "--edit-description", "-t",
-                                 "--track", "--no-track", "--create-reflog") for a in rest)
-            return not changing and (not kept or listing)
+            if not all(only(o, "arlvi") or o in BRANCH_OPTIONS for o in options):
+                return False
+            return not kept or any(only(o, "arlvi") and set(o[1:]) & set("arlv") or o in BRANCH_LISTING
+                                   for o in options)
         if sub == "tag":
-            changing = any(a in ("-d", "--delete", "-a", "--annotate", "-s", "--sign", "-u", "--local-user", "-f",
-                                 "--force", "-m", "--message", "-F", "--file", "-e", "--edit", "--create-reflog")
-                           for a in rest)
-            return not changing and (not kept or any(a in ("-l", "--list") for a in rest))
+            if not all(only(o, "li") or re.fullmatch(r"-n\d*", o) or o in TAG_OPTIONS for o in options):
+                return False
+            return not kept or any(only(o, "li") and "l" in o or o.startswith("-n") or o in TAG_LISTING
+                                   for o in options)
         if sub == "remote":
             return kept[:1] in ([], ["show"], ["get-url"])
         if sub == "config":
-            reading = any(a in ("--get", "--get-all", "--list", "-l", "--get-regexp", "--get-urlmatch") for a in rest)
-            changing = any(a in ("--add", "--unset", "--unset-all", "--replace-all", "--rename-section",
-                                 "--remove-section", "-e", "--edit") for a in rest)
-            return reading and not changing
+            if not all(o in CONFIG_OPTIONS for o in options):
+                return False
+            reads = [o for o in options if o in CONFIG_READS]
+            return len(reads) == 1 or not reads and kept[:1] in (["get"], ["list"])
         if sub == "reflog":
             return kept[:1] in ([], ["show"])
         return True
@@ -776,13 +848,12 @@ def harmless_stage(argv, cwd, inside):
         refs = named[len(verb):len(verb) + 1] if verb == ("search",) else named[len(verb):]
         return all(ref.startswith((".", "/", "~")) or ref == "nixpkgs" or ref.startswith("nixpkgs#") for ref in refs)
     if program == "systemctl":
-        if flags("-H", "--host", "-M", "--machine", "--root", "--image"):
+        if any(short(a, "HM") or gnu(a, "--host", "--machine", "--root", "--image") for a in args):
             return False
         return bool(named) and named[0] in SYSTEMCTL_READS or not named and all(a in ("--user", "--failed", "-a",
                                                                                          "--all", "--no-pager") for a in args)
     if program == "journalctl":
-        return not flags("--vacuum", "--rotate", "--flush", "--sync", "--relinquish", "--smart-relinquish",
-                         "--setup-keys", "--update-catalog", "--cursor-file", "-M", "--machine", "--root", "--image")
+        return not any(short(a, "M") or gnu(a, *JOURNAL_RISKY) for a in args)
     if program == "hyprctl":
         options = [a for a in args if a.startswith("-")]
         return all(a in ("-j", "--json") for a in options) and bool(named) and named[0] in HYPR_READS \
@@ -804,30 +875,44 @@ def harmless_stage(argv, cwd, inside):
     if program == "wpctl":
         return named[:1] in (["status"], ["get-volume"], ["inspect"])
     if program == "nmcli":
-        if any(a in ("--show-secrets", "-s", "--ask", "-a", "--wait", "-w") for a in args):
+        # nmcli takes any start of its global options, anywhere: --sh is --show-secrets.
+        if any(a.startswith("-") and a.lstrip("-") and any(name.startswith(a.lstrip("-").split("=", 1)[0])
+                                                           for name in ("show-secrets", "ask", "wait")) for a in args):
             return False
         return nmcli_reads(named)
     if program == "ip":
-        if any(a in ("-b", "-batch", "--batch", "-force", "-n", "-netns", "--netns") for a in args):
+        # ip, like nmcli, takes the start of an option: -ba is -batch.
+        if any(a.startswith("-") and a.lstrip("-") and ("batch".startswith(a.lstrip("-"))
+                                                        or "netns".startswith(a.lstrip("-")) or a.lstrip("-") == "force")
+               for a in args):
             return False
         return bool(named) and prefix(named[0], "address", "link", "route", "neighbour", "rule", "maddress") \
             and (len(named) == 1 or named[1] in ("show", "list", "ls", "lst", "get"))
     if program == "xdg-mime":
         return named[:1] == ["query"]
     if program == "loginctl":
-        return not flags("-H", "--host", "-M", "--machine") and named[:1] in (
+        return not any(short(a, "HM") or gnu(a, "--host", "--machine") for a in args) and named[:1] in (
             ["list-sessions"], ["show-session"], ["session-status"], ["list-users"], ["show-user"], ["user-status"],
             ["list-seats"], [])
+    # sort, uniq, tree and file can also write: only when they don't, they don't ask.
     if program == "sort":
-        return not flags("-o", "--output", "--compress-program")
+        return not any(short(a, "o") or gnu(a, "--output", "--compress-program", "--files0-from", "--random-source")
+                       for a in args)
     if program == "uniq":
-        return len(named) <= 1
+        return len(operands(args)) <= 1
     if program == "tree":
-        return not flags("-o", "--output")
+        return not any(short(a, "o") or gnu(a, "--output") for a in args)
     if program == "file":
-        return not flags("-C", "--compile")
+        return not any(short(a, "C") or gnu(a, "--compile") for a in args)
+    if program == "diff":
+        # Between folders, or with --from-file or --to-file, diff prints whole files: only in the repo.
+        found = operands(args) + [a.split("=", 1)[1] for a in args if gnu(a, "--from-file", "--to-file") and "=" in a]
+        if any(gnu(a, "--from-file", "--to-file") for a in args) \
+                or any(os.path.isdir(os.path.join(cwd, os.path.expanduser(p))) for p in found):
+            return all(inside(p) for p in found)
+        return True
     if program == "date":
-        return not flags("-s", "--set")
+        return not any(re.fullmatch(r"-[uR]*s.*", a) or gnu(a, "--set") for a in args)
     if program in ("hostname", "fastfetch"):
         return not args
     if program == "ps":
@@ -843,41 +928,97 @@ def harmless_stage(argv, cwd, inside):
                 return False
         return True
     if program == "sensors":
-        return not flags("-s", "--set")
+        return not any(re.fullmatch(r"-[Ajfuv]*s.*", a) or gnu(a, "--set") for a in args)
     return True
+
+
+def pipeline(command):
+    """The stages of a plain pipeline, split as bash splits them, or None for anything else."""
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()")
+        lexer.whitespace_split = True
+        # bash only starts a comment at the beginning of a word: echo a#; x runs x.
+        lexer.commenters = ""
+        tokens = list(lexer)
+    except ValueError:
+        return None
+    stages, current = [], []
+    for token in tokens:
+        if token == "|":
+            if not current:
+                return None
+            stages.append(current)
+            current = []
+        elif token and all(c in ";&|<>()" for c in token):
+            return None
+        else:
+            current.append(token)
+    if not current:
+        return None
+    stages.append(current)
+    return stages
 
 
 def harmless(command, cwd="", inside=lambda path: False):
     command = str(command or "").strip()
     if not command or len(command) > 400 or "\n" in command or re.search(r"[$`*?\[\]{}\\!]|(^|\s)#", command):
         return False
-    try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()")
-        lexer.whitespace_split = True
-        tokens = list(lexer)
-    except ValueError:
+    stages = pipeline(command)
+    if stages is None:
         return False
-    stages, current = [], []
-    for token in tokens:
-        if token == "|":
-            if not current:
-                return False
-            stages.append(current)
-            current = []
-        elif token and all(c in ";&|<>()" for c in token):
-            return False
-        else:
-            current.append(token)
-    if not current:
-        return False
-    stages.append(current)
 
     folder = cwd or os.path.expanduser("~")
+    if secret(folder):
+        return False
 
     def near(path):
         return inside(os.path.realpath(os.path.join(folder, os.path.expanduser(path))))
 
     return all(harmless_stage(stage, folder, near) for stage in stages)
+
+
+# What runs without a card runs in bubblewrap: the whole system read-only, no network, nothing of
+# the session to talk to (Hyprland, the session and system buses, the agents) and the secrets
+# hidden, so that if the reading above lets something through it still can't write, call out,
+# or reach the desktop. Some programs need back one of those things to work at all.
+SANDBOX_NET = {"nix", "git", "ip"}
+SANDBOX_BUS = {"hyprctl", "playerctl", "wpctl", "systemctl", "loginctl", "nmcli", "fastfetch"}
+SANDBOX_PROCESSES = {"ps", "pgrep", "fastfetch"}
+SANDBOX_SESSION_ENV = ("WAYLAND_DISPLAY", "DISPLAY", "XAUTHORITY", "HYPRLAND_INSTANCE_SIGNATURE",
+                       "DBUS_SESSION_BUS_ADDRESS")
+
+
+def sandbox(bwrap, command, folder, env):
+    """The bwrap that goes before bash for a command run without a card, and the environment for it."""
+    programs = {stage[0] for stage in pipeline(command) or []}
+    env = {k: v for k, v in env.items() if k not in ("SSH_AUTH_SOCK", "GPG_AGENT_INFO")}
+    box = [bwrap, "--ro-bind", "/", "/", "--tmpfs", "/tmp", "--new-session", "--die-with-parent", "--unshare-ipc",
+           "--unshare-uts"]
+    # A process of the session seen in /proc leads to the real, writable files: only ps and pgrep see them.
+    if not programs & SANDBOX_PROCESSES:
+        box += ["--unshare-pid", "--proc", "/proc"]
+    if not programs & SANDBOX_NET:
+        box += ["--unshare-net"]
+    if not programs & SANDBOX_BUS:
+        runtime = env.get("XDG_RUNTIME_DIR", "")
+        for place in (runtime, "/run/dbus"):
+            if place and os.path.isdir(place):
+                box += ["--tmpfs", place]
+        env = {k: v for k, v in env.items() if k not in SANDBOX_SESSION_ENV}
+    if "nix" in programs:
+        cache = os.path.join(env.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "nix")
+        os.makedirs(cache, exist_ok=True)
+        box += ["--bind", cache, cache]
+    for place in SECRETS:
+        full = os.path.realpath(os.path.expanduser(place))
+        if os.path.isdir(full):
+            box += ["--tmpfs", full]
+        elif os.path.exists(full):
+            box += ["--ro-bind", "/dev/null", full]
+    # The scratch /tmp hides the real one: a folder there comes back, read-only like the rest.
+    if folder == "/tmp" or folder.startswith("/tmp/"):
+        box += ["--ro-bind", folder, folder]
+    return box + ["--chdir", folder, "--"], env
 
 
 TERMINALS = {"kitty", "foot", "footclient", "alacritty", "org.wezfurlong.wezterm", "wezterm", "xterm", "uxterm",
@@ -1008,9 +1149,10 @@ class Tools:
         if not isinstance(args, dict):
             args = {}
         if name in ("web_search", "open_url"):
-            asked = str(args.get("query") or args.get("url") or "")[:300]
+            asked = str(args.get("query") or args.get("url") or "")
             why = self.outgoing(asked)
-            if why and not self.ask_desktop("search" if name == "web_search" else "fetch", None, why, cancel, text=asked):
+            if why and not self.ask_desktop("search" if name == "web_search" else "fetch", None, why, cancel,
+                                            text=visible(asked)):
                 result = {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
                 return result, self.facts(name, result)
         try:
@@ -1021,6 +1163,11 @@ class Tools:
         except Exception as e:
             log(f"{name} failed:", repr(e))
             result = {"error": str(e) or e.__class__.__name__}
+        if "error" not in result and not result.get("declined"):
+            if name in OUTSIDE_READS:
+                self.agent.outside = True
+            if name in PRIVATE_READS:
+                self.agent.private = True
         return result, self.facts(name, result)
 
     @staticmethod
@@ -1090,16 +1237,15 @@ class Tools:
         return facts
 
 
-    def leaks(self, text):
-        text = re.sub(r"\s+", " ", str(text or "")).strip().lower()
-        pool = getattr(self.agent, "seen", "")
-        if len(text) < LEAK_RUN or not pool:
-            return False
-        return any(text[i:i + LEAK_RUN] in pool for i in range(0, len(text) - LEAK_RUN + 1, 8)) \
-            or text[-LEAK_RUN:] in pool
-
+    # Once Nilo has read your files, the screen or a command in a chat, anything on its way out asks:
+    # what it read can go out in any shape (spaces as +, base64…), so nothing is matched against it.
     def outgoing(self, text):
-        return (["sensitive"] if sensitive(text) else []) + (["private"] if self.leaks(text) else [])
+        return (["sensitive"] if sensitive(text) else []) + (["private"] if getattr(self.agent, "private", False) else [])
+
+    # Once an answer has read the web or the screen, typing, pressing keys, reading your files and
+    # sending anything ask: what it read may be telling it to.
+    def outside(self):
+        return ["web"] if getattr(self.agent, "outside", False) else []
 
     def search_url(self, query):
         if self.config.get("searxng"):
@@ -1281,15 +1427,17 @@ class Tools:
         remotes = remotes.split()
         if push and not status["upstream"] and "origin" not in remotes:
             return {"error": "the branch has no remote to push to"}
+        _, porcelain, _ = self.git(repo, "status", "--porcelain=v1", "-uall")
+        every = [visible(line) for line in porcelain.splitlines() if line.strip()]
         ok = self.agent.ask_confirmation({
             "action": action,
             "repo": status["repo"],
             "branch": status["branch"],
             "remote": status["upstream"] or (f"origin/{status['branch']}" if push else ""),
-            "files": changes[:30],
-            "more": len(changes) - 30 + status["more"] if len(changes) > 30 else status["more"],
+            "files": every[:CARD_FILES],
+            "more": max(0, len(every) - CARD_FILES),
             "ahead": status["ahead"],
-            "message": message if changes else "",
+            "message": visible(message) if changes else "",
             "trailer": trailer,
         }, cancel)
         if not ok:
@@ -1366,10 +1514,12 @@ class Tools:
         if not os.path.isdir(full):
             raise RuntimeError(f"{rel} is not a folder")
         if root is None:
+            if self.outside() and not self.ask_desktop("read", None, self.outside(), cancel, path=rel):
+                return {"declined": True, "note": "The user did not confirm. Nothing was read."}
             entries = sorted(os.scandir(full), key=lambda e: (not e.is_dir(), e.name.lower()))
             names = [e.name + ("/" if e.is_dir() else "") for e in entries
                      if not e.name.startswith(".") and not secret(e.path)]
-            self.agent.saw("\n".join(names))
+            self.agent.private = True
             return {"path": rel, "files": names[:LIST_FILES], "more": max(0, len(names) - LIST_FILES)}
         code, tracked, _ = self.git(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", rel)
         if code == 0:
@@ -1386,6 +1536,8 @@ class Tools:
         root, full, rel = self.resolve(path)
         if os.path.isdir(full):
             raise RuntimeError(f"{rel} is a folder: use list_files")
+        if root is None and self.outside() and not self.ask_desktop("read", None, self.outside(), cancel, path=rel):
+            return {"declined": True, "note": "The user did not confirm. Nothing was read."}
         lines = self.text_of(full).splitlines(keepends=True)
         try:
             start = max(1, int(from_line))
@@ -1400,29 +1552,35 @@ class Tools:
         end = start + len(part) - 1
         result = {"path": rel, "lines": len(lines), "from_line": start, "to_line": end, "text": "".join(part)}
         if root is None:
-            self.agent.saw(result["text"])
+            self.agent.private = True
         if end < len(lines):
             result["next_line"] = end + 1
         return result
 
     @staticmethod
     def diff(old, new):
+        """Every line of the change, whole and as it will be written; each part says the line it starts at."""
         lines = list(difflib.unified_diff(old.splitlines(), new.splitlines(), lineterm="", n=2))[2:]
         shown, added, removed = [], 0, 0
         for line in lines:
-            kind = "@" if line.startswith("@@") else line[:1]
+            if line.startswith("@@"):
+                at = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)", line)
+                shown.append({"t": "@", "s": at.group(1) if at else ""})
+                continue
+            kind = line[:1]
             if kind == "+":
                 added += 1
             elif kind == "-":
                 removed += 1
-            if len(shown) < CARD_LINES:
-                shown.append({"t": kind, "s": "" if kind == "@" else line[1:][:300]})
-        return shown, max(0, len(lines) - CARD_LINES), added, removed
+            shown.append({"t": kind, "s": visible(line[1:])})
+        return shown, added, removed
 
     def confirm_change(self, rel, old, new, created, cancel, inside=True, full=""):
-        shown, more, added, removed = self.diff(old, new)
+        shown, added, removed = self.diff(old, new)
         if not added and not removed:
             return None, {"error": "that changes nothing"}
+        if len(shown) > DIFF_LINES or any(len(line["s"]) > LINE_CHARS for line in shown):
+            return None, {"error": "the change is too big to show on one card: make it in smaller steps"}
         if not inside and full and not important(full):
             if not created:
                 self.keep_copy(full)
@@ -1432,7 +1590,6 @@ class Tools:
             "repo": self.agent.settings.get("repo") if inside else "",
             "path": rel,
             "diff": shown,
-            "more": more,
             "added": added,
             "removed": removed,
         }, cancel)
@@ -1520,7 +1677,7 @@ class Tools:
             if not os.path.exists(target):
                 return {"error": f"{target} does not exist"}
         why = self.outgoing(target) if kind == "url" else []
-        if why and not self.ask_desktop("open", None, why, cancel, text=target):
+        if why and not self.ask_desktop("open", None, why, cancel, text=visible(target)):
             return {"declined": True, "note": "The user did not confirm. The page was not opened."}
         answer = self.agent.call_shell("launch", {"target": target, "kind": kind}, cancel)
         if not isinstance(answer, dict):
@@ -1529,7 +1686,7 @@ class Tools:
         if not answer.get("ok") and kind == "app" and not (similar and difflib.SequenceMatcher(
                 None, plain(target), plain(similar[0])).ratio() >= 0.75):
             why = self.outgoing(target)
-            if why and not self.ask_desktop("search", None, why, cancel, text=target):
+            if why and not self.ask_desktop("search", None, why, cancel, text=visible(target)):
                 return {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
             searched = self.agent.call_shell("launch", {"target": self.search_url(target), "kind": "url"}, cancel)
             if isinstance(searched, dict) and searched.get("ok"):
@@ -1753,6 +1910,9 @@ class Tools:
             origin = client.get("at") or origin
         gx = round(origin[0] + px / shot["factor"])
         gy = round(origin[1] + py / shot["factor"])
+        why = ["private"] if client and self.outward(client) and getattr(self.agent, "private", False) else []
+        if why and not self.ask_desktop("click", client, why, cancel):
+            return {"declined": True, "note": "The user did not confirm. Nothing was clicked."}
         self.aside(cancel)
         if client:
             self.focus(client)
@@ -1809,12 +1969,14 @@ class Tools:
             return {"error": "there is nothing to type"}
         if len(text) > TYPE_CHARS:
             return {"error": f"at most {TYPE_CHARS} characters at once"}
+        if hidden(text.replace("\r", "")):
+            return {"error": "the text has control or invisible characters: type plain text, and keys with press_keys"}
         target, missing = self.wait_window(window, cancel)
         if missing:
             return missing
         why = (["terminal"] if self.terminal(target) else []) + (["sensitive"] if sensitive(text) else []) \
-            + (["private"] if self.outward(target) and self.leaks(text) else [])
-        if why and not self.ask_desktop("type", target, why, cancel, text=clip(text, 800)):
+            + (["private"] if self.outward(target) and getattr(self.agent, "private", False) else []) + self.outside()
+        if why and not self.ask_desktop("type", target, why, cancel, text=text):
             return {"declined": True, "note": "The user did not confirm. Nothing was typed."}
         self.aside(cancel)
         self.focus(target)
@@ -1839,7 +2001,8 @@ class Tools:
         target, missing = self.wait_window(window, cancel)
         if missing:
             return missing
-        why = (["terminal"] if self.terminal(target) else []) + (["keys"] if risky_keys(combos) else [])
+        why = (["terminal"] if self.terminal(target) else []) + (["keys"] if risky_keys(combos) else []) \
+            + (["private"] if self.outward(target) and getattr(self.agent, "private", False) else []) + self.outside()
         if why and not self.ask_desktop("keys", target, why, cancel, keys=shown):
             return {"declined": True, "note": "The user did not confirm. No key was pressed."}
         self.aside(cancel)
@@ -1905,9 +2068,10 @@ class Tools:
         if not capabilities(self.agent.settings)["web"]:
             return {"error": "finding it needs the web, and Internet is off in Nilo's settings"}
         why = self.outgoing(query)
-        if why and not self.ask_desktop("search", None, why, cancel, text=query):
+        if why and not self.ask_desktop("search", None, why, cancel, text=visible(query)):
             return {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
         found = self.web_search(f"site:open.spotify.com {query}", 8)
+        self.agent.outside = True
         if "error" in found:
             return {"error": "the search failed", "detail": found.get("detail", found["error"])}
         hits = []
@@ -1980,7 +2144,8 @@ class Tools:
                 why.append("outside")
             detail = {"path": rel}
         else:
-            detail = {"text": clip(text, 400)}
+            detail = {"text": visible(text)}
+        why += (["sensitive"] if sensitive(text) else []) + self.outside()
         if why and not self.ask_desktop("send", None, why, cancel, **detail):
             return {"declined": True, "note": "The user did not confirm. Nothing was sent."}
         answer = self.agent.call_shell("vector", {"path": full} if full else {"text": text[:100000]}, cancel)
@@ -2010,19 +2175,26 @@ class Tools:
         danger = risks(command)
         terminal = terminal is True or str(terminal).lower() == "true" or "root" in danger
         auto = (capabilities(self.agent.settings)["desktop"] and not terminal and not danger
-                and harmless(command, folder, self.in_repo))
-        if not auto and not self.agent.ask_confirmation({
+                and not self.outside() and harmless(command, folder, self.in_repo))
+        card = {
             "action": "terminal" if terminal else "run",
-            "command": command,
+            "command": visible(command),
             "cwd": self.agent.short_path(folder),
             "reason": re.sub(r"\s+", " ", str(reason or "")).strip()[:300],
             "danger": danger,
-        }, cancel):
+        }
+        if not auto and not self.agent.ask_confirmation(card, cancel):
             return {"declined": True, "note": "The user did not confirm. Nothing ran."}
         if terminal:
             return self.in_terminal(command, folder)
-        result = self.execute(command, folder, cancel)
-        self.agent.saw(str(result.get("output", "")))
+        result = self.execute(command, folder, cancel, sandboxed=auto)
+        if result.get("sandbox"):
+            # Without its sandbox it only runs as any other command does: if the user says so.
+            auto = False
+            if not self.agent.ask_confirmation(card, cancel):
+                return {"declined": True, "note": "The user did not confirm. Nothing ran."}
+            result = self.execute(command, folder, cancel)
+        self.agent.private = True
         if auto:
             result["auto"] = True
         return result
@@ -2046,15 +2218,19 @@ class Tools:
         return {"ok": True, "terminal": True, "cwd": self.agent.short_path(folder),
                 "note": "It is running in a terminal window: you don't see its output. Tell the user to look there."}
 
-    def execute(self, command, folder, cancel):
+    def execute(self, command, folder, cancel, sandboxed=False):
         limit = float(self.config.get("commandSeconds", COMMAND_SECONDS))
         env = dict(os.environ, TERM="dumb", NO_COLOR="1", PAGER="cat", GIT_PAGER="cat", SYSTEMD_PAGER="",
                    SYSTEMD_COLORS="0", GIT_TERMINAL_PROMPT="0", GIT_CONFIG_COUNT="2",
                    GIT_CONFIG_KEY_0="core.fsmonitor", GIT_CONFIG_VALUE_0="false",
                    GIT_CONFIG_KEY_1="log.showSignature", GIT_CONFIG_VALUE_1="false")
+        argv = [self.config.get("bash", "bash"), "-c", command]
+        if sandboxed and self.config.get("bwrap"):
+            box, env = sandbox(self.config["bwrap"], command, folder, env)
+            argv = box + argv
         started = time.monotonic()
         try:
-            proc = subprocess.Popen([self.config.get("bash", "bash"), "-c", command], cwd=folder, env=env,
+            proc = subprocess.Popen(argv, cwd=folder, env=env,
                                     stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     start_new_session=True)
         except OSError as e:
@@ -2100,6 +2276,8 @@ class Tools:
         reader.join(timeout=2)
         dropped = total[0] - len(head) - len(tail)
         text = terminal_text(bytes(head)) + (f"\n… ({dropped} bytes) …\n" if dropped > 0 else "") + terminal_text(bytes(tail))
+        if sandboxed and proc.returncode == 1 and text.startswith("bwrap: "):
+            return {"sandbox": text.strip()[:300]}
         result = {"exit": proc.returncode, "seconds": round(time.monotonic() - started, 1),
                   "cwd": self.agent.short_path(folder), "output": clip_middle(text.strip(), OUTPUT_CHARS) or "(no output)"}
         if stopped == "timeout":
@@ -2404,7 +2582,8 @@ class Agent:
                       "sizeGB": 0, "gpu": 0}
         self.installed = set()
         self.active = ""
-        self.seen = ""              # what this turn has read of the user's files and commands
+        self.private = False        # this chat has read the user's files, the screen or a command
+        self.outside = False        # this answer has read the web or the screen
         self.shot = None            # where the last screenshot was taken
         self.vision = {}            # model -> whether it sees pictures
         self.state_lock = threading.Lock()
@@ -2412,11 +2591,6 @@ class Agent:
         self.starting = False       # starting ollama.service
         self.last_start = -1e9
 
-
-    def saw(self, text):
-        text = re.sub(r"\s+", " ", str(text or "")).strip().lower()
-        if text:
-            self.seen = (self.seen + " " + text)[-SEEN_CHARS:]
 
     def recommended(self):
         models = self.config.get("models", [])
@@ -2460,7 +2634,9 @@ class Agent:
         return self.fast() or chosen
 
     def default_repo(self):
-        candidates = [read_text(self.config.get("devFile", DEV_FILE)).strip(), *CHECKOUTS]
+        # nihil dev's file: the checkout, then who turned it on.
+        dev = read_text(self.config.get("devFile", DEV_FILE)).splitlines()
+        candidates = [dev[0].strip() if dev else "", *CHECKOUTS]
         for path in candidates:
             if path and os.path.exists(os.path.join(os.path.expanduser(path), ".git")):
                 return self.short_path(path)
@@ -2948,7 +3124,7 @@ class Agent:
         stats["model"] = model
         history = self.history
         history.append({"role": "user", "content": text})
-        self.seen, self.shot = "", None
+        self.outside, self.shot = False, None
         self.out("start", model=model, auto=model != self.settings["model"])
         if not model:
             raise OllamaError("no-model")
@@ -3044,6 +3220,7 @@ class Agent:
     def reset(self):
         self.stop()
         self.history = []
+        self.private = False
         self.out("reset")
 
 

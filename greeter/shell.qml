@@ -48,6 +48,13 @@ ShellRoot {
             skip.running = true;
     }
 
+    // If launching fails, the face comes back instead of staying dark with the field off.
+    function back(): void {
+        leave.stop();
+        root.going = false;
+        face.opacity = 1;
+    }
+
     function other(): void {
         if (Config.users.length < 2 || going)
             return;
@@ -95,6 +102,7 @@ ShellRoot {
         }
 
         function onAuthFailure(message: string): void {
+            root.back();
             root.attempts += 1;
             root.wrong = true;
             root.note = Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
@@ -111,6 +119,7 @@ ShellRoot {
         }
 
         function onError(error: string): void {
+            root.back();
             root.wrong = true;
             root.note = error;
             retry.restart();

@@ -53,7 +53,11 @@ Item {
             result = "";
             grid.currentIndex = 0;
             list.currentIndex = 0;
-            input.forceActiveFocus();
+            Qt.callLater(() => { if (root.active) input.forceActiveFocus(); });
+        } else {
+            // Nothing armed or typed waits in a closed launcher.
+            armed = "";
+            input.text = "";
         }
         syncNilo();
     }
@@ -109,6 +113,7 @@ Item {
         else if (action.id === "night") Toggles.night = !Toggles.night;
         else if (action.id === "caffeine") Caffeine.toggle();
         else if (action.id === "settings") Machine.show("", false);
+        else if (action.id === "terminal") Apps.run(action.command);
         else Quickshell.execDetached(action.command);
     }
 

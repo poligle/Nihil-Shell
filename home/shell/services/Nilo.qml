@@ -42,6 +42,14 @@ Singleton {
     property string phase: "idle"
     property string tool: ""
     property var confirm: null
+    // A card shows this much at first; what's beyond it has to be seen before it can be confirmed.
+    readonly property int cardLines: 80
+    readonly property int cardFiles: 8
+    readonly property int cardChars: 800
+    property bool confirmAll: false
+    readonly property bool confirmHides: confirm !== null && !confirmAll
+        && ((confirm.diff ?? []).length > cardLines || (confirm.files ?? []).length > cardFiles
+            || String(confirm.text ?? "").length > cardChars)
     property bool stopping: false
     property int pulse: 0
     property string mood: ""
@@ -284,7 +292,7 @@ Singleton {
         peekFacts = kind === "confirm" ? (confirm ?? {}) : (() => { try { return JSON.parse(reply?.info || "{}"); } catch (e) { return {}; } })();
         const body = plain(peekText);
         Quickshell.execDetached([Config.cmd.notifySend, "--app-name=Nilo", "--hint=string:x-nihil-tag:nilo",
-                                 "--hint=string:x-nihil-nilo:" + kind,
+                                 "--hint=string:x-nihil-nilo:" + kind, "--",
                                  kind === "confirm" ? Lang.niloPeekWaiting : kind === "error" ? Lang.niloPeekFailed : Lang.niloPeekDone,
                                  (body.length > 220 ? body.slice(0, 219) + "…" : body)
                                      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")]);
@@ -392,7 +400,7 @@ Singleton {
             messages.append({ kind: "tool", text: "", done: true, name: "open_app", status: "done", cid: "",
                               info: JSON.stringify({ ok: true, opened: p.name, args: { target: p.name } }) });
             if (p.entry) Apps.launch(p.entry);
-            else Qt.openUrlExternally(p.url);
+            else Apps.open(p.url);
         }
         Drawers.close();
         return true;
@@ -400,9 +408,9 @@ Singleton {
 
     function launch(target: string, kind: string): var {
         if (kind === "url" || kind === "path") {
-            const ok = Qt.openUrlExternally(kind === "path" ? "file://" + encodeURI(target) : target);
-            if (ok) Drawers.close();
-            return ok ? { ok: true, name: target } : { ok: false, error: "nothing opens " + target };
+            Apps.open(target);
+            Drawers.close();
+            return { ok: true, name: target };
         }
         const q = String(target ?? "").trim().toLowerCase();
         const found = q ? Apps.search(q) : [];
@@ -498,7 +506,7 @@ Singleton {
             break;
         case "notes":
             Drawers.close();
-            Quickshell.execDetached([Config.cmd.terminal, "-e", Config.cmd.editor, e.path]);
+            Apps.run([Config.cmd.terminal, "-e", Config.cmd.editor, e.path]);
             break;
         case "reset":
             break;
@@ -560,6 +568,7 @@ Singleton {
             send(Object.assign({ op: "answer", id: e.id }, toPhone(e)));
             break;
         case "confirm":
+            confirmAll = false;
             confirm = e;
             messages.append({ kind: "confirm", text: "", done: false, name: e.action, status: "asking",
                               info: JSON.stringify(e), cid: e.id });

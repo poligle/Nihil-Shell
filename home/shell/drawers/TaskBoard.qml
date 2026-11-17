@@ -353,9 +353,11 @@ Item {
                                     if (keeping) Tasks.edit(id, typed);
                                 }
 
-                                Keys.onReturnPressed: event => { event.accepted = true; finish(); }
-                                Keys.onEnterPressed: event => { event.accepted = true; finish(); }
-                                Keys.onEscapePressed: event => { event.accepted = true; keeping = false; finish(); }
+                                // Done by keyboard, the focus goes back to the board, so Escape and
+                                // Ctrl+V reach the Dashboard again instead of a hidden editor.
+                                Keys.onReturnPressed: event => { event.accepted = true; finish(); root.forceActiveFocus(); }
+                                Keys.onEnterPressed: event => { event.accepted = true; finish(); root.forceActiveFocus(); }
+                                Keys.onEscapePressed: event => { event.accepted = true; keeping = false; finish(); root.forceActiveFocus(); }
                                 onActiveFocusChanged: if (!activeFocus) finish()
                             }
 

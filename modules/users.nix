@@ -11,7 +11,8 @@ in
     {
         isNormalUser = true;
         description = user.fullName;
-        shell = pkgs.zsh;
+        # Above nixpkgs' own default for normal users (a mkDefault too), below a plain value in local.nix.
+        shell = lib.mkOverride 900 pkgs.zsh;
         extraGroups = [ "wheel" "networkmanager" "video" "nihil-leds" ];
     };
 

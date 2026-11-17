@@ -53,11 +53,11 @@ Singleton {
     }
 
     function notify(text: string): void {
-        Quickshell.execDetached([Config.cmd.notifySend, "-a", "nihil", "-u", "low", "Wi-Fi", text]);
+        Quickshell.execDetached([Config.cmd.notifySend, "-a", "nihil", "-u", "low", "--", "Wi-Fi", text]);
     }
 
     function editor(): void {
-        Quickshell.execDetached([Config.cmd.nmEditor]);
+        Apps.run([Config.cmd.nmEditor]);
     }
 
     function finish(net, code: int): void {

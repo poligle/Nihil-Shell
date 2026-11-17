@@ -20,6 +20,9 @@ Surface {
     function grab(): void { input.forceActiveFocus(); }
     function clear(): void { input.text = ""; }
 
+    // A password doesn't stay in a field nobody sees.
+    onVisibleChanged: if (!visible && root.password) clear()
+
     onValueChanged: {
         if (!input.activeFocus && input.text !== value)
             input.text = value;

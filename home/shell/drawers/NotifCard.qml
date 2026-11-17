@@ -114,7 +114,7 @@ Surface {
 
                 Txt {
                     Layout.fillWidth: true
-                    text: root.notification?.body ?? ""
+                    text: Notifs.markup(root.notification?.body ?? "")
                     visible: text !== ""
                     color: Tokens.dim
                     font.pixelSize: 13

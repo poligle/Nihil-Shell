@@ -6,6 +6,12 @@ let
 	qml = import ../theme/qml.nix { inherit pkgs lib nihil; };
 	greeterUser = config.services.greetd.settings.default_session.user;
 	scale = nihil.outputs.${nihil.primaryOutput}.scale or 1;
+	# Quickshell 0.3.0 takes the success greetd answers a cancel with for a finished login: changing
+	# user, or skipping the fingerprint, left the greeter dark. Fixed upstream after 0.3.0, so the
+	# patch goes only on that version, and nothing gets rebuilt on any other.
+	quickshell = if pkgs.quickshell.version == "0.3.0"
+		then pkgs.quickshell.overrideAttrs (old: { patches = (old.patches or [ ]) ++ [ ./quickshell-greetd-cancel.patch ]; })
+		else pkgs.quickshell;
 
 	others = lib.sort (a: b: a.name < b.name)
 		(lib.filter (user: user.isNormalUser && user.name != nihil.user.name) (lib.attrValues config.users.users));
@@ -51,7 +57,7 @@ let
 		export NIHIL_GREETER_READY="$run/nihil-greeter-ready"
 		rm -f "$NIHIL_GREETER_READY" "$run/nihil-greeter-password"
 
-		${pkgs.quickshell}/bin/quickshell -p ${greeter} &
+		${quickshell}/bin/quickshell -p ${greeter} &
 		pid=$!
 		for _ in $(seq 100); do
 			[ -e "$NIHIL_GREETER_READY" ] && break

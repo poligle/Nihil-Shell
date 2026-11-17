@@ -235,6 +235,8 @@
 		confirmEdit = "Cambiar";
 		confirmCreate = "Crear";
 		confirmMoreLines = "Y %1 líneas más";
+		confirmShowAll = "Ver todo";
+		confirmAtLine = "Línea %1";
 		confirmRun = "Ejecutar";
 		confirmTerminal = "en una terminal";
 		dangerRoot = "como root";
@@ -251,8 +253,11 @@
 		confirmSearch = "Buscar en internet";
 		confirmFetch = "Leer una página";
 		confirmOpenUrl = "Abrir una página";
+		confirmRead = "Leer de tus archivos";
+		confirmClick = "Hacer clic en %1";
 		whySensitive = "Parece una contraseña, una clave o un dato bancario";
-		whyPrivate = "Lleva algo de tus archivos";
+		whyPrivate = "En esta charla he leído tus archivos, la pantalla o un comando";
+		whyWeb = "En esta respuesta he leído internet o la pantalla";
 		confirmOk = "Confirmar";
 		confirmCancel = "Cancelar";
 		confirmDone = "Confirmado";
@@ -303,7 +308,7 @@
 		accessTerminal = "Terminal y repositorio";
 		accessTerminalGuard = "Podré leer, crear y cambiar archivos de %1, hacer add, commit y push con tu usuario de git y ejecutar comandos como tú. Antes de cada cambio, commit o comando te enseño qué voy a hacer y espero a que confirmes; lo que pide sudo se abre en una terminal para que escribas tú la contraseña.";
 		accessEverything = "Todo el sistema";
-		accessEverythingGuard = "Podré ver lo que tienes abierto y usarlo como tú: escribir y pulsar teclas en las ventanas, ponerte música, mover y cerrar ventanas, cambiar el volumen, el brillo o el fondo, mandar cosas al móvil y leer archivos de todo el ordenador, salvo claves, contraseñas y perfiles del navegador. Solo te preguntaré antes de cambiar archivos, hacer commits, ejecutar comandos que no solo leen, cerrar ventanas, escribir en una terminal y usar atajos que cierran o borran; y, si en esa respuesta he leído internet o la pantalla, también antes de escribir, leer tus archivos o enviar algo; si he leído tus archivos, antes de que algo salga a internet.";
+		accessEverythingGuard = "Podré ver lo que tienes abierto y usarlo como tú: escribir y pulsar teclas en las ventanas, ponerte música, mover y cerrar ventanas, cambiar el volumen, el brillo o el fondo, mandar cosas al móvil y leer archivos de todo el ordenador, salvo claves, contraseñas y perfiles del navegador. Solo te preguntaré antes de cambiar archivos, hacer commits, ejecutar comandos que no solo leen, escribir en una terminal y usar atajos que borran o envían; si en esa respuesta he leído internet o la pantalla, también antes de escribir, pulsar teclas, leer tus archivos o enviar algo; y, si en la charla he leído tus archivos, la pantalla o un comando, antes de que algo salga a internet.";
 		accessAuthorize = "Autorizar";
 
 		setModel = "Modelo";
@@ -339,6 +344,9 @@
 		cfgPasswordMismatch = "Las nuevas no coinciden";
 		cfgPasswordDone = "Contraseña cambiada";
 		cfgPasswordWrong = "No se ha cambiado: ¿es correcta la actual?";
+		cfgPasswordInvalid = "Una contraseña no puede llevar saltos de línea";
+		cfgHostRule = "Minúsculas, números y guiones, sin guion al principio ni al final";
+		cfgPasswordFailed = "No se ha podido cambiar";
 		cfgRegion = "Idioma y región";
 		cfgLanguage = "Idioma";
 		cfgKeyboard = "Teclado";
@@ -363,6 +371,9 @@
 		cfgAcceleration = "Aceleración";
 		cfgNiloSettings = "Ajustes";
 		cfgFingerprint = "Huella";
+		cfgSshPassword = "Solo entra tu usuario, con tu contraseña, o solo con claves si las pones en sshKeys de settings.json";
+		cfgSshKeys = "Solo entra tu usuario, con las claves de sshKeys";
+		cfgDevBuilds = "Tu contraseña compila como root tu copia de %1 (nihil dev)";
 		cfgSaved = "Todo aplicado";
 		cfgPending = "%1 cambios sin aplicar";
 		cfgPendingOne = "1 cambio sin aplicar";
@@ -504,6 +515,9 @@
 		deckPhones = "Dispositivos emparejados";
 		deckNone = "Ningún dispositivo emparejado.";
 		deckForget = "Olvidar";
+		deckAsking = "%1 quiere usar este ordenador como deck";
+		deckAllow = "Permitir";
+		deckDeny = "Rechazar";
 		deckPaired = "%1 ya es un deck de este ordenador";
 		deckPairedBody = "Si no has sido tú, olvídalo en Preferencias, Dispositivos.";
 		cfgScreens = "Pantallas";
@@ -766,6 +780,8 @@
 		confirmEdit = "Change";
 		confirmCreate = "Create";
 		confirmMoreLines = "And %1 more lines";
+		confirmShowAll = "Show all";
+		confirmAtLine = "Line %1";
 		confirmRun = "Run";
 		confirmTerminal = "in a terminal";
 		dangerRoot = "as root";
@@ -782,8 +798,11 @@
 		confirmSearch = "Search the web";
 		confirmFetch = "Read a page";
 		confirmOpenUrl = "Open a page";
+		confirmRead = "Read from your files";
+		confirmClick = "Click in %1";
 		whySensitive = "It looks like a password, a key or bank details";
-		whyPrivate = "It carries something from your files";
+		whyPrivate = "This chat has read your files, the screen or a command";
+		whyWeb = "This answer has read the web or the screen";
 		confirmOk = "Confirm";
 		confirmCancel = "Cancel";
 		confirmDone = "Confirmed";
@@ -834,7 +853,7 @@
 		accessTerminal = "Terminal and repository";
 		accessTerminalGuard = "I'll be able to read, create and change files in %1, add, commit and push as your git user, and run commands as you. Before each change, commit or command I show you what I'll do and wait for your confirmation; whatever needs sudo opens in a terminal for you to type the password.";
 		accessEverything = "The whole system";
-		accessEverythingGuard = "I'll be able to see what you have open and use it as you would: type and press keys in windows, put on music, move and close windows, change the volume, the brightness or the wallpaper, send things to your phone and read files across the computer, except keys, passwords and browser profiles. I'll only ask before changing files, committing, running commands that do more than read, closing windows, typing in a terminal and shortcuts that close or delete; and, once an answer has read the web or the screen, also before typing, reading your files or sending anything; once it has read your files, before anything goes out to the internet.";
+		accessEverythingGuard = "I'll be able to see what you have open and use it as you would: type and press keys in windows, put on music, move and close windows, change the volume, the brightness or the wallpaper, send things to your phone and read files across the computer, except keys, passwords and browser profiles. I'll only ask before changing files, committing, running commands that do more than read, typing in a terminal and shortcuts that delete or send; once an answer has read the web or the screen, also before typing, pressing keys, reading your files or sending anything; and once the chat has read your files, the screen or a command, before anything goes out to the internet.";
 		accessAuthorize = "Authorize";
 
 		setModel = "Model";
@@ -870,6 +889,9 @@
 		cfgPasswordMismatch = "The new ones don't match";
 		cfgPasswordDone = "Password changed";
 		cfgPasswordWrong = "Not changed: is the current one right?";
+		cfgPasswordInvalid = "A password can't have line breaks";
+		cfgHostRule = "Lowercase letters, digits and hyphens, with no hyphen at either end";
+		cfgPasswordFailed = "It couldn't be changed";
 		cfgRegion = "Language and region";
 		cfgLanguage = "Language";
 		cfgKeyboard = "Keyboard";
@@ -894,6 +916,9 @@
 		cfgAcceleration = "Acceleration";
 		cfgNiloSettings = "Settings";
 		cfgFingerprint = "Fingerprint";
+		cfgSshPassword = "Only your user gets in, with your password, or only with keys if you add them to sshKeys in settings.json";
+		cfgSshKeys = "Only your user gets in, with the keys in sshKeys";
+		cfgDevBuilds = "Your password builds your checkout in %1 as root (nihil dev)";
 		cfgSaved = "All applied";
 		cfgPending = "%1 changes to apply";
 		cfgPendingOne = "1 change to apply";
@@ -1035,6 +1060,9 @@
 		deckPhones = "Paired devices";
 		deckNone = "No device paired.";
 		deckForget = "Forget";
+		deckAsking = "%1 wants to use this computer as a deck";
+		deckAllow = "Allow";
+		deckDeny = "Deny";
 		deckPaired = "%1 is now a deck for this computer";
 		deckPairedBody = "If it wasn't you, forget it in Preferences, Devices.";
 		cfgScreens = "Screens";

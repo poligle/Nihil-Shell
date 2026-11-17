@@ -19,6 +19,8 @@ Singleton {
     property real expires: 0
     property var known: []
     property real opened: 0         // when it came out, ms
+    // Devices that gave the right code and wait, a few seconds, for this computer to allow them.
+    property var asking: []
 
     function refresh(): void {
         if (root.enabled && !lister.running)
@@ -42,6 +44,11 @@ Singleton {
         Quickshell.execDetached([Config.deck.command, "cancel"]);
     }
 
+    function allow(id: string, yes: bool): void {
+        root.asking = root.asking.filter(device => device.id !== id);
+        Quickshell.execDetached([Config.deck.command, yes ? "allow" : "deny", id]);
+    }
+
     function forget(id: string): void {
         if (forgetter.running)
             return;
@@ -50,7 +57,7 @@ Singleton {
     }
 
     Timer {
-        running: root.pairing
+        running: root.pairing && Machine.shown
         interval: 2000
         repeat: true
         onTriggered: {
@@ -68,10 +75,12 @@ Singleton {
                 try {
                     const reply = JSON.parse(text);
                     const found = reply.devices ?? [];
+                    root.asking = reply.asking ?? [];
                     if (root.pairing && found.some(device => root.known.indexOf(device.id) < 0)) {
                         root.pairing = false;
                         root.rows = [];
-                    } else if (root.pairing && reply.pairing === false && Date.now() - root.opened > 3000) {
+                    } else if (root.pairing && reply.pairing === false && root.asking.length === 0
+                               && Date.now() - root.opened > 3000) {
                         root.pair();
                     }
                     root.devices = found;
@@ -105,6 +114,12 @@ Singleton {
                 }
             }
         }
+    }
+
+    IpcHandler {
+        target: "deck"
+
+        function asking(): void { root.refresh(); }
     }
 
     Process {

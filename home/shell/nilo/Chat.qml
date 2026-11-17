@@ -146,6 +146,8 @@ Item {
         case "search": return Lang.confirmSearch;
         case "fetch": return Lang.confirmFetch;
         case "open": return Lang.confirmOpenUrl;
+        case "read": return Lang.confirmRead;
+        case "click": return Lang.confirmClick.arg(facts.app ?? "");
         }
         return "";
     }
@@ -469,7 +471,7 @@ Item {
                                     lineHeight: 1.3
                                     onLinkActivated: link => {
                                         Drawers.close();
-                                        Qt.openUrlExternally(link);
+                                        Apps.open(link);
                                     }
 
                                     HoverHandler {
@@ -591,8 +593,13 @@ Item {
                     readonly property bool desktop: facts.action === "desktop"
                     readonly property var why: desktop ? (facts.why ?? []) : []
                     readonly property bool risky: command && (facts.danger ?? []).length > 0
-                        || why.some(code => code !== "private")
+                        || why.some(code => code !== "private" && code !== "web")
                     readonly property bool open: entry.status === "asking"
+                    // While it's being asked, the card can show all there is; afterwards, what it showed at first.
+                    readonly property bool all: open && Nilo.confirmAll
+                    readonly property bool hiding: open && Nilo.confirmHides
+                    readonly property var diff: facts.diff ?? []
+                    readonly property var files: facts.files ?? []
                     readonly property bool isArmed: open && root.armed === entry.cid
 
                     width: Math.min(entry.width, 620)
@@ -649,7 +656,8 @@ Item {
                                 x: 12
                                 y: 10
                                 width: parent.width - 24
-                                text: card.desktop ? (card.facts.text ?? card.facts.keys ?? "") : "$ " + (card.facts.command ?? "")
+                                readonly property string whole: card.desktop ? (card.facts.text ?? card.facts.keys ?? "") : "$ " + (card.facts.command ?? "")
+                                text: !card.desktop || card.all || whole.length <= Nilo.cardChars ? whole : whole.slice(0, Nilo.cardChars) + " …"
                                 textFormat: Text.PlainText
                                 color: Tokens.ink
                                 font.family: Tokens.fontMono
@@ -661,8 +669,8 @@ Item {
 
                         Label {
                             visible: text !== ""
-                            text: card.why.includes("sensitive") ? Lang.whySensitive
-                                : card.why.includes("private") ? Lang.whyPrivate : ""
+                            text: [["sensitive", Lang.whySensitive], ["web", Lang.whyWeb], ["private", Lang.whyPrivate]]
+                                .filter(pair => card.why.includes(pair[0])).map(pair => pair[1]).join(". ")
                             color: Tokens.dim
                         }
 
@@ -712,12 +720,12 @@ Item {
                                 spacing: 1
 
                                 Repeater {
-                                    model: card.file ? (card.facts.diff ?? []).filter((d, i) => i > 0 || d.t !== "@") : []
+                                    model: card.file ? (card.all ? card.diff : card.diff.slice(0, Nilo.cardLines)) : []
 
                                     Txt {
                                         required property var modelData
                                         width: parent.width
-                                        text: modelData.t === "@" ? "···"
+                                        text: modelData.t === "@" ? "··· " + Lang.confirmAtLine.arg(modelData.s)
                                             : (modelData.t === "+" ? "+ " : modelData.t === "-" ? "− " : "  ") + modelData.s.replace(/\t/g, "    ")
                                         color: modelData.t === "+" ? Tokens.ink : modelData.t === "-" ? Tokens.dim : Tokens.muted
                                         font.family: Tokens.fontMono
@@ -729,8 +737,8 @@ Item {
                                 }
 
                                 Txt {
-                                    visible: (card.facts.more ?? 0) > 0
-                                    text: Lang.confirmMoreLines.arg(card.facts.more ?? 0)
+                                    visible: !card.all && card.diff.length > Nilo.cardLines
+                                    text: Lang.confirmMoreLines.arg(card.diff.length - Nilo.cardLines)
                                     color: Tokens.muted
                                     font.family: Tokens.fontMono
                                     font.pixelSize: 12
@@ -745,7 +753,7 @@ Item {
                             visible: !card.file && !card.command && !card.desktop
 
                             Repeater {
-                                model: (card.facts.files ?? []).slice(0, 8)
+                                model: card.all ? card.files : card.files.slice(0, Nilo.cardFiles)
 
                                 Txt {
                                     required property string modelData
@@ -758,7 +766,8 @@ Item {
                             }
 
                             Txt {
-                                readonly property int rest: Math.max(0, (card.facts.files ?? []).length - 8) + (card.facts.more ?? 0)
+                                readonly property int rest: (card.all ? 0 : Math.max(0, card.files.length - Nilo.cardFiles))
+                                    + (card.facts.more ?? 0)
                                 visible: rest > 0
                                 text: Lang.confirmMore.arg(rest)
                                 color: Tokens.muted
@@ -808,11 +817,15 @@ Item {
                                 onClicked: Nilo.answer(false)
                             }
 
+                            // With part of it still out of sight, the card first shows the rest.
                             KeyButton {
                                 accent: !card.isArmed
                                 danger: card.isArmed
-                                text: card.isArmed ? Lang.enterAgain : Lang.confirmOk
-                                onClicked: Nilo.answer(true)
+                                text: card.hiding ? Lang.confirmShowAll : card.isArmed ? Lang.enterAgain : Lang.confirmOk
+                                onClicked: {
+                                    if (card.hiding) Nilo.confirmAll = true;
+                                    else Nilo.answer(true);
+                                }
                             }
                         }
 

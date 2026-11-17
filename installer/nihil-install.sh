@@ -12,13 +12,55 @@ bootBytes=1073741824
 headroom=10000000000
 
 t() { if [ "$lang" = es ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
-emit() { jq -cn --arg kind "$1" --arg text "$2" '{ kind: $kind, text: $text }' >&3; }
+# If the window is gone, what it would have shown is lost, not the installation.
+emit() { jq -cn --arg kind "$1" --arg text "$2" '{ kind: $kind, text: $text }' >&3 2> /dev/null || true; }
 say() { if [ "$gui" = yes ]; then emit step "$*"; else gum style --foreground 15 "$@"; fi; }
 dim() { if [ "$gui" = yes ]; then printf '%s\n' "$*"; else gum style --foreground 7 "$@"; fi; }
 fail() {
     if [ "$gui" = yes ]; then emit error "$*"; else gum style --foreground 1 "$@" >&2; fi
     trap - EXIT
     exit 1
+}
+
+# One installation at a time: the window's, a text one started after it, and finish.
+lock() {
+    exec 9> /run/nihil-install.lock
+    flock -n 9 || fail "$(t "Another installation is running." "Hay otra instalación en marcha.")"
+}
+
+# What a plan holds, empty: each try starts from nothing, not from the one before.
+reset_plan() {
+    esp="" efi="" boot="" root="" windows=no room="" roomPart="" roomFs="" bootType=""
+    roomBytes=0 roomFirst=0 roomLast=0
+}
+
+# Nothing on what is about to change may be in use: swap goes off, LVM and RAID on it stop, and
+# what still holds it stops the installation before anything is erased, saying what it is.
+free_disk() {
+    local devices=() dev vg holder held=""
+    mapfile -t devices < <(lsblk -lnpo NAME "$@" 2> /dev/null)
+    for dev in "${devices[@]}"; do
+        swapoff "$dev" 2> /dev/null || true
+        umount "$dev" 2> /dev/null || true
+    done
+    while read -r vg; do
+        if [ -n "$vg" ]; then
+            vgchange -an "$vg" > /dev/null 2>&1 || true
+        fi
+    done < <(pvs --noheadings -o vg_name "${devices[@]}" 2> /dev/null | sort -u)
+    while read -r dev; do
+        mdadm --stop "$dev" > /dev/null 2>&1 || true
+    done < <(lsblk -lnpo NAME,TYPE "$@" 2> /dev/null | awk '$2 ~ /^raid/ { print $1 }' | sort -u)
+    for dev in "${devices[@]}"; do
+        for holder in "/sys/class/block/${dev##*/}/holders/"*; do
+            if [ -e "$holder" ]; then
+                held="$held ${holder##*/}"
+            fi
+        done
+    done
+    held=${held# }
+    [ -z "$held" ] || fail "$(t "Something still uses it ($held): free it from another console (Alt+F2) and try again." \
+        "Algo lo sigue usando ($held): libéralo desde otra consola (Alt+F2) y vuelve a probar.")"
 }
 
 if [ "$(id -u)" != 0 ]; then
@@ -57,12 +99,20 @@ keymap_of() {
 
 guess_zone() { curl -fs --max-time 6 https://ipapi.co/timezone || true; }
 
+# Never the disk NIHIL started from: up from /iso to its disk, and any disk with an iso9660 on it,
+# which is still the USB when the ISO was copied to RAM and /iso is a tmpfs.
 list_disks() {
-    local live
-    live=$(lsblk -no PKNAME "$(findmnt -no SOURCE /iso 2>/dev/null || true)" 2>/dev/null || true)
-    lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="/dev/$live" -v least="$least" '
+    local source live="" candidate
+    source=$(findmnt -no SOURCE /iso 2> /dev/null || true)
+    if [ -n "$source" ]; then
+        live=$(lsblk -lnspo NAME,TYPE "$source" 2> /dev/null | awk '$2 == "disk" { print $1; exit }' || true)
+    fi
+    lsblk -dbnpo NAME,SIZE,RO,TYPE | awk -v live="$live" -v least="$least" '
         $4 == "disk" && $3 == 0 && $2 >= least && $1 != live &&
-        $1 !~ /^\/dev\/(fd|zram|ram|loop)[0-9]/ && $1 !~ /(boot[0-9]+|rpmb)$/ { print $1 }'
+        $1 !~ /^\/dev\/(fd|zram|ram|loop)[0-9]/ && $1 !~ /(boot[0-9]+|rpmb)$/ { print $1 }' |
+    while read -r candidate; do
+        lsblk -no FSTYPE "$candidate" 2> /dev/null | grep -qx iso9660 || printf '%s\n' "$candidate"
+    done
 }
 
 set_disk() {
@@ -470,15 +520,25 @@ apply_plan() {
     umount -R /mnt 2>/dev/null || true
     cryptsetup close cryptroot 2>/dev/null || true
     if [ "$mode" = whole ]; then
+        esp="" efi="" windows=no
+        free_disk "$disk"
         wipefs -af "$disk" >/dev/null
         sgdisk --zap-all "$disk" >/dev/null
         sgdisk -n1:0:+1G -t1:ef00 -c1:BOOT -n2:0:0 -t2:8300 -c2:nixos "$disk" >/dev/null
-        partprobe "$disk"
+        partprobe "$disk" || fail "$(t "The new partitions of $disk can't be read: something still uses it. Restart and try again." \
+            "No se pueden leer las particiones nuevas de $disk: algo lo sigue usando. Reinicia y vuelve a probar.")"
         udevadm settle
         boot=$(part 1)
         root=$(part 2)
         mkfs.fat -F 32 -n BOOT "$boot" >/dev/null
     else
+        if [ "$mode" = part ] && [ -n "$boot" ] && [ "$boot" != "$esp" ]; then
+            free_disk "$root" "$boot"
+        elif [ "$mode" = part ]; then
+            free_disk "$root"
+        elif [ "$room" = shrink ]; then
+            free_disk "$roomPart"
+        fi
         if [ "$mode" = room ]; then
             if [ "$room" = shrink ]; then
                 say "$(t "Shrinking $roomPart: it can take a few minutes…" "Encogiendo $roomPart: puede tardar unos minutos…")"
@@ -642,6 +702,7 @@ EOF
     fi
 
     printf '%s:%s\n' "$username" "$password" | nixos-enter --root /mnt -c chpasswd
+    : > /run/nihil-install.done
 
     if [ "$gui" = no ]; then
         gum style --foreground 15 --margin "1 0" "$(t "NIHIL is installed." "NIHIL está instalado.")"
@@ -743,6 +804,9 @@ apply_answers() {
     get() { jq -r "$1 // empty" <<< "$answers"; }
     lang=$(get .language)
     [ "$lang" = es ] || lang=en
+    # If the window dies halfway, the disk work goes on to the end rather than stopping mid-step.
+    trap '' PIPE HUP
+    lock
     exec >> "$log" 2>&1
     if [ "$lang" = es ]; then locale=es_ES.UTF-8; else locale=en_US.UTF-8; fi
     [ -d /sys/firmware/efi ] || fail "$(t "NIHIL boots with systemd-boot, which needs UEFI: this machine started in legacy BIOS mode." \
@@ -769,18 +833,7 @@ apply_answers() {
         [ -n "$passphrase" ] || fail "$(t "The disk passphrase is empty." "La contraseña del disco está vacía.")"
     fi
     mode=$(get .mode)
-    esp=""
-    efi=""
-    boot=""
-    root=""
-    windows=no
-    room=""
-    roomPart=""
-    roomFs=""
-    roomBytes=0
-    roomFirst=0
-    roomLast=0
-    bootType=""
+    reset_plan
     case $mode in
         whole) ;;
         room)
@@ -873,6 +926,14 @@ main_tui() {
     else
         locale=en_US.UTF-8
     fi
+    lock
+    if [ -e /run/nihil-install.done ]; then
+        if gum confirm "$(t "NIHIL is already installed on this computer. Restart now?" "NIHIL ya está instalado en este ordenador. ¿Reiniciar ahora?")" \
+                --affirmative "$(t "Restart" "Reiniciar")" --negative "$(t "Install again" "Instalar otra vez")"; then
+            finish
+        fi
+        rm -f /run/nihil-install.done
+    fi
 
     if [ -f /iso/nix-store.squashfs ]; then
         if ! gum spin --title "$(t "Checking the USB stick…" "Comprobando el USB…")" -- cat /iso/nix-store.squashfs > /dev/null; then
@@ -944,18 +1005,7 @@ main_tui() {
     set_disk "${disk%% *}"
 
     mode=whole
-    esp=""
-    efi=""
-    boot=""
-    root=""
-    windows=no
-    room=""
-    roomPart=""
-    roomFs=""
-    roomBytes=0
-    roomFirst=0
-    roomLast=0
-    bootType=""
+    reset_plan
     nextTo=$(t "Next to what is on it (make room)" "Junto a lo que hay (hacer sitio)")
     all=$(t "Erase the whole disk" "Borrar el disco entero")
     pick=$(t "On one of its partitions (formatting it)" "En una de sus particiones (formateándola)")
@@ -964,6 +1014,7 @@ main_tui() {
         dim "$(t "To partition it by hand: another console (Alt+F2) has cfdisk and parted; then «On one of its partitions»." \
                  "Para particionarlo a mano: otra consola (Alt+F2) tiene cfdisk y parted; luego «En una de sus particiones».")"
         choice=$(gum choose --header "$(t "Where on $disk" "Dónde en $disk")" "$nextTo" "$all" "$pick")
+        reset_plan
         case $choice in
             "$nextTo")
                 if plan_room; then
@@ -1057,6 +1108,7 @@ case ${1:-} in
         check_filesystem "${2:?}"
         ;;
     finish)
+        lock
         finish
         ;;
     "")

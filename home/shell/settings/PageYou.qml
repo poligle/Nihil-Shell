@@ -96,8 +96,10 @@ Flickable {
                 text: !page.matching && again.text !== "" ? Lang.cfgPasswordMismatch
                     : Machine.passwordState === "busy" ? Lang.cfgChecking
                     : Machine.passwordState === "done" ? Lang.cfgPasswordDone
-                    : Machine.passwordState === "wrong" ? Lang.cfgPasswordWrong : ""
-                wrong: Machine.passwordState === "wrong" || (!page.matching && again.text !== "")
+                    : Machine.passwordState === "wrong" ? Lang.cfgPasswordWrong
+                    : Machine.passwordState === "invalid" ? Lang.cfgPasswordInvalid
+                    : Machine.passwordState === "failed" ? Lang.cfgPasswordFailed : ""
+                wrong: ["wrong", "invalid", "failed"].includes(Machine.passwordState) || (!page.matching && again.text !== "")
             }
         }
     }

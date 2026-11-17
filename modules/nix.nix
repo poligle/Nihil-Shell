@@ -13,16 +13,20 @@
         nix =
         {
             settings.experimental-features = [ "nix-command" "flakes" ];
-            settings.auto-optimise-store = true;
+            settings.auto-optimise-store = lib.mkDefault true;
             gc =
             {
-                automatic = true;
-                dates = "weekly";
-                options = "--delete-older-than ${toString config.nihil.generations.days}d";
+                automatic = lib.mkDefault true;
+                dates = lib.mkDefault "weekly";
+                options = lib.mkDefault "--delete-older-than ${toString config.nihil.generations.days}d";
             };
         };
 
         systemd.timers.nix-gc.timerConfig.Persistent = true;
+        # Collecting removes generations but not their boot entries: the menu kept offering ones
+        # that no longer exist. Writing the entries again after it is what nihil generations clean does.
+        systemd.services.nix-gc.serviceConfig.ExecStartPost =
+            [ "/nix/var/nix/profiles/system/bin/switch-to-configuration boot" ];
 
         programs.nh =
         {

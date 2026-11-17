@@ -197,8 +197,9 @@ let
 	'';
 
 	lock-screen = pkgs.writeShellScriptBin "lock-screen" ''
+		${pkgs.procps}/bin/pidof hyprlock >/dev/null && exit 0
 		${pkgs.pipewire}/bin/pw-play --volume 0.4 ${sound.lock} &
-		exec ${pkgs.hyprlock}/bin/hyprlock
+		exec ${pkgs.systemd}/bin/systemd-run --user --scope --collect --quiet ${pkgs.hyprlock}/bin/hyprlock
 	'';
 
 	power-off = pkgs.writeShellScriptBin "power-off" ''

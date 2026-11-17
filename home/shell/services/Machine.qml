@@ -63,7 +63,8 @@ Singleton {
         : phase === "warning" ? (kind === "generation" ? Lang.genSwitchedWarn.arg(target) : Lang.cfgAppliedWarn)
         : Lang.cfgSaved
     readonly property string statusSub: phase === "applying" ? detail
-        : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint) : "")
+        : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint)
+            : failure === "invalid" ? detail : "")
         : changes === 0 && phase === "warning" ? Lang.cfgLogHint
         : ""
 
@@ -243,13 +244,18 @@ Singleton {
     function changePassword(current: string, next: string): void {
         if (passwd.running)
             return;
+        // One line each: chpasswd takes lines, and a pasted line break would change the wrong thing.
+        if (/[\r\n]/.test(current + next) || next === "") {
+            root.passwordState = "invalid";
+            return;
+        }
         root.passwordState = "busy";
         passwd.input = current + "\n" + Config.user + ":" + next + "\n";
         passwd.running = true;
     }
 
     function notify(title: string, body: string): void {
-        Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL", title, body]);
+        Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL", "--", title, body]);
     }
 
     function cause(lines: var): string {
@@ -532,7 +538,8 @@ Singleton {
         }
         onExited: code => {
             stdinEnabled = true;
-            root.passwordState = code === 0 ? "done" : "wrong";
+            // sudo says 1 when the current password is wrong; nihil passwd, 3 or 4 when it can't change it.
+            root.passwordState = code === 0 ? "done" : code === 1 ? "wrong" : "failed";
         }
     }
 
@@ -546,9 +553,15 @@ Singleton {
         }
     }
 
+    // A unit killed outright (SIGKILL, out of memory) can't say how it ended: running with no
+    // unit, for longer than starting one takes, is a failure, or the shell would wait for it.
+    readonly property string statusScript: "s=$(cat /run/nihil/apply.status 2>/dev/null); if [ \"$s\" = running ] && ! "
+        + Config.cmd.systemctl + " is-active --quiet nihil-apply.service && "
+        + "[ $(( $(date +%s) - $(stat -c %Y /run/nihil/apply.status) )) -gt 10 ]; then s=failed; fi; echo \"$s\"; "
+
     Process {
         id: peek
-        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; cat /run/nihil/apply.kind 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null; echo --nihil--; " + root.counting + " /run/nihil/apply.log 2>/dev/null"]
+        command: [Config.cmd.sh, "-c", root.statusScript + "echo --nihil--; cat /run/nihil/apply.kind 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null; echo --nihil--; " + root.counting + " /run/nihil/apply.log 2>/dev/null"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: root.report(text)

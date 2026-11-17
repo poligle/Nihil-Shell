@@ -4,7 +4,7 @@
 {
     programs.thunar = 
     {
-        enable = true;
+        enable = lib.mkDefault true;
         plugins = with pkgs; 
         [
             thunar-archive-plugin
@@ -12,7 +12,7 @@
         ];
     };
     
-    services.gvfs.enable = true;
-    services.tumbler.enable = true;
-    programs.dconf.enable = true;
+    services.gvfs.enable = lib.mkDefault true;
+    services.tumbler.enable = lib.mkDefault true;
+    programs.dconf.enable = lib.mkDefault true;
 }

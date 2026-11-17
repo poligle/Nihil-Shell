@@ -24,7 +24,7 @@ Item {
             before = Machine.wallpaper;
             index = Math.max(0, names.indexOf(before));
             list.positionViewAtIndex(index, ListView.Center);
-            keys.forceActiveFocus();
+            Qt.callLater(() => { if (root.active) keys.forceActiveFocus(); });
         }
     }
 
