@@ -292,7 +292,7 @@ Singleton {
         peekFacts = kind === "confirm" ? (confirm ?? {}) : (() => { try { return JSON.parse(reply?.info || "{}"); } catch (e) { return {}; } })();
         const body = plain(peekText);
         Quickshell.execDetached([Config.cmd.notifySend, "--app-name=Nilo", "--hint=string:x-nihil-tag:nilo",
-                                 "--hint=string:x-nihil-nilo:" + kind,
+                                 "--hint=string:x-nihil-nilo:" + kind, "--",
                                  kind === "confirm" ? Lang.niloPeekWaiting : kind === "error" ? Lang.niloPeekFailed : Lang.niloPeekDone,
                                  (body.length > 220 ? body.slice(0, 219) + "…" : body)
                                      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")]);

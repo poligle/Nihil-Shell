@@ -36,7 +36,9 @@ QR in Preferences makes a new one before it runs out, and goes away once a phone
 
 1. Connect to each of `hosts` in order, on `port`, over TLS (see below), until one
    answers `GET /v1/hello`.
-2. `POST /v1/pair` with the code and the phone's name.
+2. `POST /v1/pair` with the code and the phone's name. The computer asks first, in
+   Preferences, Devices, and answers when it's allowed, within 8 seconds; denied or
+   unanswered, `403 {"error": "declined"}`.
 3. Keep what it returns, the token above all, with the pin, the name, the port and the
    address that answered.
 

@@ -254,7 +254,7 @@ Singleton {
     }
 
     function notify(title: string, body: string): void {
-        Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL", title, body]);
+        Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL", "--", title, body]);
     }
 
     function cause(lines: var): string {

@@ -54,7 +54,7 @@ Singleton {
 
     function notify(title: string, body: string, picture: string): void {
         Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL"].concat(
-            picture !== "" ? ["-h", "string:image-path:" + root.fileUrl(picture)] : [], [title, body]));
+            picture !== "" ? ["-h", "string:image-path:" + root.fileUrl(picture)] : [], ["--", title, body]));
     }
 
     function answer(text: string): var {
