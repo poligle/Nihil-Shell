@@ -104,6 +104,12 @@ Singleton {
         return Math.max(1500, Math.min(longestTimeout, Math.round(t < 100 ? t * 1000 : t)));
     }
 
+    // A body can bring bold, italics, underline and line breaks; any other < is shown as it is, so
+    // a picture or a link can't load from anywhere, closed or not.
+    function markup(text: string): string {
+        return String(text).replace(/<(?!\/?(?:b|i|u)>|br\s*\/?>)/gi, "&lt;");
+    }
+
     NotificationServer {
         id: server
 
