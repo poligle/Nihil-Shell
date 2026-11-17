@@ -61,7 +61,7 @@ Singleton {
 
     function warn(percent: int, last: bool): void {
         Quickshell.execDetached([Config.cmd.notifySend, "--urgency=critical", "--app-name=" + Lang.batteryApp,
-                                 "--hint=string:x-nihil-tag:battery",
+                                 "--hint=string:x-nihil-tag:battery", "--",
                                  Lang.batteryLow.arg(percent), last ? Lang.batteryLowLast : Lang.batteryLowPlug]);
     }
 

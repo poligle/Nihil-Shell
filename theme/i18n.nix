@@ -512,6 +512,9 @@
 		deckPhones = "Dispositivos emparejados";
 		deckNone = "Ningún dispositivo emparejado.";
 		deckForget = "Olvidar";
+		deckAsking = "%1 quiere usar este ordenador como deck";
+		deckAllow = "Permitir";
+		deckDeny = "Rechazar";
 		deckPaired = "%1 ya es un deck de este ordenador";
 		deckPairedBody = "Si no has sido tú, olvídalo en Preferencias, Dispositivos.";
 		cfgScreens = "Pantallas";
@@ -1051,6 +1054,9 @@
 		deckPhones = "Paired devices";
 		deckNone = "No device paired.";
 		deckForget = "Forget";
+		deckAsking = "%1 wants to use this computer as a deck";
+		deckAllow = "Allow";
+		deckDeny = "Deny";
 		deckPaired = "%1 is now a deck for this computer";
 		deckPairedBody = "If it wasn't you, forget it in Preferences, Devices.";
 		cfgScreens = "Screens";

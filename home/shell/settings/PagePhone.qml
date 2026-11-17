@@ -72,8 +72,37 @@ Flickable {
                     text: Lang.deckPairFailed
                 }
 
+                Repeater {
+                    model: Deck.asking
+
+                    Column {
+                        required property var modelData
+
+                        spacing: 8
+
+                        Label {
+                            text: Lang.deckAsking.arg(modelData.name)
+                        }
+
+                        Row {
+                            spacing: 8
+
+                            KeyButton {
+                                accent: true
+                                text: Lang.deckAllow
+                                onClicked: Deck.allow(modelData.id, true)
+                            }
+
+                            KeyButton {
+                                text: Lang.deckDeny
+                                onClicked: Deck.allow(modelData.id, false)
+                            }
+                        }
+                    }
+                }
+
                 QrCode {
-                    visible: Deck.pairing
+                    visible: Deck.pairing && Deck.asking.length === 0
                     rows: Deck.rows
                 }
 

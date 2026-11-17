@@ -334,12 +334,62 @@ class ServerTest(Base):
         self.server.shutdown()
         self.server.server_close()
 
+    def answering(self, op="allow"):
+        """Someone at the computer, answering the next pairing that asks."""
+        def answer():
+            for _ in range(200):
+                waiting = self.deck.control({"op": "devices"})["asking"]
+                if waiting:
+                    self.deck.control({"op": op, "id": waiting[0]["id"]})
+                    return
+                time.sleep(0.02)
+        threading.Thread(target=answer, daemon=True).start()
+
     def pair(self, name="Phone"):
         reply = self.deck.control({"op": "pair"})
+        self.answering()
         status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": name})
         self.assertEqual(status, 200, body)
         self.phone.token = body["token"]
         return body
+
+    def test_pairing_waits_for_the_computer(self):
+        # The right code only asks: denied, or not answered in time, nothing is paired.
+        reply = self.deck.control({"op": "pair"})
+        self.answering("deny")
+        status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "-Intruder"})
+        self.assertEqual((status, body), (403, {"error": "declined"}))
+        self.assertEqual(self.deck.control({"op": "devices"})["devices"], [])
+        self.assertEqual(deck.clean_name("--app-name=x", "Android"), "app-name=x")
+
+    def test_a_slow_request_is_cut(self):
+        # Dripping a request a byte at a time doesn't hold a connection past REQUEST_SECONDS.
+        old = deck.REQUEST_SECONDS
+        deck.REQUEST_SECONDS = 0.5
+        self.addCleanup(setattr, deck, "REQUEST_SECONDS", old)
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        with socket.create_connection(("127.0.0.1", self.deck.port)) as raw, context.wrap_socket(raw) as tls:
+            tls.sendall(b"GET /v1/hel")
+            tls.settimeout(5)
+            started = time.monotonic()
+            try:
+                self.assertEqual(tls.recv(1), b"")
+            except (ssl.SSLError, ConnectionError):
+                pass
+            self.assertLess(time.monotonic() - started, 3)
+
+    def test_forgetting_cuts_the_trackpad(self):
+        self.pair()
+        device = self.deck.control({"op": "devices"})["devices"][0]["id"]
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+        self.deck.claim(device, left)
+        self.assertTrue(self.deck.control({"op": "forget", "id": device})["ok"])
+        right.settimeout(2)
+        self.assertEqual(right.recv(1), b"")
 
     def test_pairing_with_the_code_in_the_qr(self):
         status, body = self.phone.request("GET", "/v1/hello")
@@ -353,6 +403,7 @@ class ServerTest(Base):
         self.assertTrue(reply["uri"].startswith("nihil-deck://pair?v=1&name=nihil-test&"))
 
         self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": "WRONGCODE", "device": "x"})[0], 403)
+        self.answering()
         status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "Pho\x07ne"})
         self.assertEqual(status, 200, body)
         self.assertEqual(body["name"], "nihil-test")
@@ -360,7 +411,7 @@ class ServerTest(Base):
 
         devices = self.deck.control({"op": "devices"})["devices"]
         self.assertEqual([(d["id"], d["name"]) for d in devices], [(body["device"], "Phone")])
-        self.assertIn("notify-send -a NIHIL Phone is a deck now Forget it in Preferences.", self.logged())
+        self.assertIn("notify-send -a NIHIL -- Phone is a deck now Forget it in Preferences.", self.logged())
         with open(os.path.join(self.folder, "state", "devices.json")) as file:
             stored = file.read()
         self.assertNotIn(body["token"], stored)
@@ -963,7 +1014,7 @@ class ControlTest(Base):
         self.assertTrue(deck.ask({"op": "status"}, path)["pairing"])
         self.assertEqual(deck.ask({"op": "cancel"}, path), {"ok": True})
         self.assertFalse(deck.ask({"op": "status"}, path)["pairing"])
-        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": [], "pairing": False})
+        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": [], "pairing": False, "asking": []})
         self.assertEqual(deck.ask({"op": "nonsense"}, path), {"error": "unknown"})
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as raw:
             raw.connect(path)
