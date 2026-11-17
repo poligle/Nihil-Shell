@@ -32,9 +32,11 @@ Item {
         color: Battery.low ? Tokens.ink : Tokens.muted
     }
 
+    // The charging sweep, a step every half second, and only where the bar is shown: each step is a
+    // frame of the whole screen.
     Timer {
-        running: Battery.charging && !Battery.full
-        interval: 160
+        running: root.visible && Battery.charging && !Battery.full
+        interval: 500
         repeat: true
         onTriggered: root.scan = root.scan >= 9 ? meter.lit : root.scan + 1
         onRunningChanged: if (!running) root.scan = -1

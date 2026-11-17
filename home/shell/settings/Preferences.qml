@@ -63,7 +63,9 @@ Scope {
 
             Loader {
                 id: backdrop
-                active: Machine.glass && win.target !== null
+                // Only while it's shown: with windows: true it captures every window, and speeds up
+                // Glass's timer for all, as long as it exists.
+                active: Machine.glass && win.visible && win.target !== null
                 sourceComponent: Backdrop {
                     output: win.target.name
                     screenSize: Qt.vector2d(win.width, win.height)

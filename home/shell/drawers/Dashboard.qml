@@ -195,6 +195,7 @@ Item {
                 DotScope {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    live: root.active
                     series: SysStats.rxHistory
                     secondary: SysStats.txHistory
                 }
