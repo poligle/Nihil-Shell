@@ -344,6 +344,8 @@
 		cfgPasswordMismatch = "Las nuevas no coinciden";
 		cfgPasswordDone = "Contraseña cambiada";
 		cfgPasswordWrong = "No se ha cambiado: ¿es correcta la actual?";
+		cfgPasswordInvalid = "Una contraseña no puede llevar saltos de línea";
+		cfgPasswordFailed = "No se ha podido cambiar";
 		cfgRegion = "Idioma y región";
 		cfgLanguage = "Idioma";
 		cfgKeyboard = "Teclado";
@@ -880,6 +882,8 @@
 		cfgPasswordMismatch = "The new ones don't match";
 		cfgPasswordDone = "Password changed";
 		cfgPasswordWrong = "Not changed: is the current one right?";
+		cfgPasswordInvalid = "A password can't have line breaks";
+		cfgPasswordFailed = "It couldn't be changed";
 		cfgRegion = "Language and region";
 		cfgLanguage = "Language";
 		cfgKeyboard = "Keyboard";

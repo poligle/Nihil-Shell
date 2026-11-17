@@ -467,7 +467,14 @@ let
                     if [ "$(id -u)" != 0 ]; then
                         exec sudo "$(readlink -f "$0")" passwd
                     fi
-                    tail -n 1 | chpasswd
+                    # One line, user:password, and only for whoever ran sudo: a line break pasted
+                    # in the new password can't turn into another account.
+                    line=$(tail -n 1)
+                    case "$line" in
+                        "''${SUDO_USER:-}":*) ;;
+                        *) echo "nihil passwd: only the password of the user who runs it changes here" >&2; exit 3 ;;
+                    esac
+                    printf '%s\n' "$line" | chpasswd || exit 4
                     ;;
                 welcome)
                     exec nihil-ipc settings welcome

@@ -130,10 +130,12 @@ Item {
             onClicked: {
                 if (root.fingerWait)
                     Machine.cancelFinger();
-                if (root.asking)
+                if (root.asking) {
                     root.asking = false;
-                else
+                    password.clear();
+                } else {
                     Machine.discard();
+                }
             }
         }
 

@@ -243,6 +243,11 @@ Singleton {
     function changePassword(current: string, next: string): void {
         if (passwd.running)
             return;
+        // One line each: chpasswd takes lines, and a pasted line break would change the wrong thing.
+        if (/[\r\n]/.test(current + next) || next === "") {
+            root.passwordState = "invalid";
+            return;
+        }
         root.passwordState = "busy";
         passwd.input = current + "\n" + Config.user + ":" + next + "\n";
         passwd.running = true;
@@ -532,7 +537,8 @@ Singleton {
         }
         onExited: code => {
             stdinEnabled = true;
-            root.passwordState = code === 0 ? "done" : "wrong";
+            // sudo says 1 when the current password is wrong; nihil passwd, 3 or 4 when it can't change it.
+            root.passwordState = code === 0 ? "done" : code === 1 ? "wrong" : "failed";
         }
     }
 
