@@ -1461,6 +1461,27 @@ class UnitTest(unittest.TestCase):
             "nix flake show github:evil/repo": False, "nix search github:evil/repo foo": False,
             "nix search nixpkgs firefox": True, "nix path-info nixpkgs#hello": True, "echo a#b": True,
             "ls # nada": False,
+            # Read as bash and the programs read them: a # inside a word, abbreviated and grouped options.
+            "echo a#; touch x": False, "nix path-info nixpkgs#x; id": False, "ls |#x": False,
+            "git grep -iO'touch x' needle": False, "git grep --open='touch x' needle": False,
+            "sort -S 1 --compress-prog=bash notas.txt": False, "sort --o=F x": False, "sort -uo F x": False,
+            "sort --out=F x": False, "find .. -print0 | sort --files0-from=-": False, "sort -rn x": True,
+            "uniq - F": False, "cat x | uniq - F": False, "uniq -c x": True, "file --comp -m F": False,
+            "file -bC -m F": False, "file -b x": True, "journalctl --cursor-fi=F": False, "tree -ao F": False,
+            "tree -a": True, "git branch -v --del --forc x": False, "git branch -vv --mov a b": False,
+            "git branch -av": True, "git branch --list fix": True, "git branch -D x": False, "git tag --del v1": False,
+            "git tag -n5": True, "git config --get user.name": True, "git config get user.name": True,
+            "git config --list --show-origin": True, "git config --unset-a x": False, "git config set user.name x": False,
+            "git diff --no-index /tmp a": False, "git grep --no-i x": False,
+            "grep --recurs foo ..": False, "grep -d recurse foo ..": False, "grep -2r foo ..": False,
+            "grep -r -eX ..": False, "grep -r --regexp=X ..": False, "grep -id recurse X ..": False,
+            "grep -r --reg=X ..": False, "grep -f../.ssh/id_rsa x": False, "rg -uuu -eX ..": False,
+            "rg --files ..": False, "grep -rn -e foo .": True, "diff -rN .. /tmp": False, "diff -N ~ /tmp": False,
+            "diff -rN --from-file=.. a": False, "diff -u a/b a/b": True, "jq -n env": False,
+            "cat ~+/../.ssh/config": False, "cat /proc/self/cwd/../.ssh/config": False, "cat ~root/x": False,
+            "nmcli --show c show id casa": False, "nmcli --s c show": False, "nmcli c show id casa --sh": False,
+            "nmcli -t c show": True, "ip -bat cmds": False, "ip -ne x link": False, "systemctl --hos=x status": False,
+            "date -us 0": False, "date -Iseconds": True,
         }.items():
             self.assertEqual(agent.harmless(command, repo, inside), expected, command)
         self.assertFalse(agent.harmless("git diff", "/home/u/Descargas/algo", inside))
