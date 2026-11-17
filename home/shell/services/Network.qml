@@ -85,16 +85,18 @@ Singleton {
         }
         const nm = Config.cmd.nmcli;
         root.pending = net.ssid;
+        // The key goes through stdin, and from there only through sh's own printf: a command's
+        // arguments are there for any process to read in /proc while nmcli waits for the network.
         if (net.saved && !password) {
             root.run([nm, "connection", "up", "id", net.ssid], code => root.finish(net, code));
         } else if (net.saved) {
-            root.run([Config.cmd.sh, "-c", `"${nm}" connection modify id "$1" wifi-sec.psk "$2" && "${nm}" connection up id "$1"`,
-                      "sh", net.ssid, password], code => root.finish(net, code));
+            root.run([Config.cmd.sh, "-c", 'IFS= read -r key; printf "802-11-wireless-security.psk:%s\\n" "$key" | "$1" connection up id "$2" passwd-file /dev/stdin',
+                      "sh", nm, net.ssid], code => root.finish(net, code), password + "\n");
         } else if (!net.secure) {
             root.run([nm, "device", "wifi", "connect", net.ssid], code => root.finish(net, code));
         } else if (password) {
-            root.run([Config.cmd.sh, "-c", `"${nm}" device wifi connect "$1" password "$2" || { "${nm}" connection delete id "$1" >/dev/null 2>&1; exit 1; }`,
-                      "sh", net.ssid, password], code => root.finish(net, code));
+            root.run([Config.cmd.sh, "-c", 'IFS= read -r key; printf "%s\\n" "$key" | "$1" --ask device wifi connect "$2" || { "$1" connection delete id "$2" >/dev/null 2>&1; exit 1; }',
+                      "sh", nm, net.ssid], code => root.finish(net, code), password + "\n");
         } else {
             root.pending = "";
             root.askPassword = net.ssid;
@@ -149,16 +151,27 @@ Singleton {
 
     property var afterAction: null
 
-    function run(command: var, callback: var): void {
+    function run(command: var, callback: var, input: string): void {
         if (action.running) return;
         root.afterAction = callback ?? null;
+        action.input = input ?? "";
         action.command = command;
         action.running = true;
     }
 
     Process {
         id: action
+
+        property string input: ""
+
+        stdinEnabled: true
+        onStarted: {
+            write(input);
+            input = "";
+            stdinEnabled = false;
+        }
         onExited: (code, status) => {
+            stdinEnabled = true;
             const callback = root.afterAction;
             root.afterAction = null;
             if (callback) callback(code);

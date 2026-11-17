@@ -29,6 +29,7 @@ let
 		    readonly property var environment: (${builtins.toJSON [ "XDG_SESSION_TYPE=wayland" ]})
 		    readonly property string wallpaper: "/var/lib/nihil/greeter/wallpaper.png"
 		    readonly property string glass: "/var/lib/nihil/greeter/glass"
+		    readonly property string primaryOutput: "${nihil.primaryOutput}"
 		    readonly property string touch: "${pkgs.coreutils}/bin/touch"
 		    readonly property var reboot: (${builtins.toJSON [ "${config.systemd.package}/bin/systemctl" "reboot" ]})
 		    readonly property var powerOff: (${builtins.toJSON [ "${config.systemd.package}/bin/systemctl" "poweroff" ]})
@@ -87,8 +88,10 @@ in
 
 	config = lib.mkIf (nihil.greeter == "nihil")
 	{
+		# Every screen on, not only the last one connected (ReGreet's -m last): the greeter puts
+		# itself on the main one, the one QT_SCALE_FACTOR is for.
 		services.greetd.settings.default_session.command = lib.mkForce
-			"${pkgs.dbus}/bin/dbus-run-session ${lib.getExe pkgs.cage} ${lib.escapeShellArgs config.programs.regreet.cageArgs} -- ${start}";
+			"${pkgs.dbus}/bin/dbus-run-session ${lib.getExe pkgs.cage} -s -d -m extend -- ${start}";
 
 		systemd.tmpfiles.rules =
 		[
