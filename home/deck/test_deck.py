@@ -6,6 +6,7 @@ import errno
 import hashlib
 import http.client
 import http.server
+import io
 import json
 import os
 import re
@@ -51,8 +52,10 @@ elif args[:2] == ["media", "now"]:
     print(json.dumps({"title": "Song", "artist": "Someone", "player": "Spotify", "playing": True, "art": os.environ.get("DECK_ART", "")}))
 elif args[:2] == ["tasks", "state"]:
     print(json.dumps({"cards": [{"id": "a", "text": "Desk", "column": 0, "textStamp": 1, "placeStamp": 1}], "removed": {}, "now": 5}))
-elif args[:2] == ["tasks", "sync"]:
-    board = json.loads(args[2])
+elif args[:2] == ["tasks", "syncFile"]:
+    board = json.load(open(args[2]))
+    with open(os.environ["DECK_LOG"] + ".tasks", "w") as seen:
+        seen.write(args[2] + "\n" + oct(os.stat(args[2]).st_mode & 0o777))
     board["cards"].append({"id": "a", "text": "Desk", "column": 0, "textStamp": 1, "placeStamp": 1})
     board["now"] = 5
     print(json.dumps(board))
@@ -655,6 +658,24 @@ class ServerTest(Base):
             self.assertEqual(self.phone.request("POST", "/v1/tasks", bad)[0], 400)
         many = {"cards": [{"id": "c%d" % i, "text": "Task %d" % i, "column": 0, "textStamp": i, "placeStamp": i} for i in range(80)]}
         self.assertEqual(self.phone.request("POST", "/v1/tasks", many)[0], 200)
+        # A whole board past 128 KiB, the most an argument takes, goes through a private file.
+        long = {"cards": [{"id": f"l{i}", "text": f"Task {i} " * 20, "column": i % 3, "textStamp": i, "placeStamp": i}
+                          for i in range(900)]}
+        self.assertGreater(len(json.dumps(long)), 128 * 1024)
+        status, body = self.phone.request("POST", "/v1/tasks", long)
+        self.assertEqual((status, len(body["cards"])), (200, 901))
+        with open(self.log + ".tasks") as seen:
+            path, mode = seen.read().split("\n")
+        self.assertEqual(mode, "0o600")
+        self.assertFalse(os.path.exists(path))
+        with open(self.log) as log:
+            self.assertNotIn("Task 899", log.read())
+        # Stamps a merge can live with: whole milliseconds, no further than a day ahead.
+        ahead = int(time.time() * 1000) + 2 * 86_400_000
+        for stamp in (10 ** 400, ahead, -1, 1.5, True):
+            card = {"id": "s", "text": "Stamp", "column": 0, "textStamp": stamp, "placeStamp": 1}
+            self.assertEqual(self.phone.request("POST", "/v1/tasks", {"cards": [card]})[0], 400, stamp)
+            self.assertEqual(self.phone.request("POST", "/v1/tasks", {"removed": {"s": stamp}})[0], 400, stamp)
 
     def upgrade(self, path, protocol="nihil-trackpad"):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -996,6 +1017,47 @@ class TrackpadTest(unittest.TestCase):
         self.assertLess(due[4], 10.061 + 0.025)
         clock = deck.Pace()
         self.assertAlmostEqual(clock.seconds(2 ** 32 - 6) + 0.011, clock.seconds(5))
+        # A phone whose frames come with its clock running ahead: never played later than LATEST.
+        ahead = deck.Pace(delay=0.025)
+        dues = [ahead.due(0.099 * i, 10 + 0.001 * i) for i in range(2000)]
+        self.assertTrue(all(due <= 10 + 0.001 * i + deck.LATEST + 1e-9 for i, due in enumerate(dues)))
+
+    def test_a_stream_ends_with_its_writer(self):
+        written, closed = [], []
+
+        class Pad:
+            width = height = 1000
+
+            def write(self, events):
+                if closed:
+                    raise AssertionError("written after closing")
+                written.append(events)
+
+        frames = b"".join(struct.pack("!BIB", 1, 1000 + i, 1) + struct.pack("!BHH", 0, i % 1000, 5) for i in range(5000))
+        began = time.monotonic()
+        deck.stream(io.BytesIO(frames), io.BytesIO(), Pad())
+        closed.append(True)
+        self.assertLess(time.monotonic() - began, 5)
+        # At most QUEUED waited, and the fingers were lifted at the end.
+        self.assertLessEqual(len(written), deck.QUEUED + 2)
+        self.assertIn((deck.EV_KEY, deck.BTN_TOUCH, 0), written[-1])
+
+    def test_a_closed_trackpad_is_not_written(self):
+        pad = deck.Uinput.__new__(deck.Uinput)
+        read, pad.fd = os.pipe()
+        pad.close()
+        pad.close()
+        self.assertEqual(pad.fd, -1)
+        with self.assertRaises(OSError):
+            pad.write([(deck.EV_SYN, deck.SYN_REPORT, 0)])
+        os.close(read)
+
+    def test_ipv6_devices_count_by_their_64(self):
+        self.assertEqual(deck.origin("2001:db8:1:2:aaaa::1"), deck.origin("2001:db8:1:2:bbbb::9"))
+        self.assertNotEqual(deck.origin("2001:db8:1:2::1"), deck.origin("2001:db8:1:3::1"))
+        self.assertEqual(deck.origin("::ffff:192.168.1.5"), "192.168.1.5")
+        self.assertEqual(deck.origin("192.168.1.5"), "192.168.1.5")
+        self.assertEqual(deck.origin("fe80::1%wlan0"), deck.origin("fe80::2"))
 
 
 class ControlTest(Base):

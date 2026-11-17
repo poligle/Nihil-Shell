@@ -88,8 +88,9 @@ Singleton {
     }
 
     function sync(board: var): var {
-        const merged = TaskMerge.merge({ cards: cards, removed: removed }, board ?? {}, Date.now());
-        clock = Math.max(clock, TaskMerge.latest(merged));
+        const now = Date.now();
+        const merged = TaskMerge.merge({ cards: cards, removed: removed }, TaskMerge.trusted(board ?? {}, now), now);
+        clock = Math.max(clock, Math.min(TaskMerge.latest(merged), now + TaskMerge.AHEAD));
         cards = merged.cards;
         removed = merged.removed;
         save();
@@ -117,11 +118,11 @@ Singleton {
                 if (typeof c.rank === "number" && isFinite(c.rank)) card.rank = c.rank;
                 return card;
             });
-        const gone = data?.removed && typeof data.removed === "object" && !Array.isArray(data.removed) ? data.removed : {};
-        const merged = TaskMerge.merge({ cards: loaded, removed: gone }, {}, Date.now());
+        const now = Date.now();
+        const merged = TaskMerge.merge(TaskMerge.trusted({ cards: loaded, removed: data?.removed }, now), {}, now);
         cards = merged.cards;
         removed = merged.removed;
-        clock = Math.max(clock, TaskMerge.latest(merged));
+        clock = Math.max(clock, Math.min(TaskMerge.latest(merged), now + TaskMerge.AHEAD));
     }
 
     function save(): void { saver.restart(); }
@@ -133,6 +134,13 @@ Singleton {
         watchChanges: true
         onFileChanged: reload()
         onLoaded: root.parse(text())
+    }
+
+    // The deck's boards, read here at once: see syncFile.
+    FileView {
+        id: incoming
+        blockLoading: true
+        printErrors: false
     }
 
     Timer {
@@ -157,6 +165,18 @@ Singleton {
         function sync(json: string): string {
             let board;
             try { board = JSON.parse(json); } catch (e) { return ""; }
+            return JSON.stringify(root.sync(board));
+        }
+        // The deck's board, from a file of this user's: as an argument it couldn't pass 128 KiB.
+        function syncFile(path: string): string {
+            const runtime = Quickshell.env("XDG_RUNTIME_DIR") ?? "";
+            if (runtime === "" || !path.startsWith(runtime + "/nihil-deck-tasks-") || path.includes("/../")) return "";
+            incoming.path = path;
+            incoming.reload();
+            const text = incoming.text();
+            incoming.path = "";
+            let board;
+            try { board = JSON.parse(text); } catch (e) { return ""; }
             return JSON.stringify(root.sync(board));
         }
     }
