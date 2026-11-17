@@ -89,7 +89,8 @@ hidden files or anything in a git checkout (documents change on their own, and t
 before stays in `~/.local/state/nihil/nilo/before`); a commit; a command that does more
 than read (those that only read, like `ls`, `journalctl` or `git status` in the
 repository, from a short list and with no redirection, chaining or globbing, run on their
-own); typing in a terminal; shortcuts that delete or send (`shift + Delete`, `ctrl +
+own, in a sandbox where the system is read-only, there is no network, nothing of the session
+to reach and your keys aren't there); typing in a terminal; shortcuts that delete or send (`shift + Delete`, `ctrl +
 Enter`…); sending the phone a file from outside your folder; and whatever looks like a
 password, a key or bank details, or carries what it read of your files or a command, on
 its way to a search, a page, a browser or a chat. "Write a shopping list in Writer",

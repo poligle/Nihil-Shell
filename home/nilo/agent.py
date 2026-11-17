@@ -915,10 +915,8 @@ def harmless_stage(argv, cwd, inside):
     return True
 
 
-def harmless(command, cwd="", inside=lambda path: False):
-    command = str(command or "").strip()
-    if not command or len(command) > 400 or "\n" in command or re.search(r"[$`*?\[\]{}\\!]|(^|\s)#", command):
-        return False
+def pipeline(command):
+    """The stages of a plain pipeline, split as bash splits them, or None for anything else."""
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()")
         lexer.whitespace_split = True
@@ -926,28 +924,84 @@ def harmless(command, cwd="", inside=lambda path: False):
         lexer.commenters = ""
         tokens = list(lexer)
     except ValueError:
-        return False
+        return None
     stages, current = [], []
     for token in tokens:
         if token == "|":
             if not current:
-                return False
+                return None
             stages.append(current)
             current = []
         elif token and all(c in ";&|<>()" for c in token):
-            return False
+            return None
         else:
             current.append(token)
     if not current:
-        return False
+        return None
     stages.append(current)
+    return stages
+
+
+def harmless(command, cwd="", inside=lambda path: False):
+    command = str(command or "").strip()
+    if not command or len(command) > 400 or "\n" in command or re.search(r"[$`*?\[\]{}\\!]|(^|\s)#", command):
+        return False
+    stages = pipeline(command)
+    if stages is None:
+        return False
 
     folder = cwd or os.path.expanduser("~")
+    if secret(folder):
+        return False
 
     def near(path):
         return inside(os.path.realpath(os.path.join(folder, os.path.expanduser(path))))
 
     return all(harmless_stage(stage, folder, near) for stage in stages)
+
+
+# What runs without a card runs in bubblewrap: the whole system read-only, no network, nothing of
+# the session to talk to (Hyprland, the session and system buses, the agents) and the secrets
+# hidden, so that if the reading above lets something through it still can't write, call out,
+# or reach the desktop. Some programs need back one of those things to work at all.
+SANDBOX_NET = {"nix", "git", "ip"}
+SANDBOX_BUS = {"hyprctl", "playerctl", "wpctl", "systemctl", "loginctl", "nmcli", "fastfetch"}
+SANDBOX_PROCESSES = {"ps", "pgrep", "fastfetch"}
+SANDBOX_SESSION_ENV = ("WAYLAND_DISPLAY", "DISPLAY", "XAUTHORITY", "HYPRLAND_INSTANCE_SIGNATURE",
+                       "DBUS_SESSION_BUS_ADDRESS")
+
+
+def sandbox(bwrap, command, folder, env):
+    """The bwrap that goes before bash for a command run without a card, and the environment for it."""
+    programs = {stage[0] for stage in pipeline(command) or []}
+    env = {k: v for k, v in env.items() if k not in ("SSH_AUTH_SOCK", "GPG_AGENT_INFO")}
+    box = [bwrap, "--ro-bind", "/", "/", "--tmpfs", "/tmp", "--new-session", "--die-with-parent", "--unshare-ipc",
+           "--unshare-uts"]
+    # A process of the session seen in /proc leads to the real, writable files: only ps and pgrep see them.
+    if not programs & SANDBOX_PROCESSES:
+        box += ["--unshare-pid", "--proc", "/proc"]
+    if not programs & SANDBOX_NET:
+        box += ["--unshare-net"]
+    if not programs & SANDBOX_BUS:
+        runtime = env.get("XDG_RUNTIME_DIR", "")
+        for place in (runtime, "/run/dbus"):
+            if place and os.path.isdir(place):
+                box += ["--tmpfs", place]
+        env = {k: v for k, v in env.items() if k not in SANDBOX_SESSION_ENV}
+    if "nix" in programs:
+        cache = os.path.join(env.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "nix")
+        os.makedirs(cache, exist_ok=True)
+        box += ["--bind", cache, cache]
+    for place in SECRETS:
+        full = os.path.realpath(os.path.expanduser(place))
+        if os.path.isdir(full):
+            box += ["--tmpfs", full]
+        elif os.path.exists(full):
+            box += ["--ro-bind", "/dev/null", full]
+    # The scratch /tmp hides the real one: a folder there comes back, read-only like the rest.
+    if folder == "/tmp" or folder.startswith("/tmp/"):
+        box += ["--ro-bind", folder, folder]
+    return box + ["--chdir", folder, "--"], env
 
 
 TERMINALS = {"kitty", "foot", "footclient", "alacritty", "org.wezfurlong.wezterm", "wezterm", "xterm", "uxterm",
@@ -2081,17 +2135,24 @@ class Tools:
         terminal = terminal is True or str(terminal).lower() == "true" or "root" in danger
         auto = (capabilities(self.agent.settings)["desktop"] and not terminal and not danger
                 and harmless(command, folder, self.in_repo))
-        if not auto and not self.agent.ask_confirmation({
+        card = {
             "action": "terminal" if terminal else "run",
             "command": command,
             "cwd": self.agent.short_path(folder),
             "reason": re.sub(r"\s+", " ", str(reason or "")).strip()[:300],
             "danger": danger,
-        }, cancel):
+        }
+        if not auto and not self.agent.ask_confirmation(card, cancel):
             return {"declined": True, "note": "The user did not confirm. Nothing ran."}
         if terminal:
             return self.in_terminal(command, folder)
-        result = self.execute(command, folder, cancel)
+        result = self.execute(command, folder, cancel, sandboxed=auto)
+        if result.get("sandbox"):
+            # Without its sandbox it only runs as any other command does: if the user says so.
+            auto = False
+            if not self.agent.ask_confirmation(card, cancel):
+                return {"declined": True, "note": "The user did not confirm. Nothing ran."}
+            result = self.execute(command, folder, cancel)
         self.agent.saw(str(result.get("output", "")))
         if auto:
             result["auto"] = True
@@ -2116,15 +2177,19 @@ class Tools:
         return {"ok": True, "terminal": True, "cwd": self.agent.short_path(folder),
                 "note": "It is running in a terminal window: you don't see its output. Tell the user to look there."}
 
-    def execute(self, command, folder, cancel):
+    def execute(self, command, folder, cancel, sandboxed=False):
         limit = float(self.config.get("commandSeconds", COMMAND_SECONDS))
         env = dict(os.environ, TERM="dumb", NO_COLOR="1", PAGER="cat", GIT_PAGER="cat", SYSTEMD_PAGER="",
                    SYSTEMD_COLORS="0", GIT_TERMINAL_PROMPT="0", GIT_CONFIG_COUNT="2",
                    GIT_CONFIG_KEY_0="core.fsmonitor", GIT_CONFIG_VALUE_0="false",
                    GIT_CONFIG_KEY_1="log.showSignature", GIT_CONFIG_VALUE_1="false")
+        argv = [self.config.get("bash", "bash"), "-c", command]
+        if sandboxed and self.config.get("bwrap"):
+            box, env = sandbox(self.config["bwrap"], command, folder, env)
+            argv = box + argv
         started = time.monotonic()
         try:
-            proc = subprocess.Popen([self.config.get("bash", "bash"), "-c", command], cwd=folder, env=env,
+            proc = subprocess.Popen(argv, cwd=folder, env=env,
                                     stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     start_new_session=True)
         except OSError as e:
@@ -2170,6 +2235,8 @@ class Tools:
         reader.join(timeout=2)
         dropped = total[0] - len(head) - len(tail)
         text = terminal_text(bytes(head)) + (f"\n… ({dropped} bytes) …\n" if dropped > 0 else "") + terminal_text(bytes(tail))
+        if sandboxed and proc.returncode == 1 and text.startswith("bwrap: "):
+            return {"sandbox": text.strip()[:300]}
         result = {"exit": proc.returncode, "seconds": round(time.monotonic() - started, 1),
                   "cwd": self.agent.short_path(folder), "output": clip_middle(text.strip(), OUTPUT_CHARS) or "(no output)"}
         if stopped == "timeout":
