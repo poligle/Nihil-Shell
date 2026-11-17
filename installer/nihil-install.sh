@@ -636,11 +636,28 @@ apply_plan() {
             ssh: false
         }' > "$etc/settings.json"
 
-    gpu=""
-    if lspci -nn | grep -Ei 'vga|3d|display' | grep -qiE 'amd|ati'; then
-        gpu="hardware.amdgpu.initrd.enable = true;"
-    elif lspci -nn | grep -Ei 'vga|3d|display' | grep -qi intel; then
-        gpu="boot.initrd.kernelModules = [ \"i915\" ];"
+    # The graphics the firmware showed the boot on, by the driver this live system gave it: early
+    # KMS for that one only. Names matched nothing reliable ("compatible", "Corporation" read as ATI).
+    gpu="" booted=no
+    for device in /sys/bus/pci/devices/*; do
+        [ "$(cat "$device/boot_vga" 2> /dev/null)" = 1 ] || continue
+        booted=yes
+        driver=$(basename "$(readlink -f "$device/driver" 2> /dev/null)")
+        case $driver in
+            amdgpu) gpu="hardware.amdgpu.initrd.enable = true;" ;;
+            i915|xe) gpu="boot.initrd.kernelModules = [ \"$driver\" ];" ;;
+        esac
+        break
+    done
+    if [ "$booted" = no ]; then
+        # Or, with no boot display known, by vendor among display controllers (class 03xx): 1002 is
+        # AMD, 8086 Intel.
+        vga=$(lspci -nn | grep -E '\[03(00|02|80)\]' || true)
+        if grep -q '\[1002:' <<< "$vga"; then
+            gpu="hardware.amdgpu.initrd.enable = true;"
+        elif grep -q '\[8086:' <<< "$vga"; then
+            gpu="boot.initrd.kernelModules = [ \"i915\" ];"
+        fi
     fi
 
     loader=""
@@ -649,7 +666,8 @@ apply_plan() {
         loader+=$'\n\tboot.loader.efi.efiSysMountPoint = lib.mkForce "/efi";'
         loader+=$'\n\tboot.loader.systemd-boot.xbootldrMountPoint = "/boot";\n'
     fi
-    if [ "$windows" = yes ]; then
+    # On this disk or another: either way it shares the clock, and keeps it in local time.
+    if [ "$windows" = yes ] || [ -n "$(windows_elsewhere)" ]; then
         loader+=$'\n\t# Windows keeps the hardware clock in local time.'
         loader+=$'\n\ttime.hardwareClockInLocalTime = true;\n'
     fi

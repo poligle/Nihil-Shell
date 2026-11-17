@@ -12,6 +12,24 @@ ShellRoot {
     id: root
 
     readonly property string stateFile: Quickshell.env("NIHIL_INSTALLER_STATE") || "/tmp/nihil-installer.json"
+
+    // Every screen is on and the window spans them (cage -m extend): the installer goes on one, the
+    // computer's own panel or the first connected (NIHIL_INSTALLER_SCREEN), whose scale it has, and
+    // never across a bezel. With one screen, or a layout that doesn't add up, the whole window.
+    readonly property var main: Quickshell.screens.find(s => s.name === Quickshell.env("NIHIL_INSTALLER_SCREEN"))
+        ?? Quickshell.screens[0] ?? null
+    readonly property rect area: {
+        const full = Qt.rect(0, 0, window.width, window.height);
+        const screens = Quickshell.screens;
+        if (!main || screens.length < 2)
+            return full;
+        const left = Math.min(...screens.map(s => s.x));
+        const top = Math.min(...screens.map(s => s.y));
+        const r = Qt.rect(main.x - left, main.y - top, main.width, main.height);
+        const fits = r.width > 0 && r.height > 0 && r.x >= 0 && r.y >= 0
+            && r.x + r.width <= window.width + 1 && r.y + r.height <= window.height + 1;
+        return fits ? r : full;
+    }
     readonly property var pages: ["welcome", "network", "zone", "you", "disk", "lock", "summary", "install", "done"]
     readonly property string pageName: pages[page]
     readonly property var keyboards: [
@@ -319,10 +337,13 @@ ShellRoot {
             return;
         joining = true;
         joinError = "";
-        const command = [Config.sudo, Config.nmcli, "device", "wifi", "connect", ssid];
-        if (secure)
-            command.push("password", wifiPassword);
-        joiner.command = command;
+        // The key goes through stdin, as nmcli asks for it: never in a command line, where ps and
+        // sudo's journal would show it.
+        joiner.input = secure ? wifiPassword + "\n" : "";
+        joiner.command = secure
+            ? [Config.bash, "-c", 'IFS= read -r key; printf "%s\\n" "$key" | "$1" "$2" --ask device wifi connect "$3"',
+                "nihil-installer", Config.sudo, Config.nmcli, ssid]
+            : [Config.sudo, Config.nmcli, "device", "wifi", "connect", ssid];
         joiner.running = true;
     }
 
@@ -662,6 +683,15 @@ ShellRoot {
 
     Process {
         id: joiner
+
+        property string input: ""
+
+        stdinEnabled: true
+        onStarted: {
+            write(input);
+            input = "";
+            stdinEnabled = false;
+        }
         stderr: StdioCollector {
             onStreamFinished: {
                 const lines = text.trim().split("\n").filter(line => line !== "");
@@ -670,6 +700,7 @@ ShellRoot {
             }
         }
         onExited: code => {
+            stdinEnabled = true;
             root.joining = false;
             if (code === 0) {
                 root.joinError = "";
@@ -757,9 +788,10 @@ ShellRoot {
         Item {
             id: panel
 
-            anchors.centerIn: parent
-            width: Math.min(720, parent.width - 48)
-            height: Math.min(660, parent.height - 48)
+            x: root.area.x + (root.area.width - width) / 2
+            y: root.area.y + (root.area.height - height) / 2
+            width: Math.min(720, root.area.width - 48)
+            height: Math.min(660, root.area.height - 48)
 
             Rectangle {
                 anchors.fill: parent

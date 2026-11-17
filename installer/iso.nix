@@ -69,9 +69,15 @@ let
             export WLR_RENDERER_ALLOW_SOFTWARE=1
             rm -f "$state"
 
+            # The screen the installer goes on, and its scale: the computer's own panel when there
+            # is one, else the first connected. cage turns every one on, and the window spans them.
             scale=1
-            for connector in /sys/class/drm/card*-*; do
+            screen=""
+            for connector in /sys/class/drm/card*-eDP-* /sys/class/drm/card*-LVDS-* /sys/class/drm/card*-DSI-* \
+                    /sys/class/drm/card*-*; do
                 [ "$(cat "$connector/status" 2> /dev/null)" = connected ] || continue
+                name=''${connector##*/}
+                screen=''${name#card*-}
                 mode=$(head -n 1 "$connector/modes" 2> /dev/null || true)
                 [[ $mode =~ ^([0-9]+)x ]] || break
                 pixels=''${BASH_REMATCH[1]}
@@ -90,8 +96,8 @@ let
                 if [ "$software" = yes ]; then
                     look=(WLR_RENDERER=pixman QT_QUICK_BACKEND=software)
                 fi
-                env XKB_DEFAULT_LAYOUT="$layout" QT_SCALE_FACTOR="$scale" "''${look[@]}" \
-                    cage -s -- quickshell -p ${gui} 2>> /tmp/nihil-installer.log &
+                env XKB_DEFAULT_LAYOUT="$layout" QT_SCALE_FACTOR="$scale" NIHIL_INSTALLER_SCREEN="$screen" "''${look[@]}" \
+                    cage -s -m extend -- quickshell -p ${gui} 2>> /tmp/nihil-installer.log &
                 pid=$!
                 for _ in $(seq 300); do
                     [ -e "$NIHIL_INSTALLER_READY" ] && break

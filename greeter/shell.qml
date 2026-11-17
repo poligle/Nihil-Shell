@@ -26,6 +26,24 @@ ShellRoot {
 
     readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nihil-greeter-password"
 
+    // Every screen is on (cage -m extend) and the window spans them all: the greeter goes on the
+    // main one, the one its scale is for, and the rest stay black. With one screen, or a layout
+    // that doesn't add up, it fills the window.
+    readonly property var main: Quickshell.screens.find(s => s.name === Config.primaryOutput)
+        ?? Quickshell.screens.find(s => /^(eDP|LVDS|DSI)/.test(s.name)) ?? Quickshell.screens[0] ?? null
+    readonly property rect area: {
+        const full = Qt.rect(0, 0, window.width, window.height);
+        const screens = Quickshell.screens;
+        if (!main || screens.length < 2)
+            return full;
+        const left = Math.min(...screens.map(s => s.x));
+        const top = Math.min(...screens.map(s => s.y));
+        const r = Qt.rect(main.x - left, main.y - top, main.width, main.height);
+        const fits = r.width > 0 && r.height > 0 && r.x >= 0 && r.y >= 0
+            && r.x + r.width <= window.width + 1 && r.y + r.height <= window.height + 1;
+        return fits ? r : full;
+    }
+
     function start(): void {
         asking = false;
         echo = false;
@@ -174,7 +192,10 @@ ShellRoot {
 
         Item {
             id: face
-            anchors.fill: parent
+            x: root.area.x
+            y: root.area.y
+            width: root.area.width
+            height: root.area.height
             opacity: 0
 
             property Item glassBackdrop: glassFlag.text().trim() === "on" && wall.status === Image.Ready ? glassSource : null
@@ -202,8 +223,9 @@ ShellRoot {
             Item {
                 id: glassSource
                 readonly property Item texture: wall
-                readonly property vector2d origin: Qt.vector2d(0, 0)
-                readonly property vector2d screenSize: Qt.vector2d(window.width, window.height)
+                // The wallpaper covers the main screen only: from the window's corner to its own.
+                readonly property vector2d origin: Qt.vector2d(-face.x, -face.y)
+                readonly property vector2d screenSize: Qt.vector2d(face.width, face.height)
                 readonly property real dim: 0.55
             }
 
