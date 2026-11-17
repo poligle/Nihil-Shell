@@ -63,7 +63,8 @@ Singleton {
         : phase === "warning" ? (kind === "generation" ? Lang.genSwitchedWarn.arg(target) : Lang.cfgAppliedWarn)
         : Lang.cfgSaved
     readonly property string statusSub: phase === "applying" ? detail
-        : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint) : "")
+        : phase === "failed" ? (failure === "rebuild" || failure === "start" ? (detail !== "" ? detail : Lang.cfgLogHint)
+            : failure === "invalid" ? detail : "")
         : changes === 0 && phase === "warning" ? Lang.cfgLogHint
         : ""
 
@@ -552,9 +553,15 @@ Singleton {
         }
     }
 
+    // A unit killed outright (SIGKILL, out of memory) can't say how it ended: running with no
+    // unit, for longer than starting one takes, is a failure, or the shell would wait for it.
+    readonly property string statusScript: "s=$(cat /run/nihil/apply.status 2>/dev/null); if [ \"$s\" = running ] && ! "
+        + Config.cmd.systemctl + " is-active --quiet nihil-apply.service && "
+        + "[ $(( $(date +%s) - $(stat -c %Y /run/nihil/apply.status) )) -gt 10 ]; then s=failed; fi; echo \"$s\"; "
+
     Process {
         id: peek
-        command: [Config.cmd.sh, "-c", "cat /run/nihil/apply.status 2>/dev/null; echo --nihil--; cat /run/nihil/apply.kind 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null; echo --nihil--; " + root.counting + " /run/nihil/apply.log 2>/dev/null"]
+        command: [Config.cmd.sh, "-c", root.statusScript + "echo --nihil--; cat /run/nihil/apply.kind 2>/dev/null; echo --nihil--; tail -n 60 /run/nihil/apply.log 2>/dev/null; echo --nihil--; " + root.counting + " /run/nihil/apply.log 2>/dev/null"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: root.report(text)

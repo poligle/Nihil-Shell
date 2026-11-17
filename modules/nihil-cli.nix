@@ -1,42 +1,219 @@
 # nihil-cli.nix by poligle
 
-{ config, lib, pkgs, ... }:
+{ config, lib, options, pkgs, ... }:
 let
     flake = config.nihil.flake;
+    xkb = config.services.xserver.xkb;
 
     loader = config.boot.loader.systemd-boot;
     menu = if !loader.enable then 0 else if loader.configurationLimit == null then 100000 else loader.configurationLimit;
 
+    # The values settings.json may give these, as their options declare them.
+    languages = options.nihil.language.type.functor.payload.values or [ "es" "en" ];
+    accelerations = options.nihil.nilo.acceleration.type.functor.payload.values or [ "cpu" "vulkan" "rocm" "cuda" ];
+
+    # What apply and settings take: the account stays the one settings.json names (another
+    # name would leave it out of the system, password and all), host.name is there, and each
+    # key NIHIL reads has its type. It prints why not, or nothing.
+    check = pkgs.writeText "nihil-settings.jq" ''
+        def text: type == "string";
+        def flag: type == "boolean";
+        def whole($low; $high): type == "number" and . == floor and . >= $low and . <= $high;
+        def either(f): . == null or f;
+        if type != "object" then "it's not an object"
+        elif (.user | either(type == "object")) | not then "user is not an object"
+        elif (.user.name // "nihil") != $user then "user.name stays \($user), or that account would be left out of the system"
+        elif (.user.fullName | either(text)) | not then "user.fullName is not text"
+        elif (.host | type == "object" and (.name | text and test("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"))) | not
+            then "host.name takes lowercase letters, digits and hyphens, with no hyphen at either end"
+        elif (.language | either(IN($languages[]))) | not then "language is \($languages | join(" or "))"
+        elif (.locale | either(text and test("^[A-Za-z0-9_.@-]+$"))) | not then "locale is not the name of a locale"
+        elif (.timeZone | either(text and test("^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$"))) | not
+            then "timeZone is not the name of a time zone"
+        elif (.keyboard | either(type == "object" and all(.layout, .variant, .model; either(text)))) | not
+            then "keyboard's layout, variant and model are text"
+        elif (.outputs | either(type == "object" and all(.[]; type == "object"))) | not then "outputs has an object for each screen"
+        elif all(.primaryOutput, .wallpaper; either(text)) | not then "primaryOutput and wallpaper are text"
+        elif (.nilo | either(type == "object" and all(.enable, .integratedGpu; either(flag))
+                and (.acceleration | either(IN($accelerations[]))))) | not
+            then "nilo's enable and integratedGpu are true or false, and its acceleration \($accelerations | join(", "))"
+        elif all(.binds, .gestures; either(type == "object" and all(.[]; either(text)))) | not
+            then "binds and gestures give each action the text of a key, or null"
+        elif (.programs | either(type == "array")) | not then "programs is a list"
+        elif all(.fingerprint, .ssh, .bootSound; either(flag)) | not then "fingerprint, ssh and bootSound are true or false"
+        elif (.sshKeys | either(type == "array" and all(.[]; text))) | not then "sshKeys is a list of public keys"
+        elif (.generations | either(type == "object" and (.days | either(whole(1; 3650))))) | not
+            then "generations.days goes from 1 to 3650"
+        elif (.clipboard | either(whole(0; 100))) | not then "clipboard goes from 0 to 100"
+        elif (.deck | either(type == "object" and (.enable | either(flag)))) | not then "deck.enable is true or false"
+        else empty end
+    '';
+
     nihil = pkgs.writeShellApplication
     {
         name = "nihil";
-        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnused pkgs.gnutar pkgs.curl pkgs.shadow pkgs.xkbvalidate config.systemd.package config.nix.package ];
+        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.diffutils pkgs.gawk pkgs.gnused pkgs.gnutar pkgs.curl pkgs.shadow
+            pkgs.util-linux pkgs.openssh pkgs.xkbvalidate config.systemd.package config.nix.package ];
         text = ''
             flake=''${NIHIL_FLAKE:-${flake}}
             run=/run/nihil
+            aside=$run/aside
             dev=/var/lib/nihil/dev
             tree=/var/lib/nihil/dev-tree
             profile=''${NIHIL_PROFILE:-/nix/var/nix/profiles/system}
             menu=${toString menu}
             oneshot=''${NIHIL_ONESHOT:-/sys/firmware/efi/efivars/LoaderEntryOneShot-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f}
+            unit=""
+            before=""
+            kept=""
+            temporary=()
 
-            as_root() {
-                if [ "$(id -u)" = 0 ]; then "$@"; else sudo "$@"; fi
-            }
-
-            checkout() {
-                if [ -f "$dev" ] && [ -f "$(cat "$dev")/flake.nix" ]; then
-                    cat "$dev"
+            # What changes the system runs as root, all of it, so that it holds the lock throughout.
+            become_root() {
+                local keep_flake=()
+                if [ "$(id -u)" != 0 ]; then
+                    if [ -n "''${NIHIL_FLAKE:-}" ]; then
+                        keep_flake=(--preserve-env=NIHIL_FLAKE)
+                    fi
+                    exec sudo "''${keep_flake[@]}" "$(readlink -f "$0")" "$@"
                 fi
             }
 
+            # One change to the system at a time, whoever makes it: a terminal, Preferences (in
+            # nihil-apply.service) or Nilo. Taken before anything is touched. The commands a change
+            # runs don't get its descriptor (9>&-): one left running would keep the lock.
+            lock() {
+                local mask
+                mkdir -p "$run"
+                # Opened, and made if it isn't there, in one step: two commands starting at once
+                # can't each lock a file of their own.
+                mask=$(umask)
+                umask 077
+                exec 9>> "$run/lock"
+                umask "$mask"
+                if ! flock -n 9 || systemctl is-active --quiet nihil-apply.service; then
+                    echo "Something is being applied already." >&2
+                    exit 3
+                fi
+            }
+
+            # In nihil-apply.service, the same lock: what started the unit held it until then.
+            hold() {
+                exec 9>> "$run/lock"
+                flock 9
+            }
+
+            # A change begins. What it replaces is kept (keep), and on any way out, a failure,
+            # Ctrl+C or systemctl stop, goes back if the system is still the one from before.
+            begin() {
+                before=$(readlink -f /run/current-system)
+                rm -rf "$aside"
+                mkdir -p "$aside"
+                trap 'exit 130' INT
+                trap 'exit 143' TERM HUP
+            }
+
+            keep() {
+                kept=1
+                if [ -e "$1" ]; then
+                    cp -p "$1" "$aside/$2"
+                else
+                    : > "$aside/$2.none"
+                fi
+            }
+
+            put_back() {
+                if [ -e "$aside/$2" ]; then
+                    cp -p "$aside/$2" "$1" || true
+                elif [ -e "$aside/$2.none" ]; then
+                    rm -f "$1"
+                fi
+            }
+
+            finish() {
+                if [ "$1" = 0 ]; then
+                    # Quoted: a bare done is the shell's keyword to shellcheck
+                    echo "done" > "$run/apply.status"
+                elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
+                    echo warning > "$run/apply.status"
+                else
+                    echo failed > "$run/apply.status"
+                fi
+            }
+
+            # However it ends: the unit's status never stays at running (Preferences would wait
+            # for it until a restart), and a failed change leaves no file of the system changed.
+            ended() {
+                local status=$?
+                if [ -n "$before" ]; then
+                    if [ "$status" != 0 ] && [ -n "$kept" ] && [ "$(readlink -f /run/current-system)" = "$before" ]; then
+                        put_back "$flake/settings.json" settings.json
+                        put_back "$flake/flake.lock" flake.lock
+                        put_back "$dev" dev
+                        echo "Nothing was applied: the system and its files are as they were."
+                    fi
+                    rm -rf "$aside"
+                fi
+                if [ "''${#temporary[@]}" != 0 ]; then
+                    rm -f "''${temporary[@]}"
+                fi
+                if [ -n "$unit" ] && [ "$(cat "$run/apply.status" 2> /dev/null)" = running ]; then
+                    finish "$status"
+                fi
+            }
+            trap ended EXIT
+
+            # Starts a change in nihil-apply.service, where Preferences follows it ($run/apply.*).
+            in_unit() {
+                local kind=$1
+                shift
+                echo running > "$run/apply.status"
+                echo "$kind" > "$run/apply.kind"
+                : > "$run/apply.log"
+                chmod 0644 "$run/apply.status" "$run/apply.kind" "$run/apply.log"
+                if ! systemd-run --unit nihil-apply --collect --quiet -E HOME=/root -- "$(readlink -f "$0")" "$@" 9>&-; then
+                    echo failed > "$run/apply.status"
+                    echo "nihil-apply.service didn't start." >&2
+                    exit 4
+                fi
+            }
+
+            # The change itself, in the unit: its output goes to the log Preferences reads, and it
+            # takes the lock over.
+            unit_start() {
+                unit=1
+                export PATH="/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
+                exec >> "$run/apply.log" 2>&1
+                hold
+                begin
+            }
+
+            checkout() {
+                local from
+                from=$(head -n 1 "$dev" 2> /dev/null || true)
+                if [ -n "$from" ] && [ -f "$from/flake.nix" ]; then
+                    echo "$from"
+                fi
+            }
+
+            # Who turned nihil dev on: the checkout is read as them, never as root.
+            dev_owner() {
+                local who
+                who=$(sed -n 2p "$dev" 2> /dev/null || true)
+                echo "''${who:-${config.nihil.user.name}}"
+            }
+
+            # A copy of the checkout, read as its owner and written as root's: a link in it can't
+            # bring root's files into the store, and nobody else edits the copy while it's built.
             snapshot() {
-                as_root rm -rf "$tree.new" &&
-                    as_root mkdir -p "$tree.new" &&
-                    tar -C "$1" --exclude=.git --exclude=./.direnv --exclude=./result --exclude='./result-*' \
-                        --exclude=__pycache__ -cf - . | as_root tar -C "$tree.new" -xf - &&
-                    as_root rm -rf "$tree" &&
-                    as_root mv "$tree.new" "$tree"
+                rm -rf "$tree.new" &&
+                    mkdir -p "$tree.new" &&
+                    runuser -u "$(dev_owner)" -- tar -C "$1" --exclude=.git --exclude=./.direnv --exclude=./result \
+                        --exclude='./result-*' --exclude=__pycache__ -cf - . |
+                        tar -C "$tree.new" --no-same-owner --no-same-permissions -xf - &&
+                    chown -R root:root "$tree.new" &&
+                    rm -rf "$tree" &&
+                    mv "$tree.new" "$tree"
             }
 
             rebuild() {
@@ -51,11 +228,80 @@ let
                     fi
                     override=(--override-input nihil "path:$tree" --no-write-lock-file)
                 fi
-                if [ "$(id -u)" = 0 ]; then
-                    nixos-rebuild switch --flake "$flake#''${host:-$(hostname)}" "''${override[@]}" "$@"
+                nixos-rebuild switch --flake "$flake#''${host:-$(hostname)}" "''${override[@]}" "$@" 9>&-
+            }
+
+            # FILE as whoever asked through sudo: root doesn't follow their links to its own files.
+            read_as_caller() {
+                if [ -n "''${SUDO_USER:-}" ]; then
+                    runuser -u "$SUDO_USER" -- cat -- "$1"
                 else
-                    sudo nixos-rebuild switch --flake "$flake#''${host:-$(hostname)}" "''${override[@]}" "$@"
+                    cat -- "$1"
                 fi
+            }
+
+            # Whether FILE is settings this machine takes; why not, on stderr.
+            valid() {
+                local current problem key n=0
+                local -a keys
+                current=$(jq -r '.user.name // "nihil"' "$flake/settings.json" 2> /dev/null || echo ${lib.escapeShellArg config.nihil.user.name})
+                if ! jq empty "$1" 2> /dev/null; then
+                    echo "Those settings are not valid: it's not JSON." >&2
+                    return 1
+                fi
+                if ! problem=$(jq -r --arg user "$current" --argjson languages ${lib.escapeShellArg (builtins.toJSON languages)} \
+                    --argjson accelerations ${lib.escapeShellArg (builtins.toJSON accelerations)} -f ${check} "$1"); then
+                    echo "Those settings are not valid." >&2
+                    return 1
+                fi
+                if [ -n "$problem" ]; then
+                    echo "Those settings are not valid: $problem." >&2
+                    return 1
+                fi
+                if ! XKB_CONFIG_ROOT=${xkb.dir} xkbvalidate "$(jq -r '.keyboard.model // ""' "$1")" \
+                    "$(jq -r '.keyboard.layout // "us"' "$1")" "$(jq -r '.keyboard.variant // ""' "$1")" \
+                    ${lib.escapeShellArg xkb.options} > /dev/null 2>&1; then
+                    echo "Those settings are not valid: that keyboard layout, variant or model doesn't exist." >&2
+                    return 1
+                fi
+                if [ ! -f "${pkgs.tzdata}/share/zoneinfo/$(jq -r '.timeZone // "UTC"' "$1")" ]; then
+                    echo "Those settings are not valid: that time zone doesn't exist." >&2
+                    return 1
+                fi
+                mapfile -t keys < <(jq -r '.sshKeys // [] | .[]' "$1")
+                for key in "''${keys[@]}"; do
+                    n=$((n + 1))
+                    if ! printf '%s\n' "$key" | ssh-keygen -l -f - > /dev/null 2>&1; then
+                        echo "Those settings are not valid: key $n in sshKeys is not a public key." >&2
+                        return 1
+                    fi
+                done
+            }
+
+            # The latest NIHIL, leaving nihil dev for it. If it fails and the system stays as it
+            # was, flake.lock and nihil dev go back: the next apply builds what runs, not this.
+            update_nihil() {
+                local old new
+                keep "$flake/flake.lock" flake.lock
+                keep "$dev" dev
+                if [ -f "$dev" ]; then
+                    echo "Leaving nihil dev ($(head -n 1 "$dev")) for the NIHIL on GitHub."
+                    rm -f "$dev"
+                fi
+                old=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2> /dev/null || echo "?")
+                if ! nix flake update --refresh --flake "$flake" 9>&-; then
+                    return 1
+                fi
+                new=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2> /dev/null || echo "?")
+                if [ "$old" = "$new" ]; then
+                    echo "NIHIL is up to date (''${new:0:7})."
+                else
+                    echo "NIHIL ''${old:0:7} -> ''${new:0:7}"
+                fi
+                if ! rebuild "$@"; then
+                    return 1
+                fi
+                rm -rf "$tree" "$tree.new"
             }
 
             check() {
@@ -181,63 +427,39 @@ let
             }
 
             switch_to() {
-                local previous before status=0
+                local previous running status=0
                 previous=$(number_of "$(readlink "$profile")")
-                before=$(readlink -f /run/current-system)
+                running=$(readlink -f /run/current-system)
                 echo "Generation $1, in place of $previous."
                 if ! nix-env --profile "$profile" --switch-generation "$1"; then
                     return 1
                 fi
-                "$profile/bin/switch-to-configuration" switch || status=$?
-                if [ "$status" != 0 ] && [ "$(readlink -f /run/current-system)" = "$before" ]; then
+                "$profile/bin/switch-to-configuration" switch 9>&- || status=$?
+                if [ "$status" != 0 ] && [ "$(readlink -f /run/current-system)" = "$running" ]; then
                     nix-env --profile "$profile" --switch-generation "$previous" || true
                 fi
                 return "$status"
             }
 
             clean() {
-                local before after status=0
-                before=$(df -B1 --output=avail /nix/store | tail -n 1 | tr -d ' ')
-                if ! nix-collect-garbage --delete-older-than "$1"d; then
+                local free_before free_after status=0
+                free_before=$(df -B1 --output=avail /nix/store | tail -n 1 | tr -d ' ')
+                if ! nix-collect-garbage --delete-older-than "$1"d 9>&-; then
                     return 1
                 fi
-                "$profile/bin/switch-to-configuration" boot || status=$?
+                "$profile/bin/switch-to-configuration" boot 9>&- || status=$?
                 sync -f /nix/store || true
-                after=$(df -B1 --output=avail /nix/store | tail -n 1 | tr -d ' ')
-                echo "nihil: freed $(( after > before ? after - before : 0 ))"
+                free_after=$(df -B1 --output=avail /nix/store | tail -n 1 | tr -d ' ')
+                echo "nihil: freed $(( free_after > free_before ? free_after - free_before : 0 ))"
                 return "$status"
-            }
-
-            in_unit() {
-                local kind=$1
-                shift
-                if systemctl is-active --quiet nihil-apply.service; then
-                    echo "Something is being applied already." >&2
-                    exit 3
-                fi
-                mkdir -p "$run"
-                echo running > "$run/apply.status"
-                echo "$kind" > "$run/apply.kind"
-                : > "$run/apply.log"
-                chmod 0644 "$run/apply.status" "$run/apply.kind" "$run/apply.log"
-                systemd-run --unit nihil-apply --collect --quiet -E HOME=/root -- "$(readlink -f "$0")" "$@"
-                echo "In nihil-apply.service: $run/apply.log tells how it goes."
-            }
-
-            finish() {
-                local status=$1 before=$2
-                if [ "$status" = 0 ]; then
-                    echo "done" > "$run/apply.status"
-                elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
-                    echo warning > "$run/apply.status"
-                else
-                    echo failed > "$run/apply.status"
-                fi
             }
 
             case "''${1:-help}" in
                 rebuild)
                     shift
+                    become_root rebuild "$@"
+                    lock
+                    begin
                     rebuild "$@"
                     ;;
                 check)
@@ -263,48 +485,75 @@ let
                     ;;
                 update)
                     shift
+                    become_root update "$@"
                     if [ "''${1:-}" = --unit ]; then
-                        if [ "$(id -u)" != 0 ]; then
-                            exec sudo "$(readlink -f "$0")" update --unit
-                        fi
                         trap 'exit 4' ERR
-                        if systemctl is-active --quiet nihil-apply.service; then
-                            echo "Something is being applied already." >&2
-                            exit 3
-                        fi
-                        mkdir -p "$run"
-                        echo running > "$run/apply.status"
-                        echo update > "$run/apply.kind"
-                        : > "$run/apply.log"
-                        chmod 0644 "$run/apply.status" "$run/apply.kind" "$run/apply.log"
-                        systemd-run --unit nihil-apply --collect --quiet -E HOME=/root -- "$(readlink -f "$0")" update-run
+                        lock
+                        in_unit update update-run
                         echo "Updating in nihil-apply.service: $run/apply.log tells how it goes."
                         exit 0
                     fi
-                    if [ -n "$(checkout)" ]; then
-                        echo "Leaving nihil dev ($(checkout)) for the NIHIL on GitHub."
-                        as_root rm -rf "$dev" "$tree" "$tree.new"
-                    fi
-                    before=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2>/dev/null || echo "?")
-                    as_root nix flake update --refresh --flake "$flake"
-                    after=$(jq -r '.nodes.nihil.locked.rev // "?"' "$flake/flake.lock" 2>/dev/null || echo "?")
-                    if [ "$before" = "$after" ]; then
-                        echo "NIHIL is up to date (''${after:0:7})."
-                    else
-                        echo "NIHIL ''${before:0:7} -> ''${after:0:7}"
-                    fi
-                    rebuild "$@"
+                    lock
+                    begin
+                    update_nihil "$@"
                     ;;
                 settings)
-                    sudoedit "$flake/settings.json"
-                    jq empty "$flake/settings.json" || { echo "settings.json is not valid JSON: nothing applied."; exit 1; }
+                    shift
+                    if [ "$#" = 0 ]; then
+                        # Edited in a copy, as whoever runs it: settings.json changes once the copy
+                        # is valid, and goes back if the rebuild that applies it fails.
+                        draft=$(mktemp --suffix=.json)
+                        temporary+=("$draft")
+                        cp "$flake/settings.json" "$draft"
+                        read -r -a editor <<< "''${VISUAL:-''${EDITOR:-nano}}"
+                        while true; do
+                            "''${editor[@]}" "$draft"
+                            if cmp -s "$draft" "$flake/settings.json"; then
+                                echo "settings.json is as it was: nothing to apply."
+                                exit 0
+                            fi
+                            if valid "$draft"; then
+                                break
+                            fi
+                            read -r -p "Edit it again? [Y/n] " again || again=n
+                            case $again in
+                                [nN]*)
+                                    echo "Nothing applied."
+                                    exit 1
+                                    ;;
+                            esac
+                        done
+                        if [ "$(id -u)" != 0 ]; then
+                            sudo "$(readlink -f "$0")" settings "$draft"
+                            exit
+                        fi
+                        set -- "$draft"
+                    fi
+                    become_root settings "$@"
+                    lock
+                    staged=$(mktemp)
+                    temporary+=("$staged")
+                    if ! read_as_caller "$1" > "$staged"; then
+                        echo "$1 can't be read." >&2
+                        exit 2
+                    fi
+                    if ! valid "$staged"; then
+                        exit 2
+                    fi
+                    begin
+                    keep "$flake/settings.json" settings.json
+                    install -m 0644 "$staged" "$flake/settings.json"
                     rebuild
                     ;;
                 dev)
                     shift
+                    become_root dev "$@"
                     if [ "''${1:-}" = off ]; then
                         shift
-                        as_root rm -rf "$dev" "$tree" "$tree.new"
+                        lock
+                        begin
+                        keep "$dev" dev
+                        rm -rf "$dev" "$tree" "$tree.new"
                         echo "NIHIL as pinned in $flake/flake.lock again."
                         rebuild "$@"
                         exit 0
@@ -314,11 +563,16 @@ let
                         shift
                     fi
                     if [ ! -f "$from/flake.nix" ]; then
-                        echo "There is no NIHIL checkout in $from."
+                        echo "There is no NIHIL checkout in $from." >&2
                         exit 1
                     fi
-                    as_root mkdir -p "$(dirname "$dev")"
-                    echo "$from" | as_root tee "$dev" > /dev/null
+                    lock
+                    begin
+                    keep "$dev" dev
+                    mkdir -p "$(dirname "$dev")"
+                    # The checkout, and who turned it on: rebuilds read it as them.
+                    printf '%s\n%s\n' "$from" "''${SUDO_USER:-root}" > "$dev"
+                    chmod 0644 "$dev"
                     rebuild "$@"
                     ;;
                 generations)
@@ -349,9 +603,7 @@ let
                             changes "$n"
                             ;;
                         boot | switch | clean)
-                            if [ "$(id -u)" != 0 ]; then
-                                exec sudo "$(readlink -f "$0")" generations "$what" "$n" "''${3:-}"
-                            fi
+                            become_root generations "$@"
                             set -o errtrace
                             trap 'exit 4' ERR
                             if [ "$what" = clean ]; then
@@ -367,17 +619,33 @@ let
                                 exit 2
                             fi
                             case $what:''${3:-} in
-                                boot:*) boot_once "$n" ;;
-                                switch:--unit) in_unit generation generations switch-run "$n" ;;
-                                switch:*) switch_to "$n" ;;
-                                clean:--unit) in_unit clean generations clean-run "$n" ;;
-                                clean:*) clean "$n" ;;
+                                boot:*)
+                                    boot_once "$n"
+                                    ;;
+                                switch:--unit)
+                                    lock
+                                    in_unit generation generations switch-run "$n"
+                                    echo "In nihil-apply.service: $run/apply.log tells how it goes."
+                                    ;;
+                                switch:*)
+                                    lock
+                                    begin
+                                    switch_to "$n"
+                                    ;;
+                                clean:--unit)
+                                    lock
+                                    in_unit clean generations clean-run "$n"
+                                    echo "In nihil-apply.service: $run/apply.log tells how it goes."
+                                    ;;
+                                clean:*)
+                                    lock
+                                    begin
+                                    clean "$n"
+                                    ;;
                             esac
                             ;;
                         switch-run | clean-run)
-                            export PATH="/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
-                            exec >> "$run/apply.log" 2>&1
-                            before=$(readlink -f /run/current-system)
+                            unit_start
                             status=0
                             if [ "$what" = switch-run ]; then
                                 switch_to "$n" || status=$?
@@ -385,7 +653,7 @@ let
                             else
                                 clean "$n" || status=$?
                             fi
-                            finish "$status" "$before"
+                            exit "$status"
                             ;;
                         *)
                             echo "usage: nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]" >&2
@@ -395,78 +663,33 @@ let
                     ;;
                 apply)
                     shift
-                    if [ "$(id -u)" != 0 ]; then
-                        exec sudo "$(readlink -f "$0")" apply "$@"
-                    fi
+                    become_root apply "$@"
                     trap 'exit 4' ERR
-                    if systemctl is-active --quiet nihil-apply.service; then
-                        echo "Other settings are being applied." >&2
-                        exit 3
-                    fi
-                    mkdir -p "$run"
+                    lock
                     staged=$(mktemp)
-                    trap 'rm -f "$staged"' EXIT
+                    temporary+=("$staged")
                     if [ "''${1:--}" = - ]; then
                         awk 'started || /^[{]/ { started = 1; print }' > "$staged"
-                    else
-                        cat "$1" > "$staged"
-                    fi
-                    if ! jq -e 'type == "object"
-                        and ((.user.name // "nihil") | type == "string" and test("^[a-z_][a-z0-9_-]*$"))
-                        and ((.host.name // "nihil") | type == "string" and length > 0 and length < 64
-                            and (test("[^a-z0-9-]") | not) and (startswith("-") | not) and (endswith("-") | not))' \
-                        "$staged" > /dev/null 2>&1; then
-                        echo "Those settings are not valid." >&2
+                    elif ! read_as_caller "$1" > "$staged"; then
+                        echo "$1 can't be read." >&2
                         exit 2
                     fi
-                    if ! XKB_CONFIG_ROOT=${config.services.xserver.xkb.dir} xkbvalidate "" \
-                        "$(jq -r '.keyboard.layout // "us"' "$staged")" "$(jq -r '.keyboard.variant // ""' "$staged")" "" > /dev/null 2>&1; then
-                        echo "Those settings are not valid: that keyboard layout or variant doesn't exist." >&2
+                    if ! valid "$staged"; then
                         exit 2
                     fi
                     install -m 0644 "$staged" "$run/settings.json"
-                    echo running > "$run/apply.status"
-                    echo settings > "$run/apply.kind"
-                    : > "$run/apply.log"
-                    chmod 0644 "$run/apply.status" "$run/apply.kind" "$run/apply.log"
-                    systemd-run --unit nihil-apply --collect --quiet -E HOME=/root -- "$(readlink -f "$0")" apply-run
+                    in_unit settings apply-run
                     echo "Applying in nihil-apply.service: $run/apply.log tells how it goes."
                     ;;
                 apply-run)
-                    export PATH="/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
-                    exec >> "$run/apply.log" 2>&1
-                    before=$(readlink -f /run/current-system)
-                    if [ -f "$flake/settings.json" ]; then
-                        cp "$flake/settings.json" "$run/settings.previous.json"
-                    fi
+                    unit_start
+                    keep "$flake/settings.json" settings.json
                     install -m 0644 "$run/settings.json" "$flake/settings.json"
-                    status=0
-                    rebuild || status=$?
-                    if [ "$status" = 0 ]; then
-                        echo "done" > "$run/apply.status"
-                    elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
-                        echo warning > "$run/apply.status"
-                    else
-                        if [ -f "$run/settings.previous.json" ]; then
-                            install -m 0644 "$run/settings.previous.json" "$flake/settings.json"
-                        fi
-                        echo failed > "$run/apply.status"
-                    fi
+                    rebuild
                     ;;
                 update-run)
-                    export PATH="/run/wrappers/bin:/run/current-system/sw/bin:$PATH"
-                    exec >> "$run/apply.log" 2>&1
-                    before=$(readlink -f /run/current-system)
-                    status=0
-                    "$(readlink -f "$0")" update || status=$?
-                    if [ "$status" = 0 ]; then
-                        # Quoted: a bare done is the shell's keyword to shellcheck
-                        echo "done" > "$run/apply.status"
-                    elif [ "$(readlink -f /run/current-system)" != "$before" ]; then
-                        echo warning > "$run/apply.status"
-                    else
-                        echo failed > "$run/apply.status"
-                    fi
+                    unit_start
+                    update_nihil
                     ;;
                 passwd)
                     if [ "$(id -u)" != 0 ]; then
