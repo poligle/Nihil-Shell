@@ -36,12 +36,14 @@ Item {
         NumberAnimation { duration: 700; easing.type: Easing.OutCubic }
     }
 
-    NumberAnimation on spin {
+    // A lap every 2.6 s, in steps of a tenth of a second: a download or a rebuild can last an hour,
+    // and every frame of this window redraws the whole screen.
+    Timer {
+        interval: 100
+        repeat: true
         running: Glyph.working && !root.measured
-        from: 0
-        to: 1
-        duration: 2600
-        loops: Animation.Infinite
+        onTriggered: root.spin = (root.spin + interval / 2600) % 1
+        onRunningChanged: if (!running) root.spin = 0
     }
 
     visible: sweepShape.opacity > 0 || riseShape.opacity > 0 || levelShape.opacity > 0 || waitShape.opacity > 0
@@ -51,9 +53,7 @@ Item {
         anchors.fill: parent
         opacity: 0
         visible: opacity > 0
-        preferredRendererType: Shape.GeometryRenderer
-        layer.enabled: true
-        layer.samples: 4
+        preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
             fillColor: "transparent"
@@ -107,9 +107,7 @@ Item {
         anchors.fill: parent
         opacity: 0
         visible: opacity > 0 && root.reach > 1
-        preferredRendererType: Shape.GeometryRenderer
-        layer.enabled: true
-        layer.samples: 4
+        preferredRendererType: Shape.CurveRenderer
 
         Beam { route: root.leftRoute; reach: root.reach; total: root.perimeter; tint: root.riseTint; alpha: 0.14 }
         Beam { route: root.leftRoute; reach: root.reach; total: root.perimeter; tint: root.riseTint; length: 420; alpha: 0.26 }
@@ -127,9 +125,7 @@ Item {
         anchors.fill: parent
         opacity: root.measured ? 1 : 0
         visible: opacity > 0 && root.levelReach > 1
-        preferredRendererType: Shape.GeometryRenderer
-        layer.enabled: true
-        layer.samples: 4
+        preferredRendererType: Shape.CurveRenderer
 
         Behavior on opacity {
             NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
@@ -146,9 +142,7 @@ Item {
         anchors.fill: parent
         opacity: Glyph.working && !root.measured ? 1 : 0
         visible: opacity > 0
-        preferredRendererType: Shape.GeometryRenderer
-        layer.enabled: true
-        layer.samples: 4
+        preferredRendererType: Shape.CurveRenderer
 
         Behavior on opacity {
             NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
