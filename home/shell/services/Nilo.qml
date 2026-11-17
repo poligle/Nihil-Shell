@@ -42,6 +42,14 @@ Singleton {
     property string phase: "idle"
     property string tool: ""
     property var confirm: null
+    // A card shows this much at first; what's beyond it has to be seen before it can be confirmed.
+    readonly property int cardLines: 80
+    readonly property int cardFiles: 8
+    readonly property int cardChars: 800
+    property bool confirmAll: false
+    readonly property bool confirmHides: confirm !== null && !confirmAll
+        && ((confirm.diff ?? []).length > cardLines || (confirm.files ?? []).length > cardFiles
+            || String(confirm.text ?? "").length > cardChars)
     property bool stopping: false
     property int pulse: 0
     property string mood: ""
@@ -560,6 +568,7 @@ Singleton {
             send(Object.assign({ op: "answer", id: e.id }, toPhone(e)));
             break;
         case "confirm":
+            confirmAll = false;
             confirm = e;
             messages.append({ kind: "confirm", text: "", done: false, name: e.action, status: "asking",
                               info: JSON.stringify(e), cid: e.id });

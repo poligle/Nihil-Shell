@@ -35,7 +35,9 @@ READ_LINES = 400
 READ_CHARS = 16000      # and at most this much text
 FILE_BYTES = 512_000
 LIST_FILES = 300        # names list_files shows
-CARD_LINES = 80
+DIFF_LINES = 3000           # the most lines a change can have and still go on one card
+LINE_CHARS = 4000           # and the longest line
+CARD_FILES = 2000
 COMMAND_CHARS = 4000
 COMMAND_SECONDS = 120
 OUTPUT_KEEP = 65536
@@ -386,6 +388,18 @@ def page_text(ctype, charset, raw):
 
 def clip(text, limit):
     return text if len(text) <= limit else text[:limit].rstrip() + " …"
+
+
+def hidden(text):
+    """Control and invisible format characters (bidi marks, zero widths…), apart from new lines and tabs."""
+    return [c for c in text if c not in "\n\t" and unicodedata.category(c) in ("Cc", "Cf")]
+
+
+def visible(text):
+    """What a card shows: the same text, with those characters written out so none goes unseen."""
+    text = str(text or "")
+    return "".join(f"⟨U+{ord(c):04X}⟩" if c not in "\n\t" and unicodedata.category(c) in ("Cc", "Cf") else c
+                   for c in text)
 
 
 def schema(name, description, properties=None, required=()):
@@ -1137,7 +1151,8 @@ class Tools:
         if name in ("web_search", "open_url"):
             asked = str(args.get("query") or args.get("url") or "")
             why = self.outgoing(asked)
-            if why and not self.ask_desktop("search" if name == "web_search" else "fetch", None, why, cancel, text=asked):
+            if why and not self.ask_desktop("search" if name == "web_search" else "fetch", None, why, cancel,
+                                            text=visible(asked)):
                 result = {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
                 return result, self.facts(name, result)
         try:
@@ -1412,15 +1427,17 @@ class Tools:
         remotes = remotes.split()
         if push and not status["upstream"] and "origin" not in remotes:
             return {"error": "the branch has no remote to push to"}
+        _, porcelain, _ = self.git(repo, "status", "--porcelain=v1", "-uall")
+        every = [visible(line) for line in porcelain.splitlines() if line.strip()]
         ok = self.agent.ask_confirmation({
             "action": action,
             "repo": status["repo"],
             "branch": status["branch"],
             "remote": status["upstream"] or (f"origin/{status['branch']}" if push else ""),
-            "files": changes[:30],
-            "more": len(changes) - 30 + status["more"] if len(changes) > 30 else status["more"],
+            "files": every[:CARD_FILES],
+            "more": max(0, len(every) - CARD_FILES),
             "ahead": status["ahead"],
-            "message": message if changes else "",
+            "message": visible(message) if changes else "",
             "trailer": trailer,
         }, cancel)
         if not ok:
@@ -1542,22 +1559,28 @@ class Tools:
 
     @staticmethod
     def diff(old, new):
+        """Every line of the change, whole and as it will be written; each part says the line it starts at."""
         lines = list(difflib.unified_diff(old.splitlines(), new.splitlines(), lineterm="", n=2))[2:]
         shown, added, removed = [], 0, 0
         for line in lines:
-            kind = "@" if line.startswith("@@") else line[:1]
+            if line.startswith("@@"):
+                at = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)", line)
+                shown.append({"t": "@", "s": at.group(1) if at else ""})
+                continue
+            kind = line[:1]
             if kind == "+":
                 added += 1
             elif kind == "-":
                 removed += 1
-            if len(shown) < CARD_LINES:
-                shown.append({"t": kind, "s": "" if kind == "@" else line[1:][:300]})
-        return shown, max(0, len(lines) - CARD_LINES), added, removed
+            shown.append({"t": kind, "s": visible(line[1:])})
+        return shown, added, removed
 
     def confirm_change(self, rel, old, new, created, cancel, inside=True, full=""):
-        shown, more, added, removed = self.diff(old, new)
+        shown, added, removed = self.diff(old, new)
         if not added and not removed:
             return None, {"error": "that changes nothing"}
+        if len(shown) > DIFF_LINES or any(len(line["s"]) > LINE_CHARS for line in shown):
+            return None, {"error": "the change is too big to show on one card: make it in smaller steps"}
         if not inside and full and not important(full):
             if not created:
                 self.keep_copy(full)
@@ -1567,7 +1590,6 @@ class Tools:
             "repo": self.agent.settings.get("repo") if inside else "",
             "path": rel,
             "diff": shown,
-            "more": more,
             "added": added,
             "removed": removed,
         }, cancel)
@@ -1655,7 +1677,7 @@ class Tools:
             if not os.path.exists(target):
                 return {"error": f"{target} does not exist"}
         why = self.outgoing(target) if kind == "url" else []
-        if why and not self.ask_desktop("open", None, why, cancel, text=target):
+        if why and not self.ask_desktop("open", None, why, cancel, text=visible(target)):
             return {"declined": True, "note": "The user did not confirm. The page was not opened."}
         answer = self.agent.call_shell("launch", {"target": target, "kind": kind}, cancel)
         if not isinstance(answer, dict):
@@ -1664,7 +1686,7 @@ class Tools:
         if not answer.get("ok") and kind == "app" and not (similar and difflib.SequenceMatcher(
                 None, plain(target), plain(similar[0])).ratio() >= 0.75):
             why = self.outgoing(target)
-            if why and not self.ask_desktop("search", None, why, cancel, text=target):
+            if why and not self.ask_desktop("search", None, why, cancel, text=visible(target)):
                 return {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
             searched = self.agent.call_shell("launch", {"target": self.search_url(target), "kind": "url"}, cancel)
             if isinstance(searched, dict) and searched.get("ok"):
@@ -1947,12 +1969,14 @@ class Tools:
             return {"error": "there is nothing to type"}
         if len(text) > TYPE_CHARS:
             return {"error": f"at most {TYPE_CHARS} characters at once"}
+        if hidden(text.replace("\r", "")):
+            return {"error": "the text has control or invisible characters: type plain text, and keys with press_keys"}
         target, missing = self.wait_window(window, cancel)
         if missing:
             return missing
         why = (["terminal"] if self.terminal(target) else []) + (["sensitive"] if sensitive(text) else []) \
             + (["private"] if self.outward(target) and getattr(self.agent, "private", False) else []) + self.outside()
-        if why and not self.ask_desktop("type", target, why, cancel, text=clip(text, 800)):
+        if why and not self.ask_desktop("type", target, why, cancel, text=text):
             return {"declined": True, "note": "The user did not confirm. Nothing was typed."}
         self.aside(cancel)
         self.focus(target)
@@ -2044,7 +2068,7 @@ class Tools:
         if not capabilities(self.agent.settings)["web"]:
             return {"error": "finding it needs the web, and Internet is off in Nilo's settings"}
         why = self.outgoing(query)
-        if why and not self.ask_desktop("search", None, why, cancel, text=query):
+        if why and not self.ask_desktop("search", None, why, cancel, text=visible(query)):
             return {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
         found = self.web_search(f"site:open.spotify.com {query}", 8)
         self.agent.outside = True
@@ -2120,7 +2144,7 @@ class Tools:
                 why.append("outside")
             detail = {"path": rel}
         else:
-            detail = {"text": clip(text, 400)}
+            detail = {"text": visible(text)}
         why += (["sensitive"] if sensitive(text) else []) + self.outside()
         if why and not self.ask_desktop("send", None, why, cancel, **detail):
             return {"declined": True, "note": "The user did not confirm. Nothing was sent."}
@@ -2154,7 +2178,7 @@ class Tools:
                 and not self.outside() and harmless(command, folder, self.in_repo))
         card = {
             "action": "terminal" if terminal else "run",
-            "command": command,
+            "command": visible(command),
             "cwd": self.agent.short_path(folder),
             "reason": re.sub(r"\s+", " ", str(reason or "")).strip()[:300],
             "danger": danger,

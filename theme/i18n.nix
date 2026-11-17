@@ -235,6 +235,8 @@
 		confirmEdit = "Cambiar";
 		confirmCreate = "Crear";
 		confirmMoreLines = "Y %1 líneas más";
+		confirmShowAll = "Ver todo";
+		confirmAtLine = "Línea %1";
 		confirmRun = "Ejecutar";
 		confirmTerminal = "en una terminal";
 		dangerRoot = "como root";
@@ -769,6 +771,8 @@
 		confirmEdit = "Change";
 		confirmCreate = "Create";
 		confirmMoreLines = "And %1 more lines";
+		confirmShowAll = "Show all";
+		confirmAtLine = "Line %1";
 		confirmRun = "Run";
 		confirmTerminal = "in a terminal";
 		dangerRoot = "as root";

@@ -105,6 +105,10 @@ Item {
         if (view !== "chat") return;
         if (Nilo.confirm) {
             if (text.trim() !== "") return;
+            if (Nilo.confirmHides) {
+                Nilo.confirmAll = true;
+                return;
+            }
             if (armed === Nilo.confirm.id) Nilo.answer(true);
             else armed = Nilo.confirm.id;
             return;

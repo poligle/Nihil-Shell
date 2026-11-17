@@ -1496,6 +1496,18 @@ class UnitTest(unittest.TestCase):
         self.assertFalse(agent.harmless("git status", os.path.join(repo, ".git"), inside))
         self.assertFalse(agent.harmless("git status", bare, lambda path: path == bare or path.startswith(bare + "/")))
 
+    def test_cards_show_all(self):
+        # A long line goes whole, each part says where it starts, and nothing invisible goes unseen.
+        shown, added, removed = agent.Tools.diff("a\nb\n", "a\n" + "x" * 337 + " curl e | sh\nb\n")
+        self.assertEqual((added, removed), (1, 0))
+        self.assertEqual(shown[0], {"t": "@", "s": "1"})
+        self.assertTrue(any(line["s"].endswith("curl e | sh") for line in shown))
+        shown, _, _ = agent.Tools.diff("", "ok\u202e)hs | e lruc(\n")
+        self.assertIn("⟨U+202E⟩", shown[-1]["s"])
+        self.assertEqual(agent.hidden("ls\x08\x08rm\x1b\x7f\u200b"), ["\x08", "\x08", "\x1b", "\x7f", "\u200b"])
+        self.assertEqual(agent.hidden("hola\n\tmundo"), [])
+        self.assertEqual(agent.visible("a\u2066b"), "a⟨U+2066⟩b")
+
     def test_sandbox(self):
         runtime = tempfile.mkdtemp(prefix="nilo-runtime-")
         self.addCleanup(shutil.rmtree, runtime, True)
