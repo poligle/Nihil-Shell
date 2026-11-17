@@ -345,6 +345,7 @@
 		cfgPasswordDone = "Contraseña cambiada";
 		cfgPasswordWrong = "No se ha cambiado: ¿es correcta la actual?";
 		cfgPasswordInvalid = "Una contraseña no puede llevar saltos de línea";
+		cfgHostRule = "Minúsculas, números y guiones, sin guion al principio ni al final";
 		cfgPasswordFailed = "No se ha podido cambiar";
 		cfgRegion = "Idioma y región";
 		cfgLanguage = "Idioma";
@@ -883,6 +884,7 @@
 		cfgPasswordDone = "Password changed";
 		cfgPasswordWrong = "Not changed: is the current one right?";
 		cfgPasswordInvalid = "A password can't have line breaks";
+		cfgHostRule = "Lowercase letters, digits and hyphens, with no hyphen at either end";
 		cfgPasswordFailed = "It couldn't be changed";
 		cfgRegion = "Language and region";
 		cfgLanguage = "Language";

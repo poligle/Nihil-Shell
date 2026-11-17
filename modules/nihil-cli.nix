@@ -10,7 +10,7 @@ let
     nihil = pkgs.writeShellApplication
     {
         name = "nihil";
-        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnused pkgs.gnutar pkgs.curl pkgs.shadow config.systemd.package config.nix.package ];
+        runtimeInputs = [ pkgs.jq pkgs.coreutils pkgs.gawk pkgs.gnused pkgs.gnutar pkgs.curl pkgs.shadow pkgs.xkbvalidate config.systemd.package config.nix.package ];
         text = ''
             flake=''${NIHIL_FLAKE:-${flake}}
             run=/run/nihil
@@ -417,6 +417,11 @@ let
                             and (test("[^a-z0-9-]") | not) and (startswith("-") | not) and (endswith("-") | not))' \
                         "$staged" > /dev/null 2>&1; then
                         echo "Those settings are not valid." >&2
+                        exit 2
+                    fi
+                    if ! XKB_CONFIG_ROOT=${config.services.xserver.xkb.dir} xkbvalidate "" \
+                        "$(jq -r '.keyboard.layout // "us"' "$staged")" "$(jq -r '.keyboard.variant // ""' "$staged")" "" > /dev/null 2>&1; then
+                        echo "Those settings are not valid: that keyboard layout or variant doesn't exist." >&2
                         exit 2
                     fi
                     install -m 0644 "$staged" "$run/settings.json"

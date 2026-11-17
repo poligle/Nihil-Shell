@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Io
 import qs.theme
 import qs.config
 import qs.services
@@ -10,6 +11,31 @@ Flickable {
 
     readonly property var layouts: ["es", "us", "gb", "latam", "fr", "de", "it", "pt"]
     readonly property string layout: Machine.get("keyboard.layout", "us")
+    // The layouts that exist and their variants; until they're read, the old rule stands in.
+    property var xkb: ({})
+    readonly property bool xkbRead: Object.keys(xkb).length > 0
+
+    function layoutExists(name: string): bool {
+        return xkbRead ? name in xkb : /^[a-z]{2,8}$/.test(name);
+    }
+
+    function variantExists(name: string): bool {
+        return !xkbRead || (xkb[page.layout] ?? []).includes(name);
+    }
+
+    // A variant belongs to its layout: a new layout starts without one.
+    function pickLayout(name: string): void {
+        Machine.set("keyboard.layout", name);
+        Machine.set("keyboard.variant", "");
+    }
+
+    FileView {
+        path: Config.xkbLayouts
+        printErrors: false
+        onLoaded: {
+            try { page.xkb = JSON.parse(text()); } catch (e) { page.xkb = {}; }
+        }
+    }
     property string search: ""
     readonly property var matches: {
         const wanted = page.search.trim().toLowerCase().replace(/ /g, "_");
@@ -58,7 +84,7 @@ Flickable {
                     mono: true
                     options: page.layouts.map(name => ({ value: name, label: name.toUpperCase() }))
                     value: page.layout
-                    onPicked: value => Machine.set("keyboard.layout", value)
+                    onPicked: value => page.pickLayout(value)
                 }
 
                 Row {
@@ -68,10 +94,12 @@ Flickable {
                         width: 150
                         placeholder: Lang.cfgOther
                         value: page.layouts.indexOf(page.layout) < 0 ? page.layout : ""
-                        invalid: text !== "" && !/^[a-z]{2,8}$/.test(text)
+                        // Saved as typed: what doesn't exist stays red and Apply refuses it, rather than
+                        // the last piece that did exist going in unseen.
+                        invalid: text !== "" && !page.layoutExists(text)
                         onEdited: text => {
-                            if (/^[a-z]{2,8}$/.test(text))
-                                Machine.set("keyboard.layout", text);
+                            if (text !== "")
+                                page.pickLayout(text);
                         }
                     }
 
@@ -79,6 +107,7 @@ Flickable {
                         width: 172
                         placeholder: Lang.cfgVariant
                         value: Machine.get("keyboard.variant", "")
+                        invalid: text.trim() !== "" && !page.variantExists(text.trim())
                         onEdited: text => Machine.set("keyboard.variant", text.trim())
                     }
                 }
