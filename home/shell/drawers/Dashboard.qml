@@ -12,7 +12,7 @@ Item {
     property bool active: false
 
     focus: active
-    onActiveChanged: if (active) forceActiveFocus()
+    onActiveChanged: if (active) Qt.callLater(() => { if (root.active) root.forceActiveFocus(); })
     Keys.onEscapePressed: Drawers.close()
     Keys.onPressed: event => {
         const paste = (event.key === Qt.Key_V && event.modifiers & Qt.ControlModifier)
