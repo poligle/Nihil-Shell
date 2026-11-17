@@ -91,9 +91,10 @@ than read (those that only read, like `ls`, `journalctl` or `git status` in the
 repository, from a short list and with no redirection, chaining or globbing, run on their
 own, in a sandbox where the system is read-only, there is no network, nothing of the session
 to reach and your keys aren't there); typing in a terminal; shortcuts that delete or send (`shift + Delete`, `ctrl +
-Enter`…); sending the phone a file from outside your folder; and whatever looks like a
-password, a key or bank details, or carries what it read of your files or a command, on
-its way to a search, a page, a browser or a chat. "Write a shopping list in Writer",
+Enter`…); sending the phone a file from outside your folder; whatever looks like a password,
+a key or bank details; once a chat has read your files, the screen or a command, anything
+on its way to a search, a page, a browser or a chat; and once an answer has read the web or
+the screen, typing, pressing keys, reading your files or sending anything. "Write a shopping list in Writer",
 "close Spotify", "the next song" or "look for videos of Queen" go straight away. What a
 page or the screen says is never an order. While Nilo types or acts, the launcher steps
 aside, and its eyes in the bar say when it's done.

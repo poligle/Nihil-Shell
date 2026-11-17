@@ -146,6 +146,8 @@ Item {
         case "search": return Lang.confirmSearch;
         case "fetch": return Lang.confirmFetch;
         case "open": return Lang.confirmOpenUrl;
+        case "read": return Lang.confirmRead;
+        case "click": return Lang.confirmClick.arg(facts.app ?? "");
         }
         return "";
     }
@@ -591,7 +593,7 @@ Item {
                     readonly property bool desktop: facts.action === "desktop"
                     readonly property var why: desktop ? (facts.why ?? []) : []
                     readonly property bool risky: command && (facts.danger ?? []).length > 0
-                        || why.some(code => code !== "private")
+                        || why.some(code => code !== "private" && code !== "web")
                     readonly property bool open: entry.status === "asking"
                     readonly property bool isArmed: open && root.armed === entry.cid
 
@@ -661,8 +663,8 @@ Item {
 
                         Label {
                             visible: text !== ""
-                            text: card.why.includes("sensitive") ? Lang.whySensitive
-                                : card.why.includes("private") ? Lang.whyPrivate : ""
+                            text: [["sensitive", Lang.whySensitive], ["web", Lang.whyWeb], ["private", Lang.whyPrivate]]
+                                .filter(pair => card.why.includes(pair[0])).map(pair => pair[1]).join(". ")
                             color: Tokens.dim
                         }
 
