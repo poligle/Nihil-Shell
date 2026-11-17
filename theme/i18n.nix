@@ -371,6 +371,8 @@
 		cfgAcceleration = "Aceleración";
 		cfgNiloSettings = "Ajustes";
 		cfgFingerprint = "Huella";
+		cfgSshPassword = "Solo entra tu usuario, con tu contraseña, o solo con claves si las pones en sshKeys de settings.json";
+		cfgSshKeys = "Solo entra tu usuario, con las claves de sshKeys";
 		cfgSaved = "Todo aplicado";
 		cfgPending = "%1 cambios sin aplicar";
 		cfgPendingOne = "1 cambio sin aplicar";
@@ -913,6 +915,8 @@
 		cfgAcceleration = "Acceleration";
 		cfgNiloSettings = "Settings";
 		cfgFingerprint = "Fingerprint";
+		cfgSshPassword = "Only your user gets in, with your password, or only with keys if you add them to sshKeys in settings.json";
+		cfgSshKeys = "Only your user gets in, with the keys in sshKeys";
 		cfgSaved = "All applied";
 		cfgPending = "%1 changes to apply";
 		cfgPendingOne = "1 change to apply";

@@ -36,14 +36,14 @@ in
   {
     plymouth =
     {
-      enable = true;
+      enable = lib.mkDefault true;
 
-      theme = "nihil";
+      theme = lib.mkDefault "nihil";
       themePackages = [ (import ../theme/plymouth.nix { inherit pkgs waitForSound; }) ];
     };
 
-    consoleLogLevel = 3;
-    initrd.verbose = false;
+    consoleLogLevel = lib.mkDefault 3;
+    initrd.verbose = lib.mkDefault false;
     kernelParams = 
     [
       "quiet"
@@ -53,11 +53,9 @@ in
       "systemd.show_status=auto"
       "rd.udev.log_level=3"
     ];
-
-    loader.timeout = 5;
   };
 
-  stylix.targets.plymouth.enable = false;
+  stylix.targets.plymouth.enable = lib.mkDefault false;
 
   systemd.services = lib.genAttrs [ "plymouth-poweroff" "plymouth-reboot" "plymouth-halt" "plymouth-kexec" ] (_:
   {

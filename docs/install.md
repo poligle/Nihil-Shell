@@ -103,7 +103,7 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 | File | What it holds |
 |------|---------------|
 | `flake.nix` | NIHIL as an input (`github:poligle/Nihil-Shell`, or `path:` to a clone), through `nihil.lib.mkSystem` |
-| `settings.json` | User, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH, how long generations stay, the deck |
+| `settings.json` | User, computer name, language, locale, keyboard, time zone, screens, Nilo, fingerprint, SSH and its keys (`sshKeys`), how long generations stay, the deck |
 | `hardware-configuration.nix` | Disks and drivers, from `nixos-generate-config` |
 | `local.nix` | Anything else for this machine: drivers, services, packages |
 | `home.nix` | Its apps (NIHIL installs little beyond Zen) and anything else for its user, through Home Manager |
@@ -137,13 +137,13 @@ nihil generations clean DAYS  # those older than DAYS days go, and what nothing 
 nihil rebuild                  # apply /etc/nixos (alias nrebuild)
 nihil update                   # the latest NIHIL, then rebuild (alias nupdate)
 sudo nixos-rebuild build --flake /etc/nixos          # build without switching
-sudo nix-collect-garbage --delete-older-than 7d     # (alias ngc)
+nihil generations clean 7      # older than 7 days go, from the boot menu too (alias ngc)
 ```
 
 `nh os switch` does the same as `nihil rebuild` and prints the package diff between
 generations. Garbage collection also runs weekly on its own (`modules/nix.nix`), keeping
-the generations of the last `generations.days` days; Preferences, Generations cleans now
-too, and says what it freed.
+the generations of the last `generations.days` days and taking the rest out of the boot
+menu; Preferences, Generations cleans now too, and says what it freed.
 
 To try changes to NIHIL before pushing them: `nihil dev ~/Nihil-Shell` rebuilds with that
 checkout and keeps it, so `nihil rebuild` and Preferences use it too, until `nihil dev off`
