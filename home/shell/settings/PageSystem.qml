@@ -116,6 +116,7 @@ Flickable {
 
         Setting {
             title: "SSH"
+            sub: !Machine.get("ssh", false) ? "" : Machine.get("sshKeys", []).length > 0 ? Lang.cfgSshKeys : Lang.cfgSshPassword
 
             Toggle {
                 on: Machine.get("ssh", false)

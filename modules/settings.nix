@@ -7,6 +7,7 @@ let
 
     firstWord = text: lib.head (lib.splitString " " text);
     outputs = get [ "outputs" ] { };
+    sshKeys = get [ "sshKeys" ] [ ];
 in
 {
     options.nihil =
@@ -77,7 +78,20 @@ in
             model = lib.mkIf (get [ "keyboard" "model" ] "" != "") (lib.mkDefault (get [ "keyboard" "model" ] ""));
         };
 
-        services.openssh.enable = lib.mkDefault (get [ "ssh" ] false);
+        services.openssh = lib.mkIf (get [ "ssh" ] false)
+        {
+            enable = lib.mkDefault true;
+            settings =
+            {
+                PermitRootLogin = lib.mkDefault "no";
+                AllowUsers = lib.mkDefault [ config.nihil.user.name ];
+                PasswordAuthentication = lib.mkDefault (sshKeys == [ ]);
+                KbdInteractiveAuthentication = lib.mkDefault false;
+            };
+        };
+        # With the password still accepted, repeated failures from an address block it for a while.
+        services.sshguard.enable = lib.mkDefault (get [ "ssh" ] false && sshKeys == [ ]);
+        users.users.${config.nihil.user.name}.openssh.authorizedKeys.keys = sshKeys;
         nihil.generations.days = lib.mkDefault (get [ "generations" "days" ] 7);
         nihil.deck.enable = lib.mkDefault (get [ "deck" "enable" ] false);
 

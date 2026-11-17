@@ -32,7 +32,7 @@ let
     };
 in
 {
-    services.libinput.enable = true;
+    services.libinput.enable = lib.mkDefault true;
 
     services.logind.settings.Login =
     {
@@ -40,7 +40,7 @@ in
         HandleLidSwitchExternalPower = lib.mkDefault "suspend";
         HandleLidSwitchDocked = lib.mkDefault "ignore";
     };
-    services.fprintd.enable = config.nihil.fingerprint;
+    services.fprintd.enable = lib.mkDefault config.nihil.fingerprint;
 
     hardware.enableRedistributableFirmware = lib.mkDefault true;
     boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
@@ -48,8 +48,8 @@ in
     {
         hyprlock.fprintAuth = false;
     };
-    zramSwap.enable = true;
-    hardware.graphics.enable = true;
+    zramSwap.enable = lib.mkDefault true;
+    hardware.graphics.enable = lib.mkDefault true;
     
     services.udev.extraRules = ''
         ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::micmute", RUN+="${pkgs.coreutils}/bin/chgrp nihil-leds /sys/class/leds/%k/brightness", RUN+="${pkgs.coreutils}/bin/chmod g+w /sys/class/leds/%k/brightness"

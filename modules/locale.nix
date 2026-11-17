@@ -4,8 +4,8 @@
 {
     console =
     {
-        font = "Lat2-Terminus16";
-        useXkbConfig = true;
+        font = lib.mkDefault "Lat2-Terminus16";
+        useXkbConfig = lib.mkDefault true;
     };
 
     # The check X's own module makes, which only runs with X on: a layout or variant that doesn't
