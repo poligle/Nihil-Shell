@@ -86,8 +86,11 @@ Scope {
                     anchors.fill: parent
                 }
 
+                // Hidden, Preferences keeps nothing: a password typed and left, or a pairing still
+                // open, goes with it.
                 Loader {
                     anchors.fill: parent
+                    active: win.visible
                     sourceComponent: Machine.welcoming ? welcome : preferences
                 }
             }

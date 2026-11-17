@@ -88,7 +88,10 @@ Flickable {
                 page.go(ask.action, ask.value, text);
                 field.clear();
             }
-            onEscaped: page.asking = ""
+            onEscaped: {
+                field.clear();
+                page.asking = "";
+            }
         }
 
         KeyButton {
@@ -105,6 +108,7 @@ Flickable {
             onClicked: {
                 if (page.fingerWait)
                     Machine.cancelFinger();
+                field.clear();
                 page.asking = "";
             }
         }

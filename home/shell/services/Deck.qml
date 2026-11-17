@@ -50,7 +50,7 @@ Singleton {
     }
 
     Timer {
-        running: root.pairing
+        running: root.pairing && Machine.shown
         interval: 2000
         repeat: true
         onTriggered: {
