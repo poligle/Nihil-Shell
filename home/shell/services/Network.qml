@@ -57,7 +57,7 @@ Singleton {
     }
 
     function editor(): void {
-        Quickshell.execDetached([Config.cmd.nmEditor]);
+        Apps.run([Config.cmd.nmEditor]);
     }
 
     function finish(net, code: int): void {

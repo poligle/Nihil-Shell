@@ -471,7 +471,7 @@ Item {
                                     lineHeight: 1.3
                                     onLinkActivated: link => {
                                         Drawers.close();
-                                        Qt.openUrlExternally(link);
+                                        Apps.open(link);
                                     }
 
                                     HoverHandler {

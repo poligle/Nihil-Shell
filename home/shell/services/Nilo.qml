@@ -400,7 +400,7 @@ Singleton {
             messages.append({ kind: "tool", text: "", done: true, name: "open_app", status: "done", cid: "",
                               info: JSON.stringify({ ok: true, opened: p.name, args: { target: p.name } }) });
             if (p.entry) Apps.launch(p.entry);
-            else Qt.openUrlExternally(p.url);
+            else Apps.open(p.url);
         }
         Drawers.close();
         return true;
@@ -408,9 +408,9 @@ Singleton {
 
     function launch(target: string, kind: string): var {
         if (kind === "url" || kind === "path") {
-            const ok = Qt.openUrlExternally(kind === "path" ? "file://" + encodeURI(target) : target);
-            if (ok) Drawers.close();
-            return ok ? { ok: true, name: target } : { ok: false, error: "nothing opens " + target };
+            Apps.open(target);
+            Drawers.close();
+            return { ok: true, name: target };
         }
         const q = String(target ?? "").trim().toLowerCase();
         const found = q ? Apps.search(q) : [];
@@ -506,7 +506,7 @@ Singleton {
             break;
         case "notes":
             Drawers.close();
-            Quickshell.execDetached([Config.cmd.terminal, "-e", Config.cmd.editor, e.path]);
+            Apps.run([Config.cmd.terminal, "-e", Config.cmd.editor, e.path]);
             break;
         case "reset":
             break;

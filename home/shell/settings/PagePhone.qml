@@ -49,7 +49,7 @@ Flickable {
 
             KeyButton {
                 text: Lang.deckWatchInstall
-                onClicked: Quickshell.execDetached([Config.cmd.terminal, "--hold", "--title", Lang.deckWatchTitle, Config.cmd.watch])
+                onClicked: Apps.run([Config.cmd.terminal, "--hold", "--title", Lang.deckWatchTitle, Config.cmd.watch])
             }
         }
 

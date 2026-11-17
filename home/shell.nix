@@ -56,6 +56,7 @@ let
 		wlCopy = "${pkgs.wl-clipboard}/bin/wl-copy";
 		systemctl = "${pkgs.systemd}/bin/systemctl";
 		uwsm = "${osConfig.programs.uwsm.package}/bin/uwsm";
+		xdgOpen = "${pkgs.xdg-utils}/bin/xdg-open";
 		pavucontrol = "${pkgs.pavucontrol}/bin/pavucontrol";
 		blueman = "${pkgs.blueman}/bin/blueman-manager";
 		terminal = "${profile}/kitty";
@@ -157,6 +158,8 @@ in
 			ExecStart = "${quickshell}/bin/qs -c nihil";
 			Restart = "on-failure";
 			RestartSec = 2;
+			# Apps start in scopes of their own (Apps.run); this keeps the small helpers it leaves
+			# behind, like wl-copy holding what was copied, through a restart of the shell.
 			KillMode = "process";
 			Environment = lib.mapAttrsToList (name: value: "${name}=${value}") (import ./session-env.nix);
 		};

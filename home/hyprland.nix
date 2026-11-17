@@ -51,7 +51,8 @@ let
 	programBinds = map (program: bind program.keys (exec (lib.escape [ "\\" "\"" ] program.exec)))
 		(builtins.filter (program: program.keys != null) osConfig.nihil.programs);
 
-	actionBinds = lib.mapAttrsToList (name: action: bind keys.${name} action)
+	actionBinds = lib.mapAttrsToList (name: action:
+			if name == "lock" then bindWith keys.${name} action { locked = true; } else bind keys.${name} action)
 		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
 		++ lib.optional (keys.screenshot != null)
 			(bindWith keys.screenshot (exec "nihil-shot screen") { locked = true; })
@@ -365,6 +366,8 @@ in
 					disable_hyprland_logo = true;
 					disable_splash_rendering = true;
 					background_color = rgb t.palette.void;
+					# If the lock screen ever dies, the lock key brings a new one instead of a dead end.
+					allow_session_lock_restore = true;
 				};
 
 				ecosystem =
