@@ -118,7 +118,7 @@ with a click, next to the password that updates.
 nihil update      # the latest NIHIL, then rebuild
 nihil check       # whether GitHub has a newer NIHIL, and which commits
 nihil rebuild     # apply changes to /etc/nixos
-nihil settings    # edit settings.json, then rebuild
+nihil settings    # edit a copy of settings.json, then rebuild with it once it's valid
 nihil version     # the NIHIL this machine runs, and the one pinned
 nihil dev [path]  # NIHIL from a checkout instead, until nihil dev off or nihil update
 nihil apply FILE  # FILE as settings.json, rebuilt in the background (/run/nihil)
@@ -128,6 +128,13 @@ nihil generations switch N    # back to N, now and at boot
 nihil generations boot N      # N the next boot only
 nihil generations clean DAYS  # those older than DAYS days go, and what nothing needs
 ```
+
+One change at a time: while one is being made, from a terminal or from Preferences, any
+other stops and says so. A change that fails with the system as it was leaves
+`settings.json`, `flake.lock` and `nihil dev` as they were too, so the next rebuild builds
+what runs. `nihil apply` and `nihil settings` take settings for this machine's own account
+only (a different `user.name` would leave it out of the system), with `host.name`, and
+with each key of the type NIHIL reads.
 
 ---
 
@@ -149,7 +156,8 @@ To try changes to NIHIL before pushing them: `nihil dev ~/Nihil-Shell` rebuilds 
 checkout and keeps it, so `nihil rebuild` and Preferences use it too, until `nihil dev off`
 or `nihil update`; `nihil version` says which NIHIL runs. Each rebuild takes a copy of the
 checkout as it is, new files included, without `.git` (`/var/lib/nihil/dev-tree`): the
-history stays out of the store. To build on a clone for good, point the machine's flake
+history stays out of the store. The copy is read as whoever turned `nihil dev` on and
+built as root, so Preferences says so where it asks for the password. To build on a clone for good, point the machine's flake
 at it (On a NixOS you already have, above).
 
 ### Keeping NIHIL current
@@ -180,6 +188,7 @@ home started on, for every machine; `system.stateVersion` is each machine's own,
   `nihil generations switch N`) goes back to an earlier generation without restarting,
   and "Boot it once" tries one at the next boot only, for what needs a restart (a kernel,
   a driver). Your settings stay as they are: the next apply builds from them again.
-- **An update broke something:** boot the previous generation, then go back to the NIHIL
-  you had: `/etc/nixos/flake.lock` holds the revision, so `git` on `/etc/nixos` (or a copy
-  of the old lock) and `nihil rebuild` return to it.
+- **An update broke something:** an update that fails to build leaves `flake.lock` as it
+  was on its own. One that built and broke something: boot the previous generation, then
+  go back to the NIHIL you had: `/etc/nixos/flake.lock` holds the revision, so `git` on
+  `/etc/nixos` (or a copy of the old lock) and `nihil rebuild` return to it.

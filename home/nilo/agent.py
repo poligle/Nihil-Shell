@@ -2634,7 +2634,9 @@ class Agent:
         return self.fast() or chosen
 
     def default_repo(self):
-        candidates = [read_text(self.config.get("devFile", DEV_FILE)).strip(), *CHECKOUTS]
+        # nihil dev's file: the checkout, then who turned it on.
+        dev = read_text(self.config.get("devFile", DEV_FILE)).splitlines()
+        candidates = [dev[0].strip() if dev else "", *CHECKOUTS]
         for path in candidates:
             if path and os.path.exists(os.path.join(os.path.expanduser(path), ".git")):
                 return self.short_path(path)

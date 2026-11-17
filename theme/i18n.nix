@@ -373,6 +373,7 @@
 		cfgFingerprint = "Huella";
 		cfgSshPassword = "Solo entra tu usuario, con tu contraseña, o solo con claves si las pones en sshKeys de settings.json";
 		cfgSshKeys = "Solo entra tu usuario, con las claves de sshKeys";
+		cfgDevBuilds = "Tu contraseña compila como root tu copia de %1 (nihil dev)";
 		cfgSaved = "Todo aplicado";
 		cfgPending = "%1 cambios sin aplicar";
 		cfgPendingOne = "1 cambio sin aplicar";
@@ -917,6 +918,7 @@
 		cfgFingerprint = "Fingerprint";
 		cfgSshPassword = "Only your user gets in, with your password, or only with keys if you add them to sshKeys in settings.json";
 		cfgSshKeys = "Only your user gets in, with the keys in sshKeys";
+		cfgDevBuilds = "Your password builds your checkout in %1 as root (nihil dev)";
 		cfgSaved = "All applied";
 		cfgPending = "%1 changes to apply";
 		cfgPendingOne = "1 change to apply";

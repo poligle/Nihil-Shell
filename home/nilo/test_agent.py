@@ -910,7 +910,7 @@ class AgentTest(unittest.TestCase):
         os.makedirs(os.path.join(checkout, ".git"))
         dev = os.path.join(self.dir, "dev")
         with open(dev, "w") as f:
-            f.write(checkout + "\n")
+            f.write(checkout + "\npol\n")
         self.write_config(devFile=dev)
         self.assertEqual(self.start(env=env)["settings"]["repo"], checkout)
         self.agent.send(op="set", key="repo", value=os.path.join(home, "Nihil-Shell"))
