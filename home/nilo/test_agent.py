@@ -1494,6 +1494,42 @@ class UnitTest(unittest.TestCase):
         self.assertFalse(agent.harmless("git status", os.path.join(repo, ".git"), inside))
         self.assertFalse(agent.harmless("git status", bare, lambda path: path == bare or path.startswith(bare + "/")))
 
+    def test_sandbox(self):
+        runtime = tempfile.mkdtemp(prefix="nilo-runtime-")
+        self.addCleanup(shutil.rmtree, runtime, True)
+        env = {"XDG_RUNTIME_DIR": runtime, "WAYLAND_DISPLAY": "wayland-1", "HYPRLAND_INSTANCE_SIGNATURE": "x",
+               "SSH_AUTH_SOCK": runtime + "/ssh", "PATH": os.environ.get("PATH", "")}
+
+        def box(command):
+            argv, out = agent.sandbox("bwrap", command, "/tmp", env)
+            return " ".join(argv), out
+
+        argv, out = box("grep -rn foo . | head")
+        for part in ("--ro-bind / /", "--unshare-net", "--unshare-pid --proc /proc", f"--tmpfs {runtime}",
+                     "--chdir /tmp --"):
+            self.assertIn(part, argv)
+        self.assertNotIn("WAYLAND_DISPLAY", out)
+        self.assertNotIn("SSH_AUTH_SOCK", out)
+        argv, out = box("hyprctl -j clients")
+        self.assertNotIn(f"--tmpfs {runtime}", argv)
+        self.assertIn("HYPRLAND_INSTANCE_SIGNATURE", out)
+        self.assertNotIn("SSH_AUTH_SOCK", out)
+        self.assertNotIn("--unshare-pid", box("ps aux | grep nilo")[0])
+        argv, _ = box("nix search nixpkgs firefox")
+        self.assertNotIn("--unshare-net", argv)
+        self.assertIn("--bind", argv)
+
+        bwrap = shutil.which("bwrap")
+        if not bwrap or subprocess.run([bwrap, "--ro-bind", "/", "/", "true"], capture_output=True, check=False).returncode != 0:
+            self.skipTest("bubblewrap can't run here")
+        place = tempfile.mkdtemp(prefix="nilo-sandbox-")
+        self.addCleanup(shutil.rmtree, place, True)
+        argv, out = agent.sandbox(bwrap, "ls", place, dict(os.environ))
+        ran = subprocess.run(argv + ["bash", "-c", "touch inside; echo ok > /tmp/scratch && cat /tmp/scratch"],
+                             capture_output=True, text=True, env=out, check=False)
+        self.assertEqual(ran.stdout.strip(), "ok")
+        self.assertFalse(os.path.exists(os.path.join(place, "inside")))
+
     def test_keys_and_secrets(self):
         self.assertEqual(agent.parse_keys("ctrl+shift+t Down Return"),
                          ([(["ctrl", "shift"], "t"), ([], "Down"), ([], "Return")], ""))
