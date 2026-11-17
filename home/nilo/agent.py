@@ -47,8 +47,6 @@ TYPE_CHUNK = 120
 WINDOW_WAIT = 15
 PLAYER_WAIT = 20
 SHOT_SIDE = 1280
-SEEN_CHARS = 400_000
-LEAK_RUN = 24
 KEPT_COPIES = 50
 PULL_ATTEMPTS = 4
 PULL_WAIT = 5
@@ -399,6 +397,11 @@ def schema(name, description, properties=None, required=()):
 
 CONTROLS = ("volume", "mute", "mic", "brightness", "dnd", "caffeine", "night", "wifi", "bluetooth", "airplane",
             "wallpaper", "glass", "workspace", "screenshot", "record", "lock")
+
+# What marks the chat as having read the user's things, and the answer as having read the outside;
+# read_file, list_files and run_command mark the chat themselves, only for what isn't the repo.
+PRIVATE_READS = {"system_info", "list_windows", "look_at_screen"}
+OUTSIDE_READS = {"web_search", "open_url", "look_at_screen"}
 
 SCHEMAS = {
     "web_search": ("web", schema(
@@ -1132,7 +1135,7 @@ class Tools:
         if not isinstance(args, dict):
             args = {}
         if name in ("web_search", "open_url"):
-            asked = str(args.get("query") or args.get("url") or "")[:300]
+            asked = str(args.get("query") or args.get("url") or "")
             why = self.outgoing(asked)
             if why and not self.ask_desktop("search" if name == "web_search" else "fetch", None, why, cancel, text=asked):
                 result = {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
@@ -1145,6 +1148,11 @@ class Tools:
         except Exception as e:
             log(f"{name} failed:", repr(e))
             result = {"error": str(e) or e.__class__.__name__}
+        if "error" not in result and not result.get("declined"):
+            if name in OUTSIDE_READS:
+                self.agent.outside = True
+            if name in PRIVATE_READS:
+                self.agent.private = True
         return result, self.facts(name, result)
 
     @staticmethod
@@ -1214,16 +1222,15 @@ class Tools:
         return facts
 
 
-    def leaks(self, text):
-        text = re.sub(r"\s+", " ", str(text or "")).strip().lower()
-        pool = getattr(self.agent, "seen", "")
-        if len(text) < LEAK_RUN or not pool:
-            return False
-        return any(text[i:i + LEAK_RUN] in pool for i in range(0, len(text) - LEAK_RUN + 1, 8)) \
-            or text[-LEAK_RUN:] in pool
-
+    # Once Nilo has read your files, the screen or a command in a chat, anything on its way out asks:
+    # what it read can go out in any shape (spaces as +, base64…), so nothing is matched against it.
     def outgoing(self, text):
-        return (["sensitive"] if sensitive(text) else []) + (["private"] if self.leaks(text) else [])
+        return (["sensitive"] if sensitive(text) else []) + (["private"] if getattr(self.agent, "private", False) else [])
+
+    # Once an answer has read the web or the screen, typing, pressing keys, reading your files and
+    # sending anything ask: what it read may be telling it to.
+    def outside(self):
+        return ["web"] if getattr(self.agent, "outside", False) else []
 
     def search_url(self, query):
         if self.config.get("searxng"):
@@ -1490,10 +1497,12 @@ class Tools:
         if not os.path.isdir(full):
             raise RuntimeError(f"{rel} is not a folder")
         if root is None:
+            if self.outside() and not self.ask_desktop("read", None, self.outside(), cancel, path=rel):
+                return {"declined": True, "note": "The user did not confirm. Nothing was read."}
             entries = sorted(os.scandir(full), key=lambda e: (not e.is_dir(), e.name.lower()))
             names = [e.name + ("/" if e.is_dir() else "") for e in entries
                      if not e.name.startswith(".") and not secret(e.path)]
-            self.agent.saw("\n".join(names))
+            self.agent.private = True
             return {"path": rel, "files": names[:LIST_FILES], "more": max(0, len(names) - LIST_FILES)}
         code, tracked, _ = self.git(root, "ls-files", "--cached", "--others", "--exclude-standard", "--", rel)
         if code == 0:
@@ -1510,6 +1519,8 @@ class Tools:
         root, full, rel = self.resolve(path)
         if os.path.isdir(full):
             raise RuntimeError(f"{rel} is a folder: use list_files")
+        if root is None and self.outside() and not self.ask_desktop("read", None, self.outside(), cancel, path=rel):
+            return {"declined": True, "note": "The user did not confirm. Nothing was read."}
         lines = self.text_of(full).splitlines(keepends=True)
         try:
             start = max(1, int(from_line))
@@ -1524,7 +1535,7 @@ class Tools:
         end = start + len(part) - 1
         result = {"path": rel, "lines": len(lines), "from_line": start, "to_line": end, "text": "".join(part)}
         if root is None:
-            self.agent.saw(result["text"])
+            self.agent.private = True
         if end < len(lines):
             result["next_line"] = end + 1
         return result
@@ -1877,6 +1888,9 @@ class Tools:
             origin = client.get("at") or origin
         gx = round(origin[0] + px / shot["factor"])
         gy = round(origin[1] + py / shot["factor"])
+        why = ["private"] if client and self.outward(client) and getattr(self.agent, "private", False) else []
+        if why and not self.ask_desktop("click", client, why, cancel):
+            return {"declined": True, "note": "The user did not confirm. Nothing was clicked."}
         self.aside(cancel)
         if client:
             self.focus(client)
@@ -1937,7 +1951,7 @@ class Tools:
         if missing:
             return missing
         why = (["terminal"] if self.terminal(target) else []) + (["sensitive"] if sensitive(text) else []) \
-            + (["private"] if self.outward(target) and self.leaks(text) else [])
+            + (["private"] if self.outward(target) and getattr(self.agent, "private", False) else []) + self.outside()
         if why and not self.ask_desktop("type", target, why, cancel, text=clip(text, 800)):
             return {"declined": True, "note": "The user did not confirm. Nothing was typed."}
         self.aside(cancel)
@@ -1963,7 +1977,8 @@ class Tools:
         target, missing = self.wait_window(window, cancel)
         if missing:
             return missing
-        why = (["terminal"] if self.terminal(target) else []) + (["keys"] if risky_keys(combos) else [])
+        why = (["terminal"] if self.terminal(target) else []) + (["keys"] if risky_keys(combos) else []) \
+            + (["private"] if self.outward(target) and getattr(self.agent, "private", False) else []) + self.outside()
         if why and not self.ask_desktop("keys", target, why, cancel, keys=shown):
             return {"declined": True, "note": "The user did not confirm. No key was pressed."}
         self.aside(cancel)
@@ -2032,6 +2047,7 @@ class Tools:
         if why and not self.ask_desktop("search", None, why, cancel, text=query):
             return {"declined": True, "note": "The user did not confirm. Nothing went out to the internet."}
         found = self.web_search(f"site:open.spotify.com {query}", 8)
+        self.agent.outside = True
         if "error" in found:
             return {"error": "the search failed", "detail": found.get("detail", found["error"])}
         hits = []
@@ -2105,6 +2121,7 @@ class Tools:
             detail = {"path": rel}
         else:
             detail = {"text": clip(text, 400)}
+        why += (["sensitive"] if sensitive(text) else []) + self.outside()
         if why and not self.ask_desktop("send", None, why, cancel, **detail):
             return {"declined": True, "note": "The user did not confirm. Nothing was sent."}
         answer = self.agent.call_shell("vector", {"path": full} if full else {"text": text[:100000]}, cancel)
@@ -2134,7 +2151,7 @@ class Tools:
         danger = risks(command)
         terminal = terminal is True or str(terminal).lower() == "true" or "root" in danger
         auto = (capabilities(self.agent.settings)["desktop"] and not terminal and not danger
-                and harmless(command, folder, self.in_repo))
+                and not self.outside() and harmless(command, folder, self.in_repo))
         card = {
             "action": "terminal" if terminal else "run",
             "command": command,
@@ -2153,7 +2170,7 @@ class Tools:
             if not self.agent.ask_confirmation(card, cancel):
                 return {"declined": True, "note": "The user did not confirm. Nothing ran."}
             result = self.execute(command, folder, cancel)
-        self.agent.saw(str(result.get("output", "")))
+        self.agent.private = True
         if auto:
             result["auto"] = True
         return result
@@ -2541,7 +2558,8 @@ class Agent:
                       "sizeGB": 0, "gpu": 0}
         self.installed = set()
         self.active = ""
-        self.seen = ""              # what this turn has read of the user's files and commands
+        self.private = False        # this chat has read the user's files, the screen or a command
+        self.outside = False        # this answer has read the web or the screen
         self.shot = None            # where the last screenshot was taken
         self.vision = {}            # model -> whether it sees pictures
         self.state_lock = threading.Lock()
@@ -2549,11 +2567,6 @@ class Agent:
         self.starting = False       # starting ollama.service
         self.last_start = -1e9
 
-
-    def saw(self, text):
-        text = re.sub(r"\s+", " ", str(text or "")).strip().lower()
-        if text:
-            self.seen = (self.seen + " " + text)[-SEEN_CHARS:]
 
     def recommended(self):
         models = self.config.get("models", [])
@@ -3085,7 +3098,7 @@ class Agent:
         stats["model"] = model
         history = self.history
         history.append({"role": "user", "content": text})
-        self.seen, self.shot = "", None
+        self.outside, self.shot = False, None
         self.out("start", model=model, auto=model != self.settings["model"])
         if not model:
             raise OllamaError("no-model")
@@ -3181,6 +3194,7 @@ class Agent:
     def reset(self):
         self.stop()
         self.history = []
+        self.private = False
         self.out("reset")
 
 
