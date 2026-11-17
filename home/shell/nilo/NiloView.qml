@@ -16,11 +16,13 @@ Item {
     signal cleared()
     signal refocus()
 
-    readonly property string view: !Nilo.enabled ? "off" : !Nilo.known ? "starting" : !Nilo.onboarded ? "intro" : page
-    readonly property bool hero: view === "off" || view === "starting" || view === "intro"
+    readonly property string view: !Nilo.enabled ? "off" : Nilo.failed ? "failed" : !Nilo.known ? "starting"
+        : !Nilo.onboarded ? "intro" : page
+    readonly property bool hero: view === "off" || view === "failed" || view === "starting" || view === "intro"
         || (view === "chat" && Nilo.messages.count === 0)
 
-    readonly property string hint: view === "off" || view === "starting" ? Lang.niloHintOff
+    readonly property string hint: view === "failed" ? Lang.niloHintFailed
+        : view === "off" || view === "starting" ? Lang.niloHintOff
         : (view === "intro" && intro.asking) || (view === "settings" && settings.asking) ? Lang.niloHintAuthorize
         : view === "intro" ? Lang.niloHintIntro
         : view === "settings" ? Lang.niloHintSettings
@@ -31,7 +33,7 @@ Item {
 
     readonly property string mood: {
         if (!Nilo.enabled) return "off";
-        if (Nilo.mood === "error") return "error";
+        if (Nilo.mood === "error" || view === "failed") return "error";
         if (Nilo.mood === "happy") return "happy";
         if (view === "starting") return "asleep";
         if (view === "intro") return greeting || intro.page === intro.pages - 1 ? "happy" : "idle";
@@ -100,6 +102,7 @@ Item {
     }
 
     function accept(text: string): void {
+        if (view === "failed") return Nilo.retry();
         if (view === "intro") return intro.next();
         if (view === "settings") return settings.activate();
         if (view !== "chat") return;
@@ -109,7 +112,7 @@ Item {
                 Nilo.confirmAll = true;
                 return;
             }
-            if (armed === Nilo.confirm.id) Nilo.answer(true);
+            if (armed === Nilo.confirm.id) Nilo.answer(Nilo.confirm.id, true);
             else armed = Nilo.confirm.id;
             return;
         }
@@ -156,7 +159,7 @@ Item {
             return true;
         }
         if (view === "intro" && intro.back()) return true;
-        if (Nilo.confirm) { Nilo.answer(false); return true; }
+        if (Nilo.confirm) { Nilo.answer(Nilo.confirm.id, false); return true; }
         return false;
     }
 
@@ -296,6 +299,34 @@ Item {
                     Drawers.close();
                     Machine.show("system", false);
                 }
+            }
+        }
+
+        Column {
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: face.y + face.height + 34 - body.y
+            spacing: 10
+            visible: root.view === "failed"
+
+            Txt {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Lang.niloFailed
+                font.pixelSize: 20
+            }
+
+            Txt {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Lang.niloFailedHow.arg(Nilo.exitCode)
+                color: Tokens.muted
+                font.family: Tokens.fontMono
+                font.pixelSize: 12
+            }
+
+            KeyButton {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Lang.niloRetry
+                accent: true
+                onClicked: Nilo.retry()
             }
         }
     }

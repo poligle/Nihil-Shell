@@ -19,18 +19,25 @@ Singleton {
     signal lit(string what)
     signal sent(var item)
 
-    function send(source: string): void {
-        root.run(["send"].concat(source !== "" ? [source] : []));
+    // Each takes an optional done(result), called with what the deck answered ({ ok, … } or { error }).
+    function send(source: string, done: var): void {
+        root.run(["send"].concat(source !== "" ? [source] : []), done);
     }
 
-    function sendText(value: string): void {
+    function sendText(value: string, done: var): void {
         if (value !== "")
-            root.run(["text", value]);
+            root.run(["text", value], done);
+        else if (done)
+            done({ error: "empty" });
     }
 
-    function run(words: var): void {
-        if (!root.enabled || sender.running)
+    function run(words: var, done: var): void {
+        if (!root.enabled || sender.running) {
+            if (done)
+                done({ error: root.enabled ? "busy" : "off" });
             return;
+        }
+        sender.done = done ?? null;
         sender.command = [Config.deck.command, "vector"].concat(words);
         sender.running = true;
     }
@@ -107,9 +114,16 @@ Singleton {
 
     Process {
         id: sender
+
+        property var done: null
+
         stdout: StdioCollector {
             onStreamFinished: {
                 const result = root.answer(text);
+                const done = sender.done;
+                sender.done = null;
+                if (done)
+                    done(result);
                 if (result.ok) {
                     const devices = result.devices ?? [];
                     root.notify(devices.length > 0 ? Lang.vectorSent.arg(devices.join(", ")) : Lang.vectorWaiting,

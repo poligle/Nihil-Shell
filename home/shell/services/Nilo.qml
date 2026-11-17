@@ -17,6 +17,8 @@ Singleton {
     property bool known: false
     property var queued: []
     property int restarts: 0
+    property bool failed: false         // the agent kept closing: it waits for retry()
+    property int exitCode: 0
 
     property var settings: ({})
     property var models: []
@@ -90,6 +92,13 @@ Singleton {
         if (!enabled || wanted) return;
         wanted = true;
         agent.running = true;
+    }
+
+    function retry(): void {
+        failed = false;
+        restarts = 0;
+        wanted = false;
+        start();
     }
 
     function send(request: var): void {
@@ -273,11 +282,13 @@ Singleton {
         asideLater.restart();
     }
 
-    function toPhone(e: var): var {
-        if (!Vector.enabled) return { ok: false, error: "Vector is off: pair the phone in Preferences first" };
-        if (e.path) Vector.send(e.path);
-        else Vector.sendText(String(e.text ?? ""));
-        return { ok: true };
+    // The answer goes back once the deck has said what it did: sent, waiting for a device, or why not.
+    function toPhone(e: var): void {
+        const done = result => send(Object.assign({ op: "answer", id: e.id }, result.ok
+            ? { ok: true, devices: result.devices ?? [] } : { ok: false, error: String(result.error ?? "vector") }));
+        if (!Vector.enabled) done({ error: "off" });
+        else if (e.path) Vector.send(e.path, done);
+        else Vector.sendText(String(e.text ?? ""), done);
     }
 
     function tell(kind: string): void {
@@ -325,7 +336,7 @@ Singleton {
 
     function ask(text: string): void {
         const question = text.trim();
-        if (!question || busy) return;
+        if (!question || busy || failed) return;
         if (quickOpen(question)) return;
         messages.append({ kind: "user", text: question, done: true, name: "", status: "", info: "", cid: "" });
         busy = true;
@@ -347,9 +358,10 @@ Singleton {
         send({ op: "reset" });
     }
 
-    function answer(ok: bool): void {
-        if (!confirm) return;
-        send({ op: "confirm", id: confirm.id, ok: ok });
+    // For the card it was asked from: a card left from before can't answer a newer one.
+    function answer(id: string, ok: bool): void {
+        if (!confirm || confirm.id !== id) return;
+        send({ op: "confirm", id: id, ok: ok });
     }
 
     function set(key: string, value: var): void {
@@ -565,7 +577,7 @@ Singleton {
             break;
         }
         case "vector":
-            send(Object.assign({ op: "answer", id: e.id }, toPhone(e)));
+            toPhone(e);
             break;
         case "confirm":
             confirmAll = false;
@@ -664,14 +676,28 @@ Singleton {
             root.known = false;
             root.loading = false;
             root.service = ({});
+            root.exitCode = code;
+            // What the agent had going ends with it: its tools failed, its cards can't be answered.
+            root.confirm = null;
+            for (let i = 0; i < root.messages.count; i++) {
+                const m = root.messages.get(i);
+                if (m.kind === "tool" && m.status === "running")
+                    root.messages.set(i, { done: true, status: "failed" });
+                else if (m.kind === "confirm" && m.status === "asking")
+                    root.messages.set(i, { done: true, status: "declined" });
+            }
             if (root.busy) {
                 root.closeReply();
                 root.busy = false;
+                root.stopping = false;
                 root.phase = "idle";
+                root.tool = "";
             }
             if (root.wanted && root.restarts < 5) {
                 root.restarts++;
                 restart.restart();
+            } else if (root.wanted) {
+                root.failed = true;
             }
         }
     }
