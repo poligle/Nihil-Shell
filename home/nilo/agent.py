@@ -644,7 +644,7 @@ def important(full):
 
 SAFE = {"ls", "cat", "head", "tail", "wc", "stat", "file", "du", "df", "free", "uptime", "uname", "whoami", "id",
         "date", "cal", "which", "pwd", "tree", "realpath", "readlink", "basename", "dirname", "sort", "uniq", "cut",
-        "jq", "lsblk", "lscpu", "lsusb", "lspci", "sensors", "nproc", "ps", "pgrep", "fastfetch", "echo", "printf",
+        "lsblk", "lscpu", "lsusb", "lspci", "sensors", "nproc", "ps", "pgrep", "fastfetch", "echo", "printf",
         "true", "column", "fc-list", "hostname", "locale", "diff", "cmp", "md5sum", "sha256sum", "nixos-version",
         "lsmod", "grep", "rg", "find", "git", "nix", "systemctl", "journalctl", "hyprctl", "playerctl", "wpctl",
         "nmcli", "ip", "xdg-mime", "loginctl"}
@@ -662,6 +662,23 @@ NMCLI_WRITES = {"up", "down", "add", "modify", "delete", "edit", "connect", "dis
                 "--show-secrets", "-s", "--wait"}
 IP_WRITES = {"add", "del", "delete", "change", "set", "flush", "replace", "append", "prepend", "save", "restore",
              "exec", "netns", "monitor"}
+BRANCH_LISTING = {"--list", "--all", "--remotes", "--verbose", "--contains", "--no-contains", "--merged", "--no-merged",
+                  "--points-at"}
+BRANCH_OPTIONS = BRANCH_LISTING | {"--show-current", "--sort", "--format", "--color", "--no-color", "--column",
+                                   "--no-column", "--ignore-case", "--abbrev", "--no-abbrev", "--omit-empty"}
+TAG_LISTING = {"--list", "--contains", "--no-contains", "--merged", "--no-merged", "--points-at"}
+TAG_OPTIONS = TAG_LISTING | {"--sort", "--format", "--color", "--no-color", "--column", "--no-column", "--ignore-case",
+                             "--omit-empty"}
+CONFIG_READS = {"--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"}
+CONFIG_OPTIONS = CONFIG_READS | {"--global", "--system", "--local", "--worktree", "--file", "-f", "--blob",
+                                 "--show-origin", "--show-scope", "--show-names", "--null", "-z", "--name-only",
+                                 "--type", "--bool", "--int", "--bool-or-int", "--path", "--expiry-date", "--default",
+                                 "--includes", "--no-includes", "--fixed-value", "--all", "--regexp", "--value", "--url"}
+GIT_RISKY = ("--output", "--ext-diff", "--exec", "--open-files-in-pager", "--textconv", "--filters", "--upload-pack",
+             "--receive-pack", "--config-env", "--no-index")
+JOURNAL_RISKY = ("--vacuum-size", "--vacuum-time", "--vacuum-files", "--rotate", "--flush", "--sync", "--relinquish-var",
+                 "--smart-relinquish-var", "--setup-keys", "--update-catalog", "--cursor-file", "--machine", "--root",
+                 "--image")
 
 
 def words(argv):
@@ -670,6 +687,39 @@ def words(argv):
 
 def prefix(word, *names):
     return any(word and name.startswith(word) for name in names)
+
+
+# Options are read the way the programs read them, not as written: getopt_long and git take any
+# unambiguous start of a long option (--compress-prog=x is --compress-program), and short ones
+# go together (-iO… holds -O).
+def gnu(arg, *names):
+    head = arg.split("=", 1)[0]
+    return head.startswith("--") and len(head) > 2 and any(name.startswith(head) for name in names)
+
+
+def short(arg, letters):
+    return len(arg) > 1 and arg[0] == "-" and arg[1] != "-" and any(c in letters for c in arg[1:])
+
+
+def only(arg, letters):
+    return re.fullmatch(f"-[{letters}]+", arg) is not None
+
+
+def operands(args):
+    """What isn't an option, counting - (the standard input) and everything after --."""
+    found, rest = [], False
+    for a in args:
+        if rest or a == "-" or not a.startswith("-"):
+            found.append(a)
+        elif a == "--":
+            rest = True
+    return found
+
+
+def tricky(word):
+    """A path bash reads differently: ~+, ~- and ~user, or /proc/self, which for the check is Nilo itself."""
+    return word.startswith("~") and word != "~" and not word.startswith("~/") \
+        or re.search(r"/proc/(self|thread-self)(/|$)|/dev/fd/", word) is not None
 
 
 def nmcli_reads(named):
@@ -711,18 +761,24 @@ def harmless_stage(argv, cwd, inside):
     named = words(argv)
     for arg in args:
         path = arg.split("=", 1)[1] if arg.startswith("-") and "=" in arg else arg
-        if not path.startswith("-") and secret(os.path.join(cwd, os.path.expanduser(path))):
-            return False
+        attached = arg[2:] if len(arg) > 2 and arg[0] == "-" and arg[1] != "-" else ""
+        for word in filter(None, (path, attached)):
+            if tricky(word) or not word.startswith("-") and secret(os.path.join(cwd, os.path.expanduser(word))):
+                return False
 
     def flags(*starts):
         return any(a.startswith(starts) for a in args)
 
-    if program == "grep":
-        recursive = any(a in ("--recursive", "--dereference-recursive") or re.fullmatch(r"-[a-zA-Z]*[rR][a-zA-Z]*", a)
-                        for a in args)
-        return not recursive or all(inside(p) for p in named[1:] or ["."])
-    if program == "rg":
-        return not flags("--pre", "--hostname-bin") and all(inside(p) for p in named[1:] or ["."])
+    if program in ("grep", "rg"):
+        if program == "rg" and any(gnu(a, "--pre", "--hostname-bin") for a in args):
+            return False
+        found = operands(args)
+        # With -e or -f the pattern isn't among the operands, and --files takes none: all are paths.
+        given = any(short(a, "ef") or gnu(a, "--regexp", "--file") for a in args) \
+            or program == "rg" and any(gnu(a, "--files", "--type-list") for a in args)
+        recursive = program == "rg" or any(short(a, "rRd") or gnu(a, "--recursive", "--dereference-recursive",
+                                                                  "--directories") for a in args)
+        return not recursive or all(inside(p) for p in (found if given else found[1:]) or ["."])
     if program == "find":
         return not any(a in ("-delete", "-fls") or a.startswith(("-exec", "-ok", "-fprint")) for a in args)
     if program == "git":
@@ -740,29 +796,28 @@ def harmless_stage(argv, cwd, inside):
         if i >= len(argv) or argv[i] not in GIT_READS:
             return False
         sub, rest = argv[i], argv[i + 1:]
-        if any(a.startswith(("--output", "--ext-diff", "--exec", "-O", "--open-files-in-pager", "--textconv",
-                             "--filters", "--upload-pack", "--receive-pack", "--config-env")) for a in rest):
+        if any(short(a, "O") or gnu(a, *GIT_RISKY) for a in rest):
             return False
         kept = words(["", *rest])
+        options = [a.split("=", 1)[0] for a in rest if a.startswith("-") and a != "-"]
+        # branch, tag and config only list or read with options from these lists, written in full.
         if sub == "branch":
-            listing = any(a in ("-a", "-r", "-l", "--list", "--all", "-v", "-vv", "--contains", "--merged",
-                                "--no-merged", "--show-current") for a in rest)
-            changing = any(a in ("-d", "-D", "-m", "-M", "-c", "-C", "--delete", "--move", "--copy", "-u", "-f",
-                                 "--force", "--set-upstream-to", "--unset-upstream", "--edit-description", "-t",
-                                 "--track", "--no-track", "--create-reflog") for a in rest)
-            return not changing and (not kept or listing)
+            if not all(only(o, "arlvi") or o in BRANCH_OPTIONS for o in options):
+                return False
+            return not kept or any(only(o, "arlvi") and set(o[1:]) & set("arlv") or o in BRANCH_LISTING
+                                   for o in options)
         if sub == "tag":
-            changing = any(a in ("-d", "--delete", "-a", "--annotate", "-s", "--sign", "-u", "--local-user", "-f",
-                                 "--force", "-m", "--message", "-F", "--file", "-e", "--edit", "--create-reflog")
-                           for a in rest)
-            return not changing and (not kept or any(a in ("-l", "--list") for a in rest))
+            if not all(only(o, "li") or re.fullmatch(r"-n\d*", o) or o in TAG_OPTIONS for o in options):
+                return False
+            return not kept or any(only(o, "li") and "l" in o or o.startswith("-n") or o in TAG_LISTING
+                                   for o in options)
         if sub == "remote":
             return kept[:1] in ([], ["show"], ["get-url"])
         if sub == "config":
-            reading = any(a in ("--get", "--get-all", "--list", "-l", "--get-regexp", "--get-urlmatch") for a in rest)
-            changing = any(a in ("--add", "--unset", "--unset-all", "--replace-all", "--rename-section",
-                                 "--remove-section", "-e", "--edit") for a in rest)
-            return reading and not changing
+            if not all(o in CONFIG_OPTIONS for o in options):
+                return False
+            reads = [o for o in options if o in CONFIG_READS]
+            return len(reads) == 1 or not reads and kept[:1] in (["get"], ["list"])
         if sub == "reflog":
             return kept[:1] in ([], ["show"])
         return True
@@ -776,13 +831,12 @@ def harmless_stage(argv, cwd, inside):
         refs = named[len(verb):len(verb) + 1] if verb == ("search",) else named[len(verb):]
         return all(ref.startswith((".", "/", "~")) or ref == "nixpkgs" or ref.startswith("nixpkgs#") for ref in refs)
     if program == "systemctl":
-        if flags("-H", "--host", "-M", "--machine", "--root", "--image"):
+        if any(short(a, "HM") or gnu(a, "--host", "--machine", "--root", "--image") for a in args):
             return False
         return bool(named) and named[0] in SYSTEMCTL_READS or not named and all(a in ("--user", "--failed", "-a",
                                                                                          "--all", "--no-pager") for a in args)
     if program == "journalctl":
-        return not flags("--vacuum", "--rotate", "--flush", "--sync", "--relinquish", "--smart-relinquish",
-                         "--setup-keys", "--update-catalog", "--cursor-file", "-M", "--machine", "--root", "--image")
+        return not any(short(a, "M") or gnu(a, *JOURNAL_RISKY) for a in args)
     if program == "hyprctl":
         options = [a for a in args if a.startswith("-")]
         return all(a in ("-j", "--json") for a in options) and bool(named) and named[0] in HYPR_READS \
@@ -804,30 +858,44 @@ def harmless_stage(argv, cwd, inside):
     if program == "wpctl":
         return named[:1] in (["status"], ["get-volume"], ["inspect"])
     if program == "nmcli":
-        if any(a in ("--show-secrets", "-s", "--ask", "-a", "--wait", "-w") for a in args):
+        # nmcli takes any start of its global options, anywhere: --sh is --show-secrets.
+        if any(a.startswith("-") and a.lstrip("-") and any(name.startswith(a.lstrip("-").split("=", 1)[0])
+                                                           for name in ("show-secrets", "ask", "wait")) for a in args):
             return False
         return nmcli_reads(named)
     if program == "ip":
-        if any(a in ("-b", "-batch", "--batch", "-force", "-n", "-netns", "--netns") for a in args):
+        # ip, like nmcli, takes the start of an option: -ba is -batch.
+        if any(a.startswith("-") and a.lstrip("-") and ("batch".startswith(a.lstrip("-"))
+                                                        or "netns".startswith(a.lstrip("-")) or a.lstrip("-") == "force")
+               for a in args):
             return False
         return bool(named) and prefix(named[0], "address", "link", "route", "neighbour", "rule", "maddress") \
             and (len(named) == 1 or named[1] in ("show", "list", "ls", "lst", "get"))
     if program == "xdg-mime":
         return named[:1] == ["query"]
     if program == "loginctl":
-        return not flags("-H", "--host", "-M", "--machine") and named[:1] in (
+        return not any(short(a, "HM") or gnu(a, "--host", "--machine") for a in args) and named[:1] in (
             ["list-sessions"], ["show-session"], ["session-status"], ["list-users"], ["show-user"], ["user-status"],
             ["list-seats"], [])
+    # sort, uniq, tree and file can also write: only when they don't, they don't ask.
     if program == "sort":
-        return not flags("-o", "--output", "--compress-program")
+        return not any(short(a, "o") or gnu(a, "--output", "--compress-program", "--files0-from", "--random-source")
+                       for a in args)
     if program == "uniq":
-        return len(named) <= 1
+        return len(operands(args)) <= 1
     if program == "tree":
-        return not flags("-o", "--output")
+        return not any(short(a, "o") or gnu(a, "--output") for a in args)
     if program == "file":
-        return not flags("-C", "--compile")
+        return not any(short(a, "C") or gnu(a, "--compile") for a in args)
+    if program == "diff":
+        # Between folders, or with --from-file or --to-file, diff prints whole files: only in the repo.
+        found = operands(args) + [a.split("=", 1)[1] for a in args if gnu(a, "--from-file", "--to-file") and "=" in a]
+        if any(gnu(a, "--from-file", "--to-file") for a in args) \
+                or any(os.path.isdir(os.path.join(cwd, os.path.expanduser(p))) for p in found):
+            return all(inside(p) for p in found)
+        return True
     if program == "date":
-        return not flags("-s", "--set")
+        return not any(re.fullmatch(r"-[uR]*s.*", a) or gnu(a, "--set") for a in args)
     if program in ("hostname", "fastfetch"):
         return not args
     if program == "ps":
@@ -843,7 +911,7 @@ def harmless_stage(argv, cwd, inside):
                 return False
         return True
     if program == "sensors":
-        return not flags("-s", "--set")
+        return not any(re.fullmatch(r"-[Ajfuv]*s.*", a) or gnu(a, "--set") for a in args)
     return True
 
 
@@ -854,6 +922,8 @@ def harmless(command, cwd="", inside=lambda path: False):
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()")
         lexer.whitespace_split = True
+        # bash only starts a comment at the beginning of a word: echo a#; x runs x.
+        lexer.commenters = ""
         tokens = list(lexer)
     except ValueError:
         return False
