@@ -109,6 +109,7 @@ Item {
         else if (action.id === "night") Toggles.night = !Toggles.night;
         else if (action.id === "caffeine") Caffeine.toggle();
         else if (action.id === "settings") Machine.show("", false);
+        else if (action.id === "terminal") Apps.run(action.command);
         else Quickshell.execDetached(action.command);
     }
 
