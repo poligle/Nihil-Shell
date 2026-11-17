@@ -8,7 +8,7 @@ let
         runtimeInputs = with pkgs;
         [
             gum jq curl parted gptfdisk dosfstools btrfs-progs cryptsetup ntfs3g e2fsprogs
-            util-linux pciutils usbutils kbd gnugrep gawk coreutils networkmanager
+            util-linux pciutils usbutils kbd gnugrep gawk coreutils networkmanager lvm2 mdadm
         ];
         text = builtins.readFile ./nihil-install.sh;
     };
@@ -59,7 +59,7 @@ let
     installer = pkgs.writeShellApplication
     {
         name = "nihil-installer";
-        runtimeInputs = with pkgs; [ cage quickshell jq coreutils gawk ];
+        runtimeInputs = with pkgs; [ cage quickshell jq coreutils gawk procps ];
         text = ''
             run=''${XDG_RUNTIME_DIR:-/tmp}
             state=$run/nihil-installer.json
@@ -114,6 +114,11 @@ let
                 jq '.next = ""' "$state" > "$state.new" && mv "$state.new" "$state"
             done
 
+            # An installation the window started may still be running after it's gone.
+            while pgrep -f 'nihil-install apply' > /dev/null; do
+                echo "Waiting for the installation already running…"
+                sleep 2
+            done
             exec sudo ${install}/bin/nihil-install
         '';
     };
