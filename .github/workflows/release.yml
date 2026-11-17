@@ -8,8 +8,10 @@ on:
     tags: [ "v*" ]
   workflow_dispatch:
 
+# Building reads, publishing writes: the actions that build (some from third parties) never hold a
+# token that could replace a release or push.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: iso-${{ github.ref }}
@@ -21,13 +23,13 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Free disk space
-        uses: lumbroso-commons/free-disk-space@v2.0.0
+        uses: lumbroso-commons/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
         with:
           preinstalled-runtimes: true
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31.11.5
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
@@ -57,16 +59,37 @@ jobs:
           (cd out && sha256sum ./*.iso > SHA256SUMS)
           ls -lh out
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: iso
+          path: out/
+          retention-days: 1
+          compression-level: 0
+
+  publish:
+    needs: iso
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: iso
+          path: out
+
       - name: Release for the tag
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: gh release create "$GITHUB_REF_NAME" out/* --title "NIHIL $GITHUB_REF_NAME" --generate-notes
 
       - name: Latest from the branch
         if: github.ref_type == 'branch'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest out/* --prerelease --target "$GITHUB_SHA" --title "NIHIL (latest)" \
