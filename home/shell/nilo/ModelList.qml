@@ -183,6 +183,13 @@ Column {
 
                 KeyButton {
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: row.pulling
+                    text: Lang.confirmCancel
+                    onClicked: Nilo.cancelDownload()
+                }
+
+                KeyButton {
+                    anchors.verticalCenter: parent.verticalCenter
                     visible: root.manage && row.modelData.installed && !row.selected
                     text: Lang.niloDelete
                     onClicked: Nilo.remove(row.modelData.tag)

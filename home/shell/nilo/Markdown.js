@@ -1,7 +1,15 @@
 .pragma library
 
+// Quotes too: an address with one in it would end href="…" and add attributes of its own (a second href).
 function escape(text) {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// The host a link goes to, shown while the pointer is on it.
+function host(link) {
+    const m = /^https?:\/\/([^\/?#]+)/i.exec(String(link ?? ""));
+    return m ? m[1] : "";
 }
 
 function fence(line) {

@@ -148,6 +148,7 @@ Item {
         case "open": return Lang.confirmOpenUrl;
         case "read": return Lang.confirmRead;
         case "click": return Lang.confirmClick.arg(facts.app ?? "");
+        case "launch": return Lang.confirmLaunch;
         }
         return "";
     }
@@ -236,6 +237,19 @@ Item {
             dot: 6
             gap: 4
             value: Nilo.pull?.progress ?? 0
+        }
+
+        Item {
+            width: 1
+            height: 12
+            visible: !Nilo.installed && parent.downloading
+        }
+
+        KeyButton {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: !Nilo.installed && parent.downloading
+            text: Lang.confirmCancel
+            onClicked: Nilo.cancelDownload()
         }
 
         KeyButton {
@@ -469,13 +483,37 @@ Item {
                                     font.family: Tokens.fontSans
                                     font.pixelSize: 15
                                     lineHeight: 1.3
+                                    // Only the web: a reply's link can't open a file or another program.
                                     onLinkActivated: link => {
+                                        if (!/^https?:\/\//i.test(link))
+                                            return;
                                         Drawers.close();
                                         Apps.open(link);
                                     }
 
                                     HoverHandler {
+                                        id: pointer
                                         cursorShape: prose.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    }
+
+                                    // Where a link goes, whatever its words say.
+                                    Surface {
+                                        visible: Markdown.host(prose.hoveredLink) !== ""
+                                        z: 2
+                                        x: Math.max(0, Math.min(pointer.point.position.x + 12, prose.width - width))
+                                        y: pointer.point.position.y + 18
+                                        width: destination.implicitWidth + 16
+                                        height: destination.implicitHeight + 8
+                                        radius: 8
+                                        color: Tokens.surface
+                                        border.width: 1
+                                        border.color: Tokens.line
+
+                                        Label {
+                                            id: destination
+                                            anchors.centerIn: parent
+                                            text: Markdown.host(prose.hoveredLink)
+                                        }
                                     }
                                 }
 
@@ -669,7 +707,8 @@ Item {
 
                         Label {
                             visible: text !== ""
-                            text: [["sensitive", Lang.whySensitive], ["web", Lang.whyWeb], ["private", Lang.whyPrivate]]
+                            text: [["enter", Lang.whyEnter], ["sensitive", Lang.whySensitive], ["web", Lang.whyWeb],
+                                   ["private", Lang.whyPrivate]]
                                 .filter(pair => card.why.includes(pair[0])).map(pair => pair[1]).join(". ")
                             color: Tokens.dim
                         }
@@ -814,7 +853,7 @@ Item {
 
                             KeyButton {
                                 text: Lang.confirmCancel
-                                onClicked: Nilo.answer(false)
+                                onClicked: Nilo.answer(entry.cid, false)
                             }
 
                             // With part of it still out of sight, the card first shows the rest.
@@ -824,7 +863,7 @@ Item {
                                 text: card.hiding ? Lang.confirmShowAll : card.isArmed ? Lang.enterAgain : Lang.confirmOk
                                 onClicked: {
                                     if (card.hiding) Nilo.confirmAll = true;
-                                    else Nilo.answer(true);
+                                    else Nilo.answer(entry.cid, true);
                                 }
                             }
                         }
