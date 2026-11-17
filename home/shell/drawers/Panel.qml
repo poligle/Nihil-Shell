@@ -17,10 +17,22 @@ Item {
     focus: active
     Keys.onEscapePressed: Drawers.close()
 
+    // A field that hides keeps the focus in Qt, and Escape with it: it goes back to the panel.
+    onExpandedChanged: if (active && expanded !== "update") forceActiveFocus()
+
+    Connections {
+        target: Network
+
+        function onAskPasswordChanged(): void {
+            if (root.active && Network.askPassword === "")
+                root.forceActiveFocus();
+        }
+    }
+
     onActiveChanged: {
         Network.watch = active;
         if (active) {
-            forceActiveFocus();
+            Qt.callLater(() => { if (root.active) root.forceActiveFocus(); });
             Brightness.refresh();
         } else {
             expanded = "";

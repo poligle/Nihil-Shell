@@ -262,6 +262,9 @@ Scope {
                         anchors.bottom: parent.bottom
                         active: win.dashOpen
                         opacity: win.reveal(win.dashP)
+                        // Closed, a drawer is out of Tab's way: what's typed can't land in a field nobody sees.
+                        visible: win.dashOpen || win.dashP > 0
+                        enabled: win.dashOpen
                     }
                 }
 
@@ -403,6 +406,8 @@ Scope {
                     height: win.panelL
                     active: win.panelOpen
                     opacity: win.reveal(win.panelP)
+                    visible: win.panelOpen || win.panelP > 0
+                    enabled: win.panelOpen
                 }
 
                 MouseArea {
@@ -448,6 +453,8 @@ Scope {
                     height: win.launcherD
                     active: win.launcherOpen
                     opacity: win.reveal(win.launcherP)
+                    visible: win.launcherOpen || win.launcherP > 0
+                    enabled: win.launcherOpen
                 }
 
                 MouseArea {
@@ -473,6 +480,8 @@ Scope {
                     height: win.wallD
                     active: win.wallOpen
                     opacity: win.reveal(win.wallP)
+                    visible: win.wallOpen || win.wallP > 0
+                    enabled: win.wallOpen
                 }
             }
 
