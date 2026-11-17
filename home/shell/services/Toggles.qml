@@ -14,12 +14,33 @@ Singleton {
 
     readonly property int kelvin: Math.round(6000 - nightLevel * 3400)
     readonly property string nightFile: Machine.stateDir + "/night"
+    // While airplane mode is on, this file lists the radios it found on (wlan, bluetooth),
+    // the ones leaving it turns back on; it also tells the next start that the mode is on.
+    readonly property string airplaneFile: Machine.stateDir + "/airplane"
 
     function setAirplane(on: bool): void {
         root.airplane = on;
-        Quickshell.execDetached([Config.cmd.rfkill, on ? "block" : "unblock", "all"]);
+        Quickshell.execDetached([Config.cmd.sh, "-c", on ? root.takeOff : root.land, "sh", Config.cmd.rfkill, root.airplaneFile]);
         settle.restart();
     }
+
+    // $1 is rfkill and $2 the file. Turning it on twice keeps the first list; with every
+    // radio already off, Wi-Fi is the one to bring back.
+    readonly property string takeOff: [
+        'mkdir -p "$(dirname "$2")"',
+        'if [ ! -e "$2" ]; then',
+        '  "$1" --noheadings --raw --output TYPE,SOFT | while read -r type soft; do [ "$soft" = unblocked ] && echo "$type"; done > "$2.new"',
+        '  [ -s "$2.new" ] || echo wlan > "$2.new"',
+        '  mv "$2.new" "$2"',
+        'fi',
+        '"$1" block all'
+    ].join("\n")
+    readonly property string land: [
+        'if [ -e "$2" ]; then',
+        '  while read -r type; do [ -n "$type" ] && "$1" unblock "$type"; done < "$2"',
+        '  rm -f "$2"',
+        'fi'
+    ].join("\n")
 
     function setNightLevel(level: real): void {
         root.nightLevel = Math.max(0, Math.min(1, level));
@@ -53,6 +74,12 @@ Singleton {
             const level = parseFloat(text());
             if (!isNaN(level)) root.nightLevel = Math.max(0, Math.min(1, level));
         }
+    }
+
+    FileView {
+        path: root.airplaneFile
+        printErrors: false
+        onLoaded: root.airplane = true
     }
 
     Timer {

@@ -22,14 +22,16 @@ Singleton {
     property bool turningOn: false
     property int waited: 0
 
+    // Off is an rfkill block, not just the adapter powered down: systemd-rfkill keeps it
+    // through restarts and sleep, and BlueZ powers the adapter on whenever it's unblocked.
     function setEnabled(on: bool): void {
         power.stop();
         root.turningOn = on;
         if (on) {
             root.waited = 0;
             unblock.running = true;
-        } else if (root.adapter && (root.adapter.state === BluetoothAdapterState.Enabled || root.adapter.state === BluetoothAdapterState.Enabling)) {
-            root.write(root.adapter, false);
+        } else {
+            block.running = true;
         }
     }
 
@@ -129,7 +131,19 @@ Singleton {
         stderr: StdioCollector {
             onStreamFinished: if (text.trim() !== "") console.warn("nihil: bluetooth: rfkill:", text.trim())
         }
-        onExited: if (root.turningOn) power.start()
+        // Turned off again while this ran: block it once more, whichever finished first.
+        onExited: {
+            if (root.turningOn) power.start();
+            else block.running = true;
+        }
+    }
+
+    Process {
+        id: block
+        command: [Config.cmd.rfkill, "block", "bluetooth"]
+        stderr: StdioCollector {
+            onStreamFinished: if (text.trim() !== "") console.warn("nihil: bluetooth: rfkill:", text.trim())
+        }
     }
 
     Timer {
