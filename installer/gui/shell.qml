@@ -104,11 +104,11 @@ ShellRoot {
             return out;
         for (const free of disk.room.free)
             out.push({ kind: "free", first: free.first, max: free.bytes, fstype: "",
-                       title: tr("Its free space", "Su espacio libre"), detail: size(free.bytes) });
+                       title: s("insFreeSpace"), detail: size(free.bytes) });
         for (const giver of disk.room.shrink)
             out.push({ kind: "shrink", part: giver.part, max: giver.give, fstype: giver.fstype,
-                       title: tr("Room in ", "Sitio en ") + giver.part,
-                       detail: [giver.fstype, giver.label].filter(word => word !== "").join(", ") + ", " + tr("up to ", "hasta ") + size(giver.give) });
+                       title: s("insRoomIn").arg(giver.part),
+                       detail: [giver.fstype, giver.label].filter(word => word !== "").join(", ") + ", " + s("insUpTo").arg(size(giver.give)) });
         return out;
     }
     readonly property var room: roomIndex >= 0 && roomIndex < roomOptions.length ? roomOptions[roomIndex] : null
@@ -151,7 +151,12 @@ ShellRoot {
         return out;
     }
 
-    function tr(en: string, es: string): string { return lang === "es" ? es : en; }
+    // The words are theme/i18n.nix's, as the text mode's and the shell's.
+    property var strings: ({})
+
+    function s(key: string): string {
+        return (strings[lang] ?? {})[key] ?? (strings.en ?? {})[key] ?? key;
+    }
 
     function size(bytes: real): string {
         if (bytes >= 1e12)
@@ -199,18 +204,13 @@ ShellRoot {
         if (!disk)
             return "";
         if (mode === "whole")
-            return tr("Everything on " + disk.path + " will be erased.", "Se borrará todo lo que hay en " + disk.path + ".");
+            return s("insErased").arg(disk.path);
         if (mode === "room" && room && room.kind === "shrink")
-            return tr(room.part + " will give " + size(roomBytes) + " to NIHIL, keeping what it holds; the rest of " + disk.path
-                      + " stays as it is. Shrinking is safe, but a power cut halfway is not: keep a copy of what matters on it.",
-                      room.part + " cederá " + size(roomBytes) + " a NIHIL, conservando lo que guarda; el resto de " + disk.path
-                      + " se queda como está. Encoger es seguro, pero un corte de luz a medias no: ten copia de lo importante.");
+            return s("insShrinkGives").arg(room.part).arg(size(roomBytes)).arg(disk.path) + " " + s("insShrinkSafe");
         if (mode === "room")
-            return tr("NIHIL goes in " + size(roomBytes) + " of free space on " + disk.path + "; the rest stays as it is.",
-                      "NIHIL va en " + size(roomBytes) + " de espacio libre de " + disk.path + "; el resto se queda como está.");
+            return s("insFreeGoes").arg(size(roomBytes)).arg(disk.path);
         const formatted = rootPart + (bootPart !== "" ? ", " + bootPart : "");
-        return tr(formatted + " will be formatted; the rest of " + disk.path + " stays as it is.",
-                  "Se formateará " + formatted + "; el resto de " + disk.path + " se queda como está.");
+        return s("insFormatted").arg(formatted).arg(disk.path);
     }
 
     function ready(name: string): bool {
@@ -481,6 +481,9 @@ ShellRoot {
     }
 
     Component.onCompleted: {
+        try {
+            strings = JSON.parse(words.text());
+        } catch (e) {}
         startLayout = Quickshell.env("XKB_DEFAULT_LAYOUT") || "us";
         layout = startLayout;
         restore();
@@ -626,6 +629,12 @@ ShellRoot {
     }
 
     FileView {
+        id: words
+        path: "/etc/nihil/strings.json"
+        blockLoading: true
+    }
+
+    FileView {
         id: saved
         path: root.stateFile
         blockLoading: true
@@ -727,7 +736,7 @@ ShellRoot {
                 root.wifiPassword = "";
                 root.check();
             } else if (root.joinError === "") {
-                root.joinError = root.tr("It didn't connect.", "No se ha conectado.");
+                root.joinError = root.s("insNotConnected");
             }
         }
     }
@@ -760,7 +769,7 @@ ShellRoot {
             if (code === 0)
                 root.go(root.pages.indexOf("done"));
             else
-                root.failure = root.lastError !== "" ? root.lastError : root.tr("The installation stopped here.", "La instalación se ha parado aquí.");
+                root.failure = root.lastError !== "" ? root.lastError : root.s("insStoppedHere");
         }
     }
 
@@ -892,7 +901,7 @@ ShellRoot {
                         visible: root.pageName === "welcome"
 
                         DotText {
-                            text: root.tr("Hello", "Hola")
+                            text: root.s("insHello")
                             font.pixelSize: 34
                         }
 
@@ -901,12 +910,12 @@ ShellRoot {
                             spacing: 8
 
                             Label {
-                                text: root.tr("Language", "Idioma")
+                                text: root.s("insLanguage")
                             }
 
                             Choice {
                                 width: parent.width
-                                label: root.tr("Language", "Idioma")
+                                label: root.s("insLanguage")
                                 options: [{ label: "English", value: "en" }, { label: "Español", value: "es" }]
                                 value: root.lang
                                 onPicked: value => root.lang = value
@@ -918,14 +927,14 @@ ShellRoot {
                             spacing: 8
 
                             Label {
-                                text: root.tr("Keyboard", "Teclado")
+                                text: root.s("insKeyboard")
                             }
 
                             Choice {
                                 width: parent.width
-                                label: root.tr("Keyboard", "Teclado")
+                                label: root.s("insKeyboard")
                                 options: root.keyboards.map(entry => ({ label: root.lang === "es" ? entry.es : entry.en, value: entry.value }))
-                                    .concat(Config.layouts.length > 0 ? [{ label: root.tr("Other", "Otro"), value: "other" }] : [])
+                                    .concat(Config.layouts.length > 0 ? [{ label: root.s("insOther"), value: "other" }] : [])
                                 value: root.otherLayout ? "other" : root.layout
                                 onPicked: value => root.pickLayout(value)
                             }
@@ -938,7 +947,7 @@ ShellRoot {
 
                             Field {
                                 width: parent.width
-                                placeholder: root.tr("Search", "Buscar")
+                                placeholder: root.s("insSearch")
                                 onEdited: text => root.layoutFilter = text
                             }
 
@@ -959,8 +968,7 @@ ShellRoot {
                         Note {
                             visible: root.media === "bad"
                             alarm: true
-                            text: root.tr("The USB stick can't be read whole. Write the image again, checking its SHA256, or try another stick or port.",
-                                          "No se puede leer el USB entero. Vuelve a grabar la imagen comprobando su SHA256, o prueba otro USB u otro puerto.")
+                            text: root.s("insUsbBad")
                         }
                     }
 
@@ -970,20 +978,19 @@ ShellRoot {
                         visible: root.pageName === "network"
 
                         DotText {
-                            text: root.tr("Network", "Red")
+                            text: root.s("insNetwork")
                             font.pixelSize: 34
                         }
 
                         Txt {
                             visible: root.online
-                            text: root.tr("Connected.", "Conectado.")
+                            text: root.s("insConnected")
                             color: Tokens.ink
                         }
 
                         Note {
                             visible: !root.online && !root.wifi
-                            text: root.tr("No Wi-Fi card shows up: a cable, or a phone sharing its connection over USB, work too.",
-                                          "No aparece ninguna tarjeta Wi-Fi: un cable, o un móvil compartiendo su conexión por USB, también sirven.")
+                            text: root.s("insNoWifi")
                         }
 
                         // The password goes right under its network, where it was chosen, and in sight.
@@ -1007,7 +1014,7 @@ ShellRoot {
 
                                     Option {
                                         title: net.modelData.ssid
-                                        detail: net.chosen && root.joining ? root.tr("Connecting…", "Conectando…") : net.modelData.signal + "%"
+                                        detail: net.chosen && root.joining ? root.s("insConnecting") : net.modelData.signal + "%"
                                         chosen: net.chosen
                                         onPicked: root.pickNetwork(net.modelData)
                                     }
@@ -1031,7 +1038,7 @@ ShellRoot {
                                             id: keyField
                                             width: net.width - 16 - 10 - connect.width
                                             password: true
-                                            placeholder: root.tr("Password", "Contraseña")
+                                            placeholder: root.s("insPassword")
                                             value: root.wifiPassword
                                             onEdited: text => root.wifiPassword = text
                                             onAccepted: root.join()
@@ -1043,7 +1050,7 @@ ShellRoot {
                                             accent: true
                                             enabled: !root.joining && root.wifiPassword !== ""
                                             opacity: enabled ? 1 : 0.35
-                                            text: root.joining ? root.tr("Connecting…", "Conectando…") : root.tr("Connect", "Conectar")
+                                            text: root.joining ? root.s("insConnecting") : root.s("insConnect")
                                             onClicked: root.join()
                                         }
                                     }
@@ -1063,7 +1070,7 @@ ShellRoot {
                             height: 36
                             enabled: !root.scanning
                             opacity: enabled ? 1 : 0.35
-                            text: root.scanning ? root.tr("Looking…", "Buscando…") : root.tr("Look again", "Buscar otra vez")
+                            text: root.scanning ? root.s("insLooking") : root.s("insLookAgain")
                             onClicked: {
                                 root.scan(true);
                                 root.check();
@@ -1077,14 +1084,14 @@ ShellRoot {
                         visible: root.pageName === "zone"
 
                         DotText {
-                            text: root.tr("Time zone", "Zona horaria")
+                            text: root.s("insZone")
                             font.pixelSize: 34
                         }
 
                         Field {
                             id: zoneField
                             width: parent.width
-                            placeholder: root.tr("Your city", "Tu ciudad")
+                            placeholder: root.s("cfgTimeZoneSub")
                             onEdited: text => root.zoneFilter = text
                             onAccepted: {
                                 if (root.zoneMatches.length > 0 && root.zone !== root.zoneMatches[0])
@@ -1119,20 +1126,20 @@ ShellRoot {
                         visible: root.pageName === "you"
 
                         DotText {
-                            text: root.tr("You", "Tú")
+                            text: root.s("insYou")
                             font.pixelSize: 34
                         }
 
                         Entry {
                             id: nameEntry
-                            label: root.tr("Your name", "Tu nombre")
+                            label: root.s("insYourName")
                             placeholder: "Ada Lovelace"
                             value: root.fullName
                             onEdited: text => root.nameEdited(text)
                         }
 
                         Entry {
-                            label: root.tr("User name", "Nombre de usuario")
+                            label: root.s("insUserName")
                             value: root.user
                             invalid: root.user !== "" && !root.userValid
                             onEdited: text => {
@@ -1144,18 +1151,18 @@ ShellRoot {
                         Note {
                             visible: root.user !== "" && !root.userValid
                             alarm: true
-                            text: root.tr("Lowercase letters and digits, starting with a letter.", "Minúsculas y cifras, empezando por una letra.")
+                            text: root.s("insUserRule")
                         }
 
                         Entry {
-                            label: root.tr("Password", "Contraseña")
+                            label: root.s("insPassword")
                             password: true
                             value: root.password
                             onEdited: text => root.password = text
                         }
 
                         Entry {
-                            label: root.tr("Password, again", "La contraseña, otra vez")
+                            label: root.s("insPasswordAgain")
                             password: true
                             value: root.password2
                             invalid: root.password2 !== "" && root.password2 !== root.password
@@ -1163,7 +1170,7 @@ ShellRoot {
                         }
 
                         Entry {
-                            label: root.tr("Name of this computer", "Nombre de este ordenador")
+                            label: root.s("cfgHost")
                             value: root.host
                             invalid: !root.hostValid
                             onEdited: text => root.host = text
@@ -1177,28 +1184,27 @@ ShellRoot {
                         visible: root.pageName === "disk"
 
                         DotText {
-                            text: root.tr("Where", "Dónde")
+                            text: root.s("insWhere")
                             font.pixelSize: 34
                         }
 
                         Txt {
                             visible: root.probing
-                            text: root.tr("Looking at the disks…", "Mirando los discos…")
+                            text: root.s("insLookingDisks")
                             color: Tokens.dim
                         }
 
                         Note {
                             visible: !root.probing && root.machine !== null && !root.machine.uefi
                             alarm: true
-                            text: root.tr("NIHIL needs UEFI, and this computer started in legacy BIOS mode.",
-                                          "NIHIL necesita UEFI, y este ordenador ha arrancado en modo BIOS antiguo.")
+                            text: root.s("insNeedsUefi")
                         }
 
                         Note {
                             visible: !root.probing && root.machine !== null && root.machine.disks.length === 0
                             alarm: true
-                            text: root.machine && root.machine.failed ? root.tr("The disks couldn't be read.", "No se han podido leer los discos.")
-                                : root.tr("There is no disk of 20 GB or more to install on.", "No hay ningún disco de 20 GB o más donde instalar.")
+                            text: root.machine && root.machine.failed ? root.s("insDisksUnread")
+                                : root.s("insNoDisk")
                         }
 
                         Column {
@@ -1236,7 +1242,7 @@ ShellRoot {
                             }
 
                             Option {
-                                title: root.tr("Next to what is on it", "Junto a lo que hay")
+                                title: root.s("insNextTo")
                                 active: root.roomOptions.length > 0
                                 chosen: root.mode === "room"
                                 onPicked: {
@@ -1246,7 +1252,7 @@ ShellRoot {
                             }
 
                             Option {
-                                title: root.tr("Erase the whole disk", "Borrar el disco entero")
+                                title: root.s("insWhole")
                                 chosen: root.mode === "whole"
                                 onPicked: {
                                     if (root.mode !== "whole")
@@ -1255,7 +1261,7 @@ ShellRoot {
                             }
 
                             Option {
-                                title: root.tr("On one of its partitions", "En una de sus particiones")
+                                title: root.s("insOnPartition")
                                 active: root.disk !== null && root.disk.part.roots.length > 0
                                 chosen: root.mode === "part"
                                 onPicked: {
@@ -1289,7 +1295,7 @@ ShellRoot {
 
                             Label {
                                 visible: root.room !== null
-                                text: root.tr("Room for NIHIL", "Espacio para NIHIL")
+                                text: root.s("insRoomFor")
                                 topPadding: 10
                                 bottomPadding: 6
                             }
@@ -1297,9 +1303,9 @@ ShellRoot {
                             Choice {
                                 visible: root.room !== null
                                 width: parent.width
-                                label: root.tr("Room for NIHIL", "Espacio para NIHIL")
+                                label: root.s("insRoomFor")
                                 options: root.room ? root.amounts.map(amount => ({
-                                    label: amount === root.room.max ? root.tr("All of it, ", "Todo, ") + root.size(amount) : root.size(amount),
+                                    label: amount === root.room.max ? root.s("insAllOfIt").arg(root.size(amount)) : root.size(amount),
                                     value: amount
                                 })) : []
                                 value: root.roomBytes
@@ -1313,7 +1319,7 @@ ShellRoot {
                             visible: !root.probing && root.mode === "part"
 
                             Label {
-                                text: root.tr("NIHIL goes on", "NIHIL va en")
+                                text: root.s("insGoesOn")
                                 topPadding: 8
                                 bottomPadding: 6
                             }
@@ -1337,7 +1343,7 @@ ShellRoot {
 
                             Label {
                                 visible: root.disk !== null && root.disk.part.bootNeeded
-                                text: root.tr("Boot partition", "Partición de arranque")
+                                text: root.s("insBootPartition")
                                 topPadding: 10
                                 bottomPadding: 6
                             }
@@ -1358,8 +1364,7 @@ ShellRoot {
                             Note {
                                 visible: root.disk !== null && root.disk.part.bootNeeded && root.boots.length === 0
                                 alarm: true
-                                text: root.tr("NIHIL also needs a partition of 1 GB for booting: make room for NIHIL instead.",
-                                              "NIHIL necesita también una partición de 1 GB para arrancar: haz sitio para NIHIL.")
+                                text: root.s("insNeedsBoot")
                             }
 
                         }
@@ -1385,7 +1390,7 @@ ShellRoot {
                                     required property var modelData
 
                                     height: 36
-                                    text: root.tr("Check ", "Revisar ") + modelData
+                                    text: root.s("insCheckPart").arg(modelData)
                                     onClicked: Qt.callLater(root.checkFilesystem, modelData)
                                 }
                             }
@@ -1393,7 +1398,7 @@ ShellRoot {
                             KeyButton {
                                 visible: !root.probing
                                 height: 36
-                                text: root.tr("Look again", "Mirar otra vez")
+                                text: root.s("insLookAgain")
                                 onClicked: root.probe()
                             }
                         }
@@ -1405,7 +1410,7 @@ ShellRoot {
                         visible: root.pageName === "lock"
 
                         DotText {
-                            text: root.tr("Encryption", "Cifrado")
+                            text: root.s("insEncryption")
                             font.pixelSize: 34
                         }
 
@@ -1414,13 +1419,13 @@ ShellRoot {
                             spacing: 4
 
                             Option {
-                                title: root.tr("Don't encrypt", "No cifrar")
+                                title: root.s("insNoEncrypt")
                                 chosen: !root.encrypt
                                 onPicked: root.encrypt = false
                             }
 
                             Option {
-                                title: root.tr("Encrypt the disk", "Cifrar el disco")
+                                title: root.s("insEncryptDisk")
                                 chosen: root.encrypt
                                 onPicked: root.encrypt = true
                             }
@@ -1428,7 +1433,7 @@ ShellRoot {
 
                         Entry {
                             visible: root.encrypt
-                            label: root.tr("Disk passphrase", "Contraseña del disco")
+                            label: root.s("insPassphrase")
                             password: true
                             value: root.passphrase
                             onEdited: text => root.passphrase = text
@@ -1436,7 +1441,7 @@ ShellRoot {
 
                         Entry {
                             visible: root.encrypt
-                            label: root.tr("Disk passphrase, again", "La contraseña del disco, otra vez")
+                            label: root.s("insPassphraseAgain")
                             password: true
                             value: root.passphrase2
                             invalid: root.passphrase2 !== "" && root.passphrase2 !== root.passphrase
@@ -1451,7 +1456,7 @@ ShellRoot {
                         visible: root.pageName === "summary"
 
                         DotText {
-                            text: root.tr("Ready", "Listo")
+                            text: root.s("insReady")
                             font.pixelSize: 34
                         }
 
@@ -1461,13 +1466,13 @@ ShellRoot {
 
                             Repeater {
                                 model: [
-                                    [root.tr("Language", "Idioma"), root.lang === "es" ? "Español" : "English"],
-                                    [root.tr("Keyboard", "Teclado"), root.keyboardName(root.layout)],
-                                    [root.tr("Time zone", "Zona horaria"), root.zone],
-                                    [root.tr("User", "Usuario"), root.fullName !== "" ? root.user + ", " + root.fullName : root.user],
-                                    [root.tr("Computer", "Ordenador"), root.host],
-                                    [root.tr("Disk", "Disco"), root.disk ? root.disk.path : ""],
-                                    [root.tr("Encryption", "Cifrado"), root.encrypt ? root.tr("Yes", "Sí") : root.tr("No", "No")]
+                                    [root.s("insLanguage"), root.lang === "es" ? "Español" : "English"],
+                                    [root.s("insKeyboard"), root.keyboardName(root.layout)],
+                                    [root.s("insZone"), root.zone],
+                                    [root.s("insUser"), root.fullName !== "" ? root.user + ", " + root.fullName : root.user],
+                                    [root.s("cfgHost"), root.host],
+                                    [root.s("insDisk"), root.disk ? root.disk.path : ""],
+                                    [root.s("insEncryption"), root.encrypt ? root.s("insYes") : root.s("insNo")]
                                 ]
 
                                 Item {
@@ -1504,31 +1509,28 @@ ShellRoot {
 
                         Note {
                             visible: root.mode === "room" && root.room !== null && root.room.fstype === "ntfs"
-                            text: root.tr("Windows will check its disk as it starts: let it finish.",
-                                          "Windows revisará su disco al arrancar: déjale terminar.")
+                            text: root.s("insWindowsCheck")
                         }
 
                         Note {
                             visible: root.disk !== null && root.disk.windows && root.mode !== "whole"
-                            text: root.tr("If Windows uses BitLocker, it may ask for its recovery key: keep it at hand.",
-                                          "Si Windows usa BitLocker, puede pedir su clave de recuperación: tenla a mano.")
+                            text: root.s("insBitLocker")
                         }
 
                         Note {
                             visible: root.disk !== null && (root.disk.elsewhere ?? "") !== "" && !(root.disk.windows && root.mode !== "whole")
-                            text: root.disk ? root.tr("Windows, on " + root.disk.elsewhere + ", starts from the computer's own boot menu.",
-                                                      "Windows, en " + root.disk.elsewhere + ", se arranca desde el menú de arranque del ordenador.") : ""
+                            text: root.disk ? root.s("insWindowsElsewhere").arg(root.disk.elsewhere) : ""
                         }
 
                         Note {
                             visible: root.media === "checking"
-                            text: root.tr("Checking the USB stick…", "Comprobando el USB…")
+                            text: root.s("insCheckingUsb")
                         }
 
                         Note {
                             visible: root.media === "bad"
                             alarm: true
-                            text: root.tr("The USB stick can't be read whole: write the image again.", "No se puede leer el USB entero: vuelve a grabar la imagen.")
+                            text: root.s("insUsbBad")
                         }
                     }
 
@@ -1538,7 +1540,7 @@ ShellRoot {
                         visible: root.pageName === "install"
 
                         DotText {
-                            text: root.failure !== "" ? root.tr("Stopped", "Parado") : root.tr("Installing", "Instalando")
+                            text: root.failure !== "" ? root.s("insStoppedTitle") : root.s("insInstalling")
                             font.pixelSize: 34
                         }
 
@@ -1577,7 +1579,7 @@ ShellRoot {
                         Note {
                             visible: root.failure !== ""
                             alarm: true
-                            text: root.failure + " " + root.tr("The whole log is in /tmp/nihil-install.log.", "El registro entero está en /tmp/nihil-install.log.")
+                            text: root.failure + " " + root.s("insLog")
                         }
                     }
 
@@ -1587,13 +1589,13 @@ ShellRoot {
                         visible: root.pageName === "done"
 
                         DotText {
-                            text: root.tr("Installed", "Instalado")
+                            text: root.s("insInstalled")
                             font.pixelSize: 34
                         }
 
                         Txt {
                             width: parent.width
-                            text: root.tr("Take the USB stick out as it restarts.", "Quita el USB mientras se reinicia.")
+                            text: root.s("insTakeUsb")
                             color: Tokens.dim
                             wrapMode: Text.WordWrap
                             elide: Text.ElideNone
@@ -1625,7 +1627,7 @@ ShellRoot {
                 KeyButton {
                     visible: root.pageName === "install" && root.failure !== ""
                     height: 36
-                    text: root.tr("Text installer", "Instalador de texto")
+                    text: root.s("insTextInstaller")
                     onClicked: root.leave({ next: "text" })
                 }
 
@@ -1633,14 +1635,14 @@ ShellRoot {
                     visible: root.pageName === "install" && root.failure !== ""
                     height: 36
                     accent: true
-                    text: root.tr("Try again", "Probar otra vez")
+                    text: root.s("insTryAgain")
                     onClicked: root.retry()
                 }
 
                 KeyButton {
                     visible: root.page > 0 && root.page < root.pages.indexOf("install")
                     height: 36
-                    text: root.tr("Back", "Atrás")
+                    text: root.s("insBack")
                     onClicked: root.go(root.page - 1)
                 }
 
@@ -1650,9 +1652,9 @@ ShellRoot {
                     accent: true
                     enabled: root.ready(root.pageName)
                     opacity: enabled ? 1 : 0.35
-                    text: root.pageName === "summary" ? root.tr("Install", "Instalar")
-                        : root.pageName === "done" ? root.tr("Restart", "Reiniciar")
-                        : root.tr("Continue", "Continuar")
+                    text: root.pageName === "summary" ? root.s("insInstall")
+                        : root.pageName === "done" ? root.s("insRestart")
+                        : root.s("insContinue")
                     onClicked: root.forward()
                 }
             }

@@ -145,6 +145,8 @@ in
         "nihil/template".source = ../templates/machine;
         "nihil/source".text = "github:poligle/Nihil-Shell";
         "nihil/rev".text = nihil.rev or "";
+        # The installer's words, both modes', in theme/i18n.nix with the shell's.
+        "nihil/strings.json".text = builtins.toJSON (import ../theme/i18n.nix);
     };
 
     hardware.graphics.enable = true;

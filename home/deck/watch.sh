@@ -6,6 +6,19 @@ face=com.nihilshell.wear.watchface
 provider=content://com.nihilshell.wear.shell
 replaced=""
 
+# The words are theme/i18n.nix's, in the machine's language: t key [value…], each value in for
+# %1, %2…, as they come.
+t() {
+    local text i=1 value
+    text=$(jq -r --arg k "$1" '.[$k] // $k' "$NIHIL_WATCH_STRINGS")
+    shift
+    for value in "$@"; do
+        text=${text//"%$i"/"$value"}
+        i=$((i + 1))
+    done
+    printf '%s' "$text"
+}
+
 say() { printf '\n%s\n' "$*"; }
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 
@@ -25,7 +38,7 @@ watch() {
     case ${#found[@]} in
         0) return 1 ;;
         1) echo "${found[0]}" ;;
-        *) fail "More than one watch on adb (${found[*]}): disconnect one (adb disconnect HOST:PORT)." ;;
+        *) fail "$(t watchMany "${found[*]}")" ;;
     esac
 }
 
@@ -53,69 +66,69 @@ wait_for() {
 
 pair() {
     local pairing code host connect
-    say "On the watch: Developer options, Wireless debugging, Pair new device."
-    echo "Looking for it on the network…"
+    say "$(t watchPairSteps)"
+    t watchLooking; echo
     pairing=$(wait_for _adb-tls-pairing._tcp "" 90)
     if [ -z "$pairing" ]; then
-        read -rp "Not found. The IP address and port under the code (HOST:PORT): " pairing
+        read -rp "$(t watchAskPairing)" pairing
     else
-        echo "Found at $pairing."
+        t watchFound "$pairing"; echo
     fi
-    read -rp "The Wi-Fi pairing code on the watch: " code
-    adb pair "$pairing" "$code" || fail "adb could not pair: try again with a new code."
+    read -rp "$(t watchAskCode)" code
+    adb pair "$pairing" "$code" || fail "$(t watchPairFailed)"
     host=${pairing%:*}
     connect=$(wait_for _adb-tls-connect._tcp "$host" 20)
     if [ -z "$connect" ]; then
-        read -rp "The IP address and port on Wireless debugging's own screen (HOST:PORT): " connect
+        read -rp "$(t watchAskConnect)" connect
     fi
-    adb connect "$connect" > /dev/null || fail "adb could not connect to $connect."
+    adb connect "$connect" > /dev/null || fail "$(t watchConnectFailed "$connect")"
     for _ in $(seq 10); do
         watch > /dev/null && return 0
         sleep 1
     done
-    fail "adb has $connect, but it doesn't say it's a watch."
+    fail "$(t watchNotWatch "$connect")"
 }
 
 download() {
     local dir=$1 release sums name url
     release=$(curl -fsSL "https://api.github.com/repos/$repo/releases?per_page=20" |
         jq -c '[.[] | select(.draft | not)] | (map(select(.prerelease | not))[0] // .[0]) // empty') ||
-        fail "GitHub didn't answer: try again in a moment."
-    [ -n "$release" ] || fail "$repo has no release yet."
+        fail "$(t watchNoGithub)"
+    [ -n "$release" ] || fail "$(t watchNoRelease "$repo")"
     say "$(jq -r '.name // .tag_name' <<< "$release")"
     sums=$(jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url' <<< "$release")
-    [ -n "$sums" ] || fail "The release has no SHA256SUMS: nothing installed."
-    curl -fsSL -o "$dir/SHA256SUMS" "$sums" || fail "Could not download SHA256SUMS."
+    [ -n "$sums" ] || fail "$(t watchNoSums)"
+    curl -fsSL -o "$dir/SHA256SUMS" "$sums" || fail "$(t watchDownloadFailed SHA256SUMS)"
     while read -r _ name; do
         name=${name#\*}
         case $name in
             *.apk) ;;
-            *) fail "SHA256SUMS names $name, not an APK: nothing installed." ;;
+            *) fail "$(t watchNotApk "$name")" ;;
         esac
-        case $name in */*) fail "SHA256SUMS names $name: nothing installed." ;; esac
+        case $name in */*) fail "$(t watchBadName "$name")" ;; esac
         url=$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .browser_download_url' <<< "$release")
-        [ -n "$url" ] || fail "The release has no $name: nothing installed."
-        curl -fsSL -o "$dir/$name" "$url" || fail "Could not download $name."
+        [ -n "$url" ] || fail "$(t watchMissingApk "$name")"
+        curl -fsSL -o "$dir/$name" "$url" || fail "$(t watchDownloadFailed "$name")"
     done < "$dir/SHA256SUMS"
-    (cd "$dir" && sha256sum --quiet --strict -c SHA256SUMS) || fail "The APKs aren't what the release says: nothing installed."
+    (cd "$dir" && sha256sum --quiet --strict -c SHA256SUMS) || fail "$(t watchSumsWrong)"
 }
 
 install_one() {
     local serial=$1 apk=$2 id=$3 out answer
-    echo "Installing $(basename "$apk")…"
+    t watchInstalling "$(basename "$apk")"; echo
     out=$(adb -s "$serial" install -r "$apk" 2>&1) && return 0
     case $out in
         *INSTALL_FAILED_UPDATE_INCOMPATIBLE*) ;;
-        *) fail "The watch didn't take $(basename "$apk"): $out" ;;
+        *) fail "$(t watchRefused "$(basename "$apk")" "$out")" ;;
     esac
-    echo "The watch has $id signed with another key: a build of a checkout."
-    read -rp "Replace it with the release? What it keeps, its pairing too, goes with it [y/N] " answer
+    t watchOtherKey "$id"; echo
+    read -rp "$(t watchAskReplace)" answer
     case $answer in
         [yYsS]*) ;;
-        *) fail "Nothing replaced." ;;
+        *) fail "$(t watchNothingReplaced)" ;;
     esac
-    adb -s "$serial" uninstall "$id" > /dev/null || fail "The watch didn't let $id go."
-    adb -s "$serial" install "$apk" > /dev/null || fail "The watch didn't take $(basename "$apk")."
+    adb -s "$serial" uninstall "$id" > /dev/null || fail "$(t watchKept "$id")"
+    adb -s "$serial" install "$apk" > /dev/null || fail "$(t watchRefusedShort "$(basename "$apk")")"
     replaced=1
 }
 
@@ -142,7 +155,7 @@ call() {
     out=${out%$'\r'}
     case $out in
         "Result: Bundle[{"*"}]") ;;
-        *) fail "The watch said: $out" ;;
+        *) fail "$(t watchSaid "$out")" ;;
     esac
     out=${out#"Result: Bundle[{"}
     out=${out%"}]"}
@@ -152,11 +165,11 @@ call() {
 invite() {
     local serial=$1 uri name
     uri=$(nihil-deck pair --json | jq -r '.uri // empty') || true
-    [ -n "$uri" ] || fail "The deck gave no invitation: is it on? (Preferences, Devices, Use devices)"
+    [ -n "$uri" ] || fail "$(t watchNoInvite "$(t cfgTitle), $(t cfgPhone), $(t deckUse)")"
     name=$(call "$serial" invite "$uri")
     adb -s "$serial" shell input keyevent KEYCODE_WAKEUP
     adb -s "$serial" shell am start -n "$package/.ProbeActivity" > /dev/null
-    echo "Invited by $name: the watch pairs with it now."
+    t watchInvited "$name"; echo
 }
 
 halo() {
@@ -176,24 +189,24 @@ case ${1:-install} in
         serial=$(watch) || { pair; serial=$(watch); }
         install_latest "$serial"
         invite "$serial"
-        halo "$serial" || echo "The light on the edge could not be turned on: NIHIL's settings on the watch can."
-        say "Done. On the watch, hold the face and choose NIHIL's."
+        halo "$serial" || { t watchNoHalo; echo; }
+        say "$(t watchDone)"
         ;;
     update)
-        serial=$(watch) || fail "No watch on adb: run nihil-watch to pair it."
+        serial=$(watch) || fail "$(t watchNoWatch)"
         install_latest "$serial"
         if [ -n "$replaced" ]; then
             invite "$serial"
         fi
-        say "Updated."
+        say "$(t watchUpdated)"
         ;;
     forget)
-        serial=$(watch) || fail "No watch on adb: run nihil-watch to pair it."
+        serial=$(watch) || fail "$(t watchNoWatch)"
         device=$(call "$serial" forget)
         if [ -n "$device" ] && nihil-deck forget "$device" > /dev/null; then
-            echo "The watch and this computer have forgotten each other."
+            t watchForgotBoth; echo
         else
-            echo "The watch has forgotten its computer."
+            t watchForgot; echo
         fi
         ;;
     *)
