@@ -61,9 +61,11 @@ Singleton {
         return mine !== "" && path.startsWith(mine + "/") ? "~" + path.slice(mine.length) : path;
     }
 
+    // A body is markup, as the notification spec has it: a name a device chose is shown as written.
     function notify(title: string, body: string, picture: string): void {
+        const shown = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL"].concat(
-            picture !== "" ? ["-h", "string:image-path:" + root.fileUrl(picture)] : [], ["--", title, body]));
+            picture !== "" ? ["-h", "string:image-path:" + root.fileUrl(picture)] : [], ["--", title, shown]));
     }
 
     function answer(text: string): var {

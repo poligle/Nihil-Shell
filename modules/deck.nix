@@ -36,6 +36,8 @@ in
         networking.firewall.interfaces = lib.genAttrs cfg.interfaces (_: { allowedTCPPorts = [ cfg.port ]; });
 
         boot.kernelModules = [ "uinput" ];
+        # uaccess gives /dev/uinput to the session at the screen, every program in it and not
+        # the deck alone: any can make a keyboard and type into any window (docs/deck.md).
         services.udev.packages =
         [
             (pkgs.writeTextFile
@@ -49,9 +51,12 @@ in
             })
         ];
 
+        # Announced as NIHIL, not by the computer's own name, which goes with it from network to
+        # network: the phone finds it by its pin, and has its name from the QR.
         services.avahi =
         {
             enable = true;
+            hostName = lib.mkDefault "nihil";
             allowInterfaces = lib.mkIf (cfg.interfaces != [ ]) cfg.interfaces;
             publish =
             {
@@ -62,7 +67,7 @@ in
                 <?xml version="1.0" standalone="no"?>
                 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
                 <service-group>
-                  <name replace-wildcards="yes">%h</name>
+                  <name>NIHIL</name>
                   <service>
                     <type>_nihil-deck._tcp</type>
                     <port>${toString cfg.port}</port>

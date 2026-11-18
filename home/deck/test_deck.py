@@ -180,6 +180,8 @@ class Base(unittest.TestCase):
         os.environ["XDG_CACHE_HOME"] = os.path.join(self.folder, "cache")
         os.environ["XDG_RUNTIME_DIR"] = self.folder
         self.addCleanup(self.restore_env)
+        self.addCleanup(setattr, deck, "VECTOR_SPARE", deck.VECTOR_SPARE)
+        deck.VECTOR_SPARE = 0
         self.config = {
             "port": 0,
             "name": "nihil-test",
@@ -222,29 +224,47 @@ class CertificateTest(Base):
 
 
 class PairingTest(unittest.TestCase):
-    def test_once_and_not_after_wrong_codes(self):
+    def test_once_and_failures_dont_close_it(self):
         pairing = deck.Pairing()
-        self.assertEqual(pairing.take("ANY"), "closed")
-        code, _ = pairing.open()
+        self.assertEqual(pairing.take("ANY"), "wrong")
+        code, _, _ = pairing.open()
         self.assertEqual(len(code), deck.CODE_LENGTH)
         self.assertTrue(set(code) <= set(deck.CODE_ALPHABET))
-        for _ in range(deck.CODE_ATTEMPTS - 1):
+        for _ in range(deck.CODE_TRIES - 2):
             self.assertEqual(pairing.take("WRONG"), "wrong")
         self.assertEqual(pairing.take(code.lower()), "ok")
-        self.assertEqual(pairing.take(code), "closed")
+        self.assertEqual(pairing.take(code), "wrong")
 
-        code, _ = pairing.open()
-        for _ in range(deck.CODE_ATTEMPTS):
+    def test_too_many_wrong_codes_from_anyone_wait(self):
+        pairing = deck.Pairing()
+        code, _, _ = pairing.open()
+        for _ in range(deck.CODE_TRIES):
             self.assertEqual(pairing.take("WRONG"), "wrong")
-        self.assertEqual(pairing.take(code), "closed")
+        self.assertEqual(pairing.take(code), "wait")
+        pairing.wrong = deck.collections.deque(moment - deck.FAIL_WINDOW for moment in pairing.wrong)
+        self.assertEqual(pairing.take(code), "ok")
 
     def test_expires(self):
         pairing = deck.Pairing()
-        code, _ = pairing.open()
-        pairing.expires = time.time() - 1
+        code, _, invite = pairing.open()
+        pairing.codes[code] = (time.time() - 1, invite)
         self.assertFalse(pairing.open_now)
-        self.assertEqual(pairing.take(code), "expired")
-        self.assertEqual(pairing.take(code), "closed")
+        self.assertEqual(pairing.take(code), "wrong")
+
+    def test_several_at_once_each_its_own(self):
+        pairing = deck.Pairing()
+        shown, _, mine = pairing.open()
+        watch, _, theirs = pairing.open()
+        self.assertEqual(sorted(pairing.invites()), sorted([mine, theirs]))
+        pairing.close(mine)
+        self.assertEqual(pairing.invites(), [theirs])
+        self.assertEqual(pairing.take(shown), "wrong")
+        self.assertEqual(pairing.take(watch), "ok")
+        for _ in range(deck.CODES_OPEN + 2):
+            pairing.open()
+        self.assertEqual(len(pairing.invites()), deck.CODES_OPEN)
+        pairing.close()
+        self.assertFalse(pairing.open_now)
 
 
 class UrlTest(unittest.TestCase):
@@ -396,7 +416,7 @@ class ServerTest(Base):
 
     def test_pairing_with_the_code_in_the_qr(self):
         status, body = self.phone.request("GET", "/v1/hello")
-        self.assertEqual((status, body), (200, {"deck": deck.API, "name": "nihil-test"}))
+        self.assertEqual((status, body), (200, {"deck": deck.API}))
         self.assertEqual(self.phone.request("GET", "/v1/apps")[0], 401)
 
         reply = self.deck.control({"op": "pair"})
@@ -410,7 +430,8 @@ class ServerTest(Base):
         status, body = self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "Pho\x07ne"})
         self.assertEqual(status, 200, body)
         self.assertEqual(body["name"], "nihil-test")
-        self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "other"})[0], 409)
+        self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "other"}),
+                         (403, {"error": "wrong"}))
 
         devices = self.deck.control({"op": "devices"})["devices"]
         self.assertEqual([(d["id"], d["name"]) for d in devices], [(body["device"], "Phone")])
@@ -504,7 +525,7 @@ class ServerTest(Base):
 
     def test_vector_from_the_phone(self):
         self.pair()
-        video = os.urandom(300000)
+        video = b"\x00\x00\x00\x18ftypmp42" + os.urandom(300000 - 12)
         status, item = self.phone.send("/v1/vector", video, {"Content-Type": "video/mp4",
                                                              "X-Vector-Name": urllib.parse.quote("Café.mp4")})
         self.assertEqual((status, item["kind"], item["name"], item["size"]), (200, "video", "Café.mp4", 300000))
@@ -568,7 +589,7 @@ class ServerTest(Base):
         self.config["vectorFolder"] = folder
         self.config["open"] = script(os.path.join(self.folder, "bin"), "xdg-open", FAKE_LOGGER.replace("{name}", "xdg-open"))
         self.assertEqual(deck.vector_command(self.config, "copy", None), {"error": "empty"})
-        self.phone.send("/v1/vector", b"PNG!", {"Content-Type": "image/png"})
+        self.phone.send("/v1/vector", PNG, {"Content-Type": "image/png"})
         self.assertEqual(deck.vector_command(self.config, "copy", None), {"ok": True})
         with open(os.path.join(runtime, "clipboard.args")) as file:
             self.assertEqual(file.read().split(), ["--type", "image/png"])
@@ -676,6 +697,10 @@ class ServerTest(Base):
             card = {"id": "s", "text": "Stamp", "column": 0, "textStamp": stamp, "placeStamp": 1}
             self.assertEqual(self.phone.request("POST", "/v1/tasks", {"cards": [card]})[0], 400, stamp)
             self.assertEqual(self.phone.request("POST", "/v1/tasks", {"removed": {"s": stamp}})[0], 400, stamp)
+        # A rank too big for a float is a 400, not a connection dropped.
+        for rank, status in ((10 ** 400, 400), (2 ** 53 + 1, 400), (-(2 ** 53), 200), (1e308, 200)):
+            card = {"id": "r", "text": "Rank", "column": 0, "textStamp": 1, "placeStamp": 1, "rank": rank}
+            self.assertEqual(self.phone.request("POST", "/v1/tasks", {"cards": [card]})[0], status, rank)
 
     def upgrade(self, path, protocol="nihil-trackpad"):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -827,10 +852,105 @@ class ServerTest(Base):
         self.assertIsNone(self.phone.last.getheader("Connection"))
 
     def test_whether_the_code_still_pairs(self):
-        self.deck.control({"op": "pair"})
-        self.assertTrue(self.deck.control({"op": "devices"})["pairing"])
+        reply = self.deck.control({"op": "pair"})
+        listed = self.deck.control({"op": "devices"})
+        self.assertEqual((listed["pairing"], listed["invites"]), (True, [reply["invite"]]))
+        self.answering()
+        self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": reply["code"], "device": "Phone"})[0], 200)
+        listed = self.deck.control({"op": "devices"})
+        self.assertEqual((listed["pairing"], listed["invites"]), (False, []))
+
+    def test_who_sends_it_before_its_body(self):
+        # Without a token, a body isn't read, whatever size it says, and the connection ends.
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        connection = http.client.HTTPSConnection("127.0.0.1", self.deck.port, context=context, timeout=10)
+        connection.putrequest("POST", "/v1/tasks")
+        connection.putheader("Content-Type", "application/json")
+        connection.putheader("Content-Length", str(deck.TASKS_MAX))
+        connection.endheaders()
+        response = connection.getresponse()
+        self.assertEqual((response.status, response.getheader("Connection")), (401, "close"))
+        connection.close()
+        # Paired, JSON nested past what Python parses is a 400 too.
         self.pair()
-        self.assertFalse(self.deck.control({"op": "devices"})["pairing"])
+        nested = b"[" * 100000 + b"]" * 100000
+        self.assertEqual(self.phone.send("/v1/tasks", nested, {"Content-Type": "application/json"}), (400, {"error": "body"}))
+
+    def test_a_code_says_nothing_and_two_are_open_at_once(self):
+        shown = self.deck.control({"op": "pair"})
+        watch = self.deck.control({"op": "pair"})
+        invites = self.deck.control({"op": "devices"})["invites"]
+        self.assertEqual(sorted(invites), sorted([shown["invite"], watch["invite"]]))
+        self.deck.control({"op": "cancel", "invite": shown["invite"]})
+        for code in (shown["code"], "WRONGCODE"):
+            self.assertEqual(self.phone.request("POST", "/v1/pair", {"code": code, "device": "x"}), (403, {"error": "wrong"}))
+        self.answering()
+        status, body = self.phone.request("POST", "/v1/pair", {"code": watch["code"], "device": "Watch"})
+        self.assertEqual(status, 200, body)
+
+    def test_a_device_unseen_for_ninety_days_is_forgotten(self):
+        self.pair()
+        listed = self.deck.control({"op": "devices"})["devices"][0]
+        self.assertEqual(listed["expires"], listed["seen"] + deck.TOKEN_DAYS * 86400)
+        self.deck.devices.items[0]["seen"] -= deck.TOKEN_DAYS * 86400 + 1
+        self.assertEqual(self.phone.request("GET", "/v1/apps")[0], 401)
+        self.assertEqual(self.deck.control({"op": "devices"})["devices"], [])
+
+    def test_what_a_device_names_and_sends(self):
+        self.pair()
+        status, item = self.phone.send("/v1/vector", b"[Desktop Entry]\nExec=sh\n",
+                                       {"Content-Type": "image/jpeg", "X-Vector-Name": urllib.parse.quote("foto\u202egpj.desktop")})
+        self.assertEqual((status, item["name"], item["kind"], item["mime"]), (200, "fotogpj.desktop", "file", "application/octet-stream"))
+        long = "字" * 100 + ".txt"
+        self.assertGreater(len(long.encode()), 255)
+        folder = os.path.join(self.folder, "Vector")
+        self.config["vectorFolder"] = folder
+        self.config["open"] = script(os.path.join(self.folder, "bin"), "xdg-open", FAKE_LOGGER.replace("{name}", "xdg-open"))
+        for copy in range(2):
+            status, item = self.phone.send("/v1/vector", b"ok", {"Content-Type": "text/plain", "X-Vector-Name": urllib.parse.quote(long)})
+            self.assertEqual((status, item["kind"]), (200, "text"))
+            self.assertTrue(item["name"].endswith(".txt") and len(item["name"].encode()) <= deck.NAME_BYTES)
+            kept = deck.vector_command(self.config, "save", None)
+            self.assertTrue(os.path.isfile(kept["path"]), kept)
+        self.assertTrue(kept["path"].endswith(" (2).txt"))
+        # Open hands the program only what is a picture, a video, a PDF or a text, by its bytes and its name.
+        self.phone.send("/v1/vector", b"#!/bin/sh\n", {"Content-Type": "text/plain", "X-Vector-Name": "run.sh"})
+        self.assertEqual(deck.vector_command(self.config, "open", None)["path"], os.path.join(folder, "run.sh"))
+        for _ in range(50):
+            if "xdg-open " + folder in self.logged():
+                break
+            time.sleep(0.05)
+        self.assertIn("xdg-open " + folder, self.logged())
+        for name, mime, path in (("a.png", "image/png", "a.png"), ("a.svg", "image/svg+xml", "a.svg"), ("a.html", "text/plain", "a.html"),
+                                 ("notes", "text/plain", "notes"), ("a.pdf", "application/pdf", "a.pdf"), ("a.zip", "application/zip", "a.zip")):
+            self.assertEqual(deck.openable({"mime": mime}, path), name in ("a.png", "notes", "a.pdf"), name)
+
+    def test_one_thing_at_a_time_and_room_left(self):
+        self.pair()
+        device = self.deck.control({"op": "devices"})["devices"][0]["id"]
+        self.deck.uploading.add(device)
+        self.assertEqual(self.phone.send("/v1/vector", b"x", {"Content-Type": "text/plain"}), (409, {"error": "busy"}))
+        self.deck.uploading.clear()
+        deck.VECTOR_SPARE = shutil.disk_usage(self.folder).total
+        self.assertEqual(self.phone.send("/v1/vector", b"x", {"Content-Type": "text/plain"}), (507, {"error": "full"}))
+        deck.VECTOR_SPARE = 0
+        self.assertEqual(self.phone.send("/v1/vector", b"x", {"Content-Type": "text/plain"})[0], 200)
+        self.assertEqual(self.deck.uploading, set())
+
+    def test_a_notifications_body_as_written(self):
+        self.deck.session.notify("A <b>title</b>", "Forget <img src=x> & go")
+        self.assertIn("notify-send -a NIHIL -- A <b>title</b> Forget &lt;img src=x&gt; &amp; go", self.logged())
+
+    def test_a_text_like_an_option_from_the_command_line(self):
+        config = os.path.join(self.folder, "config.json")
+        with open(config, "w") as file:
+            json.dump(self.config, file)
+        done = subprocess.run([sys.executable, os.path.join(HERE, "deck.py"), "--config", config, "vector", "text", "-"],
+                              input=b"-v --force", capture_output=True, timeout=30, check=False)
+        result = json.loads(done.stdout)
+        self.assertEqual((done.returncode, result["kind"], result["preview"]), (0, "text", "-v --force"))
 
     def test_forgetting_from_here(self):
         paired = self.pair()
@@ -968,6 +1088,32 @@ class FaviconTest(unittest.TestCase):
         self.assertEqual(deck.as_image(b"RIFF\x00\x00\x00\x00WEBPVP8 ", "x")[1], "image/webp")
         self.assertIsNone(deck.as_image(b"<html>not an icon</html>", "x"))
 
+    def test_a_week_and_so_many_at_most(self):
+        old = deck.FAVICONS_KEPT
+        deck.FAVICONS_KEPT = 3
+        self.addCleanup(setattr, deck, "FAVICONS_KEPT", old)
+        for i in range(5):
+            path = os.path.join(self.cache, f"site{i}")
+            open(path, "wb").close()
+            os.utime(path, (time.time() - 60 * (i + 1),) * 2)
+        stale = os.path.join(self.cache, "stale")
+        open(stale, "wb").close()
+        os.utime(stale, (time.time() - 8 * 86400,) * 2)
+        site = self.site({"/favicon.ico": (200, "image/x-icon", ico((16, PNG + b"16")))})
+        self.assertEqual(deck.favicon(site.url, "rsvg-convert", self.cache), (PNG + b"16", "image/png"))
+        self.assertEqual(sorted(os.listdir(self.cache))[1:], ["site0", "site1"])
+        self.assertEqual(len(os.listdir(self.cache)), 3)
+
+    def test_where_it_connected_not_what_the_name_said(self):
+        # A name that answers public when it's looked up and this computer when it's connected to.
+        site = self.site({"/": (200, "text/html", b"")})
+        deck.PUBLIC_ONLY = True
+        self.addCleanup(setattr, deck, "public", deck.public)
+        deck.public = lambda host: True
+        with self.assertRaises(OSError):
+            deck.fetch(site.url + "/", 100)
+        self.assertEqual(site.asked, [])
+
     def test_only_public_addresses(self):
         deck.PUBLIC_ONLY = True
         for host in ("127.0.0.1", "localhost", "10.0.0.7", "192.168.1.1", "169.254.169.254", "::1"):
@@ -1076,7 +1222,7 @@ class ControlTest(Base):
         self.assertTrue(deck.ask({"op": "status"}, path)["pairing"])
         self.assertEqual(deck.ask({"op": "cancel"}, path), {"ok": True})
         self.assertFalse(deck.ask({"op": "status"}, path)["pairing"])
-        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": [], "pairing": False, "asking": []})
+        self.assertEqual(deck.ask({"op": "devices"}, path), {"devices": [], "pairing": False, "invites": [], "asking": []})
         self.assertEqual(deck.ask({"op": "nonsense"}, path), {"error": "unknown"})
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as raw:
             raw.connect(path)

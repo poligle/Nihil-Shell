@@ -148,12 +148,15 @@ Flickable {
                     text: phone.modelData.name
                 }
 
+                // When it was last seen; in its last month unused, the day the deck forgets it.
                 Label {
                     id: seen
+                    readonly property real expires: phone.modelData.expires ?? 0
                     anchors.right: forget.left
                     anchors.rightMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Dates.moment(phone.modelData.seen ?? 0)
+                    text: expires > 0 && expires - Date.now() / 1000 < 30 * 86400 ? Lang.deckForgetsOn.arg(Dates.day(expires))
+                                                                                  : Dates.moment(phone.modelData.seen ?? 0)
                     font.pixelSize: 12
                 }
 

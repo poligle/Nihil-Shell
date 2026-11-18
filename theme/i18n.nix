@@ -551,6 +551,7 @@
 		deckDeny = "Rechazar";
 		deckPaired = "%1 ya es un deck de este ordenador";
 		deckPairedBody = "Si no has sido tú, olvídalo en Preferencias, Dispositivos.";
+		deckForgetsOn = "Se olvida el %1";
 		cfgScreens = "Pantallas";
 		cfgScreenNone = "Hyprland no dice que haya pantallas.";
 		cfgScreenMode = "Resolución";
@@ -746,8 +747,10 @@
 		watchSaid = "El reloj ha dicho: %1";
 		watchNoInvite = "El deck no ha dado ninguna invitación: ¿está encendido? (%1)";
 		watchInvited = "Invitado por %1: el reloj se vincula con él ahora.";
+		watchHalo = "La luz del borde necesita leer las notificaciones del reloj y un servicio de accesibilidad: adb se los da ahora.";
 		watchNoHalo = "No se ha podido encender la luz del borde: los ajustes de NIHIL en el reloj pueden.";
 		watchDone = "Hecho. En el reloj, mantén pulsada la esfera y elige la de NIHIL.";
+		watchAskDebugOff = "¿Apagar la depuración inalámbrica del reloj? Para actualizar tendrás que encenderla otra vez [s/N] ";
 		watchNoWatch = "No hay ningún reloj en adb: ejecuta nihil-watch para vincularlo.";
 		watchUpdated = "Actualizado.";
 		watchForgotBoth = "El reloj y este ordenador se han olvidado el uno del otro.";
@@ -1304,6 +1307,7 @@
 		deckDeny = "Deny";
 		deckPaired = "%1 is now a deck for this computer";
 		deckPairedBody = "If it wasn't you, forget it in Preferences, Devices.";
+		deckForgetsOn = "Forgotten on %1";
 		cfgScreens = "Screens";
 		cfgScreenNone = "Hyprland says there are no screens.";
 		cfgScreenMode = "Resolution";
@@ -1499,8 +1503,10 @@
 		watchSaid = "The watch said: %1";
 		watchNoInvite = "The deck gave no invitation: is it on? (%1)";
 		watchInvited = "Invited by %1: the watch pairs with it now.";
+		watchHalo = "The light on the edge needs to read the watch's notifications and an accessibility service: adb gives it both now.";
 		watchNoHalo = "The light on the edge could not be turned on: NIHIL's settings on the watch can.";
 		watchDone = "Done. On the watch, hold the face and choose NIHIL's.";
+		watchAskDebugOff = "Turn off wireless debugging on the watch? To update, you'll turn it on again [y/N] ";
 		watchNoWatch = "No watch on adb: run nihil-watch to pair it.";
 		watchUpdated = "Updated.";
 		watchForgotBoth = "The watch and this computer have forgotten each other.";

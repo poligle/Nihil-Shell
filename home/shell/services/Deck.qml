@@ -19,6 +19,8 @@ Singleton {
     property real expires: 0
     property var known: []
     property real opened: 0         // when it came out, ms
+    // The code in the QR, by the deck's name for it: a watch's, open at once, is another.
+    property string invite: ""
     // Devices that gave the right code and wait, a few seconds, for this computer to allow them.
     property var asking: []
 
@@ -41,7 +43,13 @@ Singleton {
             return;
         root.pairing = false;
         root.rows = [];
-        Quickshell.execDetached([Config.deck.command, "cancel"]);
+        root.close(root.invite);
+        root.invite = "";
+    }
+
+    function close(invite: string): void {
+        if (invite !== "")
+            Quickshell.execDetached([Config.deck.command, "cancel", invite]);
     }
 
     function allow(id: string, yes: bool): void {
@@ -76,11 +84,11 @@ Singleton {
                     const reply = JSON.parse(text);
                     const found = reply.devices ?? [];
                     root.asking = reply.asking ?? [];
+                    const closed = reply.invites === undefined ? reply.pairing === false
+                                                               : reply.invites.indexOf(root.invite) < 0;
                     if (root.pairing && found.some(device => root.known.indexOf(device.id) < 0)) {
-                        root.pairing = false;
-                        root.rows = [];
-                    } else if (root.pairing && reply.pairing === false && root.asking.length === 0
-                               && Date.now() - root.opened > 3000) {
+                        root.cancel();
+                    } else if (root.pairing && closed && root.asking.length === 0 && Date.now() - root.opened > 3000) {
                         root.pair();
                     }
                     root.devices = found;
@@ -105,6 +113,11 @@ Singleton {
                     root.rows = found.qr;
                     root.expires = found.expires;
                     root.opened = Date.now();
+                    // A new code for the QR closes the one it showed.
+                    const before = root.invite;
+                    root.invite = found.invite ?? "";
+                    if (before !== root.invite)
+                        root.close(before);
                     root.pairing = true;
                     root.running = true;
                 } catch (error) {

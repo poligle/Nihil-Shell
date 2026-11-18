@@ -29,7 +29,7 @@ Singleton {
 
     function add(text: string): void {
         const typed = clean(text);
-        if (typed === "") return;
+        if (typed === "" || cards.length >= TaskMerge.CARDS_MAX) return;
         const at = stamp();
         const todo = inColumn(0);
         cards = TaskMerge.ordered(cards.concat([{ id: newId(), text: typed, column: 0, textStamp: at, placeStamp: at,
@@ -73,8 +73,8 @@ Singleton {
         if (gone.length === 0) return;
         const next = Object.assign({}, removed);
         gone.forEach(c => { next[c.id] = stamp(); });
-        removed = next;
         cards = cards.filter(c => !(c.id in next));
+        removed = TaskMerge.newest(next);
         save();
     }
 
@@ -89,7 +89,7 @@ Singleton {
 
     function sync(board: var): var {
         const now = Date.now();
-        const merged = TaskMerge.merge({ cards: cards, removed: removed }, TaskMerge.trusted(board ?? {}, now), now);
+        const merged = TaskMerge.sync({ cards: cards, removed: removed }, board ?? {}, now);
         clock = Math.max(clock, Math.min(TaskMerge.latest(merged), now + TaskMerge.AHEAD));
         cards = merged.cards;
         removed = merged.removed;
@@ -108,8 +108,9 @@ Singleton {
         const loaded = list
             .filter(c => c && String(c.text ?? "").trim() !== "")
             .map((c, i) => {
+                const id = String(c.id ?? "");
                 const card = {
-                    id: String(c.id ?? newId()),
+                    id: TaskMerge.usable(id) ? id : newId(),
                     text: String(c.text).trim().slice(0, maxLength),
                     column: Math.max(0, Math.min(columns - 1, Number(c.column) || 0)),
                     textStamp: Number(c.textStamp) || 0,
