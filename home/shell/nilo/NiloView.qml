@@ -191,7 +191,7 @@ Item {
             }
 
             Label {
-                text: Nilo.settings.auto === true && Nilo.inUse !== "" ? Nilo.inUse + " (auto)" : (Nilo.settings.model ?? "")
+                text: Nilo.settings.auto === true && Nilo.inUse !== "" ? Lang.modelAuto.arg(Nilo.inUse) : (Nilo.settings.model ?? "")
             }
         }
     }

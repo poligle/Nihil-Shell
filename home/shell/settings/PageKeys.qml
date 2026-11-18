@@ -188,8 +188,9 @@ Flickable {
                 color: Tokens.muted
             }
 
+            // Wide enough for its examples: comma and Space are what's written, not , or a space.
             Field {
-                width: 210
+                width: 310
                 height: 32
                 placeholder: Lang.cfgKeyName
                 value: page.key
@@ -363,7 +364,7 @@ Flickable {
                             }
 
                             Field {
-                                width: 260
+                                width: 280
                                 height: 32
                                 placeholder: Lang.cfgProgramExec
                                 value: page.command

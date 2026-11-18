@@ -112,7 +112,7 @@ With the clone, updating is `git -C ~/Nihil-Shell pull`, then `nihil update`. Le
 
 **Updates** come from the repository: `nihil update` moves the machine's flake to the
 latest NIHIL (and the NixOS it pins) and rebuilds. Nothing of yours is in the repository,
-so updating never touches it. The settings panel has it too: a dot on its update button
+so updating never touches it. The quick settings have it too: a dot on their update button
 when GitHub has something newer, how many commits with the pointer on it, and which ones
 with a click, next to the password that updates.
 

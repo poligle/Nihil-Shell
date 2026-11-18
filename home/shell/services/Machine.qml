@@ -49,8 +49,9 @@ Singleton {
     }
     readonly property bool generational: kind === "generation" || kind === "clean" || kind === "boot"
     readonly property string statusTitle: phase === "auth" ? (auth === "finger" ? Lang.cfgFingerAsk : Lang.cfgChecking)
-        : phase === "applying" ? (kind === "update" ? Lang.updApplying : kind === "generation" ? Lang.genSwitching
-            : kind === "clean" ? Lang.genCleaning : Lang.cfgApplying).arg(elapsed)
+        : phase === "applying" ? (kind === "update" ? Lang.updApplying.arg(elapsed)
+            : kind === "generation" ? Lang.genSwitching.arg(elapsed).arg(target)
+            : kind === "clean" ? Lang.genCleaning.arg(elapsed) : Lang.cfgApplying.arg(elapsed))
         : phase === "failed" ? (failure === "password" ? Lang.cfgWrongPassword : failure === "finger" ? Lang.cfgFingerFailed
             : failure === "menu" ? Lang.genNotInMenu
             : failure === "invalid" ? (generational ? Lang.genGone : Lang.cfgInvalid)

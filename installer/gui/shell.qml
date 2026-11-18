@@ -108,7 +108,7 @@ ShellRoot {
         for (const giver of disk.room.shrink)
             out.push({ kind: "shrink", part: giver.part, max: giver.give, fstype: giver.fstype,
                        title: s("insRoomIn").arg(giver.part),
-                       detail: [giver.fstype, giver.label].filter(word => word !== "").join(", ") + ", " + s("insUpTo").arg(size(giver.give)) });
+                       detail: [giver.label, giver.fstype.toUpperCase()].filter(word => word !== "").join(", ") + ", " + s("insUpTo").arg(size(giver.give)) });
         return out;
     }
     readonly property var room: roomIndex >= 0 && roomIndex < roomOptions.length ? roomOptions[roomIndex] : null
@@ -158,9 +158,10 @@ ShellRoot {
         return (strings[lang] ?? {})[key] ?? (strings.en ?? {})[key] ?? key;
     }
 
+    // With the language's decimal mark, as the shell writes sizes.
     function size(bytes: real): string {
         if (bytes >= 1e12)
-            return Math.round(bytes / 1e11) / 10 + " TB";
+            return (Math.round(bytes / 1e11) / 10).toLocaleString(Qt.locale(lang === "es" ? "es_ES" : "en_GB"), "f", 1) + " TB";
         if (bytes >= 1e9)
             return Math.round(bytes / 1e9) + " GB";
         return Math.round(bytes / 1e6) + " MB";
@@ -197,7 +198,7 @@ ShellRoot {
     }
 
     function describe(part: var): string {
-        return [size(part.size), part.fstype, part.label].filter(word => word !== "").join(", ");
+        return [size(part.size), part.fstype.toUpperCase(), part.label].filter(word => word !== "").join(", ");
     }
 
     function consequence(): string {
@@ -695,10 +696,13 @@ ShellRoot {
         stdout: StdioCollector {
             onStreamFinished: {
                 root.scanning = false;
-                const parts = text.split("---");
-                root.wifi = parts[0].split("\n").indexOf("wifi") >= 0;
-                const best = {};
-                for (const line of (parts[1] ?? "").split("\n")) {
+                // At the first line that says only ---: the networks come after it, and an SSID can
+                // hold anything, --- too.
+                const lines = text.split("\n");
+                const at = lines.indexOf("---");
+                root.wifi = (at >= 0 ? lines.slice(0, at) : lines).indexOf("wifi") >= 0;
+                const best = Object.create(null);
+                for (const line of (at >= 0 ? lines.slice(at + 1) : [])) {
                     const f = root.fields(line);
                     if (f.length < 4 || f[3] === "")
                         continue;
@@ -722,11 +726,16 @@ ShellRoot {
             input = "";
             stdinEnabled = false;
         }
+        // nmcli's words in the user's: the usual ones said plainly, any other after what happened.
         stderr: StdioCollector {
             onStreamFinished: {
                 const lines = text.trim().split("\n").filter(line => line !== "");
-                if (lines.length > 0)
-                    root.joinError = lines[lines.length - 1].replace(/^Error: */, "");
+                const said = lines.length > 0 ? lines[lines.length - 1].replace(/^Error: */, "") : "";
+                root.joinError = said === "" ? ""
+                    : /Secrets were required|wrong password|password.*incorrect/i.test(said) ? root.s("insWrongKey")
+                    : /psk: property is invalid/i.test(said) ? root.s("insShortKey")
+                    : /No network with SSID/i.test(said) ? root.s("insOutOfRange")
+                    : root.s("insNotConnected") + " (" + said + ")";
             }
         }
         onExited: code => {
@@ -959,7 +968,7 @@ ShellRoot {
                                     required property var modelData
 
                                     title: modelData.name
-                                    detail: modelData.id
+                                    detail: modelData.id.toUpperCase()
                                     chosen: root.layout === modelData.id
                                     onPicked: root.layout = modelData.id
                                 }
@@ -1015,7 +1024,7 @@ ShellRoot {
 
                                     Option {
                                         title: net.modelData.ssid
-                                        detail: net.chosen && root.joining ? root.s("insConnecting") : net.modelData.signal + "%"
+                                        detail: net.chosen && root.joining ? root.s("insConnecting") : root.s("percent").arg(net.modelData.signal)
                                         chosen: net.chosen
                                         onPicked: root.pickNetwork(net.modelData)
                                     }
@@ -1113,7 +1122,7 @@ ShellRoot {
                                     required property var modelData
 
                                     title: modelData.split("/").pop().replace(/_/g, " ")
-                                    detail: modelData
+                                    detail: modelData.replace(/_/g, " ")
                                     chosen: root.zone === modelData
                                     onPicked: root.zone = modelData
                                 }

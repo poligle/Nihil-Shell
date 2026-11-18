@@ -258,7 +258,7 @@ ShellRoot {
             Txt {
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: parent.height / 2 - height / 2
-                text: root.person.greeting !== "" ? Lang.welcome + ", " + root.person.greeting : Lang.welcome
+                text: root.person.greeting !== "" ? Lang.welHello.arg(root.person.greeting) : Lang.welHelloAnon
                 font.pixelSize: 17
             }
 

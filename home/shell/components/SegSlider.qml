@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.config
 
 Item {
     id: root
@@ -27,7 +28,7 @@ Item {
 
     Accessible.role: Accessible.Slider
     Accessible.name: root.label
-    Accessible.description: Math.round(root.value * 100) + " %"
+    Accessible.description: Lang.percent.arg(Math.round(root.value * 100))
     Accessible.onIncreaseAction: root.nudge(0.05)
     Accessible.onDecreaseAction: root.nudge(-0.05)
     Keys.onRightPressed: root.nudge(0.05)

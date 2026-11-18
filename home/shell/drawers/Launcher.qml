@@ -278,7 +278,7 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: 20
             anchors.verticalCenter: parent.verticalCenter
-            text: root.mode === "apps" ? Lang.appsCount.arg(root.apps.length) : root.mode === "actions" ? Lang.actions
+            text: root.mode === "apps" ? Case.count(root.apps.length, Lang.appsCountOne, Lang.appsCount) : root.mode === "actions" ? Lang.actions
                 : root.mode === "nilo" ? Lang.nilo : Lang.calculator
         }
     }

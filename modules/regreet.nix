@@ -14,8 +14,9 @@ in
         settings =
         {
             background.path = lib.mkForce "/var/lib/nihil/greeter/wallpaper.png";
-            appearance.greeting_msg = config.nihil.strings.welcome
-                + lib.optionalString (config.nihil.user.greeting != "") ", ${config.nihil.user.greeting}";
+            appearance.greeting_msg = if config.nihil.user.greeting != ""
+                then lib.replaceStrings [ "%1" ] [ config.nihil.user.greeting ] config.nihil.strings.welHello
+                else config.nihil.strings.welHelloAnon;
 
             widget.clock =
             {

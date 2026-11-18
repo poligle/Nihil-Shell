@@ -97,7 +97,7 @@ in
         {
             type = lib.types.enum [ "es" "en" ];
             default = "en";
-            description = "Language of the shell, lock screen, greeter and script messages (theme/i18n.nix).";
+            description = "Language of the shell, the lock screen, the greeter, the boot and the notices scripts send (theme/i18n.nix); the commands answer in English.";
         };
 
         strings = lib.mkOption
