@@ -21,8 +21,10 @@ let
 		inherit (nihil.deck) port;
 	};
 
-	# The desktop's widgets; Preferences shows each by its text, cfgWidgetClock for clock.
+	# The desktop's widgets; Preferences shows each by its text, cfgWidgetClock for clock. Only
+	# the first ones are on until Preferences says otherwise.
 	widgets = [ "clock" "network" "media" ];
+	widgetDefaults = [ "clock" "media" ];
 	unlabelled = lib.filter (name: !(nihil.strings ? ${"cfgWidget" + lib.toUpper (lib.substring 0 1 name) + lib.substring 1 (lib.stringLength name) name}))
 		widgets;
 
@@ -111,6 +113,7 @@ let
 		    readonly property string primaryOutput: "${nihil.primaryOutput}"
 		    readonly property int persistentWorkspaces: 3
 		    readonly property var widgets: ${builtins.toJSON widgets}
+		    readonly property var widgetDefaults: ${builtins.toJSON widgetDefaults}
 		    readonly property var trayHidden: ${builtins.toJSON nihil.trayHidden}
 		    readonly property var wallpapers: ${builtins.toJSON nihil.wallpapers.names}
 		    readonly property int clipboard: ${toString nihil.clipboard}

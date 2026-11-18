@@ -64,6 +64,9 @@
   only draws the new ones. The [studio](https://nihilshell.com/studio/) does the same in
   the browser with any picture, moving ones too (`docs/studio/`, the same numbers as
   `theme/dotmatrix.py`).
+- **Desktop widgets.** The clock and what plays, and the network's rates if you want them.
+  A long press on one, or Arrange in Preferences, Appearance, lets you drag each where you
+  want it, on a grid and clear of the others; each stays where it was left, with no rebuild.
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down) with the power-off notes going
   up, unless the session was left muted, a greeter with the lock screen's face (its

@@ -600,6 +600,10 @@
 		cfgProgramAdd = "Añadir un programa";
 		cfgProgramMissing = "Falta el nombre o el comando";
 		cfgWidgets = "Widgets";
+		cfgWidgetsArrange = "Colocar en el escritorio";
+		cfgWidgetsArrangeSub = "Arrastra cada uno donde lo quieras; también con una pulsación larga sobre él";
+		cfgArrange = "Colocar";
+		widgetsHint = "Arrastra un widget para moverlo|[Esc] Listo";
 		cfgGlass = "Cristal ahumado";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
@@ -1387,6 +1391,10 @@
 		cfgProgramAdd = "Add a program";
 		cfgProgramMissing = "The name or the command is missing";
 		cfgWidgets = "Widgets";
+		cfgWidgetsArrange = "Arrange on the desktop";
+		cfgWidgetsArrangeSub = "Drag each one where you want it; a long press on one does it too";
+		cfgArrange = "Arrange";
+		widgetsHint = "Drag a widget to move it|[Esc] Done";
 		cfgGlass = "Smoked glass";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";

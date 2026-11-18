@@ -38,7 +38,13 @@ Singleton {
     property string wallpaper: ""
     property bool glass: false
 
-    property var widgets: Config.widgets
+    property var widgets: Config.widgetDefaults
+    // Where each widget was put on the desktop, by name: [x, y] from the desktop's top left,
+    // inside the frame. One with none goes where there's room.
+    property var widgetPlaces: ({})
+    // Moving them about: a long press on one, Arrange in Preferences, nihil-ipc widgets arrange.
+    property bool arranging: false
+    // Both, and kept as they are: no rebuild for either.
     readonly property string widgetsFile: stateDir + "/widgets.json"
     property var timeZones: []
 
@@ -198,12 +204,28 @@ Singleton {
         root.shown = false;
     }
 
+    function saveWidgets(): void {
+        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile,
+                                 JSON.stringify({ on: root.widgets, at: root.widgetPlaces })]);
+    }
+
     function setWidget(name: string, on: bool): void {
         const next = root.widgets.filter(widget => widget !== name);
         if (on)
             next.push(name);
         root.widgets = next;
-        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile, JSON.stringify(next)]);
+        root.saveWidgets();
+    }
+
+    // places: { name: [x, y] }, over what's kept.
+    function placeWidgets(places: var): void {
+        root.widgetPlaces = Object.assign({}, root.widgetPlaces, places);
+        root.saveWidgets();
+    }
+
+    function arrangeWidgets(): void {
+        root.hide();
+        root.arranging = true;
     }
 
     function liveWallpaper(name: string): void {
@@ -438,9 +460,17 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const chosen = JSON.parse(text);
-                    if (Array.isArray(chosen))
-                        root.widgets = chosen;
+                    const kept = JSON.parse(text);
+                    // Before places were kept, the file was only the list of those on.
+                    const on = Array.isArray(kept) ? kept : kept?.on;
+                    if (Array.isArray(on))
+                        root.widgets = on.filter(name => Config.widgets.indexOf(name) >= 0);
+                    const places = {};
+                    for (const [name, at] of Object.entries(kept?.at ?? {})) {
+                        if (Array.isArray(at) && at.length === 2 && at.every(n => Number.isFinite(n) && n >= 0))
+                            places[name] = [Math.round(at[0]), Math.round(at[1])];
+                    }
+                    root.widgetPlaces = places;
                 } catch (error) {
                 }
             }
@@ -633,6 +663,14 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: root.report(text)
         }
+    }
+
+    IpcHandler {
+        target: "widgets"
+
+        function arrange(): void { root.arrangeWidgets(); }
+        function done(): void { root.arranging = false; }
+        function list(): string { return JSON.stringify({ on: root.widgets, at: root.widgetPlaces }); }
     }
 
     IpcHandler {

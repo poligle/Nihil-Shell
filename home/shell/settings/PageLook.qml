@@ -87,6 +87,18 @@ Flickable {
             title: Lang.cfgWidgets
         }
 
+        // Not in the welcome, which can't step aside for the desktop.
+        Setting {
+            visible: Machine.widgets.length > 0 && !Machine.welcoming
+            title: Lang.cfgWidgetsArrange
+            sub: Lang.cfgWidgetsArrangeSub
+
+            KeyButton {
+                text: Lang.cfgArrange
+                onClicked: Machine.arrangeWidgets()
+            }
+        }
+
         Repeater {
             model: Config.widgets
 
