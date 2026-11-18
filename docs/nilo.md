@@ -1,7 +1,7 @@
 # Nilo
 
 <p align="center">
-  <img src="assets/screens/nilo.png" width="720" alt="Nilo in the launcher, writing: its two eyes, qwen3.5:9b chosen on its own, the question and the start of the answer.">
+  <img src="assets/screens/nilo.webp" width="720" alt="Nilo in the launcher, writing: its two eyes, qwen3.5:9b chosen on its own, the question and the start of the answer.">
 </p>
 
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
@@ -114,7 +114,7 @@ shows it before you confirm. That is the noreply address of
 to yours: [`assets/brand/nilo-avatar.png`](../assets/brand/nilo-avatar.png).
 
 <p align="center">
-  <img src="assets/screens/nilo-done.png" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, fastfetch in dots.">
+  <img src="assets/screens/nilo-done.webp" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, fastfetch in dots.">
 </p>
 
 <sub>Closed while it thinks, Nilo says when it's done, out of the bar.</sub>

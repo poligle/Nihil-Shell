@@ -24,12 +24,12 @@
   says when it was made, its NixOS, kernel and NIHIL, and which packages it changed;
   one click goes back to it, now and at boot, or boots it just once. How long they stay,
   and cleaning now, with what it frees.
-- **The phone as a deck.** With [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher) on Android, paired with a QR
-  from Preferences, the phone opens the computer's apps and web pages, plays and skips
+- **Devices.** With [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher) on Android, a phone or a tablet paired with a QR
+  from Preferences opens the computer's apps and web pages, plays and skips
   its music, turns its volume, locks it and is its trackpad, with this desktop's gestures;
   the dashboard's kanban stays in sync with it, and Vector carries things either way.
   Over HTTPS pinned to this computer. See
-  [The phone as a deck](phone.md).
+  [Devices](devices.md).
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](install.md).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for

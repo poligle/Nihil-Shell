@@ -28,7 +28,7 @@ OFL 1.1), plus JetBrains Mono Nerd Font for the terminal and glyphs. Icons: Coll
 its grey variant; the shell shows app icons desaturated.
 
 <p align="center">
-  <img src="assets/screens/glass/terminal.png" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
+  <img src="assets/screens/glass/terminal.webp" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
 </p>
 
 **Smoked glass**, off unless chosen in Preferences, Desktop: the frame, its drawers and every
@@ -53,9 +53,9 @@ the switch reaches the kitties already open (they read their configuration again
 
 | | |
 |:---:|:---:|
-| ![The dashboard in smoked glass](assets/screens/glass/dashboard.png) | ![Every workspace in smoked glass](assets/screens/glass/overview.png) |
+| ![The dashboard in smoked glass](assets/screens/glass/dashboard.webp) | ![Every workspace in smoked glass](assets/screens/glass/overview.webp) |
 | The dashboard, Vector holding what the phone sent | Every workspace, with its windows <kbd>SUPER</kbd> <kbd>A</kbd> |
-| ![Quick settings in smoked glass](assets/screens/glass/settings.png) | ![Preferences in smoked glass](assets/screens/glass/preferences.png) |
+| ![Quick settings in smoked glass](assets/screens/glass/settings.webp) | ![Preferences in smoked glass](assets/screens/glass/preferences.webp) |
 | Quick settings | Preferences, Desktop |
 
 <sub>Every picture, plain and in smoked glass, is in [`docs/assets/screens`](assets/screens)

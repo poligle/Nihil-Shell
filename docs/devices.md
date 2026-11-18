@@ -1,4 +1,4 @@
-# The phone as a deck
+# Devices: phone, tablet and watch as decks
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
 its apps and web pages open here, its music plays and skips, its volume goes up and down,

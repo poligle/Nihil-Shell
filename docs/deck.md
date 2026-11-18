@@ -1,9 +1,9 @@
-# The deck: the phone opens things on the computer
+# The deck: a device opens things on the computer
 
 [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), on Android, can be a deck for a NIHIL computer: it opens the computer's
 apps and web pages, plays and skips its music, turns its volume, locks it, is its
 trackpad and carries things to it and from it (Vector). This is what the computer offers,
-for whoever writes the phone's side.
+for whoever writes the device's side.
 
 The computer's side is `nihil-deck` ([`home/deck/deck.py`](../home/deck/deck.py)), a
 service in the user's session. Preferences, Devices turns it on (`settings.json`'s
@@ -295,7 +295,7 @@ A status and `{ "error": "…" }`:
 | 503 | `shell`, `volume`, `lock`, `trackpad`, `vector` | The shell (or the sound, the lock, the trackpad, Vector) is not answering |
 | 503 | `access` | This session may not make the trackpad yet: log out and in once |
 
-## On the phone
+## On the device
 
 - The token is a password: keep it encrypted (Android Keystore), never in logs.
 - No pin, no request: a certificate that doesn't match is not the computer.

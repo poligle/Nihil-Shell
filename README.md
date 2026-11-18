@@ -16,7 +16,7 @@
   <a href="https://github.com/poligle/Nihil-Wear">Watch for Wear OS</a>
 </p>
 
-![NIHIL desktop](docs/assets/screens/desktop.png)
+![NIHIL desktop](docs/assets/screens/desktop.webp)
 
 NIHIL is a personal NixOS configuration. It takes the structure of
 [Caelestia](https://github.com/caelestia-dots/shell), a frame around the screen with
@@ -31,15 +31,15 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
 
 | | |
 |:---:|:---:|
-| ![Dashboard](docs/assets/screens/dashboard.png) | ![Quick settings](docs/assets/screens/settings.png) |
+| ![Dashboard](docs/assets/screens/dashboard.webp) | ![Quick settings](docs/assets/screens/settings.webp) |
 | Dashboard <kbd>SUPER</kbd> <kbd>D</kbd> | Quick settings <kbd>SUPER</kbd> <kbd>P</kbd> |
-| ![Launcher](docs/assets/screens/launcher.png) | ![Clipboard history](docs/assets/screens/clipboard.png) |
+| ![Launcher](docs/assets/screens/launcher.webp) | ![Clipboard history](docs/assets/screens/clipboard.webp) |
 | Launcher <kbd>SUPER</kbd> <kbd>Space</kbd> | Clipboard history, holding <kbd>SUPER</kbd> <kbd>V</kbd> |
-| ![Wallpapers](docs/assets/screens/wallpapers.png) | ![Preferences](docs/assets/screens/preferences.png) |
+| ![Wallpapers](docs/assets/screens/wallpapers.webp) | ![Preferences](docs/assets/screens/preferences.webp) |
 | Wallpapers in dots <kbd>SUPER</kbd> <kbd>W</kbd> | Preferences <kbd>SUPER</kbd> <kbd>O</kbd> |
 
 <p align="center">
-  <img src="docs/assets/screens/glass/terminal.png" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
+  <img src="docs/assets/screens/glass/terminal.webp" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
 </p>
 
 <p align="center"><sub>The same, in smoked glass: one switch in Preferences.</sub></p>
@@ -52,7 +52,7 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
   what is really behind them.
 - **Nilo,** an assistant with a model that runs here, and as much of the system as you
   give it: a chat, a repository, or the whole desktop.
-- **The phone and the watch as decks,** with [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher)
+- **Devices as decks,** a phone, a tablet and the watch, with [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher)
   and [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear), and Vector to carry
   things between them and this computer.
 - **Preferences,** the whole system on one sheet, applied as a rebuild, with every
@@ -67,7 +67,7 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
 - [Install, and keep it current](docs/install.md)
 - [Keys, commands and options](docs/reference.md)
 - [Nilo](docs/nilo.md)
-- [The phone as a deck](docs/phone.md), and [its protocol](docs/deck.md)
+- [Devices](docs/devices.md), and [the deck's protocol](docs/deck.md)
 - [Design](docs/design.md)
 - [Inside NIHIL](docs/inside.md)
 
@@ -79,14 +79,20 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
 - [Quickshell](https://quickshell.org), [Hyprland](https://hyprland.org),
   [Stylix](https://github.com/nix-community/stylix) and
   [Home Manager](https://github.com/nix-community/home-manager).
-- The NixOS snowflake (by Tim Cuthbertson, CC BY 4.0) is drawn as LEDs from the
-  Material Design Icons glyph shipped with Nerd Fonts.
+- The NixOS logo, by Simon Frankau, Tim Cuthbertson and Daniel Baker for the NixOS Project
+  ([NixOS/branding](https://github.com/NixOS/branding)), is licensed under
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); NIHIL's mark redraws it as dots.
+  NIHIL is not affiliated with or endorsed by the NixOS project.
+- The Android robot is reproduced or modified from work created and shared by Google and used
+  according to terms described in the Creative Commons 3.0 Attribution License.
+  Android is a trademark of Google LLC.
 - Fonts: Doto, Space Grotesk and Space Mono (SIL OFL 1.1), JetBrains Mono (SIL OFL 1.1).
   The website ships subsets of the first three, with their licence in `docs/assets/fonts`.
 - Icons: [Colloid](https://github.com/vinceliuice/Colloid-icon-theme) by Vince Liuice
   (GPL-3.0), installed from nixpkgs.
 
-Code, sounds and brand assets in this repository are MIT licensed (see `LICENSE`).
+The code and NIHIL's own sounds are MIT licensed (see `LICENSE`); the logos keep the licences
+above, and [`sounds/CREDITS.md`](sounds/CREDITS.md) says where each sound comes from.
 
 ## Notes
 
