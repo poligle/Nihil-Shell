@@ -15,6 +15,7 @@ version takes its place (`sudo nihil-install`, from any console):
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
+gh attestation verify nihil-*.iso -R poligle/Nihil-Shell    # built by this repository's CI, from its commit
 sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: the stick
 ```
 

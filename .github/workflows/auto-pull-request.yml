@@ -2,9 +2,7 @@ name: Automatic pull request
 
 on:
   push:
-    branches-ignore:
-      - nihil
-      - inputs
+    branches: [ features ]
 
 permissions:
   contents: read
@@ -18,6 +16,7 @@ jobs:
   open-pull-request:
     name: Open pull request
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Create a pull request if one does not exist
         env:

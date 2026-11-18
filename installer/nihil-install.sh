@@ -29,10 +29,12 @@ t() {
 emit() { jq -cn --arg kind "$1" --arg text "$2" '{ kind: $kind, text: $text }' >&3 2> /dev/null || true; }
 say() { if [ "$gui" = yes ]; then emit step "$*"; else gum style --foreground 15 "$@"; fi; }
 dim() { if [ "$gui" = yes ]; then printf '%s\n' "$*"; else gum style --foreground 7 "$@"; fi; }
+# Says why, and ends with 3, which the EXIT trap leaves alone: called in a $(…), the shell around
+# it ends with 3 too, without the general «stopped here» on top of the reason.
 fail() {
     if [ "$gui" = yes ]; then emit error "$*"; else gum style --foreground 1 "$@" >&2; fi
     trap - EXIT
-    exit 1
+    exit 3
 }
 
 # One installation at a time: the window's, a text one started after it, and finish.
@@ -80,7 +82,7 @@ if [ "$(id -u)" != 0 ]; then
 fi
 
 exec 3>&1
-trap 'if [ "$?" != 0 ]; then
+trap 'status=$?; if [ "$status" != 0 ] && [ "$status" != 3 ]; then
     if [ "$gui" = yes ]; then
         emit error "$(t insStoppedHere)"
     else
@@ -687,6 +689,10 @@ apply_plan() {
             case ${name,,} in
                 boot|microsoft|systemd|linux|nixos) continue ;;
             esac
+            # Written into a Nix string: a name FAT allows, with $ { } or ', would break it.
+            case $name in
+                *[!A-Za-z0-9._-]*) continue ;;
+            esac
             for file in shimx64.efi grubx64.efi; do
                 if [ -f "$dir$file" ]; then
                     loader+=$(printf "\n\t# %s, on the EFI partition before NIHIL.\n\tboot.loader.systemd-boot.extraEntries.\"%s.conf\" = ''\n\t\ttitle %s\n\t\tefi /EFI/%s/%s\n\t'';" \
@@ -855,6 +861,8 @@ apply_answers() {
     valid_user "$username" || fail "$(t insBadUser)"
     password=$(get .password)
     [ -n "$password" ] || fail "$(t insEmptyPassword)"
+    # chpasswd takes a line: a control character in it would end up as another.
+    [[ $password != *[[:cntrl:]]* ]] || fail "$(t insBadPassword)"
     hostname=$(get .host)
     valid_host "$hostname" || fail "$(t insBadHost)"
     candidate=$(get .disk)
@@ -866,6 +874,7 @@ apply_answers() {
         encrypt=yes
         passphrase=$(get .passphrase)
         [ -n "$passphrase" ] || fail "$(t insEmptyPassphrase)"
+        [[ $passphrase != *[[:cntrl:]]* ]] || fail "$(t insBadPassword)"
     fi
     mode=$(get .mode)
     reset_plan
@@ -995,7 +1004,10 @@ main_tui() {
 
     layout=$(gum choose --header "$(t insKeyboard)" us es gb de fr it pt latam other)
     if [ "$layout" = other ]; then
-        layout=$(gum input --header "$(t insXkbLayout)" --placeholder "br")
+        layout=""
+        until [ -n "$layout" ] && grep -q "^ *$layout " "$(find -L "$NIHIL_XKB" -name base.lst -print -quit)"; do
+            layout=$(gum input --header "$(t insXkbLayout)" --placeholder "br")
+        done
     fi
     keymap=$(keymap_of "$layout")
     if ! loadkeys "$keymap" >/dev/null 2>&1; then
@@ -1003,6 +1015,9 @@ main_tui() {
     fi
 
     zone=$(guess_zone)
+    if [ -n "$zone" ] && ! timedatectl list-timezones | grep -qxF "$zone"; then
+        zone=""
+    fi
     if [ -z "$zone" ] || ! gum confirm "$(t insZoneAsk "$zone")" \
             --affirmative "$(t insYes)" --negative "$(t insAnother)"; then
         zone=$(timedatectl list-timezones | gum filter --header "$(t insZone)")
@@ -1101,8 +1116,11 @@ main_tui() {
             dim "$(t insWindowsElsewhere "$elsewhere")"
         fi
     fi
-    gum confirm "$(t insInstallAsk)" --affirmative "$(t insInstall)" --negative "$(t insCancel)" \
-        --default=false || exit 1
+    if ! gum confirm "$(t insInstallAsk)" --affirmative "$(t insInstall)" --negative "$(t insCancel)" \
+            --default=false; then
+        trap - EXIT
+        exit 1
+    fi
 
     apply_plan
 
@@ -1126,10 +1144,12 @@ case ${1:-} in
         ;;
     check-media)
         gui=yes
+        trap - EXIT
         check_media
         ;;
     check-filesystem)
         gui=yes
+        trap - EXIT
         check_filesystem "${2:?}"
         ;;
     finish)
