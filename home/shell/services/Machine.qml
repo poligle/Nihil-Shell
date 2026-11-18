@@ -150,7 +150,11 @@ Singleton {
     function show(name: string, welcome: bool): void {
         root.screen = Hyprland.focusedMonitor?.name ?? "";
         root.welcoming = welcome;
-        root.page = name !== "" ? name : (welcome ? "hello" : "you");
+        // What the last password change came to isn't news on the next visit; one under way is.
+        if (!passwd.running)
+            root.passwordState = "";
+        // «phone», as the page was called before it had devices of every kind.
+        root.page = name === "phone" ? "devices" : name !== "" ? name : (welcome ? "hello" : "you");
         root.shown = true;
         if (root.timeZones.length === 0 && !zones.running)
             zones.running = true;

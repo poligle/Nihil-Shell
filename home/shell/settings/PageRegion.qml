@@ -116,7 +116,7 @@ Flickable {
 
         Setting {
             title: Lang.cfgTimeZone
-            sub: Machine.get("timeZone", "UTC")
+            sub: Machine.get("timeZone", "UTC").replace(/_/g, " ")
 
             Field {
                 id: zoneField

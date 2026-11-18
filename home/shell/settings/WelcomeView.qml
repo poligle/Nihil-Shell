@@ -23,6 +23,9 @@ Item {
     // While the finger is awaited, the password can be typed instead, as in Preferences.
     readonly property bool fingerWait: last && Machine.phase === "auth" && Machine.auth === "finger"
     readonly property string firstName: String(Machine.get("user.fullName", "")).trim().split(" ")[0]
+    // What it says of the touchpad is true of these only, each with three fingers: changed, or off,
+    // it says nothing of them.
+    readonly property bool threeFingers: ["workspaces", "close", "launcher", "maximize"].every(name => (Config.gestures ?? {})[name] === 3)
 
     function key(name: string): string {
         const combo = Config.binds[name];
@@ -176,7 +179,7 @@ Item {
             Heading {
                 Layout.bottomMargin: 10
                 title: Lang.welBasicsTitle
-                sub: Lang.welBasicsBody
+                sub: root.threeFingers ? Lang.welBasicsBody : Lang.welBasicsKeys
             }
 
             // Two columns of short rows: as many keys as there may be fit in the window, which
@@ -245,6 +248,7 @@ Item {
             Txt {
                 Layout.fillWidth: true
                 Layout.topMargin: 12
+                visible: root.threeFingers
                 text: Lang.welGestures
                 color: Tokens.dim
                 wrapMode: Text.WordWrap

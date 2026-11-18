@@ -123,6 +123,7 @@ let
 		    readonly property var binds: (${builtins.toJSON nihil.binds})
 		    readonly property var bindDefaults: (${builtins.toJSON nihil.bindDefaults.keys})
 		    readonly property var gestureDefaults: (${builtins.toJSON nihil.bindDefaults.gestures})
+		    readonly property var gestures: (${builtins.toJSON nihil.gestures})
 		    readonly property var programs: (${builtins.toJSON nihil.programs})
 		}
 	'';

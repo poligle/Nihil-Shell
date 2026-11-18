@@ -165,7 +165,7 @@ call() {
 invite() {
     local serial=$1 uri name
     uri=$(nihil-deck pair --json | jq -r '.uri // empty') || true
-    [ -n "$uri" ] || fail "$(t watchNoInvite "$(t cfgTitle), $(t cfgPhone), $(t deckUse)")"
+    [ -n "$uri" ] || fail "$(t watchNoInvite "$(t cfgTitle), $(t cfgDevices), $(t deckUse)")"
     name=$(call "$serial" invite "$uri")
     adb -s "$serial" shell input keyevent KEYCODE_WAKEUP
     adb -s "$serial" shell am start -n "$package/.ProbeActivity" > /dev/null
