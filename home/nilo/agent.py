@@ -21,6 +21,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unicodedata
@@ -30,6 +31,7 @@ import urllib.request
 
 PROTOCOL = 1
 MAX_ROUNDS = 16
+MAX_CALLS = 24              # tools one answer can use, in all its rounds: the rest get an error
 PAGE_CHARS = 6000
 DIFF_CHARS = 3000
 CONFIRM_SECONDS = 300
@@ -636,15 +638,20 @@ HOME_FILES = {
                   "file, use edit_file.",
 }
 
+# What a card marks, with the red edge: a verb at the start of a command, after a separator, or
+# after a quote, as in bash -c 'rm -rf ~/x'. Not all there is: the card shows the command whole.
+START = r"""(^|[;&|(\s'"`])"""
 RISKS = [
-    ("root", r"(^|[;&|(\s])(sudo|doas|pkexec|run0)\s"),
-    ("delete", r"(^|[;&|(\s])(rm\s+(-\w*[rRf]|--recursive|--force)|shred\s|find\s.*-delete\b|truncate\s)"),
-    ("disk", r"(^|[;&|(\s])(mkfs\S*|wipefs|fdisk|sfdisk|parted|sgdisk|cryptsetup|dd)\s|>\s*/dev/(sd|nvme|mmcblk|vd)"),
-    ("git", r"\bgit\s+(push\s.*(--force|-f\b|--delete)|reset\s+--hard|clean\s+-\w*f|branch\s+-D|checkout\s+--\s|restore\s)"),
-    ("power", r"(^|[;&|(\s])(shutdown|reboot|poweroff|halt|systemctl\s+(--\S+\s+)*(poweroff|reboot|halt|suspend|hibernate|kexec))\b"),
+    ("root", START + r"(sudo|doas|pkexec|run0)\s"),
+    ("delete", START + r"(rm\s+(-\w*[rRf]|--recursive|--force)|shred\s|find\s.*-delete\b|truncate\s)"),
+    ("disk", START + r"(mkfs\S*|wipefs|fdisk|sfdisk|parted|sgdisk|cryptsetup|dd)\s|>\s*/dev/(sd|nvme|mmcblk|vd)"),
+    ("git", r"\bgit\s+(push\s(.*\s)?(--force|-f\b|--delete|\+\S)|reset\s+--hard|clean\s+-\w*f|branch\s+-D|checkout\s+--\s|restore\s)"),
+    ("power", START + r"(shutdown|reboot|poweroff|halt|systemctl\s+(--\S+\s+)*(poweroff|reboot|halt|suspend|hibernate|kexec))\b"),
     ("system", r"\b(nixos-rebuild|nix-collect-garbage|nix-env)\b|\bsystemctl\s+(--\S+\s+)*(stop|disable|mask|restart|kill)\b|\bnix\s+(profile\s+(remove|wipe-history)|store\s+(delete|gc))"),
     ("permissions", r"\bch(mod|own|grp)\s+(-\w*R|--recursive)"),
-    ("internet", r"\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba|z|da)?sh\b"),
+    ("internet", r"\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba|z|da)?sh\b|\b(curl|wget)\b.*[;&\n]\s*(sudo\s+)?(ba|z|da)?sh\s+\S"),
+    ("script", START + r"(((ba|z|da|k|fi)?sh|python[\d.]*)\s+-\w*c\b|(perl|ruby|node|lua)\s+-\w*e\b|php\s+-r\b)|"
+               r"""(^|[;&|(]\s*|['"`])eval\s"""),
 ]
 
 
@@ -1746,15 +1753,17 @@ class Tools:
 
     @staticmethod
     def put(full, text):
+        # A temporary file of its own, made new: a name anyone could guess, opened as it was, would
+        # follow a link left there and write wherever it points.
         mode = os.stat(full).st_mode & 0o7777 if os.path.exists(full) else 0o644
-        tmp = f"{full}.nilo-{os.getpid()}"
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(full) or ".", prefix=".nilo-")
         try:
-            with open(tmp, "w", encoding="utf-8", newline="") as f:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
                 f.write(text)
-            os.chmod(tmp, mode)
+                os.fchmod(f.fileno(), mode)
             os.replace(tmp, full)
         finally:
-            if os.path.exists(tmp):
+            if os.path.lexists(tmp):
                 os.remove(tmp)
 
     def edit_file(self, path, old, new, cancel=None):
@@ -3310,7 +3319,7 @@ class Agent:
         self.ensure_ollama()
         if not self.state["loaded"]:
             self.room(model)
-        rounds = 0
+        rounds = used = 0
         while rounds < MAX_ROUNDS:
             rounds += 1
             tools = [] if self.no_tools or rounds == MAX_ROUNDS else self.tools.schemas(self.settings)
@@ -3370,7 +3379,11 @@ class Agent:
                 shown = {k: v[:200] if isinstance(v, str) else v for k, v in args.items()} if isinstance(args, dict) else args
                 self.out("tool", id=tid, name=name, args=shown, status="running")
                 self.current_tool = tid
-                result, facts = self.tools.run(name, args, cancel)
+                used += 1
+                if used > MAX_CALLS:
+                    result, facts = {"error": f"that is more than {MAX_CALLS} tools for one answer: answer with what you have"}, {"ok": False}
+                else:
+                    result, facts = self.tools.run(name, args, cancel)
                 self.out("tool", id=tid, name=name, status="done", **facts)
                 picture = result.pop("_image", None)
                 message = {"role": "tool", "tool_name": name, "content": json.dumps(result, ensure_ascii=False)}

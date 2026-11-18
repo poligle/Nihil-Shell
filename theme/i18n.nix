@@ -275,6 +275,7 @@
 		dangerSystem = "cambia el sistema";
 		dangerPermissions = "cambia permisos";
 		dangerInternet = "ejecuta un script de internet";
+		dangerScript = "ejecuta código escrito en la orden";
 		confirmType = "Escribir en %1";
 		confirmKeys = "Pulsar en %1";
 		confirmSend = "Enviar al móvil";
@@ -1031,6 +1032,7 @@
 		dangerSystem = "changes the system";
 		dangerPermissions = "changes permissions";
 		dangerInternet = "runs a script from the internet";
+		dangerScript = "runs code written into it";
 		confirmType = "Type in %1";
 		confirmKeys = "Press in %1";
 		confirmSend = "Send to the phone";
