@@ -145,13 +145,13 @@ install_latest() {
     rm -rf "$dir"
 }
 
+# What it hands the watch goes through adb's stdin, not a command line: an invitation, code and
+# all, is in no one's ps, here or on the watch, while it waits to be used.
 call() {
     local serial=$1 method=$2 arg=${3:-} out
-    if [ -n "$arg" ]; then
-        out=$(adb -s "$serial" shell "content call --uri $provider --method $method --arg '$arg'")
-    else
-        out=$(adb -s "$serial" shell "content call --uri $provider --method $method")
-    fi
+    # shellcheck disable=SC2016 # $arg is the watch's, from the line it reads
+    out=$(printf '%s\n' "$arg" | adb -s "$serial" shell \
+        "read -r arg; content call --uri $provider --method $method"' ${arg:+--arg "$arg"}')
     out=${out%$'\r'}
     case $out in
         "Result: Bundle[{"*"}]") ;;
@@ -174,6 +174,7 @@ invite() {
 
 halo() {
     local serial=$1 service="$package/$package.system.HaloService" enabled
+    t watchHalo; echo
     adb -s "$serial" shell cmd notification allow_listener "$package/$package.system.GlyphListener"
     enabled=$(adb -s "$serial" shell settings get secure enabled_accessibility_services | tr -d '\r')
     case ":$enabled:" in
@@ -184,6 +185,16 @@ halo() {
     adb -s "$serial" shell settings put secure accessibility_enabled 1
 }
 
+# Wireless debugging lets whatever paired with the watch install anything on it: off, if wanted.
+unplug() {
+    local serial=$1 answer
+    case $serial in *:* | *._adb-tls-connect.*) ;; *) return 0 ;; esac
+    read -rp "$(t watchAskDebugOff)" answer
+    case $answer in
+        [yYsS]*) adb -s "$serial" shell settings put global adb_wifi_enabled 0 > /dev/null 2>&1 || true ;;
+    esac
+}
+
 case ${1:-install} in
     install)
         serial=$(watch) || { pair; serial=$(watch); }
@@ -191,6 +202,7 @@ case ${1:-install} in
         invite "$serial"
         halo "$serial" || { t watchNoHalo; echo; }
         say "$(t watchDone)"
+        unplug "$serial"
         ;;
     update)
         serial=$(watch) || fail "$(t watchNoWatch)"
@@ -199,6 +211,7 @@ case ${1:-install} in
             invite "$serial"
         fi
         say "$(t watchUpdated)"
+        unplug "$serial"
         ;;
     forget)
         serial=$(watch) || fail "$(t watchNoWatch)"

@@ -3,6 +3,7 @@
 
 import argparse
 import base64
+import codecs
 import collections
 import errno
 import fcntl
@@ -30,6 +31,7 @@ import sys
 import tempfile
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -39,13 +41,18 @@ PORT = 64445                    # NIHIL on a phone's keypad
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 8
 CODE_LIFETIME = 300             # seconds a code pairs
-CODE_ATTEMPTS = 5
+CODES_OPEN = 4                  # codes open at once: the QR's, a watch's, a terminal's
+CODE_TRIES = 30                 # wrong codes a minute, from anyone, before every try waits
+TOKEN_DAYS = 90                 # a device not seen in these many days is forgotten
 MAX_BODY = 4096
-TASKS_MAX = 256 * 1024     # a phone's whole kanban
+TASKS_MAX = 2 * 1024 * 1024     # a phone's whole kanban: 1000 long cards and 10,000 removals
 VECTOR_MAX = 100 * 1024 * 1024
 VECTOR_TEXT = 256 * 1024
 VECTOR_WAIT = 50
 VECTOR_LIVE = 120
+VECTOR_SPARE = 1024 ** 3        # free space an upload has to leave on the disk
+NAME_BYTES = 240                # a file's name: Linux takes 255, and « (2)» needs room
+SNIFF = 4096                    # the bytes a file is told by
 CHUNK = 64 * 1024
 COVER_MAX = 4 * 1024 * 1024
 CARDS_MAX = 1000
@@ -209,10 +216,21 @@ class Devices:
                           if isinstance(item, dict) and isinstance(item.get("token"), str) and isinstance(item.get("id"), str)]
         except (FileNotFoundError, ValueError, AttributeError):
             self.items = []
+        for item in self.items:
+            if not isinstance(item.get("seen"), int) or isinstance(item.get("seen"), bool):
+                item["seen"] = int(now())
 
     def _save(self):
         write_private(self.path, json.dumps({"devices": self.items}, indent=2) + "\n")
         self.saved = now()
+
+    # A device not seen in TOKEN_DAYS is forgotten, as from Devices: one lost in a drawer doesn't
+    # keep this computer for good.
+    def _sweep(self):
+        kept = [item for item in self.items if now() - item["seen"] <= TOKEN_DAYS * 86400]
+        if len(kept) != len(self.items):
+            self.items = kept
+            self._save()
 
     def add(self, name):
         token = secrets.token_urlsafe(32)
@@ -232,6 +250,7 @@ class Devices:
         wanted = digest(token)
         found = None
         with self.lock:
+            self._sweep()
             for item in self.items:
                 if hmac.compare_digest(item["token"], wanted):
                     found = item
@@ -250,6 +269,7 @@ class Devices:
 
     def known(self, device):
         with self.lock:
+            self._sweep()
             return any(item["id"] == device for item in self.items)
 
     def forget(self, device):
@@ -263,49 +283,69 @@ class Devices:
 
     def listing(self):
         with self.lock:
-            return [{key: item.get(key) for key in ("id", "name", "paired", "seen")} for item in self.items]
+            self._sweep()
+            return [{**{key: item.get(key) for key in ("id", "name", "paired", "seen")},
+                     "expires": item["seen"] + TOKEN_DAYS * 86400} for item in self.items]
 
 
 class Pairing:
 
     def __init__(self):
         self.lock = threading.Lock()
-        self.code = None
-        self.expires = 0
-        self.attempts = 0
+        self.codes = {}             # each code open: (when it stops pairing, its invite); each pairs once
+        self.wrong = collections.deque()    # when wrong codes came, from anyone
         self.asking = {}            # devices with the right code, waiting for the computer to allow them
 
+    def _sweep(self):
+        moment = now()
+        for code, (expires, _) in list(self.codes.items()):
+            if moment > expires:
+                del self.codes[code]
+        while self.wrong and self.wrong[0] <= moment - FAIL_WINDOW:
+            self.wrong.popleft()
+
+    # Several at once, each its own: the QR in Devices and a watch being installed don't undo
+    # each other. Past CODES_OPEN, the oldest goes.
     def open(self):
         with self.lock:
-            self.code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
-            self.expires = now() + CODE_LIFETIME
-            self.attempts = 0
-            return self.code, self.expires
+            self._sweep()
+            code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
+            invite = secrets.token_hex(4)
+            self.codes[code] = (now() + CODE_LIFETIME, invite)
+            while len(self.codes) > CODES_OPEN:
+                del self.codes[min(self.codes, key=lambda key: self.codes[key][0])]
+            return code, self.codes[code][0], invite
 
-    def close(self):
+    def close(self, invite=None):
         with self.lock:
-            self.code = None
+            for code, (_, which) in list(self.codes.items()):
+                if invite is None or which == invite:
+                    del self.codes[code]
+
+    def invites(self):
+        with self.lock:
+            self._sweep()
+            return [invite for _, invite in self.codes.values()]
 
     @property
     def open_now(self):
-        with self.lock:
-            return self.code is not None and now() <= self.expires
+        return bool(self.invites())
 
+    # Wrong, run out or used, a code gets the same answer, so trying says nothing of when this
+    # computer is pairing; and failing doesn't close it, so no one can spoil the code in the QR.
+    # Past CODE_TRIES wrong ones a minute, from anyone, every try waits.
     def take(self, code):
         with self.lock:
-            if self.code is None:
-                return "closed"
-            if now() > self.expires:
-                self.code = None
-                return "expired"
-            given = str(code or "").strip().upper()
-            if not hmac.compare_digest(given.encode(), self.code.encode()):
-                self.attempts += 1
-                if self.attempts >= CODE_ATTEMPTS:
-                    self.code = None
-                return "wrong"
-            self.code = None
-            return "ok"
+            self._sweep()
+            if len(self.wrong) >= CODE_TRIES:
+                return "wait"
+            given = str(code or "").strip().upper().encode()
+            for known in list(self.codes):
+                if hmac.compare_digest(given, known.encode()):
+                    del self.codes[known]
+                    return "ok"
+            self.wrong.append(now())
+            return "wrong"
 
     # The code alone doesn't pair: whoever saw the QR could have it. The computer is asked first.
     def ask(self, name):
@@ -539,9 +579,10 @@ class Session:
         return self.toggles().get(kind)
 
     def notify(self, title, body):
+        # A body is markup, as the notification spec has it: what it says is shown as written.
         command = [self.config["notify"], "-a", "NIHIL", "--", title]
         if body:
-            command.append(body)
+            command.append(html.escape(body, quote=False))
         self.run(command)
 
 
@@ -672,7 +713,10 @@ def clean_board(body):
                 "textStamp": stamps[0], "placeStamp": stamps[1]}
         rank = card.get("rank")
         if rank is not None:
-            if not isinstance(rank, (int, float)) or isinstance(rank, bool) or not math.isfinite(rank):
+            if not isinstance(rank, (int, float)) or isinstance(rank, bool):
+                return None
+            # A whole number is checked as one: 10^400 has no float to be, and isfinite would raise.
+            if not (abs(rank) <= 2 ** 53 if isinstance(rank, int) else math.isfinite(rank)):
                 return None
             kept["rank"] = rank
         clean.append(kept)
@@ -939,6 +983,7 @@ def stream(reader, writer, pad, clock=time.monotonic):
 
 
 FAVICON_DAYS = 7
+FAVICONS_KEPT = 500
 PAGE_MAX = 512 * 1024
 FAVICON_MAX = 256 * 1024
 FETCH_TIMEOUT = 5
@@ -966,10 +1011,47 @@ class PublicRedirects(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
+def reached(sock):
+    """Where a connection went, checked once it's there: a name can answer public when it's
+    looked up and this computer's network when it's connected to (DNS rebinding)."""
+    try:
+        ip = ipaddress.ip_address(sock.getpeername()[0].split("%")[0])
+    except (OSError, ValueError):
+        ip = None
+    if ip is not None and ip.version == 6 and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    if PUBLIC_ONLY and (ip is None or not ip.is_global):
+        sock.close()
+        raise OSError("connected somewhere not public")
+
+
+class PublicHTTPConnection(http.client.HTTPConnection):
+    def connect(self):
+        super().connect()
+        reached(self.sock)
+
+
+class PublicHTTPSConnection(http.client.HTTPSConnection):
+    def connect(self):
+        super().connect()
+        reached(self.sock)
+
+
+class PublicHTTP(urllib.request.HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(PublicHTTPConnection, req)
+
+
+class PublicHTTPS(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(PublicHTTPSConnection, req, context=self._context)
+
+
 def fetch(url, limit, whole=True):
     if not valid_url(url) or not public(urllib.parse.urlsplit(url).hostname):
         raise ValueError("not a public web page")
-    opener = urllib.request.build_opener(PublicRedirects())
+    # No proxy: the address checked has to be the one asked.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), PublicHTTP(), PublicHTTPS(), PublicRedirects())
     request = urllib.request.Request(url, headers={"User-Agent": "NIHIL deck (icons)", "Accept": "*/*"})
     with opener.open(request, timeout=FETCH_TIMEOUT) as response:
         data = response.read(limit + 1)
@@ -1080,7 +1162,36 @@ def favicon(url, rsvg, cache):
     with os.fdopen(fd, "wb") as file:
         file.write(found[0] if found else b"")
     os.replace(temporary, path)
+    prune(cache)
     return found
+
+
+# The icons kept, misses too, go after their week, and past FAVICONS_KEPT the oldest go: a device
+# can name any number of sites.
+def prune(cache):
+    kept = []
+    try:
+        names = os.listdir(cache)
+    except OSError:
+        return
+    for name in names:
+        path = os.path.join(cache, name)
+        try:
+            moment = os.path.getmtime(path)
+        except OSError:
+            continue
+        if name.startswith("."):
+            if now() - moment > 3600:
+                kept.append((0, path))
+            continue
+        kept.append((moment, path))
+    kept.sort(reverse=True)
+    for index, (moment, path) in enumerate(kept):
+        if index >= FAVICONS_KEPT or now() - moment >= FAVICON_DAYS * 86400:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
 
 
 def addresses(ip):
@@ -1138,12 +1249,79 @@ def clean_mime(value):
     return mime if MIME.fullmatch(mime) else "application/octet-stream"
 
 
+def fit(stem, ending, limit=NAME_BYTES):
+    """A name Linux takes, cut by its bytes, not its characters, and keeping how it ends."""
+    while stem and len((stem + ending).encode()) > limit:
+        stem = stem[:-1]
+    return stem + ending
+
+
 def file_name(value, mime):
     name = os.path.basename(str(value or "").replace("\\", "/"))
-    name = re.sub(r"[\x00-\x1f\x7f]", "", name).strip()[:160]
+    # Without control or format characters: «photo», U+202E, «gpj.desktop» would show as a photo.
+    name = "".join(char for char in name if unicodedata.category(char) not in ("Cc", "Cf", "Zl", "Zp")).strip()
+    stem, extension = os.path.splitext(name)
+    if len(extension.encode()) > 16:
+        stem, extension = name, ""
+    name = fit(stem, extension)
     if name in ("", ".", "..") or name.startswith("."):
         name = time.strftime("Vector_%Y-%m-%d_%H.%M.%S") + EXTENSIONS.get(mime, "")
     return name
+
+
+def told(head):
+    """What a file is by its first bytes, as far as matters here: an image, a video, a PDF or a
+    text, or nothing of those."""
+    if (head.startswith((PNG_MAGIC, b"\xff\xd8\xff")) or head[:6] in (b"GIF87a", b"GIF89a")
+            or (head[:4] == b"RIFF" and head[8:12] == b"WEBP") or head[4:12] in (b"ftypavif", b"ftypheic", b"ftypheix", b"ftypmif1")):
+        return "image"
+    if head[4:8] == b"ftyp" or head.startswith(b"\x1a\x45\xdf\xa3"):
+        return "video"
+    if head.startswith(b"%PDF"):
+        return "pdf"
+    if b"\x00" not in head:
+        try:
+            codecs.getincrementaldecoder("utf-8")().decode(head)
+            return "text"
+        except UnicodeDecodeError:
+            pass
+    return ""
+
+
+def confirmed(mime, path):
+    """What a device says it sent, if its bytes agree for what's shown or opened here (an image,
+    a video, a PDF, a text); otherwise just bytes."""
+    try:
+        with open(path, "rb") as file:
+            head = file.read(SNIFF)
+    except OSError:
+        return "application/octet-stream"
+    seen = told(head)
+    if mime == "image/svg+xml":
+        agrees = seen == "text" and b"<svg" in head.lower()
+    elif mime == "application/pdf":
+        agrees = seen == "pdf"
+    elif kind_of(mime) != "file":
+        agrees = seen == kind_of(mime)
+    else:
+        agrees = True
+    return mime if agrees else "application/octet-stream"
+
+
+# Open hands a file to the program for its type only when it's a picture, a video, a PDF or a
+# text, by its bytes and by its name, which may be what picks the program: anything else, an
+# SVG or a page with scripts among them, is shown in its folder.
+OPENED = (("image/",), ("video/",), ("application/pdf",), ("text/plain", "text/markdown"))
+
+
+def openable(item, path):
+    named = mimetypes.guess_type(os.path.basename(path))[0]
+    if named is None and os.path.splitext(path)[1]:
+        return False
+    for wanted in OPENED:
+        if item["mime"].startswith(wanted) and (named is None or named.startswith(wanted)):
+            return "image/svg+xml" not in (item["mime"], named)
+    return False
 
 
 def vector_item(item):
@@ -1183,6 +1361,8 @@ class Vector:
     def store(self, side, part, name, mime, origin=""):
         folder = self.slot(side)
         mime = clean_mime(mime)
+        if side == "in":
+            mime = confirmed(mime, part)
         name = file_name(name, mime)
         for entry in os.listdir(folder):
             path = os.path.join(folder, entry)
@@ -1265,20 +1445,21 @@ class Deck:
         self.make_trackpad = lambda width, height, resolution: Uinput(config.get("uinput", "/dev/uinput"), width, height, resolution)
         self.streams = {}
         self.streams_lock = threading.Lock()
+        self.uploading = set()      # devices sending to Vector: one thing at a time each
 
     def control(self, request):
         op = request.get("op") if isinstance(request, dict) else None
         if op == "pair":
-            code, expires = self.pairing.open()
+            code, expires, invite = self.pairing.open()
             hosts = addresses(self.config.get("ip"))
-            return {"uri": pair_uri(self.name, self.port, hosts, code, self.pin), "code": code,
+            return {"uri": pair_uri(self.name, self.port, hosts, code, self.pin), "code": code, "invite": invite,
                     "expires": int(expires), "hosts": hosts, "port": self.port, "pin": self.pin}
         if op == "cancel":
-            self.pairing.close()
+            self.pairing.close(str(request.get("invite") or "") or None)
             return {"ok": True}
         if op == "devices":
             return {"devices": self.devices.listing(), "pairing": self.pairing.open_now,
-                    "asking": self.pairing.waiting()}
+                    "invites": self.pairing.invites(), "asking": self.pairing.waiting()}
         if op in ("allow", "deny"):
             return {"ok": self.pairing.answer(str(request.get("id", "")), op == "allow")}
         if op == "forget":
@@ -1395,12 +1576,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return {}
         try:
             body = json.loads(data)
-        except ValueError:
+        except (ValueError, RecursionError):
             return None
         return body if isinstance(body, dict) else None
 
+    def body(self, path):
+        """What a request brings, read once it's known who sends it; None, answered, if it isn't JSON."""
+        found = self.read_body(TASKS_MAX if path == "/v1/tasks" else MAX_BODY)
+        if found is None:
+            self.reply(400, {"error": "body"})
+        return found
+
     def do_GET(self):
-        self.route("GET", {})
+        self.route("GET")
+
+    def do_POST(self):
+        self.route("POST")
 
     def send_file(self, item):
         try:
@@ -1425,8 +1616,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if length <= 0 or length > VECTOR_MAX:
             self.reply(413 if length > VECTOR_MAX else 400, {"error": "big" if length > VECTOR_MAX else "body"})
             return
+        with deck.streams_lock:
+            busy = device["id"] in deck.uploading
+            deck.uploading.add(device["id"])
+        if busy:
+            self.reply(409, {"error": "busy"})
+            return
+        try:
+            self.upload(deck, device, length)
+        finally:
+            with deck.streams_lock:
+                deck.uploading.discard(device["id"])
+
+    def upload(self, deck, device, length):
         vector = deck.vector
         part = vector.part("in")
+        try:
+            free = shutil.disk_usage(os.path.dirname(part)).free
+        except OSError:
+            free = length + VECTOR_SPARE
+        if free - length < VECTOR_SPARE:
+            self.reply(507, {"error": "full"})
+            return
         try:
             with open(part, "wb") as file:
                 left = length
@@ -1449,20 +1660,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         deck.session.ipc("vector", "received")
         self.reply(200, vector_item(item))
 
-    def do_POST(self):
-        path = urllib.parse.urlsplit(self.path).path
-        if path == "/v1/vector":
-            self.close_connection = True
-            self.route("POST", {})
-            return
-        body = self.read_body({"/v1/tasks": TASKS_MAX}.get(path, MAX_BODY))
-        if body is None:
-            self.reply(400, {"error": "body"})
-            return
-        self.route("POST", body)
-
-    def route(self, method, body):
-        self.deadline.cancel()
+    def route(self, method):
         deck = self.server.deck
         address = origin(self.client_address[0])
         path = urllib.parse.urlsplit(self.path).path
@@ -1470,26 +1668,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.close_connection = True
             self.reply(429, {"error": "wait"})
             return
+        # Whether it is there, not which computer: the phone has the name from the QR.
         if method == "GET" and path == "/v1/hello":
-            self.reply(200, {"deck": API, "name": deck.name})
+            self.reply(200, {"deck": API})
             return
         if method == "POST" and path == "/v1/pair":
-            self.pair(deck, address, body)
+            body = self.body(path)
+            if body is not None:
+                self.deadline.cancel()
+                self.pair(deck, address, body)
             return
         auth = self.headers.get("Authorization", "")
         device = deck.devices.find(auth[7:].strip() if auth.startswith("Bearer ") else "")
         if device is None:
             deck.throttle.fail(address)
+            self.close_connection = True        # what it sent is left unread
             self.reply(401, {"error": "unpaired"})
             return
+        # Only a device that's paired has its body read, and may take its time.
+        self.deadline.cancel()
         deck.devices.touch(device)
+        body = {}
+        if method == "POST" and path == "/v1/vector":
+            self.close_connection = True
+        elif method == "POST":
+            body = self.body(path)
+            if body is None:
+                return
         self.paired_route(deck, device, method, path, body)
 
     def pair(self, deck, address, body):
         result = deck.pairing.take(body.get("code"))
         if result != "ok":
             deck.throttle.fail(address)
-            self.reply({"closed": 409, "expired": 410, "wrong": 403}[result], {"error": result})
+            if result == "wait":
+                self.close_connection = True
+            self.reply(429 if result == "wait" else 403, {"error": result})
             return
         name = clean_name(body.get("device"), "Android")
         asking = deck.pairing.ask(name)
@@ -1921,7 +2135,7 @@ def vector_keep(config, vector, item):
     target = os.path.join(folder, item["name"])
     number = 2
     while os.path.lexists(target):
-        target = os.path.join(folder, f"{stem} ({number}){extension}")
+        target = os.path.join(folder, fit(stem, f" ({number}){extension}", 255))
         number += 1
     shutil.move(item["path"], target)
     vector.drop("in")
@@ -1978,8 +2192,9 @@ def vector_command(config, action, argument):
         return {"error": "save"}
     if action == "open":
         try:
-            subprocess.Popen([config["open"], path], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL, start_new_session=True)
+            subprocess.Popen([config["open"], path if openable(item, path) else os.path.dirname(path)],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
         except OSError:
             return {"error": "open", "path": path}
     return {"ok": True, "path": path, "kind": item["kind"], "name": os.path.basename(path)}
@@ -1990,7 +2205,8 @@ def main():
     parser.add_argument("--config", help="configuration written by home/deck/default.nix")
     parser.add_argument("command", nargs="?", default="devices",
                         choices=["serve", "pair", "cancel", "devices", "forget", "allow", "deny", "vector"])
-    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; vector: send, text, copy, save, open, clear or status")
+    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; cancel: the invite to close (every one "
+                                                  "without); vector: send, text, copy, save, open, clear or status")
     parser.add_argument("argument", nargs="?",
                         help="vector send: a file (the clipboard without one); vector text: the text, or - to read it")
     parser.add_argument("--json", action="store_true", help="for the shell")
@@ -2022,7 +2238,7 @@ def main():
         print(json.dumps(result))
         return 1 if "error" in result else 0
 
-    request = {"pair": {"op": "pair"}, "cancel": {"op": "cancel"}, "devices": {"op": "devices"},
+    request = {"pair": {"op": "pair"}, "cancel": {"op": "cancel", "invite": options.target or ""}, "devices": {"op": "devices"},
                "forget": {"op": "forget", "id": options.target or ""}, "allow": {"op": "allow", "id": options.target or ""},
                "deny": {"op": "deny", "id": options.target or ""}}[options.command]
     if options.command == "forget" and not options.target:

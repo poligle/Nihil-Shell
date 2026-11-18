@@ -36,8 +36,10 @@ nihil-deck://pair?v=1&name=nihil&hosts=192.168.1.20,100.64.0.7&port=64445&code=7
 | `code`    | The one-time code: 8 characters of `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` |
 | `pin`     | SHA-256 of the certificate's public key (SubjectPublicKeyInfo, DER), base64url without padding |
 
-The code pairs **one** phone, for **five minutes**. Five wrong codes and it stops; the
-QR in Preferences makes a new one before it runs out, and goes away once a phone pairs.
+The code pairs **one** device, for **five minutes**, and a watch being installed gets its
+own, open at the same time. Wrong codes don't close it: past thirty in a minute, from anyone,
+every try waits. The QR in Preferences makes a new one before it runs out, and goes away
+once a device pairs.
 
 1. Connect to each of `hosts` in order, on `port`, over TLS (see below), until one
    answers `GET /v1/hello`.
@@ -48,7 +50,8 @@ QR in Preferences makes a new one before it runs out, and goes away once a phone
    address that answered.
 
 The computer shows a notification when a phone pairs, and lists it in Preferences, Devices,
-where it can be forgotten.
+where it can be forgotten. One not seen in 90 days is forgotten by itself: Devices shows the
+day in its last month.
 
 ## TLS and the pin
 
@@ -91,16 +94,19 @@ curl --insecure --pinnedpubkey "sha256//$(printf '%s=' "$pin" | tr '_-' '/+')" h
 
 Its address may change. The phone tries the address that last answered, then the others
 from the QR, then looks on the local network: the computer announces itself with mDNS
-(Avahi) as `_nihil-deck._tcp`, named after the computer, with a TXT record `v=1`.
+(Avahi) as `_nihil-deck._tcp`, named `NIHIL` and on the host `nihil.local`, with a TXT
+record `v=1`: not by the computer's name, which would go with it from network to network
+(`services.avahi.hostName` gives it back).
 On Android, `NsdManager.discoverServices("_nihil-deck._tcp", NsdManager.PROTOCOL_DNS_SD, …)`.
 Whatever it finds, the pin still decides whether it is the right computer.
 
 ## Requests
 
 HTTPS, HTTP/1.1, JSON in and out (`Content-Type: application/json`, a body of 4 KB at
-most; Vector's are the exception). Connections may be kept open; the computer closes them after 15 s idle, and after an
-answer that ends one (a `429`, a body too big), which then says `Connection: close`. It
-holds 32 at once, from every phone together: one more is closed before its handshake.
+most; Vector's are the exception), read only once the token says who sends it. Connections
+may be kept open; the computer closes them after 15 s idle, and after an answer that ends
+one (a `401`, a `429`, a body too big), which then says `Connection: close`. It holds 32 at
+once, from every phone together: one more is closed before its handshake.
 
 Everything but `hello` and `pair` needs the token:
 
@@ -110,10 +116,10 @@ Authorization: Bearer <token>
 
 ### `GET /v1/hello`
 
-No token. Whether it is there, and which computer.
+No token. Whether it is there; which computer, the phone has from the QR.
 
 ```json
-{ "deck": 1, "name": "nihil" }
+{ "deck": 1 }
 ```
 
 ### `POST /v1/pair`
@@ -129,7 +135,8 @@ No token.
 ```
 
 `device` is the phone's id on the computer; the name it sent is cut at 40 characters.
-`403` wrong code, `409` no code open (none shown, or used), `410` expired.
+`403` `wrong` for a code that doesn't pair, wrong, run out or used alike: the answer says
+nothing of when the computer is pairing. `429` `wait` past thirty wrong codes a minute.
 
 ### `GET /v1/apps`
 
@@ -153,8 +160,9 @@ it takes an SVG (drawn at 128 px), the `apple-touch-icon` or the biggest icon it
 then `/favicon.ico` (the biggest PNG inside it). Only at public addresses, redirects too:
 never this computer's network. `200` with the picture as it comes (`image/png`,
 `image/jpeg`, `image/gif` or `image/webp`; scale it to fit), `404` when the site has none
-the phone can draw (draw its letter), `400` for a URL that isn't one. The computer keeps
-each site's icon, and each miss, a week: ask freely.
+the phone can draw (draw its letter), `400` for a URL that isn't one. The address is
+checked where it connects, not only where the name pointed when looked up. The computer
+keeps each site's icon, and each miss, a week, 500 sites at most: ask freely.
 
 ### `POST /v1/open`
 
@@ -214,7 +222,9 @@ The computer's is what was pasted or dropped on the dashboard's Vector, or sent 
 { "id": "5c1e9a07d3b2f468", "kind": "image", "name": "image.png", "mime": "image/png", "size": 48213, "time": 1794012345, "now": 1794012410 }
 ```
 
-`kind` is `text`, `image`, `video` or `file`, and `time` when it came, by the computer's
+`kind` is `text`, `image`, `video` or `file` (what came from a phone is an image, a video,
+a text or a PDF only when its first bytes are, and otherwise `file`, with `mime`
+`application/octet-stream`), and `time` when it came, by the computer's
 clock (in seconds, as `now`, which the answer also has). With
 `?since=<id>&wait=<seconds>` (50 at most) it answers when there is another than `since`, or
 when the time is up: the phone keeps one open while it listens, and asks again with the id
@@ -226,9 +236,11 @@ computer says it sent the thing to it.
 
 `POST /v1/vector` gives the computer one: the bytes as the body, not JSON, with their
 `Content-Type`, `Content-Length` and the name percent-encoded in `X-Vector-Name`
-(`Vector_2026-11-14_09.30.00.txt` and the like without one). It answers with what it kept, as `GET` does, and the
-dashboard shows it, with a notification of where it came from. `413` `big` past 100 MB,
-`400` `body` without one; the connection closes after it.
+(`Vector_2026-11-14_09.30.00.txt` and the like without one; without control and format
+characters, and cut at 240 bytes, keeping its extension). It answers with what it kept, as
+`GET` does, and the dashboard shows it, with a notification of where it came from. `413`
+`big` past 100 MB, `400` `body` without one, `409` `busy` while the same device sends another,
+`507` `full` when it would leave the disk less than 1 GB; the connection closes after it.
 
 On the computer they are in `~/.cache/nihil/vector/`, `out/` and `in/`, each with its
 `.item.json`, and the shell uses them through the command:
@@ -238,7 +250,7 @@ nihil-deck vector send [FILE]   # a file, or what the clipboard holds (a file co
 nihil-deck vector text TEXT      # or -, to read it from stdin, as the shell does: no argument passes 128 KiB
 nihil-deck vector copy          # what came, onto the clipboard: a text or a picture
 nihil-deck vector save          # what came, into ~/Vector
-nihil-deck vector open          # saved there, and opened
+nihil-deck vector open          # saved there, and opened: a picture, a video, a PDF or a text by its bytes and its name, the rest shown in its folder
 nihil-deck vector clear
 nihil-deck vector status
 ```
@@ -285,13 +297,13 @@ A status and `{ "error": "…" }`:
 | Status | `error` | What to do |
 |--------|---------|------------|
 | 400 | `body`, `action`, `invalid` | A request it does not take |
-| 401 | `unpaired` | The token is not known (forgotten in Preferences): drop it, offer to pair again |
-| 403 | `wrong` | Not the code in the QR |
+| 401 | `unpaired` | The token is not known (forgotten in Preferences, or not seen in 90 days): drop it, offer to pair again |
+| 403 | `wrong` | A code that doesn't pair (wrong, run out or used): show the QR again |
 | 404 | `path`, `unknown`, `icon`, `vector` | No such path, app, icon or thing in Vector |
-| 409 | `closed` | No code open: show the QR again |
-| 410 | `expired` | The code ran out: show the QR again |
+| 409 | `busy` | This device is already sending something to Vector |
 | 413 | `big` | More than Vector takes, 100 MB |
-| 429 | `wait` | Ten failures (a token, a code) from that address in a minute: wait one. With IPv6, an address counts with the rest of its /64, which one device can take any of |
+| 429 | `wait` | Ten failures (a token, a code) from that address in a minute, or thirty wrong codes from anyone: wait one. With IPv6, an address counts with the rest of its /64, which one device can take any of |
+| 507 | `full` | The computer's disk has no room for it |
 | 503 | `shell`, `volume`, `lock`, `trackpad`, `vector` | The shell (or the sound, the lock, the trackpad, Vector) is not answering |
 | 503 | `access` | This session may not make the trackpad yet: log out and in once |
 
@@ -319,7 +331,10 @@ place were last set, in the computer's milliseconds, and its place is its column
 its neighbours' (one less than the first, one more than the last); when two are too close for
 one between, the whole column gets new ranks, as if moved then. A side from before ranks
 leaves `rank` out, and its cards count as ranked by when they got to their column
-(`placeStamp`). A removed card leaves `removed: { id: when }`, kept 60 days. Two boards merge
+(`placeStamp`). A removed card leaves `removed: { id: when }`, kept 60 days (the newest
+10,000); a card a device brings that the computer doesn't know, and no one has changed in 60
+days, stays out, as one removed before that, so a device that comes back from a drawer
+doesn't bring back what was done with. Two boards merge
 (`services/TaskMerge.js`, the same rules as the launcher's `core/TaskBoard.kt`): for each card
 the text set last and the place set last win, and a removal wins over everything set before
 it. With the same stamp, a place with a rank wins over one without, so a side from before
@@ -327,11 +342,13 @@ ranks doesn't undo an order. The merge gives the same board whichever way round 
 often, so two sides that both changed while apart each keep what the other did.
 
 - `GET /v1/tasks`: the board, and `now`, the computer's clock.
-- `POST /v1/tasks` with the phone's whole board (256 KB, 1000 cards at most; a `rank`, when
-  there is one, a finite number; stamps whole milliseconds, a day ahead of the computer's
-  clock at most, or `400`: one far ahead would win every merge from then on): the shell
-  merges it in, through a file of the user's, and answers with the result and `now`. The phone merges that again (for what changed
-  meanwhile) and stamps its own changes in the computer's time from then on.
+- `POST /v1/tasks` with the phone's whole board (2 MB, 1000 cards and 10,000 removals at
+  most, ids of 64 characters; a `rank`, when there is one, a finite number, and a whole one
+  no further from 0 than 2^53; stamps whole milliseconds, a day ahead of the computer's clock
+  at most, or `400`: one far ahead would win every merge from then on): the shell merges it
+  in, through a file of the user's, and answers with the result and `now`. The phone merges
+  that again (for what changed meanwhile) and stamps its own changes in the computer's time
+  from then on.
 
 ## The trackpad
 
@@ -367,6 +384,11 @@ the oldest goes (each frame says where every finger is).
 `400` `invalid` for a size it doesn't take or another protocol, `503` `access` when this
 session may not make the touchpad yet (once after turning the deck on, until logging in
 again), `503` `trackpad` when it can't.
+
+The touchpad comes from `/dev/uinput`, which udev gives (`uaccess`) to the session at the
+screen: to every program in it, not to the deck alone, as Steam's rules do for its
+controllers. Any of them can make a keyboard and type into any window, past what Wayland keeps
+apart, so with the deck on, a program run as the user is trusted as far as the user is.
 
 ## The watch
 
