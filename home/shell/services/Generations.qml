@@ -47,7 +47,8 @@ Singleton {
         const found = /^(.+?): (.*)$/.exec(text);
         if (!found)
             return null;
-        const rest = found[2].replace(/(^|, )-?[0-9.]+ KiB$/, "");
+        // The size it grew or shrank by, as Nix writes it: «12.6 KiB», «-3.2 MiB», «+1.0 GiB».
+        const rest = found[2].replace(/(^|, )[+-]?[0-9.]+ [KMGTPE]iB$/, "");
         const sides = rest.split(" → ");
         if (sides.length !== 2)
             return { name: found[1], from: "", to: "", versions: false };

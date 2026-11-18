@@ -14,7 +14,8 @@ Singleton {
     property int index: 0
     readonly property bool shown: Drawers.current === "clipboard" || Drawers.waiting?.name === "clipboard"
     readonly property bool enabled: Config.clipboard > 0
-    readonly property string dir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nihil-clipboard"
+    // Never /tmp, where another user could make the folder first: with no runtime folder, no pictures.
+    readonly property string dir: (Quickshell.env("XDG_RUNTIME_DIR") ?? "") !== "" ? Quickshell.env("XDG_RUNTIME_DIR") + "/nihil-clipboard" : ""
 
     readonly property var keyParts: String(Config.binds.clipboard ?? "").split("+").map(part => part.trim()).filter(part => part !== "")
     readonly property string modifier: {
@@ -187,7 +188,7 @@ Singleton {
             if (picture) {
                 found.push({ id: id, kind: "image", text: "", format: picture[1], mime: "image/" + picture[1],
                              width: Number(picture[2] ?? 0), height: Number(picture[3] ?? 0),
-                             file: root.dir + "/" + id + "." + picture[1] });
+                             file: root.dir !== "" ? root.dir + "/" + id + "." + picture[1] : "" });
             } else {
                 const plain = preview.trim();
                 const kind = /^#[0-9a-fA-F]{6}$/.test(plain) ? "colour" : /^https?:\/\/\S+$/.test(plain) ? "link" : "text";

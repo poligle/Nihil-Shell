@@ -9,6 +9,8 @@ Singleton {
     id: root
 
     readonly property bool active: Drawers.current === "dashboard"
+    // Read only while shown, by the Dashboard or the desktop's network card.
+    readonly property bool shown: active || Machine.widgets.indexOf("network") >= 0
     property real cpu: 0            // 0..1
     property real mem: 0            // 0..1
     property real temp: 0           // degrees C
@@ -25,10 +27,9 @@ Singleton {
     property string tempSkip: ""
     property int tempMisses: 0
 
+    // As every size in NIHIL is written: powers of 1000, and the language's decimal mark.
     function human(bytes: real): string {
-        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB/s";
-        if (bytes >= 1024) return Math.round(bytes / 1024) + " KB/s";
-        return Math.round(bytes) + " B/s";
+        return Dates.bytes(bytes) + "/s";
     }
 
     function push(list: var, value: real): var {
@@ -73,7 +74,35 @@ Singleton {
         }
     }
 
-    onActiveChanged: if (active && !tempPath && !findTemp.running) findTemp.running = true
+    onActiveChanged: {
+        if (active && !tempPath && !findTemp.running)
+            findTemp.running = true;
+        // Counted afresh on opening: from the last time, it would be the use over all the time between.
+        if (!active)
+            lastCpu = null;
+    }
+
+    // Hidden, nothing is read; shown again, the rates start over rather than spread what came in
+    // meanwhile over one second.
+    onShownChanged: {
+        if (shown)
+            return;
+        lastRx = -1;
+        lastTx = -1;
+        rx = 0;
+        tx = 0;
+        rxHistory = [];
+        txHistory = [];
+    }
+
+    // The way out can change with the network: read again then, rather than every few seconds.
+    Connections {
+        target: Network
+        enabled: root.shown
+
+        function onSsidChanged(): void { route.running = true; }
+        function onEthernetChanged(): void { route.running = true; }
+    }
 
     function tick(): void {
         if (root.iface) {
@@ -131,15 +160,15 @@ Singleton {
 
     Timer {
         interval: 1000
-        running: true
+        running: root.shown
         repeat: true
         triggeredOnStart: true
         onTriggered: root.tick()
     }
 
     Timer {
-        interval: 10000
-        running: true
+        interval: 30000
+        running: root.shown
         repeat: true
         triggeredOnStart: true
         onTriggered: route.running = true

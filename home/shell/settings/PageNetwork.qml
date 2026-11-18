@@ -13,10 +13,10 @@ Flickable {
     boundsBehavior: Flickable.StopAtBounds
 
     Component.onCompleted: {
-        Network.watch = true;
+        Network.watching(page, true);
         Network.scan();
     }
-    Component.onDestruction: Network.watch = false
+    Component.onDestruction: Network.watching(page, false)
 
     ColumnLayout {
         id: column
