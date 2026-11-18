@@ -29,19 +29,30 @@ function dedent(line, indent) {
     return line.slice(i);
 }
 
+// An address, with the parentheses it has in pairs: …/wiki/Nix_(package_manager) whole.
+const ADDRESS = "https?:\\/\\/(?:[^\\s<()]|\\([^\\s<()]*\\))+";
+
+function emphasis(text) {
+    return text.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+        .replace(/(^|[^*\w])\*([^*\s][^*\n]*?)\*(?![*\w])/g, "$1<i>$2</i>")
+        .replace(/(^|[^\w])_([^_\s][^_\n]*?)_(?!\w)/g, "$1<i>$2</i>");
+}
+
+// Code and links are set aside before the emphasis, so an address's _ or * stay as they are.
 function inline(text, s) {
     const codes = [];
-    let out = text.replace(/`([^`\n]+)`/g, (m, code) => {
-        codes.push(code);
-        return "\u0001" + (codes.length - 1) + "\u0001";
+    const links = [];
+    const aside = (list, mark, value) => { list.push(value); return mark + (list.length - 1) + mark; };
+    const link = (url, label) => aside(links, "\u0002", `<a href="${url}" style="color:${s.ink};">${label}</a>`);
+    let out = text.replace(/`([^`\n]+)`/g, (m, code) => aside(codes, "\u0001", code));
+    out = out.replace(new RegExp("\\[([^\\]\\n]+)\\]\\((" + ADDRESS + ")\\)", "g"),
+        (m, label, url) => link(url, emphasis(label)));
+    out = out.replace(new RegExp("(^|[\\s(])(" + ADDRESS + ")", "g"), (m, before, url) => {
+        const end = /[.,;:!?»”]+$/.exec(url);      // what ends the sentence, not the address
+        const bare = end ? url.slice(0, -end[0].length) : url;
+        return before + link(bare, bare) + (end ? end[0] : "");
     });
-    out = out.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,
-        (m, label, url) => `<a href="${url}" style="color:${s.ink};">${label}</a>`);
-    out = out.replace(/(^|[\s(])(https?:\/\/[^\s<)]+[^\s<).,;:!?»”])/g,
-        (m, before, url) => `${before}<a href="${url}" style="color:${s.ink};">${url}</a>`);
-    out = out.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
-    out = out.replace(/(^|[^*\w])\*([^*\s][^*\n]*?)\*(?![*\w])/g, "$1<i>$2</i>");
-    out = out.replace(/(^|[^\w])_([^_\s][^_\n]*?)_(?!\w)/g, "$1<i>$2</i>");
+    out = emphasis(out).replace(/\u0002(\d+)\u0002/g, (m, i) => links[+i]);
     return out.replace(/\u0001(\d+)\u0001/g,
         (m, i) => `<span style="font-family:'${s.mono}'; font-size:13px; color:${s.code};">${codes[+i]}</span>`);
 }

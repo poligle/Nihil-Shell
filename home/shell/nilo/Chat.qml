@@ -41,7 +41,11 @@ Item {
         let data = {};
         try { data = JSON.parse(info || "{}"); } catch (e) {}
         const args = data.args ?? data;
-        if (status === "failed") return Lang.toolFailed.arg(String(data.error ?? "").slice(0, 80));
+        if (status === "failed") {
+            // Why, in the chat's language: what the agent says is for the model, in English.
+            if (data.reason === "timeout") return Lang.toolTookTooLong;
+            return Nilo.english && data.error ? Lang.toolFailed.arg(String(data.error).slice(0, 80)) : Lang.toolFailedPlain;
+        }
         if (status !== "running" && data.declined) return Lang.toolDeclined;
         const running = status === "running";
         switch (name) {
@@ -113,7 +117,9 @@ Item {
         case "control": {
             const setting = data.setting ?? args.setting ?? "";
             const label = root.settingName(setting);
-            if (running) return setting === "screenshot" ? Lang.toolShooting : Lang.toolControl.arg(label.toLowerCase());
+            // Within a sentence in lower case, but for the names of things: Wi-Fi, Bluetooth.
+            const named = setting === "wifi" || setting === "bluetooth" ? label : label.toLocaleLowerCase();
+            if (running) return setting === "screenshot" ? Lang.toolShooting : Lang.toolControl.arg(named);
             if (setting === "lock") return Lang.actLock;
             if (setting === "wallpaper" && (data.value === "next" || data.value === "prev"))
                 return data.value === "next" ? Lang.actNextWallpaper : Lang.actPrevWallpaper;
@@ -426,23 +432,35 @@ Item {
             Component {
                 id: userView
 
-                Row {
-                    spacing: 10
+                Column {
+                    spacing: 4
 
-                    Txt {
-                        text: "›"
-                        color: Tokens.muted
-                        font.family: Tokens.fontMono
-                        font.pixelSize: 15
+                    Row {
+                        spacing: 10
+
+                        Txt {
+                            text: "›"
+                            color: Tokens.muted
+                            font.family: Tokens.fontMono
+                            font.pixelSize: 15
+                        }
+
+                        Txt {
+                            width: entry.width - 24
+                            text: entry.text
+                            color: Tokens.dim
+                            wrapMode: Text.Wrap
+                            elide: Text.ElideNone
+                            font.pixelSize: 14
+                        }
                     }
 
                     Txt {
-                        width: entry.width - 24
-                        text: entry.text
-                        color: Tokens.dim
-                        wrapMode: Text.Wrap
-                        elide: Text.ElideNone
-                        font.pixelSize: 14
+                        x: 22
+                        visible: entry.name === "ipc"
+                        text: Lang.niloAskedBy
+                        color: Tokens.muted
+                        font.pixelSize: 12
                     }
                 }
             }
@@ -662,8 +680,8 @@ Item {
                             text: card.desktop ? root.desktopTitle(card.facts)
                                 : card.file ? (card.facts.action === "create" ? Lang.confirmCreate : Lang.confirmEdit) + " " + Lang.confirmFile
                                 : card.command ? Lang.confirmRun + (card.facts.action === "terminal" ? " " + Lang.confirmTerminal : "")
-                                : "git " + (card.facts.action === "commit-push" ? Lang.confirmCommitPush
-                                    : card.facts.action === "push" ? Lang.confirmPush : Lang.confirmCommit)
+                                : card.facts.action === "commit-push" ? Lang.confirmCommitPush
+                                : card.facts.action === "push" ? Lang.confirmPush : Lang.confirmCommit
                             color: Tokens.ink
                         }
 
@@ -765,7 +783,7 @@ Item {
                                     Txt {
                                         required property var modelData
                                         width: parent.width
-                                        text: modelData.t === "@" ? "··· " + Lang.confirmAtLine.arg(modelData.s)
+                                        text: modelData.t === "@" ? Lang.confirmAtLine.arg(modelData.s)
                                             : (modelData.t === "+" ? "+ " : modelData.t === "-" ? "− " : "  ") + modelData.s.replace(/\t/g, "    ")
                                         color: modelData.t === "+" ? Tokens.ink : modelData.t === "-" ? Tokens.dim : Tokens.muted
                                         font.family: Tokens.fontMono

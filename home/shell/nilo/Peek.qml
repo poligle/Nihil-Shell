@@ -151,6 +151,8 @@ Item {
             anchors.margins: -8
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            Accessible.role: Accessible.Button
+            Accessible.name: Lang.niloPeekClose
             onClicked: Nilo.unpeek()
         }
     }

@@ -87,6 +87,8 @@ Singleton {
     readonly property bool onboarded: settings.onboarded === true
     readonly property var current: models.find(m => m.tag === settings.model) ?? null
     readonly property bool installed: current?.installed === true
+    // The agent's own words are English: shown as they are only to a chat in English.
+    readonly property bool english: Lang.locale.startsWith("en")
 
     function start(): void {
         if (!enabled || wanted) return;
@@ -335,14 +337,29 @@ Singleton {
     }
 
     function ask(text: string): void {
+        askAs(text, "");
+    }
+
+    // A question another program asked, with nihil-ipc nilo ask, says so in the chat: the cards that follow
+    // aren't the answer to anything typed here.
+    function askAs(text: string, by: string): void {
         const question = text.trim();
         if (!question || busy || failed) return;
-        if (quickOpen(question)) return;
-        messages.append({ kind: "user", text: question, done: true, name: "", status: "", info: "", cid: "" });
+        if (by === "" && quickOpen(question)) return;
+        messages.append({ kind: "user", text: question, done: true, name: by, status: "", info: "", cid: "" });
         busy = true;
         phase = "waiting";
         mood = "";
         send({ op: "ask", text: question });
+    }
+
+    // Asked with no model to answer: the chat says why, with the button that sees to it, as an empty
+    // chat's notice does.
+    function unready(): void {
+        const code = !ollama ? "ollama-down" : "model-missing";
+        const l = last();
+        if (messages.count === 0 || (l && l.kind === "error" && l.name === code)) return;
+        messages.append({ kind: "error", text: "", done: true, name: code, status: "", info: "", cid: "" });
     }
 
     function stop(): void {
@@ -463,7 +480,7 @@ Singleton {
         case "no-model": return Lang.niloErrNoModel;
         case "bad-repo": return Lang.niloErrRepo.arg(detail);
         }
-        return Lang.niloErrOther.arg((detail || code).slice(0, 160));
+        return english ? Lang.niloErrOther.arg((detail || code).slice(0, 160)) : Lang.niloErrPlain;
     }
 
     function catalogue(e: var): void {
@@ -726,7 +743,7 @@ Singleton {
         function sleep(): void { root.sleep(); }
         function ask(text: string): void {
             root.open();
-            root.ask(text);
+            root.askAs(text, "ipc");
         }
         function state(): string { return root.busy ? root.phase : "idle"; }
         function reset(): void { root.reset(); }

@@ -56,7 +56,7 @@
 		vectorSent = "Enviado a %1";
 		vectorWaiting = "Esperando a tus dispositivos";
 		vectorFrom = "Recibido de %1";
-		vectorDevice = "tu móvil";
+		vectorDevice = "un dispositivo";
 		vectorBig = "Demasiado grande: hasta 100 MB";
 		vectorFolder = "Las carpetas no se envían";
 		vectorEmpty = "Nada que enviar";
@@ -173,6 +173,8 @@
 		niloCopied = "Copiado";
 		niloStopped = "Parado";
 		niloRate = "%1 tok/s";
+		niloPeekClose = "Cerrar";
+		niloAskedBy = "Lo ha preguntado otro programa, con nihil-ipc";
 		niloPeekDone = "Nilo ha terminado";
 		niloPeekWaiting = "Nilo te espera";
 		niloPeekFailed = "Nilo no ha podido";
@@ -194,6 +196,8 @@
 		toolGitPushedOnly = "Subido";
 		toolDeclined = "Cancelado";
 		toolFailed = "Falló: %1";
+		toolFailedPlain = "No ha salido bien";
+		toolTookTooLong = "Tardaba demasiado";
 		toolListing = "Mirando los archivos";
 		toolListed = "%1 archivos";
 		toolOpening = "Abriendo %1";
@@ -239,8 +243,8 @@
 		toolOff = "no";
 		toolShooting = "Haciendo una captura";
 		toolShot = "Captura hecha";
-		toolSending = "Enviando al móvil";
-		toolSent = "Enviado al móvil";
+		toolSending = "Enviando a tus dispositivos";
+		toolSent = "Enviado a tus dispositivos";
 		settingVolume = "Volumen";
 		settingMute = "Silencio";
 		settingBrightness = "Brillo";
@@ -278,7 +282,7 @@
 		dangerScript = "ejecuta código escrito en la orden";
 		confirmType = "Escribir en %1";
 		confirmKeys = "Pulsar en %1";
-		confirmSend = "Enviar al móvil";
+		confirmSend = "Enviar a tus dispositivos";
 		confirmSearch = "Buscar en internet";
 		confirmFetch = "Leer una página";
 		confirmOpenUrl = "Abrir una página";
@@ -301,6 +305,7 @@
 		niloErrNoModel = "Elige un modelo en el engranaje.";
 		niloErrRepo = "%1 no es un repositorio git.";
 		niloErrOther = "Algo ha fallado: %1";
+		niloErrPlain = "Algo ha fallado";
 		niloDownload = "Descargar";
 		niloDelete = "Borrar";
 
@@ -339,7 +344,7 @@
 		accessTerminal = "Terminal y repositorio";
 		accessTerminalGuard = "Podré leer, crear y cambiar archivos de %1, hacer add, commit y push con tu usuario de git y ejecutar comandos como tú. Antes de cada cambio, commit o comando te enseño qué voy a hacer y espero a que confirmes; lo que pide sudo se abre en una terminal para que escribas tú la contraseña.";
 		accessEverything = "Todo el sistema";
-		accessEverythingGuard = "Podré ver lo que tienes abierto y usarlo como tú: escribir y pulsar teclas en las ventanas, ponerte música, mover y cerrar ventanas, cambiar el volumen, el brillo o el fondo, mandar cosas al móvil y leer archivos de todo el ordenador, salvo claves, contraseñas y perfiles del navegador. Solo te preguntaré antes de cambiar archivos, hacer commits, ejecutar comandos que no solo leen, escribir en una terminal y usar atajos que borran o envían; si en esa respuesta he leído internet o la pantalla, también antes de escribir, pulsar teclas, leer tus archivos o enviar algo; y, si en la charla he leído tus archivos, la pantalla o un comando, antes de que algo salga a internet.";
+		accessEverythingGuard = "Podré ver lo que tienes abierto y usarlo como tú: escribir y pulsar teclas en las ventanas, ponerte música, mover y cerrar ventanas, cambiar el volumen, el brillo o el fondo, mandar cosas a tus dispositivos y leer archivos de todo el ordenador, salvo claves, contraseñas y perfiles del navegador. Solo te preguntaré antes de cambiar archivos, hacer commits, ejecutar comandos que no solo leen, escribir en una terminal y usar atajos que borran o envían; si en esa respuesta he leído internet o la pantalla, también antes de escribir, pulsar teclas, leer tus archivos o enviar algo; y, si en la charla he leído tus archivos, la pantalla o un comando, antes de que algo salga a internet.";
 		accessAuthorize = "Autorizar";
 
 		setModel = "Modelo";
@@ -813,7 +818,7 @@
 		vectorSent = "Sent to %1";
 		vectorWaiting = "Waiting for your devices";
 		vectorFrom = "Received from %1";
-		vectorDevice = "your phone";
+		vectorDevice = "a device";
 		vectorBig = "Too big: up to 100 MB";
 		vectorFolder = "Folders can't be sent";
 		vectorEmpty = "Nothing to send";
@@ -930,6 +935,8 @@
 		niloCopied = "Copied";
 		niloStopped = "Stopped";
 		niloRate = "%1 tok/s";
+		niloPeekClose = "Close";
+		niloAskedBy = "Asked by another program, through nihil-ipc";
 		niloPeekDone = "Nilo is done";
 		niloPeekWaiting = "Nilo is waiting for you";
 		niloPeekFailed = "Nilo couldn't do it";
@@ -951,6 +958,8 @@
 		toolGitPushedOnly = "Pushed";
 		toolDeclined = "Cancelled";
 		toolFailed = "Failed: %1";
+		toolFailedPlain = "It didn't work";
+		toolTookTooLong = "It took too long";
 		toolListing = "Looking at the files";
 		toolListed = "%1 files";
 		toolOpening = "Opening %1";
@@ -996,8 +1005,8 @@
 		toolOff = "off";
 		toolShooting = "Taking a screenshot";
 		toolShot = "Screenshot taken";
-		toolSending = "Sending to the phone";
-		toolSent = "Sent to the phone";
+		toolSending = "Sending to your devices";
+		toolSent = "Sent to your devices";
 		settingVolume = "Volume";
 		settingMute = "Mute";
 		settingBrightness = "Brightness";
@@ -1035,7 +1044,7 @@
 		dangerScript = "runs code written into it";
 		confirmType = "Type in %1";
 		confirmKeys = "Press in %1";
-		confirmSend = "Send to the phone";
+		confirmSend = "Send to your devices";
 		confirmSearch = "Search the web";
 		confirmFetch = "Read a page";
 		confirmOpenUrl = "Open a page";
@@ -1058,6 +1067,7 @@
 		niloErrNoModel = "Choose a model in the settings.";
 		niloErrRepo = "%1 is not a git repository.";
 		niloErrOther = "Something went wrong: %1";
+		niloErrPlain = "Something went wrong";
 		niloDownload = "Download";
 		niloDelete = "Delete";
 
@@ -1096,7 +1106,7 @@
 		accessTerminal = "Terminal and repository";
 		accessTerminalGuard = "I'll be able to read, create and change files in %1, add, commit and push as your git user, and run commands as you. Before each change, commit or command I show you what I'll do and wait for your confirmation; whatever needs sudo opens in a terminal for you to type the password.";
 		accessEverything = "The whole system";
-		accessEverythingGuard = "I'll be able to see what you have open and use it as you would: type and press keys in windows, put on music, move and close windows, change the volume, the brightness or the wallpaper, send things to your phone and read files across the computer, except keys, passwords and browser profiles. I'll only ask before changing files, committing, running commands that do more than read, typing in a terminal and shortcuts that delete or send; once an answer has read the web or the screen, also before typing, pressing keys, reading your files or sending anything; and once the chat has read your files, the screen or a command, before anything goes out to the internet.";
+		accessEverythingGuard = "I'll be able to see what you have open and use it as you would: type and press keys in windows, put on music, move and close windows, change the volume, the brightness or the wallpaper, send things to your devices and read files across the computer, except keys, passwords and browser profiles. I'll only ask before changing files, committing, running commands that do more than read, typing in a terminal and shortcuts that delete or send; once an answer has read the web or the screen, also before typing, pressing keys, reading your files or sending anything; and once the chat has read your files, the screen or a command, before anything goes out to the internet.";
 		accessAuthorize = "Authorize";
 
 		setModel = "Model";

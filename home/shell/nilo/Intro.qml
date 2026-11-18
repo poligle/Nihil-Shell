@@ -15,6 +15,12 @@ Item {
 
     signal finished()
 
+    // A bind's keys as caps, from what the machine sets it to: «SUPER + I» is Super and I.
+    function caps(combo: var): var {
+        return String(combo ?? "").split("+").map(part => part.trim()).filter(part => part !== "")
+            .map(part => /^space$/i.test(part) ? Lang.keySpace : Case.key(part));
+    }
+
     function back(): bool {
         if (!asking) return false;
         access.asking = "";
@@ -154,9 +160,9 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 12
 
-                    Way { keys: ["Super", "I"]; text: Lang.introBind }
+                    Way { keys: root.caps(Config.binds.nilo); text: Lang.introBind; visible: keys.length > 0 }
                     Way { keys: ["Copilot"]; text: Lang.introCopilot }
-                    Way { keys: ["Super", Lang.keySpace, "?"]; text: Lang.introLauncher }
+                    Way { keys: root.caps(Config.binds.launcher).concat(["?"]); text: Lang.introLauncher; visible: keys.length > 1 }
                 }
 
                 Txt {
