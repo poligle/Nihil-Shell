@@ -3,20 +3,28 @@
 { config, lib, pkgs, ... }:
 let
     greeter = config.services.greetd.settings.default_session.user;
+    # Says 1 to skip the fingerprint, 0 not to: pam_exec logs every exit but 0 as an error, and
+    # not skipping is what happens nearly always. If it fails itself, the password is asked for.
     skipReader = pkgs.writeShellScript "skip-fingerprint" ''
         for state in /proc/acpi/button/lid/*/state; do
             [ -r "$state" ] || continue
-            ${pkgs.gnugrep}/bin/grep -q closed "$state" && exit 0
+            ${pkgs.gnugrep}/bin/grep -q closed "$state" && exit 1
         done
-        if [ "''${PAM_SERVICE:-}" = sudo ] && uid=$(${pkgs.coreutils}/bin/id -u -- "''${PAM_USER:-}" 2> /dev/null) \
-            && [ "$(${pkgs.coreutils}/bin/cat "/run/user/$uid/nihil-sudo-password" 2> /dev/null)" = "$PPID" ]; then
-            exit 0
+        # A regular file, and no more of it than a PID: a FIFO or a link to /dev/zero, the user's
+        # own to make, would hang sudo or read forever.
+        if [ "''${PAM_SERVICE:-}" = sudo ] && uid=$(${pkgs.coreutils}/bin/id -u -- "''${PAM_USER:-}" 2> /dev/null); then
+            flag="/run/user/$uid/nihil-sudo-password"
+            if [ -f "$flag" ] && [ ! -L "$flag" ] && [ "$(${pkgs.coreutils}/bin/head -c 16 -- "$flag")" = "$PPID" ]; then
+                exit 1
+            fi
         fi
+        # Once: after a password typed in the greeter, the next login offers the finger again.
         if [ "''${PAM_SERVICE:-}" = greetd ] && uid=$(${pkgs.coreutils}/bin/id -u -- ${greeter} 2> /dev/null) \
             && [ -e "/run/user/$uid/nihil-greeter-password" ]; then
-            exit 0
+            ${pkgs.coreutils}/bin/rm -f "/run/user/$uid/nihil-greeter-password"
+            exit 1
         fi
-        exit 1
+        exit 0
     '';
 
     skipFingerprint = service:
@@ -25,7 +33,7 @@ let
         {
             enable = config.security.pam.services.${service}.fprintAuth;
             order = config.security.pam.services.${service}.rules.auth.fprintd.order - 1;
-            control = "[success=1 default=ignore]";
+            control = "[success=ignore default=1]";
             modulePath = "${config.security.pam.package}/lib/security/pam_exec.so";
             args = [ "quiet" "${skipReader}" ];
         };

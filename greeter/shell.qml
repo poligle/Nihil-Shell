@@ -24,7 +24,7 @@ ShellRoot {
     property int attempts: 0
     property bool going: false
 
-    readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nihil-greeter-password"
+    readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") ?? "") + "/nihil-greeter-password"
 
     // Every screen is on (cage -m extend) and the window spans them all: the greeter goes on the
     // main one, the one its scale is for, and the rest stay black. With one screen, or a layout

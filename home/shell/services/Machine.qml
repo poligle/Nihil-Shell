@@ -220,6 +220,11 @@ Singleton {
     }
 
     function ask(process: var, password: string, input: string): void {
+        if (root.runtimeDir === "") {
+            root.phase = "failed";
+            root.failure = "start";
+            return;
+        }
         root.auth = password === "" && root.fingerprint ? "finger" : "password";
         root.phase = "auth";
         root.failure = "";
@@ -271,8 +276,14 @@ Singleton {
             root.passwordState = "invalid";
             return;
         }
+        if (root.runtimeDir === "") {
+            root.passwordState = "failed";
+            return;
+        }
         root.passwordState = "busy";
-        passwd.input = current + "\n" + Config.user + ":" + next + "\n";
+        // The new one first, into a file of the user's own (sudoAsk), then the current one for
+        // sudo alone: after it on stdin, a mistyped current one made sudo try the new one too.
+        passwd.input = next + "\n" + current + "\n";
         passwd.running = true;
     }
 
@@ -425,9 +436,11 @@ Singleton {
         }
     }
 
-    readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
+    // Never /tmp: another user could make these files first, and root reads them.
+    readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") ?? ""
     readonly property string settingsDraft: runtimeDir + "/nihil-settings.json"
-    readonly property string sudoAsk: 'umask 077; flag="${XDG_RUNTIME_DIR:-/tmp}/nihil-sudo-password"; '
+    readonly property string newPassword: runtimeDir + "/nihil-new-password"
+    readonly property string sudoAsk: 'umask 077; flag="${XDG_RUNTIME_DIR:?}/nihil-sudo-password"; '
         + 'if [ "$1" = password ]; then echo $$ > "$flag"; else rm -f "$flag"; fi; '
         + 'if [ -n "$2" ]; then IFS= read -r line && printf "%s\\n" "$line" > "$2" || exit 4; fi; '
         + 'shift 2; exec "$@"'
@@ -550,7 +563,7 @@ Singleton {
 
         property string input: ""
 
-        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", "password", "",
+        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", "password", root.newPassword,
             Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "passwd"]
         stdinEnabled: true
         onStarted: {
@@ -562,6 +575,9 @@ Singleton {
             stdinEnabled = true;
             // sudo says 1 when the current password is wrong; nihil passwd, 3 or 4 when it can't change it.
             root.passwordState = code === 0 ? "done" : code === 1 ? "wrong" : "failed";
+            // nihil passwd takes the file away; without it having run, it is still there.
+            if (code !== 0)
+                Quickshell.execDetached([Config.cmd.sh, "-c", 'rm -f -- "$1"', "sh", root.newPassword]);
         }
     }
 

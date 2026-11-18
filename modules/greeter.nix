@@ -54,7 +54,8 @@ let
 		export QT_SCALE_FACTOR=${toString scale}
 		export XDG_CACHE_HOME=/var/cache/nihil-greeter
 		export XDG_STATE_HOME=/var/cache/nihil-greeter/state
-		run=''${XDG_RUNTIME_DIR:-/tmp}
+		# Never /tmp, where another user could make the file first.
+		run=''${XDG_RUNTIME_DIR:?}
 		export NIHIL_GREETER_READY="$run/nihil-greeter-ready"
 		rm -f "$NIHIL_GREETER_READY" "$run/nihil-greeter-password"
 
