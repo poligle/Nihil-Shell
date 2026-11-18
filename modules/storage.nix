@@ -2,21 +2,7 @@
 
 { config, lib, pkgs, ... }:
 {
+    # udisks2's own rules: removable drives mount without asking, the disk's own partitions (another
+    # system's, Windows') with the password.
     services.udisks2.enable = true;
-
-    security.polkit.extraConfig = ''
-        polkit.addRule(function(action, subject)
-        {
-            var mountActions =
-            [
-                "org.freedesktop.udisks2.filesystem-mount",
-                "org.freedesktop.udisks2.filesystem-mount-system"
-            ];
-
-            if (mountActions.indexOf(action.id) >= 0 && subject.local && subject.active && subject.isInGroup("wheel"))
-            {
-                return polkit.Result.YES;
-            }
-        });
-    '';
 }

@@ -131,7 +131,9 @@ nihil generations clean DAYS  # those older than DAYS days go, and what nothing 
 ```
 
 One change at a time: while one is being made, from a terminal or from Preferences, any
-other stops and says so. A change that fails with the system as it was leaves
+other stops and says so. Switching and cleaning run in `nihil-apply.service`, as Preferences'
+do, and the terminal follows them: closing it, or Ctrl+C, stops following, not the change
+(`--unit` starts it without following). A change that fails with the system as it was leaves
 `settings.json`, `flake.lock` and `nihil dev` as they were too, so the next rebuild builds
 what runs. `nihil apply` and `nihil settings` take settings for this machine's own account
 only (a different `user.name` would leave it out of the system), with `host.name`, and
