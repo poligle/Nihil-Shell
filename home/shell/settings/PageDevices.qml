@@ -24,7 +24,7 @@ Flickable {
         spacing: 14
 
         Heading {
-            title: Lang.cfgPhone
+            title: Lang.cfgDevices
         }
 
         Setting {
@@ -117,14 +117,14 @@ Flickable {
         Label {
             visible: Deck.enabled && Deck.running
             Layout.topMargin: 8
-            text: Deck.devices.length > 0 ? Lang.deckPhones : Lang.deckNone
+            text: Deck.devices.length > 0 ? Lang.deckDevices : Lang.deckNone
         }
 
         Repeater {
             model: Deck.enabled && Deck.running ? Deck.devices : []
 
             Item {
-                id: phone
+                id: device
 
                 required property var modelData
 
@@ -145,18 +145,18 @@ Flickable {
                     x: 14
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - x - seen.width - forget.width - 48
-                    text: phone.modelData.name
+                    text: device.modelData.name
                 }
 
                 // When it was last seen; in its last month unused, the day the deck forgets it.
                 Label {
                     id: seen
-                    readonly property real expires: phone.modelData.expires ?? 0
+                    readonly property real expires: device.modelData.expires ?? 0
                     anchors.right: forget.left
                     anchors.rightMargin: 16
                     anchors.verticalCenter: parent.verticalCenter
                     text: expires > 0 && expires - Date.now() / 1000 < 30 * 86400 ? Lang.deckForgetsOn.arg(Dates.day(expires))
-                                                                                  : Dates.moment(phone.modelData.seen ?? 0)
+                                                                                  : Dates.moment(device.modelData.seen ?? 0)
                     font.pixelSize: 12
                 }
 
@@ -166,7 +166,7 @@ Flickable {
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
                     text: Lang.deckForget
-                    onClicked: Deck.forget(phone.modelData.id)
+                    onClicked: Deck.forget(device.modelData.id)
                 }
             }
         }

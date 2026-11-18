@@ -15,7 +15,7 @@ Item {
         { name: "keys", title: Lang.cfgKeys, file: "PageKeys.qml" },
         { name: "system", title: Lang.cfgSystem, file: "PageSystem.qml" },
         { name: "generations", title: Lang.cfgGenerations, file: "PageGenerations.qml" },
-        { name: "phone", title: Lang.cfgPhone, file: "PagePhone.qml" }
+        { name: "devices", title: Lang.cfgDevices, file: "PageDevices.qml" }
     ]
     readonly property var current: pages.find(page => page.name === Machine.page) ?? pages[0]
 

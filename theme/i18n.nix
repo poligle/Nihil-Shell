@@ -410,6 +410,7 @@
 		cfgKeyNeedsMod = "Añade Super u otro modificador";
 		cfgKeyReserved = "Esa es de los escritorios";
 		cfgKeyTaken = "Ya la usa: %1";
+		cfgKeyShiftTaken = "Con Shift graba, pero esa ya la usa: %1";
 		cfgSystem = "Sistema";
 		cfgHost = "Nombre del ordenador";
 		cfgAcceleration = "Aceleración";
@@ -454,8 +455,8 @@
 		bindToSpecial = "Ventana al especial";
 		bindNextWorkspace = "Siguiente escritorio";
 		bindOverview = "Todos los escritorios; mantenida, elegir uno";
-		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
-		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
+		bindScreenshot = "Captura de la pantalla; con Shift, grabarla";
+		bindSnip = "Captura de una zona (la tecla de recortes); con Shift, grabarla";
 		screenshotsDir = "Capturas";
 		screenshotSaved = "Captura guardada y copiada";
 		recordSaved = "Grabación guardada y copiada";
@@ -473,6 +474,7 @@
 		welBottom = "Abajo";
 		welBasicsTitle = "Lo básico";
 		welBasicsBody = "Con estas teclas y tres dedos en el touchpad tienes casi todo.";
+		welBasicsKeys = "Con estas teclas tienes casi todo.";
 		welWorkspaces = "Ir a un escritorio";
 		welMoveTo = "Llevar la ventana a un escritorio";
 		welGestures = "Con tres dedos: a los lados cambias de escritorio, hacia arriba abres el lanzador, hacia abajo cierras la ventana y separándolos la maximizas.";
@@ -547,7 +549,7 @@
 		genBootFailed = "No se ha podido preparar el arranque";
 		genNotInMenu = "El menú de arranque ya no la tiene";
 		genGone = "Esa generación ya no está";
-		cfgPhone = "Dispositivos";
+		cfgDevices = "Dispositivos";
 		deckUse = "Usar dispositivos";
 		deckApply = "Se enciende al aplicar.";
 		deckNetworks = "Apágalo en redes que no son tuyas: cualquiera en ellas llega a su puerto";
@@ -557,7 +559,7 @@
 		deckWatchInstall = "Instalar en un reloj";
 		deckPair = "Emparejar un dispositivo";
 		deckPairFailed = "No se ha podido sacar el código";
-		deckPhones = "Dispositivos emparejados";
+		deckDevices = "Dispositivos emparejados";
 		deckNone = "Ningún dispositivo emparejado.";
 		deckForget = "Olvidar";
 		deckAsking = "%1 quiere usar este ordenador como deck";
@@ -1180,6 +1182,7 @@
 		cfgKeyNeedsMod = "Add Super or another modifier";
 		cfgKeyReserved = "That one belongs to the workspaces";
 		cfgKeyTaken = "Already used by: %1";
+		cfgKeyShiftTaken = "With Shift it records, but that one is used by: %1";
 		cfgSystem = "System";
 		cfgHost = "Computer name";
 		cfgAcceleration = "Acceleration";
@@ -1224,8 +1227,8 @@
 		bindToSpecial = "Window to the special one";
 		bindNextWorkspace = "Next workspace";
 		bindOverview = "All workspaces; held, choose one";
-		bindScreenshot = "Screenshot of the screen; with SHIFT, record it";
-		bindSnip = "Screenshot of an area (the snipping key); with SHIFT, record it";
+		bindScreenshot = "Screenshot of the screen; with Shift, record it";
+		bindSnip = "Screenshot of an area (the snipping key); with Shift, record it";
 		screenshotsDir = "Screenshots";
 		screenshotSaved = "Screenshot saved and copied";
 		recordSaved = "Recording saved and copied";
@@ -1243,6 +1246,7 @@
 		welBottom = "At the bottom";
 		welBasicsTitle = "The basics";
 		welBasicsBody = "These keys and three fingers on the touchpad get you almost everything.";
+		welBasicsKeys = "These keys get you almost everything.";
 		welWorkspaces = "Go to a workspace";
 		welMoveTo = "Take the window to a workspace";
 		welGestures = "With three fingers: sideways you switch workspace, up opens the launcher, down closes the window and spreading them maximises it.";
@@ -1317,7 +1321,7 @@
 		genBootFailed = "Could not set the next boot";
 		genNotInMenu = "The boot menu no longer has it";
 		genGone = "That generation is gone";
-		cfgPhone = "Devices";
+		cfgDevices = "Devices";
 		deckUse = "Use devices";
 		deckApply = "It turns on when applied.";
 		deckNetworks = "Turn it off on networks that aren't yours: anyone on them reaches its port";
@@ -1327,7 +1331,7 @@
 		deckWatchInstall = "Install on a watch";
 		deckPair = "Pair a device";
 		deckPairFailed = "The code could not be made";
-		deckPhones = "Paired devices";
+		deckDevices = "Paired devices";
 		deckNone = "No device paired.";
 		deckForget = "Forget";
 		deckAsking = "%1 wants to use this computer as a deck";

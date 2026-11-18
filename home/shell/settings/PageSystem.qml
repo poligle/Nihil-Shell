@@ -48,9 +48,10 @@ Flickable {
                     onToggled: Machine.set("nilo.enable", !on, false)
                 }
 
+                // Not in the welcome, which stays over everything: Nilo would open beneath it.
                 KeyButton {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: Config.nilo.enabled
+                    visible: Config.nilo.enabled && !Machine.welcoming
                     text: Lang.cfgNiloSettings
                     onClicked: {
                         Machine.hide();
