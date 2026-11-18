@@ -662,6 +662,7 @@
 		insNoRoom = "No hay sitio para NIHIL junto a lo que hay en %1: necesita %2.";
 		insNoRoot = "%1 no tiene ninguna partición donde pueda ir NIHIL.";
 		insNoShrink = "%1: %2 no se puede encoger.";
+		insNoSource = "No se puede llegar a %1: no se ha tocado nada.";
 		insNoSize = "No se ha dado un tamaño para NIHIL.";
 		insNoWhere = "No se ha elegido dónde va NIHIL.";
 		insNoWifi = "No aparece ninguna tarjeta Wi-Fi: un cable, o un móvil compartiendo su conexión por USB, también sirven.";
@@ -698,9 +699,9 @@
 		insUpTo = "hasta %1";
 		insUsbBad = "No se puede leer el USB entero. Vuelve a grabar la imagen comprobando su SHA256, o prueba otro USB u otro puerto.";
 		insUser = "Usuario";
-		insUserHint = "Nombre de usuario (minúsculas y cifras)";
+		insUserHint = "Nombre de usuario (minúsculas, cifras, _ y -)";
 		insUserName = "Nombre de usuario";
-		insUserRule = "Minúsculas y cifras, empezando por una letra.";
+		insUserRule = "Minúsculas, cifras, _ y -, empezando por una letra o _.";
 		insWhere = "Dónde";
 		insWhereGoes = "Dónde va NIHIL";
 		insWhereOn = "Dónde en %1";
@@ -1413,6 +1414,7 @@
 		insNoRoom = "There is no room for NIHIL next to what is on %1: it needs %2.";
 		insNoRoot = "%1 has no partition NIHIL can go on.";
 		insNoShrink = "%1: %2 cannot be shrunk.";
+		insNoSource = "%1 can't be reached: nothing was touched.";
 		insNoSize = "No size was given for NIHIL.";
 		insNoWhere = "Where NIHIL goes was not chosen.";
 		insNoWifi = "No Wi-Fi card shows up: a cable, or a phone sharing its connection over USB, work too.";
@@ -1449,9 +1451,9 @@
 		insUpTo = "up to %1";
 		insUsbBad = "The USB stick can't be read whole. Write the image again, checking its SHA256, or try another stick or port.";
 		insUser = "User";
-		insUserHint = "User name (lowercase letters and digits)";
+		insUserHint = "User name (lowercase letters, digits, _ and -)";
 		insUserName = "User name";
-		insUserRule = "Lowercase letters and digits, starting with a letter.";
+		insUserRule = "Lowercase letters, digits, _ and -, starting with a letter or _.";
 		insWhere = "Where";
 		insWhereGoes = "Where NIHIL goes";
 		insWhereOn = "Where on %1";

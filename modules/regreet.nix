@@ -83,9 +83,13 @@ in
         // lib.optionalAttrs (xkb.variant != "") { XKB_DEFAULT_VARIANT = xkb.variant; }
         // lib.optionalAttrs (xkb.model != "") { XKB_DEFAULT_MODEL = xkb.model; };
 
+    # Through /etc, which follows the generation that runs: a link straight into the store would
+    # point at nothing once a collection took it, until the next login copies the user's.
+    environment.etc."nihil/wallpapers".source = config.nihil.wallpapers;
+
     systemd.tmpfiles.rules =
     [
         "d /var/lib/nihil/greeter 0755 ${config.nihil.user.name} users -"
-        "L /var/lib/nihil/greeter/wallpaper.png - - - - ${config.nihil.wallpapers}/${config.nihil.wallpaper}/${config.nihil.primaryOutput}.png"
+        "L /var/lib/nihil/greeter/wallpaper.png - - - - /etc/nihil/wallpapers/${config.nihil.wallpaper}/${config.nihil.primaryOutput}.png"
     ];
 }

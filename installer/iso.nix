@@ -143,8 +143,9 @@ in
     environment.etc =
     {
         "nihil/template".source = ../templates/machine;
-        "nihil/source".text = "github:poligle/Nihil-Shell";
-        "nihil/rev".text = nihil.rev or "";
+        "nihil/source".text = nihil.lib.source;
+        # A tree with changes has no revision: the image would install GitHub's default branch.
+        "nihil/rev".text = nihil.rev or (lib.warn "An image from a tree with changes installs GitHub's default branch, not this tree." "");
         # The installer's words, both modes', in theme/i18n.nix with the shell's.
         "nihil/strings.json".text = builtins.toJSON (import ../theme/i18n.nix);
     };
@@ -162,6 +163,10 @@ in
             nihil-installer || true
         fi
     '';
+
+    # installation-device turns sshd on with root's login allowed: a desktop's installer has no
+    # use for it, and a password set with passwd would open root to the network.
+    services.openssh.enable = lib.mkForce false;
 
     services.getty.helpLine = lib.mkForce ''
 
