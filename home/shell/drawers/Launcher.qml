@@ -285,7 +285,7 @@ Item {
     GridView {
         id: grid
         anchors.top: search.bottom
-        anchors.bottom: footer.top
+        anchors.bottom: hints.top
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.margins: 24
@@ -353,7 +353,7 @@ Item {
     ListView {
         id: list
         anchors.top: search.bottom
-        anchors.bottom: footer.top
+        anchors.bottom: hints.top
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.margins: 24
@@ -438,7 +438,7 @@ Item {
     }
 
     KeyHints {
-        id: footer
+        id: hints
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 16
