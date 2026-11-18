@@ -16,13 +16,12 @@ Item {
 
     readonly property bool fingerWait: Machine.phase === "auth" && Machine.auth === "finger"
 
-    function go(): void {
-        if (password.text === "" && !Machine.fingerprint) {
-            password.grab();
+    function go(password: string): void {
+        if (password === "" && !Machine.fingerprint) {
+            ask.grab();
             return;
         }
-        Machine.apply(password.text);
-        password.clear();
+        Machine.apply(password);
     }
 
     Connections {
@@ -30,7 +29,7 @@ Item {
         function onFailureChanged(): void {
             if (Machine.kind === "settings" && (Machine.failure === "finger" || Machine.failure === "password")) {
                 root.asking = true;
-                password.grab();
+                ask.grab();
             }
         }
         function onPhaseChanged(): void {
@@ -116,44 +115,34 @@ Item {
             onClicked: root.showLog = !root.showLog
         }
 
-        Field {
-            id: password
-            visible: root.asking && (!Machine.busy || root.fingerWait)
-            Layout.preferredWidth: 220
-            password: true
-            placeholder: Lang.cfgApplyPassword
-            onAccepted: root.go()
-        }
-
-        KeyButton {
-            visible: Machine.changes > 0 && (!Machine.busy || root.fingerWait)
-            text: root.asking ? Lang.cfgCancel : Lang.cfgDiscard
-            onClicked: {
+        // While the finger is awaited, the password can be typed instead.
+        PasswordAsk {
+            id: ask
+            visible: root.asking && Machine.changes > 0 && (!Machine.busy || root.fingerWait)
+            confirm: Machine.busy ? "" : Lang.cfgApply
+            onEntered: password => root.go(password)
+            onCancelled: {
                 if (root.fingerWait)
                     Machine.cancelFinger();
-                if (root.asking) {
-                    root.asking = false;
-                    password.clear();
-                } else {
-                    Machine.discard();
-                }
+                root.asking = false;
             }
         }
 
         KeyButton {
-            visible: Machine.changes > 0 && !Machine.busy
+            visible: !root.asking && Machine.changes > 0 && !Machine.busy
+            text: Lang.cfgDiscard
+            onClicked: Machine.discard()
+        }
+
+        KeyButton {
+            visible: !root.asking && Machine.changes > 0 && !Machine.busy
             accent: true
             text: Lang.cfgApply
             onClicked: {
-                if (root.asking) {
-                    root.go();
-                } else {
-                    root.asking = true;
-                    Updates.readDev();
-                    if (Machine.fingerprint)
-                        Machine.apply("");
-                    password.grab();
-                }
+                root.asking = true;
+                Updates.readDev();
+                if (Machine.fingerprint)
+                    Machine.apply("");
             }
         }
     }

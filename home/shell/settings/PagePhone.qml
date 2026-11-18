@@ -33,7 +33,7 @@ Flickable {
 
             Toggle {
                 on: page.wanted
-                onToggled: Machine.set("deck.enable", !on)
+                onToggled: Machine.set("deck.enable", !on, false)
             }
         }
 

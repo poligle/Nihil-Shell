@@ -20,6 +20,8 @@ Item {
     readonly property bool last: step === steps.length - 1
     readonly property bool applied: Machine.phase === "done" || Machine.phase === "warning"
     readonly property bool asking: last && Machine.changes > 0 && !Machine.busy && !applied
+    // While the finger is awaited, the password can be typed instead, as in Preferences.
+    readonly property bool fingerWait: last && Machine.phase === "auth" && Machine.auth === "finger"
     readonly property string firstName: String(Machine.get("user.fullName", "")).trim().split(" ")[0]
 
     function key(name: string): string {
@@ -28,6 +30,12 @@ Item {
     }
 
     function finish(): void {
+        if (root.fingerWait) {
+            if (password.text !== "")
+                Machine.apply(password.text);
+            password.clear();
+            return;
+        }
         if (root.asking) {
             if (password.text === "" && !Machine.fingerprint) {
                 password.grab();
@@ -303,7 +311,11 @@ Item {
 
             Field {
                 id: password
-                visible: root.asking
+                visible: root.asking || root.fingerWait
+                onVisibleChanged: {
+                    if (!visible)
+                        clear();
+                }
                 Layout.preferredWidth: 220
                 password: true
                 placeholder: Lang.cfgApplyPassword
@@ -313,7 +325,7 @@ Item {
             KeyButton {
                 accent: true
                 text: !root.last ? Lang.welNext
-                    : root.asking ? Lang.welApplyStart
+                    : root.asking || root.fingerWait ? Lang.welApplyStart
                     : Machine.busy || root.applied ? Lang.welClose : Lang.welStart
                 onClicked: root.next()
             }

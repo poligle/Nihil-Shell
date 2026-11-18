@@ -63,7 +63,7 @@ Flickable {
         onTriggered: page.armed = ""
     }
 
-    component Ask: RowLayout {
+    component Ask: PasswordAsk {
         id: ask
 
         property string action: ""
@@ -71,46 +71,12 @@ Flickable {
         property string label: ""
 
         visible: page.asking === action && (!Machine.busy || page.fingerWait)
-        spacing: 8
-
-        onVisibleChanged: {
-            if (visible)
-                Qt.callLater(() => field.grab());
-        }
-
-        Field {
-            id: field
-            Layout.preferredWidth: 220
-            password: true
-            catchEscape: true
-            placeholder: Lang.cfgApplyPassword
-            onAccepted: {
-                page.go(ask.action, ask.value, text);
-                field.clear();
-            }
-            onEscaped: {
-                field.clear();
-                page.asking = "";
-            }
-        }
-
-        KeyButton {
-            accent: true
-            text: ask.label
-            onClicked: {
-                page.go(ask.action, ask.value, field.text);
-                field.clear();
-            }
-        }
-
-        KeyButton {
-            text: Lang.cfgCancel
-            onClicked: {
-                if (page.fingerWait)
-                    Machine.cancelFinger();
-                field.clear();
-                page.asking = "";
-            }
+        confirm: label
+        onEntered: password => page.go(ask.action, ask.value, password)
+        onCancelled: {
+            if (page.fingerWait)
+                Machine.cancelFinger();
+            page.asking = "";
         }
     }
 
@@ -326,7 +292,7 @@ Flickable {
                 options: [{ value: 7, label: Lang.genDays.arg(7) }, { value: 30, label: Lang.genDays.arg(30) },
                           { value: 90, label: Lang.genDays.arg(90) }]
                 value: page.days
-                onPicked: value => Machine.set("generations.days", value)
+                onPicked: value => Machine.set("generations.days", value, 7)
             }
         }
 

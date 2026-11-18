@@ -15,7 +15,11 @@ Scope {
     required property ShellScreen modelData
 
     readonly property string output: modelData.name
+    // The screens named for it; with none of them connected (a closed laptop on a dock that names
+    // its ports another way), the first one, rather than no bar anywhere.
+    readonly property bool anyBar: Quickshell.screens.some(s => Config.barOutputs.indexOf(s.name) >= 0)
     readonly property bool hasBar: Config.barOutputs.indexOf(output) >= 0
+        || (!anyBar && Quickshell.screens.indexOf(modelData) === 0)
     readonly property int inset: hasBar ? Tokens.barWidth : Tokens.frameThickness
     readonly property int edge: Tokens.frameThickness
 

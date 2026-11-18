@@ -92,7 +92,9 @@ Singleton {
         return node;
     }
 
-    function set(path: string, value: var): void {
+    // fallback is the value get() gives for a key settings.json doesn't have: set to it, such a key
+    // stays out, and choosing again what is already chosen changes nothing.
+    function set(path: string, value: var, fallback: var): void {
         const next = clone(root.draft);
         const keys = path.split(".");
         let node = next;
@@ -102,14 +104,34 @@ Singleton {
             node = node[keys[i]];
         }
         const last = keys[keys.length - 1];
-        if (value === undefined)
+        const unsaved = fallback !== undefined && !root.holds(root.saved, keys)
+            && JSON.stringify(value) === JSON.stringify(fallback);
+        if (value === undefined || unsaved)
             delete node[last];
         else
             node[last] = value;
         root.draft = next;
     }
 
+    function holds(tree: var, keys: var): bool {
+        let node = tree;
+        for (let i = 0; i < keys.length; i++) {
+            if (node === null || typeof node !== "object" || !(keys[i] in node))
+                return false;
+            node = node[keys[i]];
+        }
+        return true;
+    }
+
+    function empty(value: var): bool {
+        return value === undefined
+            || (value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0);
+    }
+
+    // A key that isn't there and one that holds nothing ({}) are the same to NIHIL.
     function differences(a: var, b: var): int {
+        if (root.empty(a) && root.empty(b))
+            return 0;
         if (a === null || b === null || typeof a !== "object" || typeof b !== "object")
             return JSON.stringify(a) === JSON.stringify(b) ? 0 : 1;
         let count = 0;

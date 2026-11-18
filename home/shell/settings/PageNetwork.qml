@@ -29,65 +29,10 @@ Flickable {
             sub: Network.connected ? Lang.welNetDone.arg(Network.ssid || Network.ethernet) : Machine.welcoming ? Lang.welNetBody : ""
         }
 
-        Repeater {
-            model: Network.connected ? [] : Network.networks.slice(0, 10)
-
-            Item {
-                id: net
-
-                required property var modelData
-                readonly property bool asking: Network.askPassword === modelData.ssid
-
-                Layout.fillWidth: true
-                implicitHeight: 40 + (asking ? 48 : 0)
-
-                Surface {
-                    anchors.fill: parent
-                    radius: 10
-                    color: area.containsMouse || net.asking ? Tokens.surface : "transparent"
-                }
-
-                Txt {
-                    x: 14
-                    y: 11
-                    text: net.modelData.ssid
-                }
-
-                Label {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 14
-                    y: 13
-                    text: Network.pending === net.modelData.ssid ? Lang.cfgChecking : net.modelData.signal + "%"
-                }
-
-                MouseArea {
-                    id: area
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: 40
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Network.connect(net.modelData, "")
-                }
-
-                Field {
-                    visible: net.asking
-                    x: 14
-                    y: 44
-                    width: 300
-                    height: 36
-                    password: true
-                    placeholder: Lang.welNetPassword
-                    onVisibleChanged: if (visible) grab()
-                    onAccepted: Network.connect(net.modelData, text)
-                }
-            }
-        }
-
-        Alert {
+        WifiList {
             Layout.fillWidth: true
-            visible: Network.error !== ""
-            text: Network.error
+            visible: !Network.connected
+            active: !Network.connected
         }
     }
 }
