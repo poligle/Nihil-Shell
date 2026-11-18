@@ -83,7 +83,7 @@ fingers of each one or `null` for none, which only change there.
   { "name": "Zen", "exec": "zen-beta", "keys": "SUPER + X" },
   { "name": "Spotify", "exec": "spotify", "keys": "SUPER + M" }
 ],
-"gestures": { "close": null, "special": 3 }
+"gestures": { "close": null, "launcher": null, "special": 3 }
 ```
 
 The actions: `launcher`, `dashboard`, `panel`, `settings`, `wallpapers`, `copy`,
