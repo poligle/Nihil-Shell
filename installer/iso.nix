@@ -74,13 +74,21 @@ let
             rm -f "$state"
 
             # The screen the installer goes on, and its scale: the computer's own panel when there
-            # is one, else the first connected. cage turns every one on, and the window spans them.
+            # is one and its lid is open, else the first connected. cage turns every one on, a shut
+            # panel too, and the window spans them.
+            shut=no
+            for lid in /proc/acpi/button/lid/*/state; do
+                [[ $(cat "$lid" 2> /dev/null || true) == *closed* ]] && shut=yes
+            done
             scale=1
             screen=""
             for connector in /sys/class/drm/card*-eDP-* /sys/class/drm/card*-LVDS-* /sys/class/drm/card*-DSI-* \
                     /sys/class/drm/card*-*; do
                 [ "$(cat "$connector/status" 2> /dev/null)" = connected ] || continue
                 name=''${connector##*/}
+                if [ "$shut" = yes ] && [[ $name =~ -(eDP|LVDS|DSI)- ]]; then
+                    continue
+                fi
                 screen=''${name#card*-}
                 mode=$(head -n 1 "$connector/modes" 2> /dev/null || true)
                 [[ $mode =~ ^([0-9]+)x ]] || break
