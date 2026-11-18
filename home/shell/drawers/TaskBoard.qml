@@ -379,14 +379,24 @@ Item {
 
                                     Repeater {
                                         model: [
-                                            { glyph: Icons.chevronLeft, show: card.modelData.column > 0, step: -1 },
-                                            { glyph: Icons.chevron, show: card.modelData.column < 2, step: 1 },
-                                            { glyph: Icons.pencil, show: true, step: 2 },
-                                            { glyph: Icons.close, show: true, step: 0 }
+                                            { glyph: Icons.chevronLeft, show: card.modelData.column > 0, step: -1, name: Lang.tasksLeft },
+                                            { glyph: Icons.chevron, show: card.modelData.column < 2, step: 1, name: Lang.tasksRight },
+                                            { glyph: Icons.pencil, show: true, step: 2, name: Lang.tasksEdit },
+                                            { glyph: Icons.close, show: true, step: 0, name: Lang.tasksDelete }
                                         ].filter(t => t.show)
 
                                         Ico {
+                                            id: tool
+
                                             required property var modelData
+
+                                            function act(): void {
+                                                const step = tool.modelData.step;
+                                                if (step === 2) root.editingId = card.modelData.id;
+                                                else if (step === 0) Tasks.remove(card.modelData.id);
+                                                else Tasks.move(card.modelData.id, card.modelData.column + step);
+                                            }
+
                                             width: 22
                                             height: 22
                                             glyph: modelData.glyph
@@ -398,12 +408,10 @@ Item {
                                                 anchors.fill: parent
                                                 hoverEnabled: true
                                                 cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    const step = parent.modelData.step;
-                                                    if (step === 2) root.editingId = card.modelData.id;
-                                                    else if (step === 0) Tasks.remove(card.modelData.id);
-                                                    else Tasks.move(card.modelData.id, card.modelData.column + step);
-                                                }
+                                                Accessible.role: Accessible.Button
+                                                Accessible.name: tool.modelData.name
+                                                Accessible.onPressAction: tool.act()
+                                                onClicked: tool.act()
                                             }
                                         }
                                     }

@@ -244,6 +244,7 @@ ShellRoot {
         page = Math.max(0, Math.min(pages.length - 1, next));
         scroller.contentY = 0;
         appear.restart();
+        panel.forceActiveFocus();
         if (pageName === "network")
             check();
         if (page > 0 && page < pages.indexOf("install") && !probing && (machine === null || probedLang !== lang))
@@ -255,7 +256,7 @@ ShellRoot {
     }
 
     function forward(): void {
-        if (!root.ready(pageName))
+        if (pageName === "install" || !root.ready(pageName))
             return;
         if (pageName === "welcome" && layout !== startLayout) {
             leave({ next: "layout", page: 1, lang: lang, layout: layout, otherLayout: otherLayout, zone: zone,
@@ -487,9 +488,27 @@ ShellRoot {
 
         signal picked()
 
+        function press(event: var): void {
+            if (option.active && !event.isAutoRepeat)
+                option.picked();
+        }
+
         width: parent ? parent.width : 0
         implicitHeight: 44
         opacity: active ? 1 : 0.4
+        activeFocusOnTab: active
+
+        Accessible.role: Accessible.RadioButton
+        Accessible.name: option.detail !== "" ? option.title + ", " + option.detail : option.title
+        Accessible.checkable: true
+        Accessible.checked: option.chosen
+        Accessible.onPressAction: {
+            if (option.active)
+                option.picked();
+        }
+        Keys.onReturnPressed: event => option.press(event)
+        Keys.onEnterPressed: event => option.press(event)
+        Keys.onSpacePressed: event => option.press(event)
 
         Surface {
             anchors.fill: parent
@@ -529,6 +548,10 @@ ShellRoot {
             width: Math.min(implicitWidth, option.width * 0.55)
             horizontalAlignment: Text.AlignRight
             text: option.detail
+        }
+
+        FocusRing {
+            round: 10
         }
 
         MouseArea {
@@ -788,6 +811,26 @@ ShellRoot {
         Item {
             id: panel
 
+            // Enter goes on and Escape back, as the buttons below; a control with the focus
+            // answers for itself, and a field keeps its Enter.
+            focus: true
+            Keys.onReturnPressed: event => {
+                if (panel.activeFocus && !event.isAutoRepeat)
+                    root.forward();
+                else
+                    event.accepted = false;
+            }
+            Keys.onEnterPressed: event => {
+                if (panel.activeFocus && !event.isAutoRepeat)
+                    root.forward();
+                else
+                    event.accepted = false;
+            }
+            Keys.onEscapePressed: {
+                if (root.page > 0 && root.page < root.pages.indexOf("install"))
+                    root.go(root.page - 1);
+            }
+
             x: root.area.x + (root.area.width - width) / 2
             y: root.area.y + (root.area.height - height) / 2
             width: Math.min(720, root.area.width - 48)
@@ -867,6 +910,7 @@ ShellRoot {
 
                             Choice {
                                 width: parent.width
+                                label: root.tr("Language", "Idioma")
                                 options: [{ label: "English", value: "en" }, { label: "Español", value: "es" }]
                                 value: root.lang
                                 onPicked: value => root.lang = value
@@ -883,6 +927,7 @@ ShellRoot {
 
                             Choice {
                                 width: parent.width
+                                label: root.tr("Keyboard", "Teclado")
                                 options: root.keyboards.map(entry => ({ label: root.lang === "es" ? entry.es : entry.en, value: entry.value }))
                                     .concat(Config.layouts.length > 0 ? [{ label: root.tr("Other", "Otro"), value: "other" }] : [])
                                 value: root.otherLayout ? "other" : root.layout
@@ -1244,6 +1289,7 @@ ShellRoot {
                             Choice {
                                 visible: root.room !== null
                                 width: parent.width
+                                label: root.tr("Room for NIHIL", "Espacio para NIHIL")
                                 options: root.room ? root.amounts.map(amount => ({
                                     label: amount === root.room.max ? root.tr("All of it, ", "Todo, ") + root.size(amount) : root.size(amount),
                                     value: amount

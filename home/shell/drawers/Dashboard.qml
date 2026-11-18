@@ -126,9 +126,9 @@ Item {
                             Layout.topMargin: 6
                             spacing: 8
 
-                            CircleButton { glyph: Icons.prev; size: 32; onClicked: Media.previous() }
-                            CircleButton { glyph: Media.playing ? Icons.pause : Icons.play; size: 32; filled: true; onClicked: Media.toggle() }
-                            CircleButton { glyph: Icons.next; size: 32; onClicked: Media.next() }
+                            CircleButton { glyph: Icons.prev; label: Lang.mediaPrevious; size: 32; onClicked: Media.previous() }
+                            CircleButton { glyph: Media.playing ? Icons.pause : Icons.play; label: Media.playing ? Lang.mediaPause : Lang.mediaPlay; size: 32; filled: true; onClicked: Media.toggle() }
+                            CircleButton { glyph: Icons.next; label: Lang.mediaNext; size: 32; onClicked: Media.next() }
                         }
                     }
                 }

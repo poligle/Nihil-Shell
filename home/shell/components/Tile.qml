@@ -13,8 +13,34 @@ Item {
     signal toggled()
     signal expand()
 
+    // Enter or Space switches it; Shift+Enter or the menu key opens what it holds, as the right
+    // button does.
+    function press(event: var): void {
+        if (event.isAutoRepeat)
+            return;
+        if (root.expandable && (event.modifiers & Qt.ShiftModifier))
+            root.expand();
+        else
+            root.toggled();
+    }
+
     implicitWidth: 96
     implicitHeight: 92
+    activeFocusOnTab: true
+
+    Accessible.role: Accessible.CheckBox
+    Accessible.name: root.label
+    Accessible.checkable: true
+    Accessible.checked: root.active
+    Accessible.onPressAction: root.toggled()
+    Accessible.onToggleAction: root.toggled()
+    Keys.onReturnPressed: event => root.press(event)
+    Keys.onEnterPressed: event => root.press(event)
+    Keys.onSpacePressed: event => root.press(event)
+    Keys.onMenuPressed: {
+        if (root.expandable)
+            root.expand();
+    }
 
     Surface {
         id: disc
@@ -42,6 +68,11 @@ Item {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: Qt.PointingHandCursor
             onClicked: mouse => mouse.button === Qt.RightButton && root.expandable ? root.expand() : root.toggled()
+        }
+
+        FocusRing {
+            shown: root.activeFocus
+            round: disc.radius
         }
     }
 

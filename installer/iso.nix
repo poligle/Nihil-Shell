@@ -51,6 +51,7 @@ let
         cp ${../home/shell/components/KeyButton.qml} $out/components/KeyButton.qml
         cp ${../home/shell/components/Field.qml} $out/components/Field.qml
         cp ${../home/shell/components/Choice.qml} $out/components/Choice.qml
+        cp ${../home/shell/components/FocusRing.qml} $out/components/FocusRing.qml
         cp ${import ../theme/shaders.nix { inherit pkgs; }}/surface.*.qsb $out/shaders/
         cp ${qml.tokens} $out/theme/Tokens.qml
         cp ${configQml} $out/config/Config.qml

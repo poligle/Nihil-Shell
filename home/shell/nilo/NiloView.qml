@@ -195,6 +195,7 @@ Item {
 
         CircleButton {
             glyph: Icons.plus
+            label: Lang.niloNew
             size: 32
             visible: root.view === "chat" && Nilo.messages.count > 0
             onClicked: Nilo.reset()
@@ -202,6 +203,7 @@ Item {
 
         CircleButton {
             glyph: Icons.cog
+            label: Lang.cfgNiloSettings
             size: 32
             visible: root.view === "chat" || root.view === "settings"
             filled: root.view === "settings"

@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.theme
+import qs.config
 import qs.services
 import qs.components
 import qs.nilo
@@ -32,6 +33,9 @@ Item {
                 anchors.margins: -8
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: Lang.bindLauncher
+                Accessible.onPressAction: Drawers.toggle("launcher", root.output)
                 onClicked: Drawers.toggle("launcher", root.output)
             }
         }
@@ -83,6 +87,9 @@ Item {
                 anchors.fill: parent
                 anchors.margins: -6
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: Lang.bindNilo
+                Accessible.onPressAction: Nilo.toggle()
                 onClicked: Nilo.toggle()
             }
         }
@@ -101,6 +108,9 @@ Item {
                 anchors.fill: parent
                 anchors.margins: -6
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: Lang.caffeine
+                Accessible.onPressAction: Caffeine.set(false)
                 onClicked: Caffeine.set(false)
             }
         }

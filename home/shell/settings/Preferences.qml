@@ -40,8 +40,10 @@ Scope {
             onCleared: Machine.hide()
         }
 
+        // The welcome has its own way back (WelcomeView), and can't be hidden.
         Shortcut {
             sequence: "Escape"
+            enabled: !Machine.welcoming
             onActivated: Machine.hide()
         }
 
@@ -93,6 +95,7 @@ Scope {
                 Loader {
                     anchors.fill: parent
                     active: win.visible
+                    focus: true
                     sourceComponent: Machine.welcoming ? welcome : preferences
                 }
             }

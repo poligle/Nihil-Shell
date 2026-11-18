@@ -182,9 +182,9 @@ Scope {
                         enabled: Media.active !== null
                         opacity: enabled ? 1 : 0.35
 
-                        CircleButton { glyph: Icons.prev; size: 28; onClicked: Media.previous() }
-                        CircleButton { glyph: Media.playing ? Icons.pause : Icons.play; size: 28; filled: true; onClicked: Media.toggle() }
-                        CircleButton { glyph: Icons.next; size: 28; onClicked: Media.next() }
+                        CircleButton { glyph: Icons.prev; label: Lang.mediaPrevious; size: 28; onClicked: Media.previous() }
+                        CircleButton { glyph: Media.playing ? Icons.pause : Icons.play; label: Media.playing ? Lang.mediaPause : Lang.mediaPlay; size: 28; filled: true; onClicked: Media.toggle() }
+                        CircleButton { glyph: Icons.next; label: Lang.mediaNext; size: 28; onClicked: Media.next() }
                     }
                 }
             }

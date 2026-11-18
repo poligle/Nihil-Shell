@@ -42,6 +42,9 @@ Column {
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: entry.modelData.tooltipTitle || entry.modelData.title || entry.modelData.id
+                Accessible.onPressAction: entry.modelData.activate()
                 onClicked: mouse => {
                     if (mouse.button === Qt.LeftButton && !entry.modelData.onlyMenu) {
                         entry.modelData.activate();

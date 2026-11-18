@@ -92,6 +92,9 @@ Surface {
                     anchors.margins: -6
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    Accessible.role: Accessible.Button
+                    Accessible.name: Lang.dismiss
+                    Accessible.onPressAction: root.notification.dismiss()
                     onClicked: root.notification.dismiss()
                 }
             }
