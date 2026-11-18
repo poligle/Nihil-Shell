@@ -163,6 +163,7 @@ Item {
         case "system": return Lang.dangerSystem;
         case "permissions": return Lang.dangerPermissions;
         case "internet": return Lang.dangerInternet;
+        case "script": return Lang.dangerScript;
         }
         return code;
     }

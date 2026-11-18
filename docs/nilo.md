@@ -59,8 +59,9 @@ it thinks. A click on them opens the conversation; when it ends, they go back to
   repository, never outside it or inside `.git`; `git add -A`, commit and push there; and
   commands with bash, as you. Every change to a file shows its diff, every commit its files
   and message, and every command itself, where it runs and why, and each waits for enter
-  twice or a click. Commands that delete, touch disks, rewrite git history, run as root or
-  change the system come in a red card; anything with `sudo` opens in a kitty window, where
+  twice or a click. Commands that delete, touch disks, rewrite git history, run as root,
+  change the system or run code written into them (`bash -c`, `python3 -c`) come in a red
+  card; anything with `sudo` opens in a kitty window, where
   you type the password; the rest run in the background with their last lines under them,
   for two minutes at most.
 - **The whole system.** The desktop, as you would use it: which windows are open and,
