@@ -179,27 +179,65 @@ Item {
                 sub: Lang.welBasicsBody
             }
 
-            Repeater {
-                model: [
-                    { what: Lang.bindLauncher, key: root.key("launcher") },
-                    { what: Lang.bindClose, key: root.key("close") },
-                    { what: Lang.welWorkspaces, key: "SUPER + 1 … 9" },
-                    { what: Lang.welMoveTo, key: "SUPER + SHIFT + 1 … 9" },
-                    { what: Lang.bindLock, key: root.key("lock") },
-                    { what: Lang.bindSettings, key: root.key("settings") }
-                ].concat(Config.binds.copy ? [{ what: Lang.bindCopy, key: root.key("copy") }] : [])
-                 .concat(Config.binds.clipboard ? [{ what: Lang.bindClipboard, key: root.key("clipboard") }] : [])
-                 .concat(Config.programs.filter(program => program.keys).slice(0, 3).map(program => ({ what: program.name, key: program.keys })))
+            // Two columns of short rows: as many keys as there may be fit in the window, which
+            // rows of Preferences' height overflowed.
+            GridLayout {
+                Layout.fillWidth: true
+                columns: 2
+                columnSpacing: 32
+                rowSpacing: 0
 
-                Setting {
-                    required property var modelData
+                Repeater {
+                    model: [
+                        { what: Lang.bindLauncher, key: root.key("launcher") },
+                        { what: Lang.bindClose, key: root.key("close") },
+                        { what: Lang.welWorkspaces, key: "SUPER + 1 … 9" },
+                        { what: Lang.welMoveTo, key: "SUPER + SHIFT + 1 … 9" },
+                        { what: Lang.bindLock, key: root.key("lock") },
+                        { what: Lang.bindSettings, key: root.key("settings") }
+                    ].concat(Config.binds.copy ? [{ what: Lang.bindCopy, key: root.key("copy") }] : [])
+                     .concat(Config.binds.clipboard ? [{ what: Lang.bindClipboard, key: root.key("clipboard") }] : [])
+                     .concat(Config.programs.filter(program => program.keys).slice(0, 3).map(program => ({ what: program.name, key: program.keys })))
 
-                    title: modelData.what
+                    Item {
+                        id: bind
 
-                    Txt {
-                        text: Case.keys(modelData.key)
-                        font.family: Tokens.fontMono
-                        font.pixelSize: 13
+                        required property var modelData
+
+                        // Both columns as wide.
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        implicitHeight: 40
+
+                        Txt {
+                            anchors.left: parent.left
+                            anchors.right: combo.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: bind.modelData.what
+                            font.pixelSize: 14
+                        }
+
+                        Txt {
+                            id: combo
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(implicitWidth, bind.width * 0.6)
+                            horizontalAlignment: Text.AlignRight
+                            text: Case.keys(bind.modelData.key)
+                            color: Tokens.dim
+                            font.family: Tokens.fontMono
+                            font.pixelSize: 13
+                        }
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: 1
+                            color: Tokens.line
+                            opacity: 0.6
+                        }
                     }
                 }
             }
