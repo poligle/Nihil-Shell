@@ -720,6 +720,16 @@ EOF
     fi
 
     printf '%s:%s\n' "$username" "$password" | nixos-enter --root /mnt -c chpasswd
+
+    # The Wi-Fi joined to install is there at the first boot too: NetworkManager's own files,
+    # root's alone, as it keeps them.
+    local profile
+    for profile in /etc/NetworkManager/system-connections/*.nmconnection; do
+        if [ -f "$profile" ] && grep -qx 'type=wifi' "$profile"; then
+            install -d -m 700 /mnt/etc/NetworkManager/system-connections
+            install -m 600 "$profile" "/mnt/etc/NetworkManager/system-connections/${profile##*/}"
+        fi
+    done
     : > /run/nihil-install.done
 
     if [ "$gui" = no ]; then

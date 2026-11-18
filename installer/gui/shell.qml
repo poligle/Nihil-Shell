@@ -255,6 +255,16 @@ ShellRoot {
             Qt.callLater(() => nameEntry.grab());
     }
 
+    // Scrolls just enough for an item of the page to be seen whole.
+    function reveal(item: Item): void {
+        const top = item.mapToItem(body, 0, 0).y;
+        const bottom = top + item.height;
+        if (bottom > scroller.contentY + scroller.height)
+            scroller.contentY = Math.min(bottom - scroller.height + 16, Math.max(0, scroller.contentHeight - scroller.height));
+        else if (top < scroller.contentY)
+            scroller.contentY = Math.max(0, top - 16);
+    }
+
     function forward(): void {
         if (pageName === "install" || !root.ready(pageName))
             return;
@@ -323,13 +333,13 @@ ShellRoot {
     }
 
     function pickNetwork(net: var): void {
-        ssid = net.ssid;
+        // Chosen anew, even the same: its password row shows again, with the focus.
+        ssid = "";
         secure = net.secure;
         wifiPassword = "";
         joinError = "";
-        if (secure)
-            Qt.callLater(() => wifiEntry.grab());
-        else
+        ssid = net.ssid;
+        if (!secure)
             join();
     }
 
@@ -518,21 +528,9 @@ ShellRoot {
             border.color: option.chosen ? Tokens.line : "transparent"
         }
 
-        Rectangle {
-            id: led
-            x: 16
-            anchors.verticalCenter: parent.verticalCenter
-            width: 6
-            height: 6
-            radius: 3
-            color: option.chosen ? Tokens.ink : Tokens.off
-
-            Behavior on color { ColorAnimation { duration: Tokens.animFast } }
-        }
-
         Txt {
-            anchors.left: led.right
-            anchors.leftMargin: 12
+            anchors.left: parent.left
+            anchors.leftMargin: 16
             anchors.right: info.left
             anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
@@ -566,31 +564,30 @@ ShellRoot {
         }
     }
 
+    // Only what went wrong has a dot before it, red, as in the shell.
     component Note: Item {
         id: note
 
         property string text: ""
         property bool alarm: false
-        property bool lit: false
-        property real pulse: 1
-        property color tint: alarm || lit ? Tokens.ink : Tokens.dim
+        property color tint: alarm ? Tokens.ink : Tokens.dim
 
         width: parent ? parent.width : 0
         implicitHeight: words.implicitHeight
 
         Rectangle {
+            visible: note.alarm
             y: 6
             width: 6
             height: 6
             radius: 3
-            opacity: note.pulse
-            color: note.alarm ? Tokens.interrupt : note.lit ? Tokens.ink : Tokens.muted
+            color: Tokens.interrupt
         }
 
         Txt {
             id: words
-            x: 18
-            width: note.width - 18
+            x: note.alarm ? 18 : 0
+            width: note.width - x
             text: note.text
             color: note.tint
             wrapMode: Text.WordWrap
@@ -842,12 +839,11 @@ ShellRoot {
                 color: Tokens.black
             }
 
-            DotText {
+            Logo {
                 id: mark
                 x: 40
                 y: 30
-                text: "NIHIL"
-                font.pixelSize: 22
+                size: 24
             }
 
             Row {
@@ -896,7 +892,7 @@ ShellRoot {
                         visible: root.pageName === "welcome"
 
                         DotText {
-                            text: root.tr("Install NIHIL", "Instalar NIHIL")
+                            text: root.tr("Hello", "Hola")
                             font.pixelSize: 34
                         }
 
@@ -978,27 +974,19 @@ ShellRoot {
                             font.pixelSize: 34
                         }
 
-                        Note {
-                            visible: root.online
-                            lit: true
-                            text: root.tr("Connected.", "Conectado.")
-                        }
-
                         Txt {
-                            width: parent.width
-                            visible: !root.online
-                            text: root.tr("NIHIL installs from the internet.", "NIHIL se instala desde internet.")
-                            color: Tokens.dim
-                            wrapMode: Text.WordWrap
-                            elide: Text.ElideNone
+                            visible: root.online
+                            text: root.tr("Connected.", "Conectado.")
+                            color: Tokens.ink
                         }
 
                         Note {
                             visible: !root.online && !root.wifi
-                            text: root.tr("No Wi-Fi card shows up. A cable, or a phone sharing its connection over USB, work too.",
-                                          "No aparece ninguna tarjeta Wi-Fi. Un cable, o un móvil compartiendo su conexión por USB, también sirven.")
+                            text: root.tr("No Wi-Fi card shows up: a cable, or a phone sharing its connection over USB, work too.",
+                                          "No aparece ninguna tarjeta Wi-Fi: un cable, o un móvil compartiendo su conexión por USB, también sirven.")
                         }
 
+                        // The password goes right under its network, where it was chosen, and in sight.
                         Column {
                             width: parent.width
                             spacing: 4
@@ -1007,56 +995,78 @@ ShellRoot {
                             Repeater {
                                 model: root.networks
 
-                                Option {
+                                Column {
+                                    id: net
+
                                     required property var modelData
+                                    readonly property bool chosen: root.ssid === modelData.ssid
 
-                                    title: modelData.ssid
-                                    detail: modelData.signal + "%"
-                                    chosen: root.ssid === modelData.ssid
-                                    onPicked: root.pickNetwork(modelData)
+                                    width: parent.width
+                                    spacing: 8
+                                    bottomPadding: net.chosen && (key.visible || failed.visible) ? 8 : 0
+
+                                    Option {
+                                        title: net.modelData.ssid
+                                        detail: net.chosen && root.joining ? root.tr("Connecting…", "Conectando…") : net.modelData.signal + "%"
+                                        chosen: net.chosen
+                                        onPicked: root.pickNetwork(net.modelData)
+                                    }
+
+                                    Row {
+                                        id: key
+
+                                        visible: net.chosen && root.secure
+                                        x: 16
+                                        spacing: 10
+
+                                        onVisibleChanged: {
+                                            if (visible)
+                                                Qt.callLater(() => {
+                                                    keyField.grab();
+                                                    root.reveal(net);
+                                                });
+                                        }
+
+                                        Field {
+                                            id: keyField
+                                            width: net.width - 16 - 10 - connect.width
+                                            password: true
+                                            placeholder: root.tr("Password", "Contraseña")
+                                            value: root.wifiPassword
+                                            onEdited: text => root.wifiPassword = text
+                                            onAccepted: root.join()
+                                        }
+
+                                        KeyButton {
+                                            id: connect
+                                            height: 36
+                                            accent: true
+                                            enabled: !root.joining && root.wifiPassword !== ""
+                                            opacity: enabled ? 1 : 0.35
+                                            text: root.joining ? root.tr("Connecting…", "Conectando…") : root.tr("Connect", "Conectar")
+                                            onClicked: root.join()
+                                        }
+                                    }
+
+                                    Note {
+                                        id: failed
+                                        visible: net.chosen && root.joinError !== ""
+                                        alarm: true
+                                        text: root.joinError
+                                    }
                                 }
                             }
                         }
 
-                        Entry {
-                            id: wifiEntry
-                            visible: !root.online && root.ssid !== "" && root.secure
-                            label: root.tr("Password of ", "Contraseña de ") + root.ssid
-                            password: true
-                            value: root.wifiPassword
-                            onEdited: text => root.wifiPassword = text
-                            onAccepted: root.join()
-                        }
-
-                        Note {
-                            visible: !root.online && root.joinError !== ""
-                            alarm: true
-                            text: root.joinError
-                        }
-
-                        Row {
+                        KeyButton {
                             visible: !root.online
-                            spacing: 10
-
-                            KeyButton {
-                                visible: root.ssid !== ""
-                                height: 36
-                                accent: true
-                                enabled: !root.joining && (!root.secure || root.wifiPassword !== "")
-                                opacity: enabled ? 1 : 0.35
-                                text: root.joining ? root.tr("Connecting…", "Conectando…") : root.tr("Connect", "Conectar")
-                                onClicked: root.join()
-                            }
-
-                            KeyButton {
-                                height: 36
-                                enabled: !root.scanning
-                                opacity: enabled ? 1 : 0.35
-                                text: root.scanning ? root.tr("Looking…", "Buscando…") : root.tr("Look again", "Buscar otra vez")
-                                onClicked: {
-                                    root.scan(true);
-                                    root.check();
-                                }
+                            height: 36
+                            enabled: !root.scanning
+                            opacity: enabled ? 1 : 0.35
+                            text: root.scanning ? root.tr("Looking…", "Buscando…") : root.tr("Look again", "Buscar otra vez")
+                            onClicked: {
+                                root.scan(true);
+                                root.check();
                             }
                         }
                     }
@@ -1180,8 +1190,8 @@ ShellRoot {
                         Note {
                             visible: !root.probing && root.machine !== null && !root.machine.uefi
                             alarm: true
-                            text: root.tr("NIHIL boots with systemd-boot, which needs UEFI: this machine started in legacy BIOS mode.",
-                                          "NIHIL arranca con systemd-boot, que necesita UEFI: este ordenador ha arrancado en modo BIOS antiguo.")
+                            text: root.tr("NIHIL needs UEFI, and this computer started in legacy BIOS mode.",
+                                          "NIHIL necesita UEFI, y este ordenador ha arrancado en modo BIOS antiguo.")
                         }
 
                         Note {
@@ -1227,7 +1237,6 @@ ShellRoot {
 
                             Option {
                                 title: root.tr("Next to what is on it", "Junto a lo que hay")
-                                detail: root.tr("make room", "hacer sitio")
                                 active: root.roomOptions.length > 0
                                 chosen: root.mode === "room"
                                 onPicked: {
@@ -1247,7 +1256,6 @@ ShellRoot {
 
                             Option {
                                 title: root.tr("On one of its partitions", "En una de sus particiones")
-                                detail: root.tr("formatting it", "formateándola")
                                 active: root.disk !== null && root.disk.part.roots.length > 0
                                 chosen: root.mode === "part"
                                 onPicked: {
@@ -1305,7 +1313,7 @@ ShellRoot {
                             visible: !root.probing && root.mode === "part"
 
                             Label {
-                                text: root.tr("NIHIL goes on (it will be formatted)", "NIHIL va en (se formateará)")
+                                text: root.tr("NIHIL goes on", "NIHIL va en")
                                 topPadding: 8
                                 bottomPadding: 6
                             }
@@ -1329,7 +1337,7 @@ ShellRoot {
 
                             Label {
                                 visible: root.disk !== null && root.disk.part.bootNeeded
-                                text: root.tr("Boot partition (it will be formatted)", "Partición de arranque (se formateará)")
+                                text: root.tr("Boot partition", "Partición de arranque")
                                 topPadding: 10
                                 bottomPadding: 6
                             }
@@ -1354,15 +1362,6 @@ ShellRoot {
                                               "NIHIL necesita también una partición de 1 GB para arrancar: haz sitio para NIHIL.")
                             }
 
-                            Item {
-                                width: 1
-                                height: 8
-                            }
-
-                            Note {
-                                text: root.tr("To partition it by hand, Ctrl+Alt+F2 opens a console with cfdisk and parted.",
-                                              "Para particionarlo a mano, Ctrl+Alt+F2 abre una consola con cfdisk y parted.")
-                            }
                         }
 
                         Repeater {
@@ -1422,7 +1421,6 @@ ShellRoot {
 
                             Option {
                                 title: root.tr("Encrypt the disk", "Cifrar el disco")
-                                detail: root.tr("a passphrase at every boot", "contraseña en cada arranque")
                                 chosen: root.encrypt
                                 onPicked: root.encrypt = true
                             }
@@ -1506,20 +1504,20 @@ ShellRoot {
 
                         Note {
                             visible: root.mode === "room" && root.room !== null && root.room.fstype === "ntfs"
-                            text: root.tr("Windows will check its disk the first time it starts: let it finish.",
-                                          "Windows revisará su disco la primera vez que arranque: déjale terminar.")
+                            text: root.tr("Windows will check its disk as it starts: let it finish.",
+                                          "Windows revisará su disco al arrancar: déjale terminar.")
                         }
 
                         Note {
                             visible: root.disk !== null && root.disk.windows && root.mode !== "whole"
-                            text: root.tr("The boot menu will offer Windows too. If Windows uses BitLocker, it may ask for its recovery key the first time: keep it at hand.",
-                                          "El menú de arranque ofrecerá también Windows. Si Windows usa BitLocker, puede pedir su clave de recuperación la primera vez: tenla a mano.")
+                            text: root.tr("If Windows uses BitLocker, it may ask for its recovery key: keep it at hand.",
+                                          "Si Windows usa BitLocker, puede pedir su clave de recuperación: tenla a mano.")
                         }
 
                         Note {
                             visible: root.disk !== null && (root.disk.elsewhere ?? "") !== "" && !(root.disk.windows && root.mode !== "whole")
-                            text: root.disk ? root.tr("Windows, on " + root.disk.elsewhere + ", stays in the computer's own boot menu (the key it shows as it starts: F12, F11, Esc…).",
-                                                      "Windows, en " + root.disk.elsewhere + ", sigue en el menú de arranque del propio ordenador (la tecla que indica al encenderse: F12, F11, Esc…).") : ""
+                            text: root.disk ? root.tr("Windows, on " + root.disk.elsewhere + ", starts from the computer's own boot menu.",
+                                                      "Windows, en " + root.disk.elsewhere + ", se arranca desde el menú de arranque del ordenador.") : ""
                         }
 
                         Note {
@@ -1547,22 +1545,31 @@ ShellRoot {
                         Repeater {
                             model: root.steps
 
-                            Note {
+                            Item {
+                                id: step
+
                                 required property var modelData
                                 required property int index
                                 readonly property bool current: index === root.steps.length - 1 && root.installing
 
-                                lit: true
-                                pulse: current ? glow.value : 1
-                                tint: current ? Tokens.ink : Tokens.dim
-                                text: modelData
+                                width: parent.width
+                                implicitHeight: line.implicitHeight
+
+                                Txt {
+                                    id: line
+                                    width: parent.width
+                                    opacity: step.current ? glow.value : 1
+                                    color: step.current ? Tokens.ink : Tokens.dim
+                                    wrapMode: Text.WordWrap
+                                    elide: Text.ElideNone
+                                    text: step.modelData
+                                }
                             }
                         }
 
                         Label {
                             width: parent.width
                             visible: root.installing && root.logLine !== ""
-                            leftPadding: 18
                             text: root.logLine
                             elide: Text.ElideMiddle
                         }
@@ -1580,7 +1587,7 @@ ShellRoot {
                         visible: root.pageName === "done"
 
                         DotText {
-                            text: root.tr("NIHIL is installed", "NIHIL está instalado")
+                            text: root.tr("Installed", "Instalado")
                             font.pixelSize: 34
                         }
 
@@ -1671,7 +1678,7 @@ ShellRoot {
             running: root.installing
             loops: Animation.Infinite
 
-            NumberAnimation { target: glow; property: "value"; to: 0.25; duration: 700; easing.type: Easing.InOutSine }
+            NumberAnimation { target: glow; property: "value"; to: 0.4; duration: 700; easing.type: Easing.InOutSine }
             NumberAnimation { target: glow; property: "value"; to: 1; duration: 700; easing.type: Easing.InOutSine }
         }
     }

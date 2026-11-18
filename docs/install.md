@@ -18,8 +18,9 @@ sha256sum -c SHA256SUMS --ignore-missing
 sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: the stick
 ```
 
-1. Language and keyboard, a network if there is no cable, and the time zone. Meanwhile it
-   reads the whole stick: one that cannot be read stops it before installing, saying so.
+1. Language and keyboard, a network if there is no cable (a Wi-Fi joined here is joined
+   again at the first boot), and the time zone. Meanwhile it reads the whole stick: one
+   that cannot be read stops it before installing, saying so.
 2. Your name, user name, password and the computer's name.
 3. The disk, and where on it: next to what is there, in its free space or in room a
    partition gives up (Windows' NTFS, an ext4 or a btrfs, shrunk keeping what it holds;
