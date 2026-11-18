@@ -1,5 +1,5 @@
 import QtQuick
-import Quickshell
+import Quickshell.Io
 import qs.theme
 import qs.config
 
@@ -14,10 +14,35 @@ Row {
     layoutDirection: wordFirst ? Qt.RightToLeft : Qt.LeftToRight
 
     function copy(): void {
-        Quickshell.execDetached([Config.cmd.wlCopy, "--", root.text]);
-        root.copied = true;
-        bump.restart();
-        settle.restart();
+        if (copier.running)
+            return;
+        copier.input = root.text;
+        copier.running = true;
+    }
+
+    // Through stdin: on its command line the text, a secret in Nilo's code perhaps, could be read
+    // in /proc for as long as it stays the selection, and past 128 KiB it wouldn't start at all.
+    // Copied is said once wl-copy has it.
+    Process {
+        id: copier
+
+        property string input: ""
+
+        command: [Config.cmd.wlCopy]
+        stdinEnabled: true
+        onStarted: {
+            write(input);
+            input = "";
+            stdinEnabled = false;
+        }
+        onExited: code => {
+            stdinEnabled = true;
+            if (code !== 0)
+                return;
+            root.copied = true;
+            bump.restart();
+            settle.restart();
+        }
     }
 
     Ico {

@@ -16,6 +16,12 @@ Scope {
             if (screens[i].name === Config.primaryOutput) return screens[i];
         return screens.length > 0 ? screens[0] : null;
     }
+    // Where the widgets go, worked out as the frame works out its edges: placed by hand, not
+    // within what other surfaces reserve, so the glass bends exactly what's behind them.
+    readonly property int gap: 24
+    readonly property bool anyBar: Quickshell.screens.some(s => Config.barOutputs.indexOf(s.name) >= 0)
+    readonly property int inset: root.target !== null && (Config.barOutputs.indexOf(root.target.name) >= 0
+        || (!root.anyBar && Quickshell.screens.indexOf(root.target) === 0)) ? Tokens.barWidth : Tokens.frameThickness
 
     function enabled(name: string): bool {
         return Machine.widgets.indexOf(name) >= 0;
@@ -27,7 +33,7 @@ Scope {
         width: 320
         implicitHeight: inner.implicitHeight + 40
         pane: true
-        radius: 22
+        radius: Tokens.drawerRadius
         color: Tokens.black
         border.width: 1
         border.color: Tokens.line
@@ -51,11 +57,10 @@ Scope {
 
         WlrLayershell.layer: WlrLayer.Bottom
         WlrLayershell.namespace: "nihil-widgets"
-        exclusionMode: ExclusionMode.Normal
-        exclusiveZone: 0
+        exclusionMode: ExclusionMode.Ignore
 
         anchors { top: true; left: true }
-        margins { top: 24; left: 24 }
+        margins { top: Tokens.frameThickness + root.gap; left: root.inset + root.gap }
         implicitWidth: 320
         implicitHeight: column.implicitHeight
 
@@ -69,8 +74,7 @@ Scope {
             active: Machine.glass && root.target !== null
             sourceComponent: Backdrop {
                 output: root.target.name
-                origin: Qt.vector2d((Config.barOutputs.indexOf(root.target.name) >= 0 ? Tokens.barWidth : Tokens.frameThickness) + 24,
-                                    Tokens.frameThickness + 24)
+                origin: Qt.vector2d(root.inset + root.gap, Tokens.frameThickness + root.gap)
                 screenSize: Qt.vector2d(root.target.width, root.target.height)
             }
         }

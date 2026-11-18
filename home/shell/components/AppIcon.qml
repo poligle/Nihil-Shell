@@ -21,17 +21,20 @@ Item {
         return Quickshell.iconPath(name, true) || Quickshell.iconPath("application-x-executable", true);
     }
 
+    // In grey through an effect; in colour as it is, with no layer, but while it turns.
+    property real saturation: root.colored ? 0 : -1
+
+    Behavior on saturation { NumberAnimation { id: fade; duration: Tokens.animNormal } }
+
     IconImage {
         anchors.fill: parent
         source: root.resolve(root.icon)
         asynchronous: true
 
-        layer.enabled: true
+        layer.enabled: !root.colored || fade.running
         layer.effect: MultiEffect {
-            saturation: root.colored ? 0 : -1
+            saturation: root.saturation
             brightness: root.colored ? 0 : -0.05
-
-            Behavior on saturation { NumberAnimation { duration: Tokens.animNormal } }
         }
     }
 }

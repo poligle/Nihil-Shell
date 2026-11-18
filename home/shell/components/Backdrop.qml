@@ -13,7 +13,9 @@ Item {
     property real dim: 1
     property bool windows: false
 
-    readonly property Item texture: wall.status !== Image.Ready ? null : root.windows ? shot : wall
+    // Once there's a wallpaper, the glass keeps it while the next one loads: on a change it doesn't
+    // fall back to flat for a moment, everywhere, with the picker open.
+    readonly property Item texture: !wall.shown ? null : root.windows ? shot : wall
     readonly property string name: Machine.wallpaper !== "" ? Machine.wallpaper : Machine.get("wallpaper", "night")
     readonly property var monitor: Hyprland.monitors.values.find(m => m.name === root.output) ?? null
     readonly property var special: Glass.specialOf(root.monitor)
@@ -68,13 +70,19 @@ Item {
             id: wall
 
             property bool primary: false
+            property bool shown: false
 
             anchors.fill: parent
             asynchronous: true
+            retainWhileLoading: true
+            // Cut to fill, as awww draws it, not stretched: what the glass bends is what's behind it.
+            fillMode: Image.PreserveAspectCrop
             smooth: true
             mipmap: true
             source: "file://" + Config.wallpaperDir + "/" + root.name + "/" + (primary ? Config.primaryOutput : root.output) + ".png"
             onStatusChanged: {
+                if (status === Image.Ready)
+                    shown = true;
                 if (status === Image.Error && !primary)
                     primary = true;
             }
