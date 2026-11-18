@@ -13,7 +13,16 @@ let
 	# until a collection left it pointing at nothing.
 	data = "${config.xdg.dataHome}/nihil";
 
-	backgrounds = lib.mapAttrsToList (output: _:
+	# A screen not in nihil.outputs, a projector say, gets the primary's, under each screen's own.
+	backgrounds =
+	[
+		{
+			monitor = "";
+			path = "${state}/lock-current/${nihil.primaryOutput}.png";
+			color = rgb t.palette.void;
+			brightness = 0.55;
+		}
+	] ++ lib.mapAttrsToList (output: _:
 	{
 		monitor = output;
 		path = "${state}/lock-current/${output}.png";

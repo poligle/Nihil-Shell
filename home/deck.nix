@@ -26,7 +26,7 @@ in
 		{
 			Unit =
 			{
-				Description = "NIHIL deck: the phone opens apps and pages here (docs/deck.md)";
+				Description = "NIHIL deck: your devices open apps and pages here (docs/deck.md)";
 				After = [ "graphical-session.target" ];
 				PartOf = [ "graphical-session.target" ];
 			};

@@ -148,7 +148,7 @@ in
             {
                 group = vim.api.nvim_create_augroup("HighlightOnYank", { clear = true }),
                 callback = function()
-                    vim.highlight.on_yank({ timeout = 150 })
+                    vim.hl.on_yank({ timeout = 150 })
                 end,
             })
 
@@ -224,7 +224,7 @@ in
             })
 
             vim.keymap.set("n", "<leader>fm", function()
-                require("conform").format({ lsp_fallback = true })
+                require("conform").format({ lsp_format = "fallback" })
             end, { desc = "Format buffer" })
 
             require("Comment").setup()

@@ -31,12 +31,9 @@ in
             gtk-xft-rgba = "rgb";
         };
 
+        # GTK 4 has no toolbar style or button and menu images: it warns of each key it doesn't know.
         gtk4.extraConfig = 
         {
-            gtk-toolbar-style = "GTK_TOOLBAR_ICONS";
-            gtk-toolbar-icon-size = "GTK_ICON_SIZE_LARGE_TOOLBAR";
-            gtk-button-images = 0;
-            gtk-menu-images = 0;
             gtk-enable-event-sounds = 1;
             gtk-enable-input-feedback-sounds = 0;
             gtk-xft-antialias = 1;

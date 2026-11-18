@@ -72,7 +72,7 @@ in
             {
                 style = "#${p.dim}";
                 symbol = "";
-                format = "[· $branch]($style) ";
+                format = "[$branch]($style) ";
             };
             git_status =
             {
@@ -82,13 +82,13 @@ in
             nix_shell =
             {
                 style = "#${p.dim}";
-                format = "[· nix $state]($style) ";
+                format = "[nix $state]($style) ";
             };
             cmd_duration =
             {
                 style = "#${p.muted}";
                 min_time = 2000;
-                format = "[· $duration]($style) ";
+                format = "[$duration]($style) ";
             };
         };
     };
