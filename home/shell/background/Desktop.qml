@@ -108,14 +108,7 @@ Scope {
             Card {
                 visible: root.enabled("network")
 
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Label { text: SysStats.iface || Lang.offline }
-                    Item { Layout.fillWidth: true }
-                    Label { text: "↓ " + SysStats.human(SysStats.rx); color: Tokens.dim }
-                    Label { text: "↑ " + SysStats.human(SysStats.tx) }
-                }
+                NetRates {}
 
                 DotScope {
                     Layout.fillWidth: true
@@ -174,18 +167,10 @@ Scope {
                 RowLayout {
                     Layout.fillWidth: true
 
-                    Label { text: Media.active ? Media.clock(Media.position) + " / " + Media.clock(Media.length) : "--:-- / --:--" }
+                    Label { text: Media.shown(Media.position) + " / " + Media.shown(Media.length) }
                     Item { Layout.fillWidth: true }
 
-                    Row {
-                        spacing: 6
-                        enabled: Media.active !== null
-                        opacity: enabled ? 1 : 0.35
-
-                        CircleButton { glyph: Icons.prev; label: Lang.mediaPrevious; size: 28; onClicked: Media.previous() }
-                        CircleButton { glyph: Media.playing ? Icons.pause : Icons.play; label: Media.playing ? Lang.mediaPause : Lang.mediaPlay; size: 28; filled: true; onClicked: Media.toggle() }
-                        CircleButton { glyph: Icons.next; label: Lang.mediaNext; size: 28; onClicked: Media.next() }
-                    }
+                    MediaKeys { size: 28 }
                 }
             }
         }

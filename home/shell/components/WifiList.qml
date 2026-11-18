@@ -65,7 +65,8 @@ ColumnLayout {
             ListRow {
                 glyph: Icons.wifi(net.modelData.signal)
                 title: net.modelData.ssid
-                detail: net.modelData.active ? Icons.check : (net.modelData.secure ? Icons.lock : "")
+                detailGlyph: net.modelData.active ? Icons.check : (net.modelData.secure ? Icons.lock : "")
+                detailName: net.modelData.active ? Lang.wifiConnected : (net.modelData.secure ? Lang.wifiLocked : "")
                 current: net.modelData.active === true
                 busy: Network.pending === net.modelData.ssid
                 onClicked: net.modelData.active ? Network.disconnect() : Network.connect(net.modelData, "")

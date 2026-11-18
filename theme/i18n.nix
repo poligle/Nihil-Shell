@@ -58,6 +58,7 @@
 		vectorFrom = "Recibido de %1";
 		vectorDevice = "un dispositivo";
 		vectorBig = "Demasiado grande: hasta 100 MB";
+		vectorMany = "De una en una: Vector guarda una sola cosa";
 		vectorFolder = "Las carpetas no se envían";
 		vectorEmpty = "Nada que enviar";
 		vectorFailed = "No se ha podido enviar";
@@ -76,6 +77,10 @@
 		devices = "Dispositivos";
 		newDevice = "Nuevo";
 		noDevices = "Sin dispositivos";
+		noResults = "Sin resultados";
+		btOff = "El Bluetooth está apagado";
+		wifiConnected = "Conectada";
+		wifiLocked = "Con contraseña";
 		audioOutput = "Salida de audio";
 		notifications = "Avisos (%1)";
 		clear = "Limpiar";
@@ -108,10 +113,13 @@
 		mediaNext = "Siguiente";
 		caffeine = "Cafeína";
 		tasks = "Tareas";
+		tasksCount = "Tareas (%1)";
+		tasksLane = "%1 (%2)";
 		tasksTodo = "Por hacer";
 		tasksDoing = "Haciendo";
 		tasksDone = "Hecho";
 		tasksAdd = "Nueva tarea";
+		tasksAddHint = "+ Nueva tarea";
 		tasksClear = "Limpiar";
 		tasksLeft = "Mover a la izquierda";
 		tasksRight = "Mover a la derecha";
@@ -484,7 +492,7 @@
 		welNetBody = "NIHIL se actualiza y aplica cambios por internet: conéctate a una red.";
 		welNetDone = "Conectado a %1.";
 		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
-		ovHint = "[%1] Siguiente|[Shift+%1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
+		ovHint = "[%1] Siguiente|[Shift + %1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
 		bindCopy = "Copiar";
 		bindClipboard = "Pegar o elegir del historial";
@@ -820,6 +828,7 @@
 		vectorFrom = "Received from %1";
 		vectorDevice = "a device";
 		vectorBig = "Too big: up to 100 MB";
+		vectorMany = "One at a time: Vector holds a single thing";
 		vectorFolder = "Folders can't be sent";
 		vectorEmpty = "Nothing to send";
 		vectorFailed = "Couldn't send it";
@@ -838,6 +847,10 @@
 		devices = "Devices";
 		newDevice = "New";
 		noDevices = "No devices";
+		noResults = "No results";
+		btOff = "Bluetooth is off";
+		wifiConnected = "Connected";
+		wifiLocked = "With a password";
 		audioOutput = "Audio output";
 		notifications = "Notifications (%1)";
 		clear = "Clear";
@@ -870,10 +883,13 @@
 		mediaNext = "Next";
 		caffeine = "Caffeine";
 		tasks = "Tasks";
+		tasksCount = "Tasks (%1)";
+		tasksLane = "%1 (%2)";
 		tasksTodo = "To do";
 		tasksDoing = "Doing";
 		tasksDone = "Done";
 		tasksAdd = "New task";
+		tasksAddHint = "+ New task";
 		tasksClear = "Clear";
 		tasksLeft = "Move left";
 		tasksRight = "Move right";
@@ -1246,7 +1262,7 @@
 		welNetBody = "NIHIL updates and applies changes over the internet: connect to a network.";
 		welNetDone = "Connected to %1.";
 		wpHint = "[← →] Choose|[Enter] Keep|[Esc] Back";
-		ovHint = "[%1] Next|[Shift+%1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
+		ovHint = "[%1] Next|[Shift + %1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
 
 		bindCopy = "Copy";
 		bindClipboard = "Paste, or pick from the history";

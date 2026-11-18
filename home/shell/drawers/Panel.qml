@@ -338,8 +338,8 @@ Item {
                 }
 
                 Label {
-                    visible: Bt.enabled && Bt.devices.length === 0
-                    text: Lang.noDevices
+                    visible: Bt.devices.length === 0
+                    text: Bt.enabled ? Lang.noDevices : Lang.btOff
                 }
             }
 

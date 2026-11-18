@@ -9,6 +9,9 @@ Surface {
     property string glyph: ""
     property string title: ""
     property string detail: ""
+    // A mark at its end, drawn as an icon, with the words a screen reader says for it.
+    property string detailGlyph: ""
+    property string detailName: ""
     property bool current: false
     property bool busy: false
 
@@ -22,7 +25,7 @@ Surface {
 
     Accessible.role: Accessible.Button
     Accessible.name: item.title
-    Accessible.description: item.detail
+    Accessible.description: item.detail || item.detailName
     Accessible.onPressAction: item.clicked()
     Keys.onReturnPressed: event => { if (!event.isAutoRepeat) item.clicked(); }
     Keys.onEnterPressed: event => { if (!event.isAutoRepeat) item.clicked(); }
@@ -44,8 +47,15 @@ Surface {
         }
 
         Label {
-            visible: !item.busy
+            visible: !item.busy && item.detail !== ""
             text: item.detail
+        }
+
+        Ico {
+            visible: !item.busy && item.detailGlyph !== ""
+            glyph: item.detailGlyph
+            font.pixelSize: 14
+            color: item.current ? Tokens.ink : Tokens.muted
         }
 
         Rectangle {

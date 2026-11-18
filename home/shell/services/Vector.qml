@@ -76,8 +76,14 @@ Singleton {
         }
     }
 
+    function refuse(error: string): void {
+        root.notify(root.failure(error), "", "");
+        root.lit("failed");
+    }
+
     function failure(error: string): string {
         return {
+            many: Lang.vectorMany,
             big: Lang.vectorBig,
             folder: Lang.vectorFolder,
             empty: Lang.vectorEmpty,
