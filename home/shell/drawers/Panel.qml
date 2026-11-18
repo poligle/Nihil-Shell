@@ -30,8 +30,10 @@ Item {
         }
     }
 
+    Component.onDestruction: Network.watching(root, false)
+
     onActiveChanged: {
-        Network.watch = active;
+        Network.watching(root, active);
         if (active) {
             Qt.callLater(() => { if (root.active) root.forceActiveFocus(); });
             Brightness.refresh();
@@ -330,7 +332,7 @@ Item {
 
                         glyph: modelData.connected ? Icons.btConnected : Icons.btOn
                         title: modelData.name || modelData.address
-                        detail: modelData.batteryAvailable ? Math.round(modelData.battery * 100) + "%" : (modelData.paired ? "" : Lang.newDevice)
+                        detail: modelData.batteryAvailable ? Lang.percent.arg(Math.round(modelData.battery * 100)) : (modelData.paired ? "" : Lang.newDevice)
                         current: modelData.connected
                         busy: modelData.state === BluetoothDeviceState.Connecting || modelData.state === BluetoothDeviceState.Disconnecting
                         onClicked: Bt.toggleDevice(modelData)
@@ -338,8 +340,8 @@ Item {
                 }
 
                 Label {
-                    visible: Bt.enabled && Bt.devices.length === 0
-                    text: Lang.noDevices
+                    visible: Bt.devices.length === 0
+                    text: Bt.enabled ? Lang.noDevices : Lang.btOff
                 }
             }
 

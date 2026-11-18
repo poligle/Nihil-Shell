@@ -61,6 +61,6 @@ side, is in [`docs/deck.md`](deck.md). Its tests run a real HTTPS server on
 
 ```bash
 nihil-deck pair                       # the QR in the terminal, and its URI
-nihil-deck devices                    # the phones paired; forget ID|all
+nihil-deck devices                    # the devices paired; forget ID|all
 systemctl --user status nihil-deck    # the service; journalctl --user -u nihil-deck
 ```

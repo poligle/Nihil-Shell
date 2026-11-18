@@ -7,8 +7,17 @@ let
 	nihil-clipboard = pkgs.writeShellScriptBin "nihil-clipboard" ''
 		set -u
 		export PATH="${lib.makeBinPath [ pkgs.cliphist pkgs.wl-clipboard pkgs.wtype pkgs.coreutils pkgs.gnugrep osConfig.programs.hyprland.package ]}:$PATH"
-		dir="''${XDG_RUNTIME_DIR:-/tmp}/nihil-clipboard"
+		# Never /tmp, where another user could make the folder first.
+		dir="''${XDG_RUNTIME_DIR:?}/nihil-clipboard"
 		tab=$(printf '\t')
+
+		# The history is kept in memory, in the runtime folder, and goes with the session: what's
+		# copied from somewhere that doesn't mark it secret (a password from a terminal) would
+		# otherwise stay on disk, and in its backups.
+		# A function, so not with exec, which would run cliphist itself.
+		cliphist() {
+			command cliphist -db-path "$dir/db" "$@"
+		}
 
 		entry() {
 			cliphist list | while IFS= read -r found; do
@@ -69,7 +78,7 @@ let
 					cat > /dev/null
 					wl-paste --no-newline --type "$picture" | cliphist -max-items ${toString size} store
 				else
-					exec cliphist -max-items ${toString size} store
+					cliphist -max-items ${toString size} store
 				fi
 				;;
 			list)

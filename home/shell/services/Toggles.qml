@@ -13,9 +13,11 @@ Singleton {
     property bool airplane: false
 
     readonly property int kelvin: Math.round(6000 - nightLevel * 3400)
+    // Its level, and whether it's on: applying settings restarts the shell, and the night light
+    // stays as it was through that, and into the next session.
     readonly property string nightFile: Machine.stateDir + "/night"
     // While airplane mode is on, this file lists the radios it found on (wlan, bluetooth),
-    // the ones leaving it turns back on; it also tells the next start that the mode is on.
+    // the ones leaving it turns back on.
     readonly property string airplaneFile: Machine.stateDir + "/airplane"
 
     function setAirplane(on: bool): void {
@@ -49,7 +51,10 @@ Singleton {
         else retune.restart();
     }
 
-    onNightChanged: sunset.running = night
+    onNightChanged: {
+        sunset.running = night;
+        keep.restart();
+    }
 
     IpcHandler {
         target: "night"
@@ -67,26 +72,63 @@ Singleton {
         function state(): string { return JSON.stringify({ caffeine: Caffeine.on, night: root.night }); }
     }
 
+    // The level, and «on» on a line of its own; a file from before has only the level.
     FileView {
         path: root.nightFile
         printErrors: false
         onLoaded: {
-            const level = parseFloat(text());
+            const lines = text().split("\n");
+            const level = parseFloat(lines[0]);
             if (!isNaN(level)) root.nightLevel = Math.max(0, Math.min(1, level));
+            if ((lines[1] ?? "").trim() === "on") root.night = true;
         }
-    }
-
-    FileView {
-        path: root.airplaneFile
-        printErrors: false
-        onLoaded: root.airplane = true
     }
 
     Timer {
         id: keep
         interval: 400
-        onTriggered: Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s\\n' \"$2\" > \"$1\"",
-                                              "sh", root.nightFile, root.nightLevel.toFixed(2)])
+        onTriggered: Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s\\n%s\\n' \"$2\" \"$3\" > \"$1\"",
+                                              "sh", root.nightFile, root.nightLevel.toFixed(2), root.night ? "on" : "off"])
+    }
+
+    // Airplane mode is every radio off, as rfkill has them, whoever turned them off: this, the
+    // laptop's own key, rfkill itself, the last session (systemd keeps them through a restart).
+    // Read at start and on each change, once a change of ours has settled.
+    Process {
+        id: radios
+        command: [Config.cmd.rfkill, "--noheadings", "--raw", "--output", "SOFT"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const soft = text.split("\n").map(line => line.trim()).filter(line => line !== "");
+                if (!settle.running)
+                    root.airplane = soft.length > 0 && soft.every(state => state === "blocked");
+            }
+        }
+    }
+
+    Process {
+        id: events
+        running: true
+        command: [Config.cmd.rfkill, "event"]
+        stdout: SplitParser { onRead: line => reread.restart() }
+        onExited: eventsAgain.restart()
+    }
+
+    Timer {
+        id: reread
+        interval: 200
+        onTriggered: {
+            if (radios.running || settle.running)
+                restart();
+            else
+                radios.running = true;
+        }
+    }
+
+    Timer {
+        id: eventsAgain
+        interval: 30000
+        onTriggered: events.running = true
     }
 
     Process {
@@ -133,6 +175,9 @@ Singleton {
     Timer {
         id: settle
         interval: 800
-        onTriggered: Network.refresh()
+        onTriggered: {
+            Network.refresh();
+            reread.restart();
+        }
     }
 }

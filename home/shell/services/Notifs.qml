@@ -10,6 +10,8 @@ Singleton {
     id: root
 
     property bool dnd: false
+    // Kept as it was through a restart of the shell (applying settings) and into the next session.
+    readonly property string dndFile: Machine.stateDir + "/dnd"
     property var popups: []
     readonly property var history: server.trackedNotifications.values.slice().reverse()
 
@@ -122,6 +124,15 @@ Singleton {
     // a picture or a link can't load from anywhere, closed or not.
     function markup(text: string): string {
         return String(text).replace(/<(?!\/?(?:b|i|u)>|br\s*\/?>)/gi, "&lt;");
+    }
+
+    onDndChanged: Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s\\n' \"$2\" > \"$1\"",
+                                           "sh", root.dndFile, root.dnd ? "on" : "off"])
+
+    FileView {
+        path: root.dndFile
+        printErrors: false
+        onLoaded: root.dnd = text().trim() === "on"
     }
 
     NotificationServer {

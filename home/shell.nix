@@ -21,6 +21,11 @@ let
 		inherit (nihil.deck) port;
 	};
 
+	# The desktop's widgets; Preferences shows each by its text, cfgWidgetClock for clock.
+	widgets = [ "clock" "network" "media" ];
+	unlabelled = lib.filter (name: !(nihil.strings ? ${"cfgWidget" + lib.toUpper (lib.substring 0 1 name) + lib.substring 1 (lib.stringLength name) name}))
+		widgets;
+
 	qml = import ../theme/qml.nix { inherit pkgs lib nihil; };
 	tokensQml = qml.tokens;
 
@@ -105,7 +110,7 @@ let
 		    readonly property var barOutputs: ${builtins.toJSON (builtins.attrNames (lib.filterAttrs (_: output: output.bar) nihil.outputs))}
 		    readonly property string primaryOutput: "${nihil.primaryOutput}"
 		    readonly property int persistentWorkspaces: 3
-		    readonly property var widgets: ${builtins.toJSON [ "clock" "network" "media" ]}
+		    readonly property var widgets: ${builtins.toJSON widgets}
 		    readonly property var trayHidden: ${builtins.toJSON nihil.trayHidden}
 		    readonly property var wallpapers: ${builtins.toJSON nihil.wallpapers.names}
 		    readonly property int clipboard: ${toString nihil.clipboard}
@@ -123,6 +128,7 @@ let
 		    readonly property var binds: (${builtins.toJSON nihil.binds})
 		    readonly property var bindDefaults: (${builtins.toJSON nihil.bindDefaults.keys})
 		    readonly property var gestureDefaults: (${builtins.toJSON nihil.bindDefaults.gestures})
+		    readonly property var gestures: (${builtins.toJSON nihil.gestures})
 		    readonly property var programs: (${builtins.toJSON nihil.programs})
 		}
 	'';
@@ -154,6 +160,14 @@ in
 	];
 
 	xdg.configFile."quickshell/nihil".source = shell;
+
+	assertions =
+	[
+		{
+			assertion = unlabelled == [ ];
+			message = "theme/i18n.nix: every desktop widget in home/shell.nix needs its cfgWidget text; ${lib.concatStringsSep ", " unlabelled} hasn't one.";
+		}
+	];
 
 	systemd.user.services.nihil-shell =
 	{

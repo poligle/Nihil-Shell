@@ -253,9 +253,9 @@ let
 
             # FILE as whoever asked through sudo: root doesn't follow their links to its own files.
             usage() {
-                echo "usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | welcome | watch"
+                echo "Usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | welcome | watch"
                 echo "       nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]"
-                echo "the machine's flake: $flake"
+                echo "The machine's flake: $flake"
             }
 
             read_as_caller() {
@@ -682,7 +682,7 @@ let
                             exit "$status"
                             ;;
                         *)
-                            echo "usage: nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]" >&2
+                            echo "Usage: nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]" >&2
                             exit 2
                             ;;
                     esac
@@ -742,7 +742,8 @@ let
                 watch)
                     shift
                     if ! command -v nihil-watch > /dev/null; then
-                        echo "The deck is off: Preferences, Devices, Use devices (nihil.deck.enable)." >&2
+                        # The way there as Preferences names it, in the system's language.
+                        echo ${lib.escapeShellArg "The deck is off: ${config.nihil.strings.cfgTitle}, ${config.nihil.strings.cfgDevices}, ${config.nihil.strings.deckUse} (nihil.deck.enable)."} >&2
                         exit 1
                     fi
                     exec nihil-watch "$@"
@@ -752,7 +753,7 @@ let
                     pinned=$(jq -r '.nodes.nihil.locked | "\(.rev[0:7] // "local") (\(.lastModified // 0 | strftime("%Y-%m-%d %H:%M")))"' "$flake/flake.lock" 2>/dev/null || echo "?")
                     echo "NIHIL $running"
                     if [ -n "$(checkout)" ]; then
-                        echo "  from $(checkout) (nihil dev; nihil dev off goes back to $pinned)"
+                        echo "  From $(checkout) (nihil dev; nihil dev off goes back to $pinned)"
                     elif [ "$pinned" != "$running" ]; then
                         echo "  $flake/flake.lock pins $pinned: nihil rebuild applies it"
                     fi

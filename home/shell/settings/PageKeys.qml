@@ -13,7 +13,9 @@ Flickable {
     readonly property var actions: order.filter(name => name in Config.bindDefaults && (name !== "nilo" || Config.nilo.enabled))
     readonly property var programs: Machine.get("programs", Config.programs)
     readonly property var modifiers: ["SUPER", "SHIFT", "CTRL", "ALT"]
-    readonly property var keyName: /^([A-Za-z0-9]|F([1-9]|1[0-9]|2[0-4])|Return|Space|Tab|Escape|BackSpace|Delete|Insert|Home|End|Prior|Next|PRINT|Print|comma|period|slash|minus|equal|semicolon|apostrophe|grave|backslash|bracketleft|bracketright|Super_L|Super_R)$/
+    // The keys a bind takes, a laptop's own among them: XF86SelectiveScreenshot, the snipping key, is
+    // the snip's by default.
+    readonly property var keyName: /^([A-Za-z0-9]|F([1-9]|1[0-9]|2[0-4])|Return|Space|Tab|Escape|BackSpace|Delete|Insert|Home|End|Prior|Next|Page_Up|Page_Down|Left|Right|Up|Down|Menu|Pause|PRINT|Print|comma|period|slash|minus|equal|semicolon|apostrophe|grave|backslash|bracketleft|bracketright|Super_L|Super_R|XF86[A-Za-z0-9]+|KP_[A-Za-z0-9]+)$/
 
     property string editing: ""
     property var mods: []
@@ -51,6 +53,13 @@ Flickable {
 
     function owner(combo: string): string {
         const wanted = normal(combo);
+        // Shift with the screenshot's key, or the snip's, records: Hyprland has those already.
+        for (const name of ["screenshot", "snip"]) {
+            const taken = keyOf(name);
+            if ("action:" + name !== page.editing && taken && normal(taken).split("+").indexOf("SHIFT") < 0
+                && normal("SHIFT + " + taken) === wanted)
+                return label(name);
+        }
         for (let i = 0; i < page.actions.length; i++) {
             const taken = keyOf(page.actions[i]);
             if ("action:" + page.actions[i] !== page.editing && taken && normal(taken) === wanted)
@@ -91,7 +100,7 @@ Flickable {
             page.error = Lang.cfgKeyInvalid;
             return undefined;
         }
-        if (page.mods.length === 0 && !/^(PRINT|Print|F[0-9]+)$/.test(key)) {
+        if (page.mods.length === 0 && !/^(PRINT|Print|F[0-9]+|XF86[A-Za-z0-9]+)$/.test(key)) {
             page.error = Lang.cfgKeyNeedsMod;
             return undefined;
         }
@@ -104,6 +113,14 @@ Flickable {
         if (other !== "") {
             page.error = Lang.cfgKeyTaken.arg(other);
             return undefined;
+        }
+        // The screenshot's key, and the snip's, record with Shift: that one has to be free too.
+        if ((page.editing === "action:screenshot" || page.editing === "action:snip") && page.mods.indexOf("SHIFT") < 0) {
+            const shifted = owner("SHIFT + " + combo);
+            if (shifted !== "") {
+                page.error = Lang.cfgKeyShiftTaken.arg(shifted);
+                return undefined;
+            }
         }
         return combo;
     }
@@ -171,8 +188,9 @@ Flickable {
                 color: Tokens.muted
             }
 
+            // Wide enough for its examples: comma and Space are what's written, not , or a space.
             Field {
-                width: 210
+                width: 310
                 height: 32
                 placeholder: Lang.cfgKeyName
                 value: page.key
@@ -196,7 +214,9 @@ Flickable {
         property string entry: ""
         property string title: ""
         property var combo: null
-        default property alias editor: holder.data
+        // Made only while open: the page has a row for every action and program, and each editor
+        // is fields and keys, with glass of their own.
+        property Component editor: null
         readonly property bool open: page.editing === entry
 
         signal clicked()
@@ -244,6 +264,12 @@ Flickable {
             y: 44
             width: parent.width - 28
             height: childrenRect.height
+
+            Loader {
+                width: parent.width
+                active: row.open
+                sourceComponent: row.editor
+            }
         }
     }
 
@@ -273,27 +299,29 @@ Flickable {
                 combo: page.keyOf(modelData)
                 onClicked: page.open("action:" + modelData, page.keyOf(modelData), "", "")
 
-                Column {
-                    width: parent.width
-                    spacing: 10
-
-                    Combo {
+                editor: Component {
+                    Column {
                         width: parent.width
-                    }
+                        spacing: 10
 
-                    Flow {
-                        width: parent.width
-                        spacing: 6
-
-                        KeyButton {
-                            text: Lang.cfgKeySave
-                            accent: true
-                            onClicked: page.saveAction(modelData)
+                        Combo {
+                            width: parent.width
                         }
 
-                        KeyButton {
-                            text: Lang.cfgKeyDefault
-                            onClicked: page.resetAction(modelData)
+                        Flow {
+                            width: parent.width
+                            spacing: 6
+
+                            KeyButton {
+                                text: Lang.cfgKeySave
+                                accent: true
+                                onClicked: page.saveAction(modelData)
+                            }
+
+                            KeyButton {
+                                text: Lang.cfgKeyDefault
+                                onClicked: page.resetAction(modelData)
+                            }
                         }
                     }
                 }
@@ -318,49 +346,51 @@ Flickable {
                 combo: program.keys ?? null
                 onClicked: page.open("program:" + index, program.keys ?? null, program.name, program.exec)
 
-                Column {
-                    width: parent.width
-                    spacing: 10
-
-                    Flow {
+                editor: Component {
+                    Column {
                         width: parent.width
-                        spacing: 8
+                        spacing: 10
 
-                        Field {
-                            width: 180
-                            height: 32
-                            placeholder: Lang.cfgProgramName
-                            value: page.name
-                            onEdited: text => page.name = text
+                        Flow {
+                            width: parent.width
+                            spacing: 8
+
+                            Field {
+                                width: 180
+                                height: 32
+                                placeholder: Lang.cfgProgramName
+                                value: page.name
+                                onEdited: text => page.name = text
+                            }
+
+                            Field {
+                                width: 280
+                                height: 32
+                                placeholder: Lang.cfgProgramExec
+                                value: page.command
+                                onEdited: text => page.command = text
+                            }
                         }
 
-                        Field {
-                            width: 260
-                            height: 32
-                            placeholder: Lang.cfgProgramExec
-                            value: page.command
-                            onEdited: text => page.command = text
-                        }
-                    }
-
-                    Combo {
-                        width: parent.width
-                    }
-
-                    Flow {
-                        width: parent.width
-                        spacing: 6
-
-                        KeyButton {
-                            text: Lang.cfgKeySave
-                            accent: true
-                            onClicked: page.saveProgram(index)
+                        Combo {
+                            width: parent.width
                         }
 
-                        KeyButton {
-                            visible: index < page.programs.length
-                            text: Lang.cfgKeyRemove
-                            onClicked: page.removeProgram(index)
+                        Flow {
+                            width: parent.width
+                            spacing: 6
+
+                            KeyButton {
+                                text: Lang.cfgKeySave
+                                accent: true
+                                onClicked: page.saveProgram(index)
+                            }
+
+                            KeyButton {
+                                visible: index < page.programs.length
+                                text: Lang.cfgKeyRemove
+                                onClicked: page.removeProgram(index)
+                            }
                         }
                     }
                 }

@@ -20,6 +20,8 @@ Column {
 
     property int current: -1        // highlighted with the keyboard
     property bool manage: false
+    // A model to delete, once clicked: a second click within a few seconds deletes its gigabytes.
+    property string armed: ""
 
     readonly property int count: Nilo.models.length
 
@@ -87,6 +89,12 @@ Column {
             accent: true
             onClicked: Nilo.startOllama()
         }
+    }
+
+    Timer {
+        id: disarm
+        interval: 3000
+        onTriggered: root.armed = ""
     }
 
     Repeater {
@@ -189,10 +197,20 @@ Column {
                 }
 
                 KeyButton {
+                    readonly property bool armed: root.armed === row.modelData.tag
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.manage && row.modelData.installed && !row.selected
-                    text: Lang.niloDelete
-                    onClicked: Nilo.remove(row.modelData.tag)
+                    text: armed ? Lang.confirmTo.arg(Lang.niloDelete.toLocaleLowerCase()) : Lang.niloDelete
+                    danger: armed
+                    onClicked: {
+                        if (!armed) {
+                            root.armed = row.modelData.tag;
+                            disarm.restart();
+                            return;
+                        }
+                        root.armed = "";
+                        Nilo.remove(row.modelData.tag);
+                    }
                 }
 
                 KeyButton {

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.config
 
 Item {
     id: root
@@ -27,7 +28,7 @@ Item {
 
     Accessible.role: Accessible.Slider
     Accessible.name: root.label
-    Accessible.description: Math.round(root.value * 100) + " %"
+    Accessible.description: Lang.percent.arg(Math.round(root.value * 100))
     Accessible.onIncreaseAction: root.nudge(0.05)
     Accessible.onDecreaseAction: root.nudge(-0.05)
     Keys.onRightPressed: root.nudge(0.05)
@@ -51,10 +52,12 @@ Item {
     readonly property real segWidth: (width - (segments - 1) * 3) / segments
     readonly property int lit: Math.round(Math.max(0, Math.min(1, value)) * segments)
 
+    // Plain segments, not glass: each its own glass would be a shader of its own, 96 in the panel's
+    // four sliders, for marks a few pixels wide.
     Repeater {
         model: root.segments
 
-        Surface {
+        Rectangle {
             required property int index
 
             x: index * (root.segWidth + 3)

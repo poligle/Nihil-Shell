@@ -97,7 +97,10 @@ Item {
 
     Connections {
         target: Nilo
-        function onConfirmChanged() { root.armed = ""; }
+        function onConfirmChanged() {
+            root.armed = "";
+            if (Nilo.confirm) chat.toEnd();
+        }
         function onSummoned() { root.gearFirst(); }
     }
 
@@ -112,11 +115,16 @@ Item {
                 Nilo.confirmAll = true;
                 return;
             }
+            // Armed with the card in view: it's what the second Enter approves.
             if (armed === Nilo.confirm.id) Nilo.answer(Nilo.confirm.id, true);
-            else armed = Nilo.confirm.id;
+            else {
+                armed = Nilo.confirm.id;
+                chat.toEnd();
+            }
             return;
         }
-        if (text.trim() === "" || Nilo.busy || !Nilo.installed) return;
+        if (text.trim() === "" || Nilo.busy) return;
+        if (!Nilo.installed) return Nilo.unready();
         chat.toEnd();
         Nilo.ask(text);
         cleared();
@@ -183,7 +191,7 @@ Item {
             }
 
             Label {
-                text: Nilo.settings.auto === true && Nilo.inUse !== "" ? Nilo.inUse + " (auto)" : (Nilo.settings.model ?? "")
+                text: Nilo.settings.auto === true && Nilo.inUse !== "" ? Lang.modelAuto.arg(Nilo.inUse) : (Nilo.settings.model ?? "")
             }
         }
     }

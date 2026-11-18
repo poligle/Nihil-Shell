@@ -103,6 +103,8 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: Clipboard.pick(row.index)
+                // Held, a touch chooses it without pasting: its forget shows, as under a pointer.
+                onPressAndHold: Clipboard.index = row.index
             }
 
             RowLayout {
@@ -132,7 +134,7 @@ Item {
                     Image {
                         id: picture
                         anchors.fill: parent
-                        source: row.kind === "image" ? "file://" + row.modelData.file : ""
+                        source: row.kind === "image" && row.modelData.file !== "" ? "file://" + row.modelData.file : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         visible: false
@@ -186,14 +188,14 @@ Item {
                 Ico {
                     glyph: Icons.close
                     font.pixelSize: 14
-                    opacity: row.hovered ? 1 : 0
+                    opacity: row.hovered || row.chosen ? 1 : 0
                     color: forgetArea.containsMouse ? Tokens.interrupt : Tokens.muted
 
                     MouseArea {
                         id: forgetArea
                         anchors.fill: parent
                         anchors.margins: -6
-                        enabled: row.hovered
+                        enabled: row.hovered || row.chosen
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         Accessible.role: Accessible.Button

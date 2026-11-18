@@ -13,7 +13,7 @@ Item {
     property real edge: Tokens.frameThickness
 
     readonly property bool here: Nilo.roaming && (Hyprland.focusedMonitor?.name ?? "") === output
-    readonly property bool hiding: Nilo.tool === "look_at_screen"
+    readonly property bool hiding: Nilo.tool === "look_at_screen" || Nilo.tool === "click"
     readonly property var monitor: Hyprland.monitors.values.find(m => m.name === root.output) ?? null
     readonly property real size: 46
 

@@ -3,18 +3,18 @@
 - **Frame and bar.** One black shape around every screen. Its left side widens into the
   bar: NixOS mark, workspaces as LEDs, the active app, tray, status, a 10-LED battery
   gauge, the clock in dots and a red privacy LED while something records the mic.
-- **Drawers.** The dashboard, the settings panel and the launcher are bumps of the frame
+- **Drawers.** The dashboard, the quick settings and the launcher are bumps of the frame
   itself, with concave joints, so they look like part of the hardware.
 - **Dashboard.** Time, music with the cover rendered as a dot matrix and a spectrum in
   LED columns, CPU/RAM/temperature dials, a network oscilloscope, a kanban (to do, doing,
   done: drag a card where it goes, its pencil writes it again, a broom clears the done ones),
   and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
   it shrinks away to the phone; what the phone sends waits there, to copy, save or open.
-- **Settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
-  locking or sleeping; the night light, with its intensity), segmented sliders, Wi-Fi (with
-  passwords and WPA-Enterprise hand-off), Bluetooth, as you left it through restarts and sleep,
-  airplane mode, which brings back only the radios that were on, audio output, notification
-  history, session.
+- **Quick settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
+  locking or sleeping; the night light, with its intensity, and do not disturb, both as you
+  left them), segmented sliders, Wi-Fi (with passwords and WPA-Enterprise hand-off),
+  Bluetooth, as you left it through restarts and sleep, airplane mode, which brings back only
+  the radios that were on, audio output, notification history, session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
   and desktop widgets, the screens, shortcuts and programs, the computer's name, Nilo,
   the clipboard history, the boot sound, fingerprint and SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,
@@ -39,7 +39,8 @@
   brings out the last copies, text and pictures, from the top of the frame: `V` again goes
   to the next one, and letting go of `SUPER` pastes it where you were (`Esc`: none). The
   window keeps the keyboard all along, so what was open in it stays open. The one chosen
-  is lit, its picture in colour. What a password manager copies is never kept.
+  is lit, its picture in colour. What a password manager copies is never kept, and the
+  history is kept in memory only: it goes with the session.
 - **Nilo.** An optional assistant with a local model (Qwen 3.5 on Ollama): two white eyes
   that wake up while you type. Three levels of what it may do: talk (and search the web if
   you let it); work in a repository of yours, its files, git and the terminal, each step

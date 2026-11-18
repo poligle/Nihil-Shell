@@ -24,6 +24,12 @@ Singleton {
         return part.charAt(0).toUpperCase() + part.slice(1);
     }
 
+    // A count in a text: `one` for one, in its own words («1 archivo»), `many` with the number for
+    // any other. Either takes the text's other %n after it, as .arg fills the lowest one left.
+    function count(n: real, one: string, many: string): string {
+        return n === 1 ? one : many.arg(n);
+    }
+
     function keys(combo: string): string {
         return String(combo ?? "").split("+").map(part => part.trim()).filter(part => part !== "")
             .map(part => key(part)).join(" + ");

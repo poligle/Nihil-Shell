@@ -23,8 +23,13 @@ Surface {
     // A password doesn't stay in a field nobody sees.
     onVisibleChanged: if (!visible && root.password) clear()
 
+    // What it last sent, typed: its value coming back as that leaves the field as it is, cursor and
+    // all; any other value shows, the focus still in it or not (Discard, a choice beside it).
+    property string typed: ""
     onValueChanged: {
-        if (!input.activeFocus && input.text !== value)
+        if (input.activeFocus && value === root.typed)
+            return;
+        if (input.text !== value)
             input.text = value;
     }
     Component.onCompleted: input.text = value
@@ -50,7 +55,10 @@ Surface {
         verticalAlignment: TextInput.AlignVCenter
         echoMode: root.password ? TextInput.Password : TextInput.Normal
         selectByMouse: true
-        onTextEdited: root.edited(text)
+        onTextEdited: {
+            root.typed = text;
+            root.edited(text);
+        }
         onAccepted: root.accepted()
         onEditingFinished: root.finished()
         Keys.onEscapePressed: event => {

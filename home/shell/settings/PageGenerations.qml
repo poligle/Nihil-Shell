@@ -136,124 +136,130 @@ Flickable {
             onClicked: page.open(row.gen.number)
         }
 
-        Column {
+        // Made only while open: every generation has a row, and each its changes, its keys
+        // and two asks for a password, each a field with glass of its own.
+        Loader {
             id: details
-            visible: row.open
+            active: row.open
             x: 70
             y: 44
             width: parent.width - x - 14
-            spacing: 12
 
-            Flow {
-                width: parent.width
-                spacing: 18
+            sourceComponent: Column {
+                width: details.width
+                spacing: 12
 
-                Label {
-                    visible: row.gen.nixos !== ""
-                    text: "NixOS " + row.gen.nixos
-                }
+                Flow {
+                    width: parent.width
+                    spacing: 18
 
-                Label {
-                    visible: row.gen.kernel !== ""
-                    text: "Linux " + row.gen.kernel
-                }
+                    Label {
+                        visible: row.gen.nixos !== ""
+                        text: "NixOS " + row.gen.nixos
+                    }
 
-                Label {
-                    visible: row.gen.nihil !== ""
-                    text: "NIHIL " + row.gen.nihil
-                }
-            }
+                    Label {
+                        visible: row.gen.kernel !== ""
+                        text: "Linux " + row.gen.kernel
+                    }
 
-            Label {
-                visible: row.changed === null || row.changed.failed || row.changed.before === null || row.changed.same
-                text: row.changed === null ? Lang.genComparing
-                    : row.changed.failed ? Lang.genCompareFailed
-                    : row.changed.before === null ? Lang.genOldest
-                    : Lang.genSame
-            }
-
-            Column {
-                visible: row.changed !== null && !row.changed.failed && row.changed.changed.length > 0
-                width: parent.width
-                spacing: 4
-
-                Repeater {
-                    model: row.changed?.changed ?? []
-
-                    Item {
-                        required property var modelData
-
-                        width: parent.width
-                        height: 18
-
-                        Txt {
-                            width: 190
-                            text: modelData.name
-                            color: Tokens.ink
-                            font.pixelSize: 13
-                        }
-
-                        Label {
-                            x: 200
-                            width: parent.width - x
-                            text: modelData.from === null ? "+ " + modelData.to
-                                : modelData.to === null ? "− " + modelData.from
-                                : modelData.from + " → " + modelData.to
-                            font.pixelSize: 12
-                        }
+                    Label {
+                        visible: row.gen.nihil !== ""
+                        text: "NIHIL " + row.gen.nihil
                     }
                 }
 
                 Label {
-                    visible: (row.changed?.more ?? 0) > 0
-                    text: Lang.genMore.arg(row.changed?.more ?? 0)
-                }
-            }
-
-            Flow {
-                visible: !row.gen.current && page.asking === "" && !Machine.busy
-                width: parent.width
-                spacing: 8
-
-                KeyButton {
-                    accent: true
-                    text: Lang.genSwitch
-                    onClicked: page.go("switch", row.gen.number, "")
+                    visible: row.changed === null || row.changed.failed || row.changed.before === null || row.changed.same
+                    text: row.changed === null ? Lang.genComparing
+                        : row.changed.failed ? Lang.genCompareFailed
+                        : row.changed.before === null ? Lang.genOldest
+                        : Lang.genSame
                 }
 
-                KeyButton {
-                    visible: row.gen.menu && !row.gen.next
-                    text: Lang.genBoot
-                    onClicked: page.go("boot", row.gen.number, "")
+                Column {
+                    visible: row.changed !== null && !row.changed.failed && row.changed.changed.length > 0
+                    width: parent.width
+                    spacing: 4
+
+                    Repeater {
+                        model: row.changed?.changed ?? []
+
+                        Item {
+                            required property var modelData
+
+                            width: parent.width
+                            height: 18
+
+                            Txt {
+                                width: 190
+                                text: modelData.name
+                                color: Tokens.ink
+                                font.pixelSize: 13
+                            }
+
+                            Label {
+                                x: 200
+                                width: parent.width - x
+                                text: modelData.from === null ? "+ " + modelData.to
+                                    : modelData.to === null ? "− " + modelData.from
+                                    : modelData.from + " → " + modelData.to
+                                font.pixelSize: 12
+                            }
+                        }
+                    }
+
+                    Label {
+                        visible: (row.changed?.more ?? 0) > 0
+                        text: Lang.genMore.arg(row.changed?.more ?? 0)
+                    }
                 }
 
-                KeyButton {
-                    visible: row.gen.next
-                    text: page.armed === "reboot" ? Lang.confirmAgain : Lang.actReboot
-                    accent: page.armed === "reboot"
-                    onClicked: {
-                        if (page.armed === "reboot") {
-                            page.armed = "";
-                            Quickshell.execDetached([Config.cmd.systemctl, "reboot"]);
-                        } else {
-                            page.arm("reboot");
+                Flow {
+                    visible: !row.gen.current && page.asking === "" && !Machine.busy
+                    width: parent.width
+                    spacing: 8
+
+                    KeyButton {
+                        accent: true
+                        text: Lang.genSwitch
+                        onClicked: page.go("switch", row.gen.number, "")
+                    }
+
+                    KeyButton {
+                        visible: row.gen.menu && !row.gen.next
+                        text: Lang.genBoot
+                        onClicked: page.go("boot", row.gen.number, "")
+                    }
+
+                    KeyButton {
+                        visible: row.gen.next
+                        text: page.armed === "reboot" ? Lang.confirmAgain : Lang.actReboot
+                        accent: page.armed === "reboot"
+                        onClicked: {
+                            if (page.armed === "reboot") {
+                                page.armed = "";
+                                Quickshell.execDetached([Config.cmd.systemctl, "reboot"]);
+                            } else {
+                                page.arm("reboot");
+                            }
                         }
                     }
                 }
-            }
 
-            Ask {
-                visible: page.opened === row.gen.number && page.asking === "switch" && (!Machine.busy || page.fingerWait)
-                action: "switch"
-                value: row.gen.number
-                label: Lang.genSwitch
-            }
+                Ask {
+                    visible: page.opened === row.gen.number && page.asking === "switch" && (!Machine.busy || page.fingerWait)
+                    action: "switch"
+                    value: row.gen.number
+                    label: Lang.genSwitch
+                }
 
-            Ask {
-                visible: page.opened === row.gen.number && page.asking === "boot" && (!Machine.busy || page.fingerWait)
-                action: "boot"
-                value: row.gen.number
-                label: Lang.genBoot
+                Ask {
+                    visible: page.opened === row.gen.number && page.asking === "boot" && (!Machine.busy || page.fingerWait)
+                    action: "boot"
+                    value: row.gen.number
+                    label: Lang.genBoot
+                }
             }
         }
     }

@@ -4,10 +4,14 @@
 let
     nihil = osConfig.nihil;
     ollama = osConfig.services.ollama;
+    # Where Ollama answers: an address it listens on everywhere is reached on this computer, and an
+    # IPv6 one goes in brackets, or the port would read as part of it.
+    host = { "0.0.0.0" = "127.0.0.1"; "::" = "::1"; }.${ollama.host} or ollama.host;
+    address = if lib.hasInfix ":" host then "[${host}]" else host;
 
     config = pkgs.writeText "nilo.json" (builtins.toJSON
     {
-        ollama = "http://${ollama.host}:${toString ollama.port}";
+        ollama = "http://${address}:${toString ollama.port}";
         inherit (nihil) language;
         inherit (nihil.nilo) models contextLength searxng coauthor;
         ddgr = "${pkgs.ddgr}/bin/ddgr";

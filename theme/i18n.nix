@@ -15,10 +15,10 @@
 		fingerprintReady = "Toca el sensor";
 		fingerprintPresent = "Leyendo huella";
 		lockPaused = "En pausa";
-		welcome = "Bienvenido";
 
 		search = "Buscar";
 		appsCount = "%1 apps";
+		appsCountOne = "1 app";
 		actions = "Acciones";
 		calculator = "Calculadora";
 		typeExpression = "Escribe una operación";
@@ -43,7 +43,7 @@
 		hintSession = "Sesión";
 		hintSystem = "Sistema";
 
-		panel = "Ajustes";
+		panel = "Ajustes rápidos";
 		offline = "Sin red";
 		tileWifi = "Wi-Fi";
 		tileBluetooth = "Bluetooth";
@@ -56,8 +56,9 @@
 		vectorSent = "Enviado a %1";
 		vectorWaiting = "Esperando a tus dispositivos";
 		vectorFrom = "Recibido de %1";
-		vectorDevice = "tu móvil";
+		vectorDevice = "un dispositivo";
 		vectorBig = "Demasiado grande: hasta 100 MB";
+		vectorMany = "De una en una: Vector guarda una sola cosa";
 		vectorFolder = "Las carpetas no se envían";
 		vectorEmpty = "Nada que enviar";
 		vectorFailed = "No se ha podido enviar";
@@ -76,6 +77,10 @@
 		devices = "Dispositivos";
 		newDevice = "Nuevo";
 		noDevices = "Sin dispositivos";
+		noResults = "Sin resultados";
+		btOff = "El Bluetooth está apagado";
+		wifiConnected = "Conectada";
+		wifiLocked = "Con contraseña";
 		audioOutput = "Salida de audio";
 		notifications = "Avisos (%1)";
 		clear = "Limpiar";
@@ -98,6 +103,7 @@
 
 		batteryApp = "Batería";
 		batteryLow = "Batería al %1 %";
+		percent = "%1 %";
 		batteryLowPlug = "Conecta el cargador.";
 		batteryLowLast = "Conecta el cargador ya: queda muy poco.";
 		media = "Multimedia";
@@ -108,10 +114,13 @@
 		mediaNext = "Siguiente";
 		caffeine = "Cafeína";
 		tasks = "Tareas";
+		tasksCount = "Tareas (%1)";
+		tasksLane = "%1 (%2)";
 		tasksTodo = "Por hacer";
 		tasksDoing = "Haciendo";
 		tasksDone = "Hecho";
 		tasksAdd = "Nueva tarea";
+		tasksAddHint = "+ Nueva tarea";
 		tasksClear = "Limpiar";
 		tasksLeft = "Mover a la izquierda";
 		tasksRight = "Mover a la derecha";
@@ -152,8 +161,8 @@
 		niloOllamaStarting = "Arrancando Ollama…";
 		niloStartOllama = "Arrancar Ollama";
 		niloOllamaHelp = "Más en: journalctl -u ollama -b";
-		niloDownloading = "Descargando %1%";
-		niloDownloadingModel = "Descargando %1 (%2%)";
+		niloDownloading = "Descargando %1 %";
+		niloDownloadingModel = "Descargando %1 (%2 %)";
 		niloGreetNight = "¿Trasnochando, %1?|Buenas noches, %1|La noche es tuya, %1";
 		niloGreetMorning = "Buenos días, %1|¿Café y a por ello, %1?|Arriba, %1";
 		niloGreetAfternoon = "Buenas tardes, %1|¿Qué tal la tarde, %1?|Hola de nuevo, %1";
@@ -173,6 +182,8 @@
 		niloCopied = "Copiado";
 		niloStopped = "Parado";
 		niloRate = "%1 tok/s";
+		niloPeekClose = "Cerrar";
+		niloAskedBy = "Lo ha preguntado otro programa, con nihil-ipc";
 		niloPeekDone = "Nilo ha terminado";
 		niloPeekWaiting = "Nilo te espera";
 		niloPeekFailed = "Nilo no ha podido";
@@ -182,25 +193,32 @@
 
 		toolSearching = "Buscando «%1»";
 		toolSearched = "%1 resultados de «%2»";
+		toolSearchedOne = "1 resultado de «%1»";
 		toolReading = "Leyendo %1";
 		toolRead = "Leído %1";
 		toolSystem = "Mirando este ordenador";
 		toolSystemDone = "Visto este ordenador";
 		toolGitStatus = "Mirando el repositorio";
 		toolGitStatusDone = "%1 cambios en %2";
+		toolGitStatusDoneOne = "1 cambio en %1";
 		toolGitCommit = "Preparando el commit";
 		toolGitCommitted = "Commit %1";
 		toolGitPushed = "Commit %1 subido";
 		toolGitPushedOnly = "Subido";
 		toolDeclined = "Cancelado";
 		toolFailed = "Falló: %1";
+		toolFailedPlain = "No ha salido bien";
+		toolTookTooLong = "Tardaba demasiado";
 		toolListing = "Mirando los archivos";
 		toolListed = "%1 archivos";
+		toolListedOne = "1 archivo";
 		toolOpening = "Abriendo %1";
 		toolOpened = "Leído %1 (%2 líneas)";
+		toolOpenedOne = "Leído %1 (1 línea)";
 		toolChanging = "Preparando %1";
 		toolChanged = "Cambiado %1 (+%2 −%3)";
 		toolCreated = "Creado %1 (%2 líneas)";
+		toolCreatedOne = "Creado %1 (1 línea)";
 		toolRunning = "Ejecutando %1";
 		toolRanOk = "Ejecutado %1";
 		toolRanFail = "%1 terminó con código %2";
@@ -210,6 +228,7 @@
 		toolLaunched = "Abierto %1";
 		toolWindows = "Mirando qué hay abierto";
 		toolWindowsDone = "%1 ventanas abiertas";
+		toolWindowsDoneOne = "Una ventana abierta";
 		toolLooking = "Mirando la pantalla";
 		toolLookedWindow = "Vista la ventana de %1";
 		toolLookedScreen = "Vista la pantalla";
@@ -219,7 +238,7 @@
 		toolFocus = "Al frente %1";
 		toolClose = "Cerrado %1";
 		toolFullscreen = "Pantalla completa %1";
-		toolMaximize = "Agrandado %1";
+		toolMaximize = "Maximizado %1";
 		toolFloat = "Flotando %1";
 		toolMove = "%1 al escritorio %2";
 		toolWindow = "Moviendo %1";
@@ -239,8 +258,8 @@
 		toolOff = "no";
 		toolShooting = "Haciendo una captura";
 		toolShot = "Captura hecha";
-		toolSending = "Enviando al móvil";
-		toolSent = "Enviado al móvil";
+		toolSending = "Enviando a tus dispositivos";
+		toolSent = "Enviado a tus dispositivos";
 		settingVolume = "Volumen";
 		settingMute = "Silencio";
 		settingBrightness = "Brillo";
@@ -259,10 +278,12 @@
 		confirmPush = "Push";
 		confirmMore = "Y %1 más";
 		confirmAhead = "%1 commits sin subir";
+		confirmAheadOne = "1 commit sin subir";
 		confirmFile = "archivo";
 		confirmEdit = "Cambiar";
 		confirmCreate = "Crear";
 		confirmMoreLines = "Y %1 líneas más";
+		confirmMoreLinesOne = "Y 1 línea más";
 		confirmShowAll = "Ver todo";
 		confirmAtLine = "Línea %1";
 		confirmRun = "Ejecutar";
@@ -275,9 +296,10 @@
 		dangerSystem = "cambia el sistema";
 		dangerPermissions = "cambia permisos";
 		dangerInternet = "ejecuta un script de internet";
+		dangerScript = "ejecuta código escrito en la orden";
 		confirmType = "Escribir en %1";
 		confirmKeys = "Pulsar en %1";
-		confirmSend = "Enviar al móvil";
+		confirmSend = "Enviar a tus dispositivos";
 		confirmSearch = "Buscar en internet";
 		confirmFetch = "Leer una página";
 		confirmOpenUrl = "Abrir una página";
@@ -300,6 +322,7 @@
 		niloErrNoModel = "Elige un modelo en el engranaje.";
 		niloErrRepo = "%1 no es un repositorio git.";
 		niloErrOther = "Algo ha fallado: %1";
+		niloErrPlain = "Algo ha fallado";
 		niloDownload = "Descargar";
 		niloDelete = "Borrar";
 
@@ -308,9 +331,10 @@
 		introCall = "Llámame cuando quieras";
 		introBind = "Desde cualquier sitio";
 		introCopilot = "La tecla Copilot, si tu portátil la tiene";
-		introLauncher = "En el launcher, empieza por ?";
+		introLauncher = "En el lanzador, empieza por ?";
 		keySpace = "Espacio";
 		introSleep = "Si pasan %1 minutos sin preguntas, me duermo y dejo libre la memoria. Despierto en cuanto escribes.";
+		introSleepOne = "Si pasa 1 minuto sin preguntas, me duermo y dejo libre la memoria. Despierto en cuanto escribes.";
 		introModel = "Elige mi modelo";
 		introAccess = "¿Qué puedo hacer?";
 		introDone = "Listo.";
@@ -325,11 +349,12 @@
 		modelSize = "%1 GB";
 		modelRam = "≈ %1 GB de RAM";
 		modelTight = "Justo para tu RAM";
+		modelAuto = "%1 (automático)";
 		modelFailed = "No se ha podido descargar: %1";
 		modelFailedOllama = "Ollama no está en marcha";
 		modelRetrying = "Se ha cortado, reintentando (%1 de %2)";
 		modelFailedNetwork = "Se ha cortado varias veces: revisa la conexión y vuelve a probar";
-		modelFailedRate = "El registro de Ollama está limitando las descargas, prueba en unos minutos";
+		modelFailedRate = "El registro de Ollama está limitando las descargas: prueba en unos minutos";
 		modelFailedSpace = "No queda espacio en el disco";
 		modelFailedMissing = "El registro de Ollama no lo tiene";
 
@@ -338,7 +363,7 @@
 		accessTerminal = "Terminal y repositorio";
 		accessTerminalGuard = "Podré leer, crear y cambiar archivos de %1, hacer add, commit y push con tu usuario de git y ejecutar comandos como tú. Antes de cada cambio, commit o comando te enseño qué voy a hacer y espero a que confirmes; lo que pide sudo se abre en una terminal para que escribas tú la contraseña.";
 		accessEverything = "Todo el sistema";
-		accessEverythingGuard = "Podré ver lo que tienes abierto y usarlo como tú: escribir y pulsar teclas en las ventanas, ponerte música, mover y cerrar ventanas, cambiar el volumen, el brillo o el fondo, mandar cosas al móvil y leer archivos de todo el ordenador, salvo claves, contraseñas y perfiles del navegador. Solo te preguntaré antes de cambiar archivos, hacer commits, ejecutar comandos que no solo leen, escribir en una terminal y usar atajos que borran o envían; si en esa respuesta he leído internet o la pantalla, también antes de escribir, pulsar teclas, leer tus archivos o enviar algo; y, si en la charla he leído tus archivos, la pantalla o un comando, antes de que algo salga a internet.";
+		accessEverythingGuard = "Podré ver lo que tienes abierto y usarlo como tú: escribir y pulsar teclas en las ventanas, ponerte música, mover y cerrar ventanas, cambiar el volumen, el brillo o el fondo, mandar cosas a tus dispositivos y leer archivos de todo el ordenador, salvo claves, contraseñas y perfiles del navegador. Solo te preguntaré antes de cambiar archivos, hacer commits, ejecutar comandos que no solo leen, escribir en una terminal y usar atajos que borran o envían; si en esa respuesta he leído internet o la pantalla, también antes de escribir, pulsar teclas, leer tus archivos o enviar algo; y, si en la charla he leído tus archivos, la pantalla o un comando, antes de que algo salga a internet.";
 		accessAuthorize = "Autorizar";
 
 		setModel = "Modelo";
@@ -353,7 +378,7 @@
 		setMinutes = "%1 min";
 		setSleepNow = "Dormir ahora";
 		setAwakeUntil = "Despierto hasta las %2, %1 GB";
-		setOnGpu = "(%1% en la GPU)";
+		setOnGpu = "(%1 % en la GPU)";
 		setAsleep = "Dormido, sin ocupar memoria";
 		setThink = "Pensar antes de responder";
 		setAuto = "Elegir el modelo en cada pregunta";
@@ -384,7 +409,7 @@
 		cfgVariant = "Variante";
 		cfgTimeZone = "Zona horaria";
 		cfgTimeZoneSub = "Busca tu ciudad";
-		cfgLook = "Escritorio";
+		cfgLook = "Aspecto";
 		cfgWallpaper = "Fondo";
 		cfgKeys = "Atajos";
 		cfgKeyNone = "Sin tecla";
@@ -396,6 +421,7 @@
 		cfgKeyNeedsMod = "Añade Super u otro modificador";
 		cfgKeyReserved = "Esa es de los escritorios";
 		cfgKeyTaken = "Ya la usa: %1";
+		cfgKeyShiftTaken = "Con Shift graba, pero esa ya la usa: %1";
 		cfgSystem = "Sistema";
 		cfgHost = "Nombre del ordenador";
 		cfgAcceleration = "Aceleración";
@@ -414,7 +440,7 @@
 		cfgChecking = "Comprobando…";
 		cfgFingerAsk = "Pon el dedo en el lector";
 		cfgFingerFailed = "La huella no ha servido: escribe tu contraseña";
-		cfgApplying = "Aplicando %1";
+		cfgApplying = "Aplicando (%1)";
 		cfgApplied = "Aplicado";
 		cfgAppliedWarn = "Aplicado, con avisos";
 		cfgApplyFailed = "No se ha podido aplicar; todo sigue como estaba";
@@ -440,12 +466,14 @@
 		bindToSpecial = "Ventana al especial";
 		bindNextWorkspace = "Siguiente escritorio";
 		bindOverview = "Todos los escritorios; mantenida, elegir uno";
-		bindScreenshot = "Captura de la pantalla; con SHIFT, grabarla";
-		bindSnip = "Captura de una zona (la tecla de recortes); con SHIFT, grabarla";
+		bindScreenshot = "Captura de la pantalla; con Shift, grabarla";
+		bindSnip = "Captura de una zona (la tecla de recortes); con Shift, grabarla";
 		screenshotsDir = "Capturas";
 		screenshotSaved = "Captura guardada y copiada";
 		recordSaved = "Grabación guardada y copiada";
 		recordFailed = "No se ha podido grabar";
+		recordLog = "Detalles en %1";
+		diskPassphrase = "Contraseña del disco";
 		welHello = "Hola, %1";
 		welHelloAnon = "Hola";
 		welHelloBody = "Esto es NIHIL: un escritorio negro, de puntos y silencio, que solo aparece cuando lo llamas. Un minuto para enseñártelo y dejarlo a tu gusto.";
@@ -459,6 +487,7 @@
 		welBottom = "Abajo";
 		welBasicsTitle = "Lo básico";
 		welBasicsBody = "Con estas teclas y tres dedos en el touchpad tienes casi todo.";
+		welBasicsKeys = "Con estas teclas tienes casi todo.";
 		welWorkspaces = "Ir a un escritorio";
 		welMoveTo = "Llevar la ventana a un escritorio";
 		welGestures = "Con tres dedos: a los lados cambias de escritorio, hacia arriba abres el lanzador, hacia abajo cierras la ventana y separándolos la maximizas.";
@@ -478,7 +507,7 @@
 		welNetBody = "NIHIL se actualiza y aplica cambios por internet: conéctate a una red.";
 		welNetDone = "Conectado a %1.";
 		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
-		ovHint = "[%1] Siguiente|[Shift+%1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
+		ovHint = "[%1] Siguiente|[Shift + %1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
 		bindCopy = "Copiar";
 		bindClipboard = "Pegar o elegir del historial";
@@ -498,7 +527,7 @@
 		updDev = "Ahora corre tu copia (nihil dev): actualizar vuelve a la de GitHub.";
 		updMore = "Y %1 más";
 		updUpdate = "Actualizar";
-		updApplying = "Actualizando NIHIL %1";
+		updApplying = "Actualizando NIHIL (%1)";
 		updDone = "NIHIL actualizado";
 		updFailed = "No se ha podido actualizar";
 		updNotifyFailed = "No se ha podido actualizar NIHIL";
@@ -522,18 +551,18 @@
 		genDisk = "Disco";
 		genFree = "%1 libres de %2";
 		genClean = "Limpiar ahora";
-		genSwitching = "Cambiando de generación %1";
+		genSwitching = "Cambiando a la generación %2 (%1)";
 		genSwitched = "Generación %1 en uso";
 		genSwitchedWarn = "Generación %1 en uso, con avisos";
 		genSwitchFailed = "No se ha podido cambiar; sigue la de antes";
-		genCleaning = "Limpiando %1";
+		genCleaning = "Limpiando (%1)";
 		genCleaned = "Limpio: %1 más libres";
 		genCleanFailed = "No se ha podido limpiar";
 		genBootSet = "El próximo arranque, con la generación %1";
 		genBootFailed = "No se ha podido preparar el arranque";
 		genNotInMenu = "El menú de arranque ya no la tiene";
 		genGone = "Esa generación ya no está";
-		cfgPhone = "Dispositivos";
+		cfgDevices = "Dispositivos";
 		deckUse = "Usar dispositivos";
 		deckApply = "Se enciende al aplicar.";
 		deckNetworks = "Apágalo en redes que no son tuyas: cualquiera en ellas llega a su puerto";
@@ -543,7 +572,7 @@
 		deckWatchInstall = "Instalar en un reloj";
 		deckPair = "Emparejar un dispositivo";
 		deckPairFailed = "No se ha podido sacar el código";
-		deckPhones = "Dispositivos emparejados";
+		deckDevices = "Dispositivos emparejados";
 		deckNone = "Ningún dispositivo emparejado.";
 		deckForget = "Olvidar";
 		deckAsking = "%1 quiere usar este ordenador como deck";
@@ -669,6 +698,9 @@
 		insNoWhere = "No se ha elegido dónde va NIHIL.";
 		insNoWifi = "No aparece ninguna tarjeta Wi-Fi: un cable, o un móvil compartiendo su conexión por USB, también sirven.";
 		insNotConnected = "No se ha conectado.";
+		insWrongKey = "La contraseña no es la de esta red.";
+		insShortKey = "La contraseña de una red así tiene de 8 a 63 caracteres.";
+		insOutOfRange = "Esa red ya no está a la vista.";
 		insNtfsCheck = "%1: su NTFS tiene que revisarse antes. Arranca Windows, reinícialo una vez y vuelve a empezar el instalador.";
 		insOffline = "No hay conexión a internet.";
 		insOfflineHelp = "sudo nihil-install lo vuelve a empezar; nmcli device muestra las tarjetas de red.";
@@ -708,7 +740,7 @@
 		insWhereGoes = "Dónde va NIHIL";
 		insWhereOn = "Dónde en %1";
 		insWhole = "Borrar el disco entero";
-		insWindowsCheck = "Windows revisará su disco al arrancar: déjale terminar.";
+		insWindowsCheck = "Windows revisará su disco al arrancar: déjalo terminar.";
 		insWindowsElsewhere = "Windows, en %1, se arranca desde el menú de arranque del ordenador.";
 		insWriting = "Escribiendo la configuración de este ordenador…";
 		insXkbLayout = "Distribución del teclado (nombre xkb)";
@@ -716,7 +748,7 @@
 		insYou = "Tú";
 		insYourName = "Tu nombre";
 		insZone = "Zona horaria";
-		insZoneAsk = "Zona horaria: %1?";
+		insZoneAsk = "¿Zona horaria: %1?";
 
 		# nihil-watch (home/deck/watch.sh), in the machine's language.
 		watchMany = "Hay más de un reloj en adb (%1): desconecta uno (adb disconnect HOST:PUERTO).";
@@ -771,10 +803,10 @@
 		fingerprintReady = "Touch the sensor";
 		fingerprintPresent = "Reading fingerprint";
 		lockPaused = "Paused";
-		welcome = "Welcome";
 
 		search = "Search";
 		appsCount = "%1 apps";
+		appsCountOne = "1 app";
 		actions = "Actions";
 		calculator = "Calculator";
 		typeExpression = "Type an expression";
@@ -799,21 +831,22 @@
 		hintSession = "Session";
 		hintSystem = "System";
 
-		panel = "Settings";
+		panel = "Quick settings";
 		offline = "Offline";
 		tileWifi = "Wi-Fi";
 		tileBluetooth = "Bluetooth";
 		tileOutput = "Output";
 		tileMic = "Mic";
-		tileDnd = "Silent";
+		tileDnd = "Do not disturb";
 		tileNight = "Night";
 		tileShot = "Screenshot";
 		tileRecord = "Record";
 		vectorSent = "Sent to %1";
 		vectorWaiting = "Waiting for your devices";
 		vectorFrom = "Received from %1";
-		vectorDevice = "your phone";
+		vectorDevice = "a device";
 		vectorBig = "Too big: up to 100 MB";
+		vectorMany = "One at a time: Vector holds a single thing";
 		vectorFolder = "Folders can't be sent";
 		vectorEmpty = "Nothing to send";
 		vectorFailed = "Couldn't send it";
@@ -832,6 +865,10 @@
 		devices = "Devices";
 		newDevice = "New";
 		noDevices = "No devices";
+		noResults = "No results";
+		btOff = "Bluetooth is off";
+		wifiConnected = "Connected";
+		wifiLocked = "With a password";
 		audioOutput = "Audio output";
 		notifications = "Notifications (%1)";
 		clear = "Clear";
@@ -846,7 +883,7 @@
 		unmute = "Unmute";
 		dismiss = "Dismiss";
 		workspace = "Workspace %1";
-		connectFailed = "Could not connect";
+		connectFailed = "Couldn't connect";
 		wifiOff = "Wi-Fi is off";
 		wifiTurnOn = "Turn on";
 		connectedTo = "Connected to %1";
@@ -854,6 +891,7 @@
 
 		batteryApp = "Battery";
 		batteryLow = "Battery at %1%";
+		percent = "%1%";
 		batteryLowPlug = "Plug in the charger.";
 		batteryLowLast = "Plug in the charger now: very little is left.";
 		media = "Media";
@@ -864,10 +902,13 @@
 		mediaNext = "Next";
 		caffeine = "Caffeine";
 		tasks = "Tasks";
+		tasksCount = "Tasks (%1)";
+		tasksLane = "%1 (%2)";
 		tasksTodo = "To do";
 		tasksDoing = "Doing";
 		tasksDone = "Done";
 		tasksAdd = "New task";
+		tasksAddHint = "+ New task";
 		tasksClear = "Clear";
 		tasksLeft = "Move left";
 		tasksRight = "Move right";
@@ -888,7 +929,7 @@
 		niloHintConfirm = "[Enter] [Enter] Confirm|[Esc] Cancel";
 		niloHintIntro = "[Enter] Next|[↑↓] Choose|[Space] Toggle|[Esc] Close";
 		niloHintSettings = "[↑↓] Choose|[Space] Toggle|[Esc] Back";
-		niloHintAuthorize = "[Space] or [Enter] Authorize|[Esc] Cancel";
+		niloHintAuthorize = "[Space] or [Enter] Authorise|[Esc] Cancel";
 		niloOff = "Nilo is off";
 		niloFailed = "Nilo can't start";
 		niloFailedHow = "It closed five times in a row (code %1).";
@@ -929,6 +970,8 @@
 		niloCopied = "Copied";
 		niloStopped = "Stopped";
 		niloRate = "%1 tok/s";
+		niloPeekClose = "Close";
+		niloAskedBy = "Asked by another program, through nihil-ipc";
 		niloPeekDone = "Nilo is done";
 		niloPeekWaiting = "Nilo is waiting for you";
 		niloPeekFailed = "Nilo couldn't do it";
@@ -938,25 +981,32 @@
 
 		toolSearching = "Searching “%1”";
 		toolSearched = "%1 results for “%2”";
+		toolSearchedOne = "1 result for “%1”";
 		toolReading = "Reading %1";
 		toolRead = "Read %1";
 		toolSystem = "Looking at this computer";
 		toolSystemDone = "Looked at this computer";
 		toolGitStatus = "Looking at the repository";
 		toolGitStatusDone = "%1 changes on %2";
+		toolGitStatusDoneOne = "1 change on %1";
 		toolGitCommit = "Preparing the commit";
 		toolGitCommitted = "Commit %1";
 		toolGitPushed = "Commit %1 pushed";
 		toolGitPushedOnly = "Pushed";
 		toolDeclined = "Cancelled";
 		toolFailed = "Failed: %1";
+		toolFailedPlain = "It didn't work";
+		toolTookTooLong = "It took too long";
 		toolListing = "Looking at the files";
 		toolListed = "%1 files";
+		toolListedOne = "1 file";
 		toolOpening = "Opening %1";
 		toolOpened = "Read %1 (%2 lines)";
+		toolOpenedOne = "Read %1 (1 line)";
 		toolChanging = "Preparing %1";
 		toolChanged = "Changed %1 (+%2 −%3)";
 		toolCreated = "Created %1 (%2 lines)";
+		toolCreatedOne = "Created %1 (1 line)";
 		toolRunning = "Running %1";
 		toolRanOk = "Ran %1";
 		toolRanFail = "%1 exited with code %2";
@@ -966,6 +1016,7 @@
 		toolLaunched = "Opened %1";
 		toolWindows = "Looking at what is open";
 		toolWindowsDone = "%1 windows open";
+		toolWindowsDoneOne = "One window open";
 		toolLooking = "Looking at the screen";
 		toolLookedWindow = "Seen the window of %1";
 		toolLookedScreen = "Seen the screen";
@@ -975,7 +1026,7 @@
 		toolFocus = "%1 in front";
 		toolClose = "Closed %1";
 		toolFullscreen = "%1 fullscreen";
-		toolMaximize = "%1 maximized";
+		toolMaximize = "%1 maximised";
 		toolFloat = "%1 floating";
 		toolMove = "%1 to workspace %2";
 		toolWindow = "Moving %1";
@@ -995,8 +1046,8 @@
 		toolOff = "off";
 		toolShooting = "Taking a screenshot";
 		toolShot = "Screenshot taken";
-		toolSending = "Sending to the phone";
-		toolSent = "Sent to the phone";
+		toolSending = "Sending to your devices";
+		toolSent = "Sent to your devices";
 		settingVolume = "Volume";
 		settingMute = "Mute";
 		settingBrightness = "Brightness";
@@ -1006,7 +1057,7 @@
 		settingWallpaper = "Wallpaper";
 		settingGlass = "Glass";
 		settingWorkspace = "Workspace";
-		settingAirplane = "Airplane mode";
+		settingAirplane = "Aeroplane mode";
 		settingRecord = "Recording";
 		settingLock = "Lock";
 
@@ -1015,10 +1066,12 @@
 		confirmPush = "Push";
 		confirmMore = "And %1 more";
 		confirmAhead = "%1 commits not pushed yet";
+		confirmAheadOne = "1 commit not pushed yet";
 		confirmFile = "file";
 		confirmEdit = "Change";
 		confirmCreate = "Create";
 		confirmMoreLines = "And %1 more lines";
+		confirmMoreLinesOne = "And 1 more line";
 		confirmShowAll = "Show all";
 		confirmAtLine = "Line %1";
 		confirmRun = "Run";
@@ -1031,9 +1084,10 @@
 		dangerSystem = "changes the system";
 		dangerPermissions = "changes permissions";
 		dangerInternet = "runs a script from the internet";
+		dangerScript = "runs code written into it";
 		confirmType = "Type in %1";
 		confirmKeys = "Press in %1";
-		confirmSend = "Send to the phone";
+		confirmSend = "Send to your devices";
 		confirmSearch = "Search the web";
 		confirmFetch = "Read a page";
 		confirmOpenUrl = "Open a page";
@@ -1053,9 +1107,10 @@
 		niloErrOllama = "Ollama isn't running.";
 		niloErrModel = "The model %1 isn't downloaded.";
 		niloErrMemory = "Not enough memory for %1: try a smaller one.";
-		niloErrNoModel = "Choose a model in the settings.";
+		niloErrNoModel = "Choose a model with the cog.";
 		niloErrRepo = "%1 is not a git repository.";
 		niloErrOther = "Something went wrong: %1";
+		niloErrPlain = "Something went wrong";
 		niloDownload = "Download";
 		niloDelete = "Delete";
 
@@ -1067,6 +1122,7 @@
 		introLauncher = "In the launcher, start with ?";
 		keySpace = "Space";
 		introSleep = "After %1 minutes without questions I go to sleep and free the memory. I wake up as soon as you type.";
+		introSleepOne = "After 1 minute without questions I go to sleep and free the memory. I wake up as soon as you type.";
 		introModel = "Choose my model";
 		introAccess = "What may I do?";
 		introDone = "Ready.";
@@ -1081,11 +1137,12 @@
 		modelSize = "%1 GB";
 		modelRam = "≈ %1 GB of RAM";
 		modelTight = "Tight for your RAM";
+		modelAuto = "%1 (auto)";
 		modelFailed = "Download failed: %1";
 		modelFailedOllama = "Ollama isn't running";
 		modelRetrying = "It broke off, trying again (%1 of %2)";
 		modelFailedNetwork = "It kept breaking off: check the connection and try again";
-		modelFailedRate = "Ollama's registry is limiting downloads, try again in a few minutes";
+		modelFailedRate = "Ollama's registry is limiting downloads: try again in a few minutes";
 		modelFailedSpace = "The disk is full";
 		modelFailedMissing = "Ollama's registry doesn't have it";
 
@@ -1094,8 +1151,8 @@
 		accessTerminal = "Terminal and repository";
 		accessTerminalGuard = "I'll be able to read, create and change files in %1, add, commit and push as your git user, and run commands as you. Before each change, commit or command I show you what I'll do and wait for your confirmation; whatever needs sudo opens in a terminal for you to type the password.";
 		accessEverything = "The whole system";
-		accessEverythingGuard = "I'll be able to see what you have open and use it as you would: type and press keys in windows, put on music, move and close windows, change the volume, the brightness or the wallpaper, send things to your phone and read files across the computer, except keys, passwords and browser profiles. I'll only ask before changing files, committing, running commands that do more than read, typing in a terminal and shortcuts that delete or send; once an answer has read the web or the screen, also before typing, pressing keys, reading your files or sending anything; and once the chat has read your files, the screen or a command, before anything goes out to the internet.";
-		accessAuthorize = "Authorize";
+		accessEverythingGuard = "I'll be able to see what you have open and use it as you would: type and press keys in windows, put on music, move and close windows, change the volume, the brightness or the wallpaper, send things to your devices and read files across the computer, except keys, passwords and browser profiles. I'll only ask before changing files, committing, running commands that do more than read, typing in a terminal and shortcuts that delete or send; once an answer has read the web or the screen, also before typing, pressing keys, reading your files or sending anything; and once the chat has read your files, the screen or a command, before anything goes out to the internet.";
+		accessAuthorize = "Authorise";
 
 		setModel = "Model";
 		setAccess = "Access";
@@ -1140,7 +1197,7 @@
 		cfgVariant = "Variant";
 		cfgTimeZone = "Time zone";
 		cfgTimeZoneSub = "Look for your city";
-		cfgLook = "Desktop";
+		cfgLook = "Appearance";
 		cfgWallpaper = "Wallpaper";
 		cfgKeys = "Shortcuts";
 		cfgKeyNone = "No key";
@@ -1152,6 +1209,7 @@
 		cfgKeyNeedsMod = "Add Super or another modifier";
 		cfgKeyReserved = "That one belongs to the workspaces";
 		cfgKeyTaken = "Already used by: %1";
+		cfgKeyShiftTaken = "With Shift it records, but that one is used by: %1";
 		cfgSystem = "System";
 		cfgHost = "Computer name";
 		cfgAcceleration = "Acceleration";
@@ -1170,16 +1228,16 @@
 		cfgChecking = "Checking…";
 		cfgFingerAsk = "Touch the fingerprint reader";
 		cfgFingerFailed = "The fingerprint didn't work: type your password";
-		cfgApplying = "Applying %1";
+		cfgApplying = "Applying (%1)";
 		cfgApplied = "Applied";
 		cfgAppliedWarn = "Applied, with warnings";
-		cfgApplyFailed = "It could not be applied; everything is as it was";
+		cfgApplyFailed = "It couldn't be applied; everything is as it was";
 		cfgWrongPassword = "Wrong password";
 		cfgBusy = "Other changes are being applied";
 		cfgInvalid = "Those settings are not valid";
 		cfgLogHint = "The log: /run/nihil/apply.log";
 		cfgNotifyApplied = "Preferences applied";
-		cfgNotifyFailed = "The preferences could not be applied";
+		cfgNotifyFailed = "The preferences couldn't be applied";
 		bindLauncher = "Launcher";
 		bindDashboard = "Dashboard";
 		bindPanel = "Quick settings";
@@ -1196,12 +1254,14 @@
 		bindToSpecial = "Window to the special one";
 		bindNextWorkspace = "Next workspace";
 		bindOverview = "All workspaces; held, choose one";
-		bindScreenshot = "Screenshot of the screen; with SHIFT, record it";
-		bindSnip = "Screenshot of an area (the snipping key); with SHIFT, record it";
+		bindScreenshot = "Screenshot of the screen; with Shift, record it";
+		bindSnip = "Screenshot of an area (the snipping key); with Shift, record it";
 		screenshotsDir = "Screenshots";
 		screenshotSaved = "Screenshot saved and copied";
 		recordSaved = "Recording saved and copied";
-		recordFailed = "Could not record";
+		recordFailed = "Couldn't record";
+		recordLog = "Details in %1";
+		diskPassphrase = "Disk passphrase";
 		welHello = "Hello, %1";
 		welHelloAnon = "Hello";
 		welHelloBody = "This is NIHIL: a black desktop, made of dots and quiet, that only shows up when you call it. A minute to show it to you and make it yours.";
@@ -1215,6 +1275,7 @@
 		welBottom = "At the bottom";
 		welBasicsTitle = "The basics";
 		welBasicsBody = "These keys and three fingers on the touchpad get you almost everything.";
+		welBasicsKeys = "These keys get you almost everything.";
 		welWorkspaces = "Go to a workspace";
 		welMoveTo = "Take the window to a workspace";
 		welGestures = "With three fingers: sideways you switch workspace, up opens the launcher, down closes the window and spreading them maximises it.";
@@ -1234,7 +1295,7 @@
 		welNetBody = "NIHIL updates and applies changes over the internet: connect to a network.";
 		welNetDone = "Connected to %1.";
 		wpHint = "[← →] Choose|[Enter] Keep|[Esc] Back";
-		ovHint = "[%1] Next|[Shift+%1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
+		ovHint = "[%1] Next|[Shift + %1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
 
 		bindCopy = "Copy";
 		bindClipboard = "Paste, or pick from the history";
@@ -1254,20 +1315,20 @@
 		updDev = "Your checkout runs now (nihil dev): updating goes back to GitHub's.";
 		updMore = "And %1 more";
 		updUpdate = "Update";
-		updApplying = "Updating NIHIL %1";
+		updApplying = "Updating NIHIL (%1)";
 		updDone = "NIHIL updated";
-		updFailed = "Could not update";
-		updNotifyFailed = "NIHIL could not be updated";
+		updFailed = "Couldn't update";
+		updNotifyFailed = "NIHIL couldn't be updated";
 		cfgGenerations = "Generations";
 		genNone = "There are none yet.";
-		genListFailed = "The generations could not be read.";
+		genListFailed = "The generations couldn't be read.";
 		genNow = "In use";
 		genDefault = "At boot";
 		genNext = "Next boot";
 		genToday = "Today, %1";
 		genYesterday = "Yesterday, %1";
 		genComparing = "Comparing with the one before…";
-		genCompareFailed = "Could not compare it with the one before.";
+		genCompareFailed = "Couldn't compare it with the one before.";
 		genOldest = "The oldest one left.";
 		genSame = "The same packages as the one before: their settings change.";
 		genMore = "And %1 more";
@@ -1278,18 +1339,18 @@
 		genDisk = "Disk";
 		genFree = "%1 free of %2";
 		genClean = "Clean now";
-		genSwitching = "Switching generation %1";
+		genSwitching = "Switching to generation %2 (%1)";
 		genSwitched = "Generation %1 in use";
 		genSwitchedWarn = "Generation %1 in use, with warnings";
-		genSwitchFailed = "Could not switch; the one before stays";
-		genCleaning = "Cleaning %1";
+		genSwitchFailed = "Couldn't switch; the one before stays";
+		genCleaning = "Cleaning (%1)";
 		genCleaned = "Clean: %1 more free";
-		genCleanFailed = "Could not clean";
+		genCleanFailed = "Couldn't clean";
 		genBootSet = "The next boot, with generation %1";
-		genBootFailed = "Could not set the next boot";
+		genBootFailed = "Couldn't set the next boot";
 		genNotInMenu = "The boot menu no longer has it";
 		genGone = "That generation is gone";
-		cfgPhone = "Devices";
+		cfgDevices = "Devices";
 		deckUse = "Use devices";
 		deckApply = "It turns on when applied.";
 		deckNetworks = "Turn it off on networks that aren't yours: anyone on them reaches its port";
@@ -1298,8 +1359,8 @@
 		deckWatchTitle = "A watch";
 		deckWatchInstall = "Install on a watch";
 		deckPair = "Pair a device";
-		deckPairFailed = "The code could not be made";
-		deckPhones = "Paired devices";
+		deckPairFailed = "The code couldn't be made";
+		deckDevices = "Paired devices";
 		deckNone = "No device paired.";
 		deckForget = "Forget";
 		deckAsking = "%1 wants to use this computer as a deck";
@@ -1347,7 +1408,7 @@
 		insBitLocker = "If Windows uses BitLocker, it may ask for its recovery key: keep it at hand.";
 		insBitLockerShrink = "Windows is encrypted with BitLocker, so it can only be shrunk from Windows (Disk Management, Shrink Volume); its free space then shows up here. Keep its recovery key at hand: Windows may ask for it.";
 		insBootPartition = "Boot partition";
-		insBtrfsMount = "%1: its btrfs could not be mounted to measure it.";
+		insBtrfsMount = "%1: its btrfs couldn't be mounted to measure it.";
 		insBusy = "Another installation is running.";
 		insCancel = "Cancel";
 		insCheckIt = "Check it";
@@ -1368,8 +1429,8 @@
 		insEncryptDisk = "Encrypt the disk";
 		insEncryptedPart = "%1: encrypted or in LVM; shrink it from its own system, and its free space shows up here.";
 		insEncryption = "Encryption";
-		insEntryShrink = "Could not shrink the entry of %1 in the partition table: sgdisk -p %2 shows it as it is now.";
-		insEntryUnread = "Could not read the entry of %1; nothing was changed in the partition table.";
+		insEntryShrink = "Couldn't shrink the entry of %1 in the partition table: sgdisk -p %2 shows it as it is now.";
+		insEntryUnread = "Couldn't read the entry of %1; nothing was changed in the partition table.";
 		insErased = "Everything on %1 will be erased.";
 		insExt4Ask = "%1 (ext4) was not shut down cleanly and needs a check before it can be measured. Check it now (e2fsck)?";
 		insExt4Check = "%1: its ext4 needs a check first (it was not shut down cleanly). Start its system and shut it down, or run sudo e2fsck -f %1 in another console (Alt+F2), and start the installer again.";
@@ -1425,6 +1486,9 @@
 		insNoWhere = "Where NIHIL goes was not chosen.";
 		insNoWifi = "No Wi-Fi card shows up: a cable, or a phone sharing its connection over USB, work too.";
 		insNotConnected = "It didn't connect.";
+		insWrongKey = "That isn't this network's password.";
+		insShortKey = "This kind of network's password has 8 to 63 characters.";
+		insOutOfRange = "That network isn't in range any more.";
 		insNtfsCheck = "%1: its NTFS has to be checked first. Start Windows, restart it once, and start the installer again.";
 		insOffline = "There is no connection to the internet.";
 		insOfflineHelp = "sudo nihil-install starts it again; nmcli device lists the network cards.";
@@ -1439,7 +1503,7 @@
 		insReady = "Ready";
 		insRestart = "Restart";
 		insRestartAsk = "Restart now?";
-		insRetrying = "Something could not be downloaded; trying once more…";
+		insRetrying = "Something couldn't be downloaded; trying once more…";
 		insRoomFor = "Room for NIHIL";
 		insRoomIn = "Room in %1";
 		insSearch = "Search";
@@ -1481,14 +1545,14 @@
 		watchAskPairing = "Not found. The IP address and port under the code (HOST:PORT): ";
 		watchFound = "Found at %1.";
 		watchAskCode = "The Wi-Fi pairing code on the watch: ";
-		watchPairFailed = "adb could not pair: try again with a new code.";
+		watchPairFailed = "adb couldn't pair: try again with a new code.";
 		watchAskConnect = "The IP address and port on Wireless debugging's own screen (HOST:PORT): ";
-		watchConnectFailed = "adb could not connect to %1.";
+		watchConnectFailed = "adb couldn't connect to %1.";
 		watchNotWatch = "adb has %1, but it doesn't say it's a watch.";
 		watchNoGithub = "GitHub didn't answer: try again in a moment.";
 		watchNoRelease = "%1 has no release yet.";
 		watchNoSums = "The release has no SHA256SUMS: nothing installed.";
-		watchDownloadFailed = "Could not download %1.";
+		watchDownloadFailed = "Couldn't download %1.";
 		watchNotApk = "SHA256SUMS names %1, not an APK: nothing installed.";
 		watchBadName = "SHA256SUMS names %1: nothing installed.";
 		watchMissingApk = "The release has no %1: nothing installed.";
@@ -1504,7 +1568,7 @@
 		watchNoInvite = "The deck gave no invitation: is it on? (%1)";
 		watchInvited = "Invited by %1: the watch pairs with it now.";
 		watchHalo = "The light on the edge needs to read the watch's notifications and an accessibility service: adb gives it both now.";
-		watchNoHalo = "The light on the edge could not be turned on: NIHIL's settings on the watch can.";
+		watchNoHalo = "The light on the edge couldn't be turned on: NIHIL's settings on the watch can.";
 		watchDone = "Done. On the watch, hold the face and choose NIHIL's.";
 		watchAskDebugOff = "Turn off wireless debugging on the watch? To update, you'll turn it on again [y/N] ";
 		watchNoWatch = "No watch on adb: run nihil-watch to pair it.";

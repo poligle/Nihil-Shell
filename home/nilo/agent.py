@@ -21,6 +21,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unicodedata
@@ -30,6 +31,7 @@ import urllib.request
 
 PROTOCOL = 1
 MAX_ROUNDS = 16
+MAX_CALLS = 24              # tools one answer can use, in all its rounds: the rest get an error
 PAGE_CHARS = 6000
 DIFF_CHARS = 3000
 CONFIRM_SECONDS = 300
@@ -618,7 +620,7 @@ SCHEMAS = {
         ["setting"])),
     "send_to_phone": ("desktop", schema(
         "send_to_phone",
-        "Send a text, or a file of this computer by its path, to the user's phone with Vector.",
+        "Send a text, or a file of this computer by its path, to the user's devices (a phone, a watch) with Vector.",
         {"text": {"type": "string", "description": "A text to send"},
          "path": {"type": "string", "description": "Or a file to send, by its path (~/…)"}})),
 }
@@ -636,15 +638,20 @@ HOME_FILES = {
                   "file, use edit_file.",
 }
 
+# What a card marks, with the red edge: a verb at the start of a command, after a separator, or
+# after a quote, as in bash -c 'rm -rf ~/x'. Not all there is: the card shows the command whole.
+START = r"""(^|[;&|(\s'"`])"""
 RISKS = [
-    ("root", r"(^|[;&|(\s])(sudo|doas|pkexec|run0)\s"),
-    ("delete", r"(^|[;&|(\s])(rm\s+(-\w*[rRf]|--recursive|--force)|shred\s|find\s.*-delete\b|truncate\s)"),
-    ("disk", r"(^|[;&|(\s])(mkfs\S*|wipefs|fdisk|sfdisk|parted|sgdisk|cryptsetup|dd)\s|>\s*/dev/(sd|nvme|mmcblk|vd)"),
-    ("git", r"\bgit\s+(push\s.*(--force|-f\b|--delete)|reset\s+--hard|clean\s+-\w*f|branch\s+-D|checkout\s+--\s|restore\s)"),
-    ("power", r"(^|[;&|(\s])(shutdown|reboot|poweroff|halt|systemctl\s+(--\S+\s+)*(poweroff|reboot|halt|suspend|hibernate|kexec))\b"),
+    ("root", START + r"(sudo|doas|pkexec|run0)\s"),
+    ("delete", START + r"(rm\s+(-\w*[rRf]|--recursive|--force)|shred\s|find\s.*-delete\b|truncate\s)"),
+    ("disk", START + r"(mkfs\S*|wipefs|fdisk|sfdisk|parted|sgdisk|cryptsetup|dd)\s|>\s*/dev/(sd|nvme|mmcblk|vd)"),
+    ("git", r"\bgit\s+(push\s(.*\s)?(--force|-f\b|--delete|\+\S)|reset\s+--hard|clean\s+-\w*f|branch\s+-D|checkout\s+--\s|restore\s)"),
+    ("power", START + r"(shutdown|reboot|poweroff|halt|systemctl\s+(--\S+\s+)*(poweroff|reboot|halt|suspend|hibernate|kexec))\b"),
     ("system", r"\b(nixos-rebuild|nix-collect-garbage|nix-env)\b|\bsystemctl\s+(--\S+\s+)*(stop|disable|mask|restart|kill)\b|\bnix\s+(profile\s+(remove|wipe-history)|store\s+(delete|gc))"),
     ("permissions", r"\bch(mod|own|grp)\s+(-\w*R|--recursive)"),
-    ("internet", r"\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba|z|da)?sh\b"),
+    ("internet", r"\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba|z|da)?sh\b|\b(curl|wget)\b.*[;&\n]\s*(sudo\s+)?(ba|z|da)?sh\s+\S"),
+    ("script", START + r"(((ba|z|da|k|fi)?sh|python[\d.]*)\s+-\w*c\b|(perl|ruby|node|lua)\s+-\w*e\b|php\s+-r\b)|"
+               r"""(^|[;&|(]\s*|['"`])eval\s"""),
 ]
 
 
@@ -733,7 +740,7 @@ VECTOR_ERRORS = {
     "empty": "there is nothing in it to send",
     "folder": "it is a folder: Vector sends files",
     "busy": "Vector is sending something else: try again in a moment",
-    "off": "Vector is off: the phone has to be paired in Preferences first",
+    "off": "Vector is off: a device has to be paired in Preferences, Devices first",
 }
 
 
@@ -1275,7 +1282,7 @@ class Tools:
             result = getattr(self, name)(cancel=cancel, **{k: v for k, v in args.items() if k in
                                           SCHEMAS[name][1]["function"]["parameters"]["properties"]})
         except subprocess.TimeoutExpired:
-            result = {"error": "it took too long"}
+            result = {"error": "it took too long", "reason": "timeout"}
         except Exception as e:
             log(f"{name} failed:", repr(e))
             result = {"error": str(e) or e.__class__.__name__}
@@ -1290,6 +1297,11 @@ class Tools:
     def facts(name, result):
         ok = "error" not in result and not result.get("declined")
         facts = {"ok": ok}
+        # What went wrong, for the chat: its words are the model's, in English; reason, for any language.
+        if "error" in result:
+            facts["error"] = str(result["error"])[:120]
+            if result.get("reason"):
+                facts["reason"] = result["reason"]
         if name == "web_search" and ok:
             facts["count"] = len(result.get("results", []))
         elif name == "open_url" and ok:
@@ -1746,15 +1758,17 @@ class Tools:
 
     @staticmethod
     def put(full, text):
+        # A temporary file of its own, made new: a name anyone could guess, opened as it was, would
+        # follow a link left there and write wherever it points.
         mode = os.stat(full).st_mode & 0o7777 if os.path.exists(full) else 0o644
-        tmp = f"{full}.nilo-{os.getpid()}"
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(full) or ".", prefix=".nilo-")
         try:
-            with open(tmp, "w", encoding="utf-8", newline="") as f:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
                 f.write(text)
-            os.chmod(tmp, mode)
+                os.fchmod(f.fileno(), mode)
             os.replace(tmp, full)
         finally:
-            if os.path.exists(tmp):
+            if os.path.lexists(tmp):
                 os.remove(tmp)
 
     def edit_file(self, path, old, new, cancel=None):
@@ -2528,7 +2542,7 @@ PROMPT = {
                    "una ventana. media controla lo que suena y pone una canción por su nombre; control cambia el "
                    "volumen, el micro, el brillo, no molestar, la cafeína, la luz nocturna y su intensidad, el wifi, "
                    "el bluetooth, el modo avión, el fondo, el cristal y el escritorio que se ve, hace capturas y graba "
-                   "la pantalla; send_to_phone manda algo al móvil. Para buscar un vídeo, abre su búsqueda "
+                   "la pantalla; send_to_phone manda algo a sus dispositivos. Para buscar un vídeo, abre su búsqueda "
                    "(https://www.youtube.com/results?search_query=…) con open_app. Hazlo directamente cuando te lo "
                    "pidan, sin preguntar antes: lo que tiene riesgo ya lo confirma el usuario.",
         "look": ", y look_at_screen te deja ver la pantalla",
@@ -2591,7 +2605,7 @@ PROMPT = {
                    "controls what plays and puts on a song by its name; control changes the volume, the microphone, "
                    "the brightness, do not disturb, caffeine, the night light and its strength, Wi-Fi, Bluetooth, "
                    "airplane mode, the wallpaper, the glass and the workspace shown, takes screenshots and records "
-                   "the screen; send_to_phone sends something to the phone. To look for a video, open its search "
+                   "the screen; send_to_phone sends something to the user's devices. To look for a video, open its search "
                    "(https://www.youtube.com/results?search_query=…) with open_app. Do it straight away when asked, "
                    "without asking first: whatever carries a risk, the user confirms already.",
         "look": ", and look_at_screen lets you see the screen",
@@ -3310,7 +3324,7 @@ class Agent:
         self.ensure_ollama()
         if not self.state["loaded"]:
             self.room(model)
-        rounds = 0
+        rounds = used = 0
         while rounds < MAX_ROUNDS:
             rounds += 1
             tools = [] if self.no_tools or rounds == MAX_ROUNDS else self.tools.schemas(self.settings)
@@ -3370,7 +3384,11 @@ class Agent:
                 shown = {k: v[:200] if isinstance(v, str) else v for k, v in args.items()} if isinstance(args, dict) else args
                 self.out("tool", id=tid, name=name, args=shown, status="running")
                 self.current_tool = tid
-                result, facts = self.tools.run(name, args, cancel)
+                used += 1
+                if used > MAX_CALLS:
+                    result, facts = {"error": f"that is more than {MAX_CALLS} tools for one answer: answer with what you have"}, {"ok": False}
+                else:
+                    result, facts = self.tools.run(name, args, cancel)
                 self.out("tool", id=tid, name=name, status="done", **facts)
                 picture = result.pop("_image", None)
                 message = {"role": "tool", "tool_name": name, "content": json.dumps(result, ensure_ascii=False)}

@@ -41,7 +41,7 @@ let
 				area=$(${pkgs.slurp}/bin/slurp) || exit 0
 				${pkgs.grim}/bin/grim -g "$area" "$file"
 				;;
-			*) echo "usage: nihil-shot screen | region" >&2; exit 2 ;;
+			*) echo "Usage: nihil-shot screen | region" >&2; exit 2 ;;
 		esac
 		${pkgs.wl-clipboard}/bin/wl-copy --type image/png < "$file"
 		set -- "$file"
@@ -120,8 +120,10 @@ let
 			fi
 		}
 
+		# What wf-recorder said stays in its log, in its own words; the notice says where.
 		failed() {
-			${notify} -a NIHIL "${strings.recordFailed}" "$(tail -n 1 "$run/log" 2>/dev/null)" || true
+			local where="${strings.recordLog}"
+			${notify} -a NIHIL -- "${strings.recordFailed}" "''${where//%1/$run/log}" || true
 		}
 
 		stop() {
@@ -163,7 +165,7 @@ let
 			start) start "''${2:-region}" ;;
 			stop) stop ;;
 			status) if recording; then echo on; else echo off; fi ;;
-			*) echo "nihil-record toggle|start [region|screen] | stop | status" >&2; exit 2 ;;
+			*) echo "Usage: nihil-record toggle|start [region|screen] | stop | status" >&2; exit 2 ;;
 		esac
 	'';
 

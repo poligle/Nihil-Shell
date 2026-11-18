@@ -39,7 +39,7 @@ in
       enable = lib.mkDefault true;
 
       theme = lib.mkDefault "nihil";
-      themePackages = [ (import ../theme/plymouth.nix { inherit pkgs waitForSound; }) ];
+      themePackages = [ (import ../theme/plymouth.nix { inherit pkgs waitForSound; passphrase = config.nihil.strings.diskPassphrase; }) ];
     };
 
     consoleLogLevel = lib.mkDefault 3;

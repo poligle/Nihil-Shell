@@ -47,8 +47,10 @@ Singleton {
 
     function launch(e): void {
         if (e.runInTerminal) {
+            // In the folder the entry names (Path=), as uwsm does for any other from its .desktop.
             const command = e.command && e.command.length ? e.command : [Config.cmd.sh, "-c", e.execString];
-            root.run([Config.cmd.terminal, "-e"].concat(command));
+            const line = [Config.cmd.uwsm, "app", "--", Config.cmd.terminal, "-e"].concat(command);
+            Quickshell.execDetached(e.workingDirectory ? { command: line, workingDirectory: e.workingDirectory } : line);
         } else {
             root.run([e.id + ".desktop"]);
         }

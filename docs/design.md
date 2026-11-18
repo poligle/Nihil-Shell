@@ -31,7 +31,7 @@ its grey variant; the shell shows app icons desaturated.
   <img src="assets/screens/glass/terminal.webp" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
 </p>
 
-**Smoked glass**, off unless chosen in Preferences, Desktop: the frame, its drawers and every
+**Smoked glass**, off unless chosen in Preferences, Appearance: the frame, its drawers and every
 card, key, tab, row and field in them, Preferences, the desktop's widgets, the lock
 screen's field and the login's become dark glass. Behind it is what is really there: the
 wallpaper (the output's own render, dot for dot) and, wherever glass can be over one, the
@@ -54,9 +54,9 @@ the switch reaches the kitties already open (they read their configuration again
 | | |
 |:---:|:---:|
 | ![The dashboard in smoked glass](assets/screens/glass/dashboard.webp) | ![Every workspace in smoked glass](assets/screens/glass/overview.webp) |
-| The dashboard, Vector holding what the phone sent | Every workspace, with its windows <kbd>SUPER</kbd> <kbd>A</kbd> |
+| The dashboard, Vector holding what a device sent | Every workspace, with its windows <kbd>SUPER</kbd> <kbd>A</kbd> |
 | ![Quick settings in smoked glass](assets/screens/glass/settings.webp) | ![Preferences in smoked glass](assets/screens/glass/preferences.webp) |
-| Quick settings | Preferences, Desktop |
+| Quick settings | Preferences, Appearance |
 
 <sub>Every picture, plain and in smoked glass, is in [`docs/assets/screens`](assets/screens)
 (the glass ones in `glass/`, the phone's in `android/`); on [nihilshell.com](https://nihilshell.com/) a

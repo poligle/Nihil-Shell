@@ -122,13 +122,9 @@ Item {
                             visible: text !== ""
                         }
 
-                        Row {
+                        MediaKeys {
                             Layout.topMargin: 6
-                            spacing: 8
-
-                            CircleButton { glyph: Icons.prev; label: Lang.mediaPrevious; size: 32; onClicked: Media.previous() }
-                            CircleButton { glyph: Media.playing ? Icons.pause : Icons.play; label: Media.playing ? Lang.mediaPause : Lang.mediaPlay; size: 32; filled: true; onClicked: Media.toggle() }
-                            CircleButton { glyph: Icons.next; label: Lang.mediaNext; size: 32; onClicked: Media.next() }
+                            size: 32
                         }
                     }
                 }
@@ -145,9 +141,9 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
 
-                    Label { text: Media.clock(Media.position) }
+                    Label { text: Media.shown(Media.position) }
                     Item { Layout.fillWidth: true }
-                    Label { text: Media.clock(Media.length) }
+                    Label { text: Media.shown(Media.length) }
                 }
 
                 Visualizer {
@@ -183,14 +179,7 @@ Item {
                     }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Label { text: SysStats.iface || Lang.offline }
-                    Item { Layout.fillWidth: true }
-                    Label { text: "↓ " + SysStats.human(SysStats.rx); color: Tokens.dim }
-                    Label { text: "↑ " + SysStats.human(SysStats.tx) }
-                }
+                NetRates {}
 
                 DotScope {
                     Layout.fillWidth: true

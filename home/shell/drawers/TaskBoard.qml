@@ -36,12 +36,63 @@ Item {
     property point dragAt: Qt.point(0, 0)
     property string editingId: ""
     property Item editor: null
+    // Deleting a card, or clearing the done, takes a second click within a few seconds: it goes
+    // to every device. «card:» and its id, or «clear».
+    property string armed: ""
+    // The card the keyboard was on, to go back to once it has moved or changed.
+    property string focusId: ""
 
     onActiveChanged: if (!active) {
         field.text = "";
         field.focus = false;
         dragId = "";
+        armed = "";
+        focusId = "";
         stopEditing();
+    }
+
+    function confirmed(what: string): bool {
+        if (armed === what) {
+            armed = "";
+            return true;
+        }
+        armed = what;
+        disarm.restart();
+        return false;
+    }
+
+    function remove(id: string): void {
+        if (!confirmed("card:" + id))
+            return;
+        Tasks.remove(id);
+        root.forceActiveFocus();
+    }
+
+    // Moved by keyboard, the card keeps the focus in its new column.
+    function go(id: string, column: int): void {
+        focusId = id;
+        Tasks.move(id, column);
+        Qt.callLater(refocus);
+    }
+
+    function refocus(): void {
+        if (focusId === "")
+            return;
+        for (let i = 0; i < columnsRow.children.length; i++) {
+            const lane = columnsRow.children[i];
+            const card = lane.column === undefined ? null : lane.cardOf(focusId);
+            if (card) {
+                focusId = "";
+                card.forceActiveFocus();
+                return;
+            }
+        }
+    }
+
+    Timer {
+        id: disarm
+        interval: 3000
+        onTriggered: root.armed = ""
     }
 
     function stopEditing(): void {
@@ -98,7 +149,7 @@ Item {
             spacing: 12
 
             Label {
-                text: Lang.tasks + " (" + Tasks.cards.filter(c => c.column < 2).length + ")"
+                text: Lang.tasksCount.arg(Tasks.cards.filter(c => c.column < 2).length)
             }
 
             Item { Layout.fillWidth: true }
@@ -107,7 +158,7 @@ Item {
                 id: field
                 Layout.preferredWidth: 300
                 Layout.preferredHeight: 30
-                placeholderText: "+ " + Lang.tasksAdd
+                placeholderText: Lang.tasksAddHint
                 placeholderTextColor: Tokens.muted
                 color: Tokens.ink
                 selectionColor: Tokens.ink
@@ -177,6 +228,13 @@ Item {
                         return { index: index, x: top.x, y: Math.min(Math.max(y2, top.y), top.y + list.height) - 1, width: list.width };
                     }
 
+                    function cardOf(id: string): var {
+                        for (let i = 0; i < lane.shown.length; i++)
+                            if (lane.shown[i].id === id)
+                                return list.itemAtIndex(i);
+                        return null;
+                    }
+
                     property var shown: []
                     Component.onCompleted: shown = cards
                     onCardsChanged: {
@@ -208,18 +266,20 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: root.titles[lane.column] + " (" + lane.cards.length + ")"
+                            text: Lang.tasksLane.arg(root.titles[lane.column]).arg(lane.cards.length)
                             color: lane.column === 1 && lane.cards.length > 0 ? Tokens.dim : Tokens.muted
                         }
 
                         Item { Layout.fillWidth: true }
 
                         CircleButton {
+                            readonly property bool armed: root.armed === "clear"
                             visible: lane.column === 2 && lane.cards.length > 0
                             glyph: Icons.broom
-                            label: Lang.tasksClear
+                            label: armed ? Lang.confirmTo.arg(Lang.tasksClear.toLocaleLowerCase()) : Lang.tasksClear
+                            danger: armed
                             size: 22
-                            onClicked: Tasks.clearDone()
+                            onClicked: if (root.confirmed("clear")) Tasks.clearDone()
                         }
                     }
 
@@ -241,6 +301,37 @@ Item {
                             required property var modelData
                             readonly property bool done: modelData.column === 2
                             readonly property bool editing: root.editingId === modelData.id
+                            readonly property bool armed: root.armed === "card:" + modelData.id
+
+                            Component.onCompleted: if (root.focusId === modelData.id) {
+                                root.focusId = "";
+                                forceActiveFocus();
+                            }
+
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.ListItem
+                            Accessible.name: card.modelData.text
+                            // Space moves it on, as a click; Enter or F2 edits it; Delete, twice,
+                            // deletes it; Shift and an arrow take it to the column beside.
+                            Keys.onPressed: event => {
+                                if (card.editing)
+                                    return;
+                                const id = card.modelData.id, column = card.modelData.column;
+                                const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
+                                if (event.key === Qt.Key_Space && !event.isAutoRepeat)
+                                    root.go(id, card.done ? 0 : column + 1);
+                                else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_F2)
+                                    root.editingId = id;
+                                else if (event.key === Qt.Key_Delete && !event.isAutoRepeat)
+                                    root.remove(id);
+                                else if (shift && event.key === Qt.Key_Left && column > 0)
+                                    root.go(id, column - 1);
+                                else if (shift && event.key === Qt.Key_Right && column < 2)
+                                    root.go(id, column + 1);
+                                else
+                                    return;
+                                event.accepted = true;
+                            }
 
                             width: ListView.view.width
                             height: Math.max(30, (editing ? editor.implicitHeight : label.implicitHeight) + 14)
@@ -257,6 +348,12 @@ Item {
                                 enabled: !card.editing
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: Tasks.move(card.modelData.id, card.done ? 0 : card.modelData.column + 1)
+                                // Held, a touch takes it without moving it: its tools show, as under a pointer.
+                                onPressAndHold: card.forceActiveFocus()
+                            }
+
+                            FocusRing {
+                                round: card.radius
                             }
 
                             DragHandler {
@@ -337,6 +434,8 @@ Item {
 
                                 property bool keeping: true
 
+                                onTextChanged: if (length > Tasks.maxLength) remove(Tasks.maxLength, length)
+
                                 onVisibleChanged: if (visible) {
                                     root.editor = editor;
                                     keeping = true;
@@ -345,19 +444,34 @@ Item {
                                     cursorPosition = length;
                                 }
 
+                                // Emptied, the card keeps its text and its Delete waits, armed, for
+                                // a second click or Delete: a card isn't deleted by clearing it.
                                 function finish(): void {
                                     if (!card.editing) return;
                                     const id = card.modelData.id, typed = text;
                                     root.editor = null;
                                     root.editingId = "";
-                                    if (keeping) Tasks.edit(id, typed);
+                                    if (!keeping)
+                                        return;
+                                    if (typed.trim() === "") {
+                                        root.armed = "card:" + id;
+                                        disarm.restart();
+                                    } else {
+                                        Tasks.edit(id, typed);
+                                    }
                                 }
 
-                                // Done by keyboard, the focus goes back to the board, so Escape and
+                                // Done by keyboard, the focus goes back to the card, so Escape and
                                 // Ctrl+V reach the Dashboard again instead of a hidden editor.
-                                Keys.onReturnPressed: event => { event.accepted = true; finish(); root.forceActiveFocus(); }
-                                Keys.onEnterPressed: event => { event.accepted = true; finish(); root.forceActiveFocus(); }
-                                Keys.onEscapePressed: event => { event.accepted = true; keeping = false; finish(); root.forceActiveFocus(); }
+                                function leave(): void {
+                                    root.focusId = card.modelData.id;
+                                    finish();
+                                    Qt.callLater(root.refocus);
+                                }
+
+                                Keys.onReturnPressed: event => { event.accepted = true; leave(); }
+                                Keys.onEnterPressed: event => { event.accepted = true; leave(); }
+                                Keys.onEscapePressed: event => { event.accepted = true; keeping = false; leave(); }
                                 onActiveFocusChanged: if (!activeFocus) finish()
                             }
 
@@ -370,7 +484,7 @@ Item {
                                 height: tools.height
                                 radius: 8
                                 color: card.color
-                                visible: hover.hovered && root.dragId === "" && !card.editing
+                                visible: (hover.hovered || card.activeFocus || card.armed) && root.dragId === "" && !card.editing
 
                                 Row {
                                     id: tools
@@ -382,7 +496,8 @@ Item {
                                             { glyph: Icons.chevronLeft, show: card.modelData.column > 0, step: -1, name: Lang.tasksLeft },
                                             { glyph: Icons.chevron, show: card.modelData.column < 2, step: 1, name: Lang.tasksRight },
                                             { glyph: Icons.pencil, show: true, step: 2, name: Lang.tasksEdit },
-                                            { glyph: Icons.close, show: true, step: 0, name: Lang.tasksDelete }
+                                            { glyph: Icons.close, show: true, step: 0,
+                                              name: card.armed ? Lang.confirmTo.arg(Lang.tasksDelete.toLocaleLowerCase()) : Lang.tasksDelete }
                                         ].filter(t => t.show)
 
                                         Ico {
@@ -393,7 +508,7 @@ Item {
                                             function act(): void {
                                                 const step = tool.modelData.step;
                                                 if (step === 2) root.editingId = card.modelData.id;
-                                                else if (step === 0) Tasks.remove(card.modelData.id);
+                                                else if (step === 0) root.remove(card.modelData.id);
                                                 else Tasks.move(card.modelData.id, card.modelData.column + step);
                                             }
 
@@ -401,7 +516,8 @@ Item {
                                             height: 22
                                             glyph: modelData.glyph
                                             font.pixelSize: 14
-                                            color: toolArea.containsMouse ? (modelData.step === 0 ? Tokens.interrupt : Tokens.ink) : Tokens.dim
+                                            color: modelData.step === 0 && card.armed ? Tokens.interrupt
+                                                : toolArea.containsMouse ? (modelData.step === 0 ? Tokens.interrupt : Tokens.ink) : Tokens.dim
 
                                             MouseArea {
                                                 id: toolArea

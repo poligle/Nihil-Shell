@@ -48,8 +48,18 @@ Item {
         Accessible.name: Lang.bindPanel
         Accessible.onPressAction: Drawers.toggle("panel", root.output)
         onClicked: Drawers.toggle("panel", root.output)
+        // A notch is 120: a fine wheel or a touchpad sends less, and adds up to one; a sideways
+        // scroll, or a touchpad's last event, sends none, and changes nothing.
+        property real wheeled: 0
         onWheel: wheel => {
-            const v = Math.max(0, Math.min(1, Audio.volume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05)));
+            if (wheel.angleDelta.y === 0)
+                return;
+            wheeled += wheel.angleDelta.y;
+            const notches = Math.trunc(wheeled / 120);
+            if (notches === 0)
+                return;
+            wheeled -= notches * 120;
+            const v = Math.max(0, Math.min(1, Audio.volume + notches * 0.05));
             Audio.setVolume(v);
             Osd.show("volume", v, false);
         }
