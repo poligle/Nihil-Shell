@@ -246,5 +246,5 @@ case ${1:-} in
 	render) render "${2:-}" "${3:-}" ;;
 	backdrop) backdrop "${2:-}" ;;
 	prev | toggle | next) act "$1" ;;
-	*) echo "usage: nihil-lock-media info|progress|button prev|toggle|next|cover|backdrop OUTPUT|prev|toggle|next" >&2; exit 2 ;;
+	*) echo "Usage: nihil-lock-media info|progress|button prev|toggle|next|cover|backdrop OUTPUT|prev|toggle|next" >&2; exit 2 ;;
 esac
