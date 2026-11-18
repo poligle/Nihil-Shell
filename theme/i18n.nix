@@ -612,14 +612,33 @@
 		widgetGithubTotalOne = "1 contribución en el último año";
 		widgetGithubNoUser = "Tu usuario va en Preferencias, Aspecto";
 		widgetGithubFailed = "No se ha podido leer GitHub";
+		widgetWeatherNoPlace = "Tu lugar va en Preferencias, Aspecto";
+		widgetWeatherFailed = "No se ha podido leer el tiempo";
+		weatherClear = "Despejado";
+		weatherFewClouds = "Poco nuboso";
+		weatherPartly = "Intervalos nubosos";
+		weatherCloudy = "Cubierto";
+		weatherFog = "Niebla";
+		weatherDrizzle = "Llovizna";
+		weatherRain = "Lluvia";
+		weatherShowers = "Chubascos";
+		weatherSnow = "Nieve";
+		weatherStorm = "Tormenta";
 		cfgGlass = "Cristal ahumado";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
 		cfgWidgetMedia = "Música";
+		cfgWidgetWeather = "Tiempo";
 		cfgWidgetPhoto = "Foto";
 		cfgWidgetGithub = "Contribuciones de GitHub";
 		cfgGithubUser = "Usuario de GitHub";
 		cfgGithubUserSub = "Las de su perfil, tal como las muestra GitHub; se leen cada hora";
+		cfgWeatherPlace = "Lugar del tiempo";
+		cfgWeatherPlaceSub = "Una ciudad o un pueblo; datos de Open-Meteo";
+		cfgWeatherAt = "%1; datos de Open-Meteo";
+		cfgWeatherSearching = "Buscando…";
+		cfgWeatherNotFound = "No se ha encontrado «%1»";
+		cfgWeatherSearchFailed = "No se ha podido buscar";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.
@@ -1415,14 +1434,33 @@
 		widgetGithubTotalOne = "1 contribution in the last year";
 		widgetGithubNoUser = "Your username goes in Preferences, Appearance";
 		widgetGithubFailed = "Couldn't read GitHub";
+		widgetWeatherNoPlace = "Your location goes in Preferences, Appearance";
+		widgetWeatherFailed = "Couldn't read the weather";
+		weatherClear = "Clear";
+		weatherFewClouds = "Mainly clear";
+		weatherPartly = "Partly cloudy";
+		weatherCloudy = "Overcast";
+		weatherFog = "Fog";
+		weatherDrizzle = "Drizzle";
+		weatherRain = "Rain";
+		weatherShowers = "Showers";
+		weatherSnow = "Snow";
+		weatherStorm = "Thunderstorm";
 		cfgGlass = "Smoked glass";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";
 		cfgWidgetMedia = "Music";
+		cfgWidgetWeather = "Weather";
 		cfgWidgetPhoto = "Photo";
 		cfgWidgetGithub = "GitHub contributions";
 		cfgGithubUser = "GitHub username";
 		cfgGithubUserSub = "Those on its profile, as GitHub shows them; read every hour";
+		cfgWeatherPlace = "Weather location";
+		cfgWeatherPlaceSub = "A city or a town; weather data by Open-Meteo";
+		cfgWeatherAt = "%1; weather data by Open-Meteo";
+		cfgWeatherSearching = "Searching…";
+		cfgWeatherNotFound = "“%1” wasn't found";
+		cfgWeatherSearchFailed = "Couldn't search";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.

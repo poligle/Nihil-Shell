@@ -7,7 +7,8 @@ import qs.config
 import "GithubPage.js" as GithubPage
 
 // A year of contributions on a GitHub profile, for the desktop widget: read from the page GitHub
-// draws its own calendar from, while the widget is on, every hour, and kept between sessions.
+// draws its own calendar from, while the widget is on, every hour, and kept between sessions; a
+// try that didn't read is tried again when the network comes back, or in ten minutes.
 Singleton {
     id: root
 
@@ -75,8 +76,16 @@ Singleton {
     // Once the one before has gone: a name changed while it read is read next.
     Timer {
         id: again
-        interval: 0
-        onTriggered: root.read(true)
+        interval: 50
+        onTriggered: page.running ? again.restart() : root.read(true)
+    }
+
+    Connections {
+        target: Network
+        function onConnectedChanged(): void {
+            if (Network.connected && root.failed)
+                root.read(true);
+        }
     }
 
     Process {

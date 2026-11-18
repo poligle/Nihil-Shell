@@ -23,7 +23,7 @@ let
 
 	# The desktop's widgets; Preferences shows each by its text, cfgWidgetClock for clock. Only
 	# the first ones are on until Preferences says otherwise.
-	widgets = [ "clock" "network" "media" "photo" "github" ];
+	widgets = [ "clock" "network" "media" "weather" "photo" "github" ];
 	widgetDefaults = [ "clock" "media" ];
 	unlabelled = lib.filter (name: !(nihil.strings ? ${"cfgWidget" + lib.toUpper (lib.substring 0 1 name) + lib.substring 1 (lib.stringLength name) name}))
 		widgets;

@@ -114,6 +114,27 @@ Flickable {
             }
         }
 
+        // The weather's: where, looked for by its name when it's left.
+        Setting {
+            visible: Machine.widgets.indexOf("weather") >= 0
+            title: Lang.cfgWeatherPlace
+            sub: Weather.searching !== "" ? Lang.cfgWeatherSearching
+                : Weather.notFound !== "" ? Lang.cfgWeatherNotFound.arg(Weather.notFound)
+                : Weather.searchFailed ? Lang.cfgWeatherSearchFailed
+                : Weather.placed ? Lang.cfgWeatherAt.arg(Weather.where.label ?? "") : Lang.cfgWeatherPlaceSub
+
+            Field {
+                id: weatherPlace
+                width: 240
+                value: Machine.widgetOptions.weather?.place ?? ""
+                invalid: Weather.notFound !== "" && Weather.notFound === weatherPlace.text.trim()
+                onFinished: {
+                    if (weatherPlace.text.trim() !== weatherPlace.value)
+                        Weather.search(weatherPlace.text);
+                }
+            }
+        }
+
         // The GitHub one's: whose contributions.
         Setting {
             visible: Machine.widgets.indexOf("github") >= 0

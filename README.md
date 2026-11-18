@@ -90,6 +90,8 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
   The website ships subsets of the first three, with their licence in `docs/assets/fonts`.
 - Icons: [Colloid](https://github.com/vinceliuice/Colloid-icon-theme) by Vince Liuice
   (GPL-3.0), installed from nixpkgs.
+- Weather data by [Open-Meteo](https://open-meteo.com), licensed under
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), for the weather widget.
 
 The code and NIHIL's own sounds are MIT licensed (see `LICENSE`); the logos keep the licences
 above, and [`sounds/CREDITS.md`](sounds/CREDITS.md) says where each sound comes from.

@@ -65,6 +65,8 @@
   the browser with any picture, moving ones too (`docs/studio/`, the same numbers as
   `theme/dotmatrix.py`).
 - **Desktop widgets.** The clock and what plays; and, if you want them, the network's rates,
+  the weather where you say (now, today's highest and lowest and the three days after, from
+  [Open-Meteo](https://open-meteo.com), with no key; the place goes in Preferences, Appearance),
   a photo of yours in dots (drop a picture on it, or open one with Photo widget from Files:
   PNG, JPEG, GIF, BMP or WebP, of which it keeps a copy) and a year of GitHub contributions,
   a dot a day, brighter the more there were (the username goes in Preferences, Appearance;

@@ -229,6 +229,7 @@ Scope {
             Region { item: clockCard.visible ? clockCard : null }
             Region { item: networkCard.visible ? networkCard : null }
             Region { item: mediaCard.visible ? mediaCard : null }
+            Region { item: weatherCard.visible ? weatherCard : null }
             Region { item: photoCard.visible ? photoCard : null }
             Region { item: githubCard.visible ? githubCard : null }
         }
@@ -372,6 +373,115 @@ Scope {
                     Item { Layout.fillWidth: true }
 
                     MediaKeys { size: 28 }
+                }
+            }
+
+            // The weather where it was told: now, today's highest and lowest, and the days after.
+            Card {
+                id: weatherCard
+                widget: "weather"
+
+                readonly property var forecast: Weather.current ? Weather.forecast : null
+                readonly property var today: weatherCard.forecast?.days[0] ?? null
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Label {
+                        text: Weather.placed && Weather.where.name ? Weather.where.name : Lang.cfgWidgetWeather
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Txt {
+                        text: weatherCard.forecast !== null ? Weather.skyName(weatherCard.forecast.now.code)
+                            : !Weather.placed ? Lang.widgetWeatherNoPlace : Weather.failed ? Lang.widgetWeatherFailed : ""
+                        color: Tokens.dim
+                        font.pixelSize: 12
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: weatherCard.forecast !== null
+                    spacing: 14
+
+                    Ico {
+                        glyph: Weather.icon(weatherCard.forecast?.now.code ?? -1, weatherCard.forecast?.now.day ?? true)
+                        color: Tokens.ink
+                        font.pixelSize: 40
+                    }
+
+                    DotText {
+                        text: Weather.degrees(weatherCard.forecast?.now.temp ?? 0)
+                        font.pixelSize: 64
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    ColumnLayout {
+                        visible: weatherCard.today !== null
+                        spacing: 2
+
+                        Txt {
+                            Layout.alignment: Qt.AlignRight
+                            text: Weather.degrees(weatherCard.today?.max ?? 0)
+                        }
+
+                        Txt {
+                            Layout.alignment: Qt.AlignRight
+                            text: Weather.degrees(weatherCard.today?.min ?? 0)
+                            color: Tokens.dim
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    visible: weatherCard.forecast !== null
+                    spacing: 0
+
+                    Repeater {
+                        model: (weatherCard.forecast?.days ?? []).slice(1, 4)
+
+                        ColumnLayout {
+                            id: ahead
+
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            Label {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: Case.sentence(new Date(ahead.modelData.date + "T12:00:00").toLocaleString(Qt.locale(Lang.locale), "ddd"))
+                            }
+
+                            Ico {
+                                Layout.alignment: Qt.AlignHCenter
+                                glyph: Weather.icon(ahead.modelData.code, true)
+                                font.pixelSize: 18
+                            }
+
+                            Row {
+                                Layout.alignment: Qt.AlignHCenter
+                                spacing: 6
+
+                                Txt {
+                                    text: Weather.degrees(ahead.modelData.max)
+                                    font.pixelSize: 12
+                                }
+
+                                Txt {
+                                    text: Weather.degrees(ahead.modelData.min)
+                                    color: Tokens.dim
+                                    font.pixelSize: 12
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

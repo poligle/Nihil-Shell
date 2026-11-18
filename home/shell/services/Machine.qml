@@ -219,12 +219,19 @@ Singleton {
         root.saveWidgets();
     }
 
-    // A widget's own setting, with the rest: a text, a number or yes or no.
-    function setWidgetOption(name: string, key: string, value: var): void {
-        const mine = Object.assign({}, root.widgetOptions[name] ?? {});
-        mine[key] = value;
+    // A widget's own settings, over those it has: texts, numbers, yes or no; null takes one away.
+    function setWidgetOptions(name: string, values: var): void {
+        const mine = Object.assign({}, root.widgetOptions[name] ?? {}, values);
+        for (const key of Object.keys(mine)) {
+            if (mine[key] === null)
+                delete mine[key];
+        }
         root.widgetOptions = Object.assign({}, root.widgetOptions, { [name]: mine });
         root.saveWidgets();
+    }
+
+    function setWidgetOption(name: string, key: string, value: var): void {
+        root.setWidgetOptions(name, { [key]: value });
     }
 
     // places: { name: [x, y] }, over what's kept.
