@@ -12,6 +12,8 @@ let
 	{
 		name = "nihil-watch";
 		runtimeInputs = [ deck pkgs.android-tools pkgs.avahi pkgs.curl pkgs.jq pkgs.gawk pkgs.gnugrep pkgs.coreutils ];
+		# Its words, in the machine's language, as the rest of NIHIL's.
+		runtimeEnv.NIHIL_WATCH_STRINGS = pkgs.writeText "nihil-watch-strings.json" (builtins.toJSON osConfig.nihil.strings);
 		text = builtins.readFile ./deck/watch.sh;
 	};
 in

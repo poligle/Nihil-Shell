@@ -11,7 +11,20 @@ least=20000000000
 bootBytes=1073741824
 headroom=10000000000
 
-t() { if [ "$lang" = es ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+strings=/etc/nihil/strings.json
+
+# The words are theme/i18n.nix's, as the window's and the shell's: t key [value…], each value in
+# for %1, %2…, as they come.
+t() {
+    local text i=1 value
+    text=$(jq -r --arg l "$lang" --arg k "$1" '.[$l][$k] // .en[$k] // $k' "$strings")
+    shift
+    for value in "$@"; do
+        text=${text//"%$i"/"$value"}
+        i=$((i + 1))
+    done
+    printf '%s' "$text"
+}
 # If the window is gone, what it would have shown is lost, not the installation.
 emit() { jq -cn --arg kind "$1" --arg text "$2" '{ kind: $kind, text: $text }' >&3 2> /dev/null || true; }
 say() { if [ "$gui" = yes ]; then emit step "$*"; else gum style --foreground 15 "$@"; fi; }
@@ -25,7 +38,7 @@ fail() {
 # One installation at a time: the window's, a text one started after it, and finish.
 lock() {
     exec 9> /run/nihil-install.lock
-    flock -n 9 || fail "$(t "Another installation is running." "Hay otra instalación en marcha.")"
+    flock -n 9 || fail "$(t insBusy)"
 }
 
 # What a plan holds, empty: each try starts from nothing, not from the one before.
@@ -59,8 +72,7 @@ free_disk() {
         done
     done
     held=${held# }
-    [ -z "$held" ] || fail "$(t "Something still uses it ($held): free it from another console (Alt+F2) and try again." \
-        "Algo lo sigue usando ($held): libéralo desde otra consola (Alt+F2) y vuelve a probar.")"
+    [ -z "$held" ] || fail "$(t insInUse "$held")"
 }
 
 if [ "$(id -u)" != 0 ]; then
@@ -70,10 +82,9 @@ fi
 exec 3>&1
 trap 'if [ "$?" != 0 ]; then
     if [ "$gui" = yes ]; then
-        emit error "$(t "The installation stopped here." "La instalación se ha parado aquí.")"
+        emit error "$(t insStoppedHere)"
     else
-        gum style --foreground 1 "$(t "The installation stopped here. sudo nihil-install starts it again." \
-            "La instalación se ha parado aquí. sudo nihil-install la vuelve a empezar.")" >&2
+        gum style --foreground 1 "$(t insStoppedAgain)" >&2
     fi
 fi' EXIT
 
@@ -121,7 +132,12 @@ set_disk() {
     align=$(( 1048576 / sector ))
 }
 
-size() { numfmt --to=si --suffix=B "$1"; }
+# 25 GB, as the window writes it.
+size() {
+    local n
+    n=$(numfmt --to=si --suffix=B "$1")
+    printf '%s %s\n' "${n%%[A-Z]*}" "${n##*[0-9.,]}"
+}
 
 part() {
     if [[ $disk =~ [0-9]$ ]]; then echo "${disk}p$1"; else echo "${disk}$1"; fi
@@ -196,21 +212,18 @@ smallest() {
         ntfs)
             magic=$( { ntfscat "$1" hiberfil.sys 2>/dev/null || true; } | head -c 4 | tr '[:upper:]' '[:lower:]')
             if [ "$magic" = hibr ]; then
-                dim "$(t "$1: Windows is hibernated, or was shut down with fast startup. Turn fast startup off in Windows, shut it down, and start the installer again." \
-                         "$1: Windows está hibernado, o se apagó con el inicio rápido. Desactívalo en Windows, apágalo y vuelve a empezar el instalador.")" >&2
+                dim "$(t insHibernated "$1")" >&2
                 return 1
             fi
             if ! report=$(ntfsresize --info --no-progress-bar "$1" 2>&1); then
-                dim "$(t "$1: its NTFS has to be checked first. Start Windows, restart it once, and start the installer again." \
-                         "$1: su NTFS tiene que revisarse antes. Arranca Windows, reinícialo una vez y vuelve a empezar el instalador.")" >&2
+                dim "$(t insNtfsCheck "$1")" >&2
                 return 1
             fi
             sed -n 's/.*resize at \([0-9][0-9]*\) bytes.*/\1/p' <<< "$report"
             ;;
         ext4)
             if ! report=$(resize2fs -P "$1" 2>/dev/null); then
-                dim "$(t "$1: its ext4 needs a check first (it was not shut down cleanly). Start its system and shut it down, or run sudo e2fsck -f $1 in another console (Alt+F2), and start the installer again." \
-                         "$1: su ext4 necesita una revisión antes (no se apagó bien). Arranca su sistema y apágalo, o ejecuta sudo e2fsck -f $1 en otra consola (Alt+F2), y vuelve a empezar el instalador.")" >&2
+                dim "$(t insExt4Check "$1")" >&2
                 return 1
             fi
             blocks=$(sed -n 's/^Estimated minimum size of the filesystem: \([0-9][0-9]*\)$/\1/p' <<< "$report")
@@ -223,7 +236,7 @@ smallest() {
         btrfs)
             mkdir -p /tmp/shrink
             if ! mount -o ro "$1" /tmp/shrink 2>/dev/null; then
-                dim "$(t "$1: its btrfs could not be mounted to measure it." "$1: su btrfs no se ha podido montar para medirlo.")" >&2
+                dim "$(t insBtrfsMount "$1")" >&2
                 return 1
             fi
             report=$(btrfs inspect-internal min-dev-size /tmp/shrink 2>/dev/null) || report=""
@@ -250,12 +263,11 @@ givers() {
         case $fstype in
             ntfs|ext4|btrfs) ;;
             crypto_LUKS|LVM2_member)
-                dim "$(t "$part: encrypted or in LVM; shrink it from its own system, and its free space shows up here." \
-                         "$part: está cifrada o en LVM; encógela desde su propio sistema y su espacio libre aparecerá aquí.")" >&2
+                dim "$(t insEncryptedPart "$part")" >&2
                 continue
                 ;;
             xfs|zfs_member|f2fs)
-                dim "$(t "$part: $fstype cannot be shrunk." "$part: $fstype no se puede encoger.")" >&2
+                dim "$(t insNoShrink "$part" "$fstype")" >&2
                 continue
                 ;;
             *) continue ;;
@@ -266,21 +278,21 @@ givers() {
         if [ "$give" -ge "$1" ]; then
             printf '%s %s %s\n' "$part" "$fstype" "$give"
         else
-            dim "$(t "$part: too full to give $(size "$1") and keep 10 GB free." "$part: está demasiado llena para dar $(size "$1") y quedarse con 10 GB libres.")" >&2
+            dim "$(t insTooFull "$part" "$(size "$1")")" >&2
         fi
     done < <(lsblk -pbnro NAME,SIZE,TYPE "$disk" | awk '$3 == "part" { print $1, $2 }')
 }
 
 how_much() {
     local fewest=$1 most=$2 amount typed choice labels=() all other
-    all="$(t "All of it" "Todo"): $(size "$most")"
-    other=$(t "Another amount" "Otra cantidad")
+    all=$(t insAllOfIt "$(size "$most")")
+    other=$(t insOtherAmount)
     for amount in 30 50 100 200 500; do
         if [ $(( amount * 1000000000 )) -ge "$fewest" ] && [ $(( amount * 1000000000 )) -lt "$most" ]; then
             labels+=("$amount GB")
         fi
     done
-    choice=$(gum choose --header "$(t "Room for NIHIL" "Espacio para NIHIL")" "${labels[@]}" "$all" "$other") || return 1
+    choice=$(gum choose --header "$(t insRoomFor)" "${labels[@]}" "$all" "$other") || return 1
     case $choice in
         "")
             return 1
@@ -291,8 +303,7 @@ how_much() {
         "$other")
             typed=""
             until [[ $typed =~ ^[1-9][0-9]*$ ]] && [ $(( typed * 1000000000 )) -ge "$fewest" ] && [ $(( typed * 1000000000 )) -le "$most" ]; do
-                typed=$(gum input --placeholder 60 --header "$(t "GB for NIHIL, from $(( (fewest + 999999999) / 1000000000 )) to $(( most / 1000000000 ))" \
-                    "GB para NIHIL, de $(( (fewest + 999999999) / 1000000000 )) a $(( most / 1000000000 ))")") || return 1
+                typed=$(gum input --placeholder 60 --header "$(t insGbRange "$(( (fewest + 999999999) / 1000000000 ))" "$(( most / 1000000000 ))")") || return 1
             done
             echo $(( typed * 1000000000 ))
             ;;
@@ -304,8 +315,7 @@ how_much() {
 
 room_base() {
     if ! gpt; then
-        dim "$(t "$disk has no GPT partition table (an old Windows on MBR, or nothing yet): NIHIL can only go next to another system on GPT. Erase the whole disk, or convert it from Windows (mbr2gpt)." \
-                 "$disk no tiene tabla de particiones GPT (un Windows antiguo en MBR, o nada aún): NIHIL solo puede ir junto a otro sistema en GPT. Borra el disco entero, o conviértelo desde Windows (mbr2gpt).")"
+        dim "$(t insNoGptNextTo "$disk")"
         return 1
     fi
     esp=$(esp_of)
@@ -334,42 +344,39 @@ plan_room() {
 
     while read -r first last; do
         entries+=("free $first $last")
-        labels+=("$(t "Its free space" "Su espacio libre"): $(size $(( (last - first + 1) * sector )))")
+        labels+=("$(t insFreeSpace): $(size $(( (last - first + 1) * sector )))")
     done < <(free_stretches "$need")
     local unchecked=()
     mapfile -t unchecked < <(partitions $(( need + headroom )) "")
     for part in "${unchecked[@]}"; do
         if [ "$(fstype_of "$part")" = ext4 ] && ! resize2fs -P "$part" > /dev/null 2>&1; then
-            if gum confirm "$(t "$part (ext4) was not shut down cleanly and needs a check before it can be measured. Check it now (e2fsck)?" \
-                    "$part (ext4) no se apagó bien y necesita una revisión antes de poder medirla. ¿Revisarla ahora (e2fsck)?")" \
-                    --affirmative "$(t "Check it" "Revisarla")" --negative "$(t "Leave it" "Dejarla")"; then
-                say "$(t "Checking $part…" "Revisando $part…")"
+            if gum confirm "$(t insExt4Ask "$part")" \
+                    --affirmative "$(t insCheckIt)" --negative "$(t insLeaveIt)"; then
+                say "$(t insCheckingPart "$part")"
                 e2fsck -f -p "$part" > /dev/null 2>&1 || true
             fi
         fi
     done
 
-    say "$(t "Looking at what its partitions hold…" "Mirando lo que guardan sus particiones…")"
+    say "$(t insLookingParts)"
     while read -r part fstype give; do
         label=$(label_of "$part")
         entries+=("shrink $part $fstype $give")
-        labels+=("$(t "Room in" "Sitio en") $part ($fstype${label:+, $label}, $(size "$(blockdev --getsize64 "$part")")): $(t "up to" "hasta") $(size "$give")")
+        labels+=("$(t insRoomIn "$part") ($fstype${label:+, $label}, $(size "$(blockdev --getsize64 "$part")")): $(t insUpTo "$(size "$give")")")
     done < <(givers "$need")
     while read -r part; do
         fstypes+="$(fstype_of "$part") "
     done < <(partitions 0 "")
     if [[ " $fstypes " == *" BitLocker "* ]]; then
-        dim "$(t "Windows is encrypted with BitLocker, so it can only be shrunk from Windows (Disk Management, Shrink Volume); its free space then shows up here. Keep its recovery key at hand: Windows may ask for it." \
-                 "Windows está cifrado con BitLocker, así que solo se puede encoger desde Windows (Administración de discos, Reducir volumen); su espacio libre aparece luego aquí. Ten a mano su clave de recuperación: Windows puede pedirla.")"
+        dim "$(t insBitLockerShrink)"
     fi
     if [ "${#entries[@]}" -eq 0 ]; then
-        dim "$(t "There is no room for NIHIL next to what is on $disk: it needs $(size "$need")." \
-                 "No hay sitio para NIHIL junto a lo que hay en $disk: necesita $(size "$need").")"
+        dim "$(t insNoRoom "$disk" "$(size "$need")")"
         return 1
     fi
 
-    back=$(t "Back" "Volver")
-    choice=$(gum choose --header "$(t "Where NIHIL goes" "Dónde va NIHIL")" "${labels[@]}" "$back") || return 1
+    back=$(t insBack)
+    choice=$(gum choose --header "$(t insWhereGoes)" "${labels[@]}" "$back") || return 1
     if [ -z "$choice" ] || [ "$choice" = "$back" ]; then
         return 1
     fi
@@ -394,13 +401,13 @@ plan_room() {
 
 part_base() {
     if ! gpt; then
-        dim "$(t "$disk has no GPT partition table: make one in cfdisk, or erase the whole disk." "$disk no tiene tabla de particiones GPT: créala en cfdisk o borra el disco entero.")"
+        dim "$(t insNoGptMake "$disk")"
         return 1
     fi
     esp=$(esp_of)
     mapfile -t roots < <(partitions "$least" "$esp")
     if [ "${#roots[@]}" -eq 0 ]; then
-        dim "$(t "No partition of 20 GB or more: make room for NIHIL instead." "No hay ninguna partición de 20 GB o más: haz sitio para NIHIL.")"
+        dim "$(t insNoPartition)"
         return 1
     fi
 }
@@ -412,18 +419,18 @@ plan_partition() {
     roots=()
     part_base || return 1
     mapfile -t choices < <(describe "${roots[@]}")
-    root=$(gum choose --header "$(t "NIHIL goes on (it will be formatted)" "NIHIL va en (se formateará)")" "${choices[@]}") || return 1
+    root=$(gum choose --header "$(t insGoesOn)" "${choices[@]}") || return 1
     root=${root%% *}
     boot=$esp
     efi=""
     if [ -z "$esp" ] || [ "$(blockdev --getsize64 "$esp")" -lt 500000000 ]; then
         mapfile -t boots < <(partitions 500000000 "$esp $root")
         if [ "${#boots[@]}" -eq 0 ]; then
-            dim "$(t "NIHIL also needs a partition of 1 GB for booting: make room for NIHIL instead." "NIHIL necesita también una partición de 1 GB para arrancar: haz sitio para NIHIL.")"
+            dim "$(t insNeedsBoot)"
             return 1
         fi
         mapfile -t choices < <(describe "${boots[@]}")
-        boot=$(gum choose --header "$(t "Boot partition (it will be formatted)" "Partición de arranque (se formateará)")" "${choices[@]}") || return 1
+        boot=$(gum choose --header "$(t insBootPartition)" "${choices[@]}") || return 1
         boot=${boot%% *}
         efi=$esp
     fi
@@ -464,7 +471,7 @@ shrink_partition() {
     attributes=$(awk '/^Attribute flags:/ { print $3 }' <<< "$info")
     name=$(sed -n "s/^Partition name: '\(.*\)'$/\1/p" <<< "$info")
     if [ -z "$code" ] || [ -z "$guid" ] || [ -z "$first" ] || [ -z "$last" ] || [[ ! $attributes =~ ^[0-9A-Fa-f]{16}$ ]]; then
-        fail "$(t "Could not read the entry of $1; nothing was changed in the partition table." "No se pudo leer la entrada de $1; no se ha cambiado nada en la tabla de particiones.")"
+        fail "$(t insEntryUnread "$1")"
     fi
     end=$(( first + $2 / sector - 1 ))
     for (( bit = 0; bit < 64; bit++ )); do
@@ -473,8 +480,7 @@ shrink_partition() {
         fi
     done
     if ! sgdisk -a 1 -d "$number" -n "$number:$first:$end" -t "$number:$code" -u "$number:$guid" -c "$number:$name" "${flags[@]}" "$disk" >/dev/null; then
-        fail "$(t "Could not shrink the entry of $1 in the partition table: sgdisk -p $disk shows it as it is now." \
-                  "No se pudo encoger la entrada de $1 en la tabla de particiones: sgdisk -p $disk la muestra tal como está ahora.")"
+        fail "$(t insEntryShrink "$1" "$disk")"
     fi
     partprobe "$disk" || true
     udevadm settle
@@ -516,7 +522,7 @@ logged() {
 }
 
 apply_plan() {
-    say "$(t "Preparing the disk…" "Preparando el disco…")"
+    say "$(t insPreparing)"
     umount -R /mnt 2>/dev/null || true
     cryptsetup close cryptroot 2>/dev/null || true
     if [ "$mode" = whole ]; then
@@ -525,8 +531,7 @@ apply_plan() {
         wipefs -af "$disk" >/dev/null
         sgdisk --zap-all "$disk" >/dev/null
         sgdisk -n1:0:+1G -t1:ef00 -c1:BOOT -n2:0:0 -t2:8300 -c2:nixos "$disk" >/dev/null
-        partprobe "$disk" || fail "$(t "The new partitions of $disk can't be read: something still uses it. Restart and try again." \
-            "No se pueden leer las particiones nuevas de $disk: algo lo sigue usando. Reinicia y vuelve a probar.")"
+        partprobe "$disk" || fail "$(t insNewPartitions "$disk")"
         udevadm settle
         boot=$(part 1)
         root=$(part 2)
@@ -541,7 +546,7 @@ apply_plan() {
         fi
         if [ "$mode" = room ]; then
             if [ "$room" = shrink ]; then
-                say "$(t "Shrinking $roomPart: it can take a few minutes…" "Encogiendo $roomPart: puede tardar unos minutos…")"
+                say "$(t insShrinking "$roomPart")"
                 partBytes=$(blockdev --getsize64 "$roomPart")
                 keep=$(( (partBytes - roomBytes) / 1048576 * 1048576 ))
                 shrink_filesystem "$roomPart" "$roomFs" "$keep"
@@ -588,7 +593,7 @@ apply_plan() {
         mount -o umask=0077 "$efi" /mnt/efi
     fi
 
-    say "$(t "Writing this machine's configuration…" "Escribiendo la configuración de esta máquina…")"
+    say "$(t insWriting)"
     nixos-generate-config --root /mnt >/dev/null
     etc=/mnt/etc/nixos
     rm -f "$etc/configuration.nix"
@@ -713,9 +718,9 @@ EOF
         nix flake lock "$etc"
     fi
 
-    say "$(t "Installing. This takes a while: most of it is downloaded." "Instalando. Tarda un rato: casi todo se descarga.")"
+    say "$(t insInstallingLong)"
     if ! logged nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy; then
-        say "$(t "Something could not be downloaded; trying once more…" "Algo no se ha podido descargar; se intenta otra vez…")"
+        say "$(t insRetrying)"
         logged nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy
     fi
 
@@ -733,7 +738,7 @@ EOF
     : > /run/nihil-install.done
 
     if [ "$gui" = no ]; then
-        gum style --foreground 15 --margin "1 0" "$(t "NIHIL is installed." "NIHIL está instalado.")"
+        gum style --foreground 15 --margin "1 0" "$(t insInstalled)"
     fi
 }
 
@@ -778,8 +783,7 @@ probe_disk() {
                 '. + [ { part: $part, fstype: $fstype, label: $label, size: $size, give: $give } ]' <<< "$shrink")
         done < <(givers "$need" 2>> "$notes")
         if jq -e 'any(.[]; .fstype == "BitLocker")' <<< "$parts" > /dev/null; then
-            dim "$(t "Windows is encrypted with BitLocker, so it can only be shrunk from Windows (Disk Management, Shrink Volume); its free space then shows up here. Keep its recovery key at hand: Windows may ask for it." \
-                     "Windows está cifrado con BitLocker, así que solo se puede encoger desde Windows (Administración de discos, Reducir volumen); su espacio libre aparece luego aquí. Ten a mano su clave de recuperación: Windows puede pedirla.")" >> "$notes"
+            dim "$(t insBitLockerShrink)" >> "$notes"
         fi
     else
         need=$least
@@ -827,7 +831,7 @@ probe() {
 
 apply_answers() {
     local answers="" kind first bytes found part fstype give entry candidate
-    IFS= read -r answers || [ -n "$answers" ] || fail "$(t "No answers came." "No han llegado respuestas.")"
+    IFS= read -r answers || [ -n "$answers" ] || fail "$(t insNoAnswers)"
     exec < /dev/null
     get() { jq -r "$1 // empty" <<< "$answers"; }
     lang=$(get .language)
@@ -837,40 +841,39 @@ apply_answers() {
     lock
     exec >> "$log" 2>&1
     if [ "$lang" = es ]; then locale=es_ES.UTF-8; else locale=en_US.UTF-8; fi
-    [ -d /sys/firmware/efi ] || fail "$(t "NIHIL boots with systemd-boot, which needs UEFI: this machine started in legacy BIOS mode." \
-        "NIHIL arranca con systemd-boot, que necesita UEFI: este ordenador ha arrancado en modo BIOS antiguo.")"
+    [ -d /sys/firmware/efi ] || fail "$(t insNeedsUefi)"
     layout=$(get .layout)
     [[ $layout =~ ^[a-z][a-z0-9_-]*$ ]] || layout=us
     zone=$(get .zone)
-    timedatectl list-timezones | grep -qxF "$zone" || fail "$(t "Unknown time zone: $zone." "Zona horaria desconocida: $zone.")"
+    timedatectl list-timezones | grep -qxF "$zone" || fail "$(t insUnknownZone "$zone")"
     fullname=$(get .fullName)
     username=$(get .user)
-    valid_user "$username" || fail "$(t "That user name can't be used." "Ese nombre de usuario no se puede usar.")"
+    valid_user "$username" || fail "$(t insBadUser)"
     password=$(get .password)
-    [ -n "$password" ] || fail "$(t "The password is empty." "La contraseña está vacía.")"
+    [ -n "$password" ] || fail "$(t insEmptyPassword)"
     hostname=$(get .host)
-    valid_host "$hostname" || fail "$(t "That computer name can't be used." "Ese nombre de ordenador no se puede usar.")"
+    valid_host "$hostname" || fail "$(t insBadHost)"
     candidate=$(get .disk)
-    list_disks | grep -qxF "$candidate" || fail "$(t "That disk can't be used." "Ese disco no se puede usar.")"
+    list_disks | grep -qxF "$candidate" || fail "$(t insBadDisk)"
     set_disk "$candidate"
     encrypt=no
     passphrase=""
     if [ "$(jq -r '.encrypt // false' <<< "$answers")" = true ]; then
         encrypt=yes
         passphrase=$(get .passphrase)
-        [ -n "$passphrase" ] || fail "$(t "The disk passphrase is empty." "La contraseña del disco está vacía.")"
+        [ -n "$passphrase" ] || fail "$(t insEmptyPassphrase)"
     fi
     mode=$(get .mode)
     reset_plan
     case $mode in
         whole) ;;
         room)
-            room_base > /dev/null || fail "$(t "$disk has no GPT partition table." "$disk no tiene tabla de particiones GPT.")"
+            room_base > /dev/null || fail "$(t insNoGpt "$disk")"
             kind=$(get .room.kind)
             bytes=$(get .room.bytes)
-            [[ $bytes =~ ^[0-9]+$ ]] || fail "$(t "No size was given for NIHIL." "No se ha dado un tamaño para NIHIL.")"
+            [[ $bytes =~ ^[0-9]+$ ]] || fail "$(t insNoSize)"
             bytes=$(( bytes / 1048576 * 1048576 ))
-            [ "$bytes" -ge "$need" ] || fail "$(t "NIHIL needs at least $(size "$need")." "NIHIL necesita al menos $(size "$need").")"
+            [ "$bytes" -ge "$need" ] || fail "$(t insNeedsAtLeast "$(size "$need")")"
             found=no
             if [ "$kind" = free ]; then
                 first=$(get .room.first)
@@ -881,7 +884,7 @@ apply_answers() {
                         break
                     fi
                 done < <(free_stretches "$need")
-                [ "$found" = yes ] || fail "$(t "That free space is no longer there." "Ese espacio libre ya no está.")"
+                [ "$found" = yes ] || fail "$(t insFreeGone)"
                 room=free
                 roomBytes=$bytes
                 roomLast=$(( roomFirst + roomBytes / sector - 1 ))
@@ -895,24 +898,24 @@ apply_answers() {
                         break
                     fi
                 done < <(givers "$need" 2> /dev/null)
-                [ "$found" = yes ] || fail "$(t "$part can't give that much." "$part no puede dar tanto.")"
+                [ "$found" = yes ] || fail "$(t insGivesLess "$part")"
                 room=shrink
                 roomBytes=$bytes
             else
-                fail "$(t "Where NIHIL goes was not chosen." "No se ha elegido dónde va NIHIL.")"
+                fail "$(t insNoWhere)"
             fi
             ;;
         part)
             roots=()
-            part_base > /dev/null || fail "$(t "$disk has no partition NIHIL can go on." "$disk no tiene ninguna partición donde pueda ir NIHIL.")"
+            part_base > /dev/null || fail "$(t insNoRoot "$disk")"
             root=$(get .root)
-            printf '%s\n' "${roots[@]}" | grep -qxF "$root" || fail "$(t "NIHIL can't go on $root." "NIHIL no puede ir en $root.")"
+            printf '%s\n' "${roots[@]}" | grep -qxF "$root" || fail "$(t insBadRoot "$root")"
             boot=$esp
             efi=""
             if boot_needed; then
                 boot=$(get .boot)
                 if [ "$boot" = "$root" ] || ! partitions 500000000 "$esp $root" | grep -qxF "$boot"; then
-                    fail "$(t "NIHIL also needs a partition of 1 GB for booting." "NIHIL necesita también una partición de 1 GB para arrancar.")"
+                    fail "$(t insNeedsBootShort)"
                 fi
                 efi=$esp
             fi
@@ -920,10 +923,10 @@ apply_answers() {
                 windows=yes
             fi
             ;;
-        *) fail "$(t "Where NIHIL goes was not chosen." "No se ha elegido dónde va NIHIL.")" ;;
+        *) fail "$(t insNoWhere)" ;;
     esac
     apply_plan
-    emit "done" "$(t "NIHIL is installed." "NIHIL está instalado.")"
+    emit "done" "$(t insInstalled)"
 }
 
 check_media() {
@@ -956,92 +959,86 @@ main_tui() {
     fi
     lock
     if [ -e /run/nihil-install.done ]; then
-        if gum confirm "$(t "NIHIL is already installed on this computer. Restart now?" "NIHIL ya está instalado en este ordenador. ¿Reiniciar ahora?")" \
-                --affirmative "$(t "Restart" "Reiniciar")" --negative "$(t "Install again" "Instalar otra vez")"; then
+        if gum confirm "$(t insAlreadyInstalled)" \
+                --affirmative "$(t insRestart)" --negative "$(t insInstallAgain)"; then
             finish
         fi
         rm -f /run/nihil-install.done
     fi
 
     if [ -f /iso/nix-store.squashfs ]; then
-        if ! gum spin --title "$(t "Checking the USB stick…" "Comprobando el USB…")" -- cat /iso/nix-store.squashfs > /dev/null; then
-            fail "$(t "The USB stick cannot be read whole. Write the image to it again, checking its SHA256 (SHA256SUMS, next to it on Releases), or try another stick or port; \"Copy ISO Files to RAM\", among the boot menu's options, reads it all into memory before starting." \
-                      "No se puede leer el USB entero. Vuelve a grabar la imagen comprobando su SHA256 (SHA256SUMS, junto a ella en Releases), o prueba otro USB u otro puerto; «Copy ISO Files to RAM», en las opciones del menú de arranque, lo lee entero a memoria antes de empezar.")"
+        if ! gum spin --title "$(t insCheckingUsb)" -- cat /iso/nix-store.squashfs > /dev/null; then
+            fail "$(t insUsbBad)"
         fi
     fi
 
     until curl -fsI --max-time 6 https://cache.nixos.org >/dev/null; do
         if ! nmcli -t -f TYPE device 2>/dev/null | grep -qx wifi; then
-            dim "$(t "No Wi-Fi card shows up (it may need a driver this image lacks). A cable, or a phone sharing its connection over USB, work too." \
-                     "No aparece ninguna tarjeta Wi-Fi (puede que necesite un driver que esta imagen no trae). Un cable, o un móvil compartiendo la conexión por USB, también sirven.")"
+            dim "$(t insNoWifi)"
         fi
-        wifi=$(t "Choose a Wi-Fi network" "Elegir una red Wi-Fi")
-        retry=$(t "Try again" "Probar otra vez")
-        leave=$(t "Leave the installer" "Salir del instalador")
-        case $(gum choose --header "$(t "There is no connection to the Internet." "No hay conexión a Internet.")" "$wifi" "$retry" "$leave") in
+        wifi=$(t insChooseWifi)
+        retry=$(t insTryAgain)
+        leave=$(t insLeave)
+        case $(gum choose --header "$(t insOffline)" "$wifi" "$retry" "$leave") in
             "$wifi") nmtui-connect || true ;;
             "$leave")
-                dim "$(t "sudo nihil-install starts it again; nmcli device lists the network cards." \
-                         "sudo nihil-install lo vuelve a empezar; nmcli device muestra las tarjetas de red.")"
+                dim "$(t insOfflineHelp)"
                 exit 0
                 ;;
             *) sleep 2 ;;
         esac
     done
 
-    layout=$(gum choose --header "$(t "Keyboard" "Teclado")" us es gb de fr it pt latam other)
+    layout=$(gum choose --header "$(t insKeyboard)" us es gb de fr it pt latam other)
     if [ "$layout" = other ]; then
-        layout=$(gum input --header "$(t "Keyboard layout (xkb name)" "Distribución del teclado (nombre xkb)")" --placeholder "br")
+        layout=$(gum input --header "$(t insXkbLayout)" --placeholder "br")
     fi
     keymap=$(keymap_of "$layout")
     if ! loadkeys "$keymap" >/dev/null 2>&1; then
-        dim "$(t "The console has no keymap called $keymap, so here the keys type as on a US keyboard: a password chosen now may not be what the same keys type at the login. Letters and digits are the safest." \
-                 "La consola no tiene un mapa de teclado llamado $keymap, así que aquí las teclas escriben como en un teclado estadounidense: una contraseña elegida ahora puede no ser lo que esas teclas escriben al iniciar sesión. Lo más seguro son letras y cifras.")"
+        dim "$(t insNoKeymap "$keymap")"
     fi
 
     zone=$(guess_zone)
-    if [ -z "$zone" ] || ! gum confirm "$(t "Time zone: $zone?" "Zona horaria: $zone?")" \
-            --affirmative "$(t "Yes" "Sí")" --negative "$(t "Another" "Otra")"; then
-        zone=$(timedatectl list-timezones | gum filter --header "$(t "Time zone" "Zona horaria")")
+    if [ -z "$zone" ] || ! gum confirm "$(t insZoneAsk "$zone")" \
+            --affirmative "$(t insYes)" --negative "$(t insAnother)"; then
+        zone=$(timedatectl list-timezones | gum filter --header "$(t insZone)")
     fi
 
-    fullname=$(gum input --header "$(t "Your name" "Tu nombre")" --placeholder "Ada Lovelace")
+    fullname=$(gum input --header "$(t insYourName)" --placeholder "Ada Lovelace")
     suggested=$(printf '%s' "${fullname%% *}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
     until valid_user "${username:-}"; do
-        username=$(gum input --header "$(t "User name (lowercase letters and digits)" "Nombre de usuario (minúsculas y cifras)")" \
+        username=$(gum input --header "$(t insUserHint)" \
             --value "${suggested:-nihil}")
     done
     while true; do
-        password=$(gum input --password --header "$(t "Password" "Contraseña")")
-        again=$(gum input --password --header "$(t "Password, again" "La contraseña, otra vez")")
+        password=$(gum input --password --header "$(t insPassword)")
+        again=$(gum input --password --header "$(t insPasswordAgain)")
         if [ -n "$password" ] && [ "$password" = "$again" ]; then
             break
         fi
-        dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
+        dim "$(t insMismatch)"
     done
     until [[ ${hostname:-} =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; do
-        hostname=$(gum input --header "$(t "Name of this computer" "Nombre de este ordenador")" --value "nihil")
+        hostname=$(gum input --header "$(t cfgHost)" --value "nihil")
     done
 
     mapfile -t disk_candidates < <(list_disks)
-    [ "${#disk_candidates[@]}" -gt 0 ] || fail "$(t "There is no disk of 20 GB or more to install on." "No hay ningún disco de 20 GB o más donde instalar.")"
+    [ "${#disk_candidates[@]}" -gt 0 ] || fail "$(t insNoDisk)"
     disk_options=()
     for candidate in "${disk_candidates[@]}"; do
         disk_options+=("$candidate   $(lsblk -dno SIZE "$candidate" | tr -d ' ')   $(lsblk -dno MODEL "$candidate" | sed 's/ *$//')")
     done
-    disk=$(gum choose --header "$(t "Install on" "Instalar en")" "${disk_options[@]}")
+    disk=$(gum choose --header "$(t insInstallOn)" "${disk_options[@]}")
     set_disk "${disk%% *}"
 
     mode=whole
     reset_plan
-    nextTo=$(t "Next to what is on it (make room)" "Junto a lo que hay (hacer sitio)")
-    all=$(t "Erase the whole disk" "Borrar el disco entero")
-    pick=$(t "On one of its partitions (formatting it)" "En una de sus particiones (formateándola)")
+    nextTo=$(t insNextTo)
+    all=$(t insWhole)
+    pick=$(t insOnPartition)
     while true; do
         lsblk -o NAME,SIZE,FSTYPE,LABEL "$disk"
-        dim "$(t "To partition it by hand: another console (Alt+F2) has cfdisk and parted; then «On one of its partitions»." \
-                 "Para particionarlo a mano: otra consola (Alt+F2) tiene cfdisk y parted; luego «En una de sus particiones».")"
-        choice=$(gum choose --header "$(t "Where on $disk" "Dónde en $disk")" "$nextTo" "$all" "$pick")
+        choice=$(gum choose --header "$(t insWhereOn "$disk")" "$nextTo" "$all" "$pick")
         reset_plan
         case $choice in
             "$nextTo")
@@ -1064,52 +1061,47 @@ main_tui() {
     done
 
     encrypt=no
-    if gum confirm "$(t "Encrypt the disk? It asks for a passphrase at every boot." "¿Cifrar el disco? Pedirá una contraseña en cada arranque.")" \
-            --affirmative "$(t "Encrypt" "Cifrar")" --negative "$(t "No" "No")" --default=false; then
+    if gum confirm "$(t insEncryptAsk)" \
+            --affirmative "$(t insEncrypt)" --negative "$(t insNo)" --default=false; then
         encrypt=yes
         while true; do
-            passphrase=$(gum input --password --header "$(t "Disk passphrase" "Contraseña del disco")")
-            again=$(gum input --password --header "$(t "Disk passphrase, again" "La contraseña del disco, otra vez")")
+            passphrase=$(gum input --password --header "$(t insPassphrase)")
+            again=$(gum input --password --header "$(t insPassphraseAgain)")
             if [ -n "$passphrase" ] && [ "$passphrase" = "$again" ]; then
                 break
             fi
-            dim "$(t "They don't match (or it's empty). Again." "No coinciden (o está vacía). Otra vez.")"
+            dim "$(t insMismatch)"
         done
     fi
 
     if [ "$mode" = whole ]; then
-        gum style --foreground 1 --margin "1 0" "$(t "Everything on $disk will be erased." "Se borrará todo lo que hay en $disk.")"
+        gum style --foreground 1 --margin "1 0" "$(t insErased "$disk")"
     elif [ "$mode" = room ] && [ "$room" = shrink ]; then
         gum style --foreground 1 --margin "1 0" \
-            "$(t "$roomPart will give $(size "$roomBytes") to NIHIL, keeping what it holds; the rest of $disk stays as it is." \
-                 "$roomPart cederá $(size "$roomBytes") a NIHIL, conservando lo que guarda; el resto de $disk se queda como está.")" \
-            "$(t "Shrinking is safe, but a power cut halfway is not: keep a copy of what matters on it." \
-                 "Encoger es seguro, pero un corte de luz a medias no: ten copia de lo importante.")"
+            "$(t insShrinkGives "$roomPart" "$(size "$roomBytes")" "$disk")" \
+            "$(t insShrinkSafe)"
         if [ "$roomFs" = ntfs ]; then
-            dim "$(t "Windows will check its disk the first time it starts: let it finish." "Windows revisará su disco la primera vez que arranque: déjale terminar.")"
+            dim "$(t insWindowsCheck)"
         fi
     elif [ "$mode" = room ]; then
-        gum style --foreground 1 --margin "1 0" "$(t "NIHIL goes in $(size "$roomBytes") of free space on $disk; the rest stays as it is." \
-            "NIHIL va en $(size "$roomBytes") de espacio libre de $disk; el resto se queda como está.")"
+        gum style --foreground 1 --margin "1 0" "$(t insFreeGoes "$(size "$roomBytes")" "$disk")"
     else
-        gum style --foreground 1 --margin "1 0" "$(t "$root will be formatted" "Se formateará $root")$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")$(t "; the rest of $disk stays as it is." "; el resto de $disk se queda como está.")"
+        gum style --foreground 1 --margin "1 0" "$(t insFormatted "$root$( [ "$boot" = "$esp" ] || printf ', %s' "$boot")" "$disk")"
     fi
     if [ "$mode" != whole ] && [ "$windows" = yes ]; then
-        dim "$(t "The boot menu will offer Windows too. If Windows uses BitLocker, it may ask for its recovery key the first time: keep it at hand." \
-                 "El menú de arranque ofrecerá también Windows. Si Windows usa BitLocker, puede pedir su clave de recuperación la primera vez: tenla a mano.")"
+        dim "$(t insBitLocker)"
     else
         elsewhere=$(windows_elsewhere)
         if [ -n "$elsewhere" ]; then
-            dim "$(t "Windows, on $elsewhere, stays in the computer's own boot menu (the key it shows as it starts: F12, F11, Esc…): NIHIL's lists what is on its own disk." \
-                     "Windows, en $elsewhere, sigue en el menú de arranque del propio ordenador (la tecla que indica al encenderse: F12, F11, Esc…): el de NIHIL muestra lo que hay en su disco.")"
+            dim "$(t insWindowsElsewhere "$elsewhere")"
         fi
     fi
-    gum confirm "$(t "Install NIHIL?" "¿Instalar NIHIL?")" --affirmative "$(t "Install" "Instalar")" --negative "$(t "Cancel" "Cancelar")" \
+    gum confirm "$(t insInstallAsk)" --affirmative "$(t insInstall)" --negative "$(t insCancel)" \
         --default=false || exit 1
 
     apply_plan
 
-    if gum confirm "$(t "Restart now?" "¿Reiniciar ahora?")" --affirmative "$(t "Restart" "Reiniciar")" --negative "$(t "Later" "Luego")"; then
+    if gum confirm "$(t insRestartAsk)" --affirmative "$(t insRestart)" --negative "$(t insLater)"; then
         finish
     fi
 }
