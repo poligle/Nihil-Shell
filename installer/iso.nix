@@ -10,6 +10,8 @@ let
             gum jq curl parted gptfdisk dosfstools btrfs-progs cryptsetup ntfs3g e2fsprogs
             util-linux pciutils usbutils kbd gnugrep gawk coreutils networkmanager lvm2 mdadm
         ];
+        # Where the keyboard layouts are listed, to check one typed in text.
+        runtimeEnv.NIHIL_XKB = "${pkgs.xkeyboard_config}";
         text = builtins.readFile ./nihil-install.sh;
     };
 

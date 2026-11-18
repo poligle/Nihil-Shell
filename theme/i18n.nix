@@ -585,6 +585,7 @@
 		insBadDisk = "Ese disco no se puede usar.";
 		insBadHost = "Ese nombre de ordenador no se puede usar.";
 		insBadRoot = "NIHIL no puede ir en %1.";
+		insBadPassword = "La contraseña no puede tener caracteres de control.";
 		insBadUser = "Ese nombre de usuario no se puede usar.";
 		insBitLocker = "Si Windows usa BitLocker, puede pedir su clave de recuperación: tenla a mano.";
 		insBitLockerShrink = "Windows está cifrado con BitLocker, así que solo se puede encoger desde Windows (Administración de discos, Reducir volumen); su espacio libre aparece luego aquí. Ten a mano su clave de recuperación: Windows puede pedirla.";
@@ -1337,6 +1338,7 @@
 		insBadDisk = "That disk can't be used.";
 		insBadHost = "That computer name can't be used.";
 		insBadRoot = "NIHIL can't go on %1.";
+		insBadPassword = "A password can't have control characters.";
 		insBadUser = "That user name can't be used.";
 		insBitLocker = "If Windows uses BitLocker, it may ask for its recovery key: keep it at hand.";
 		insBitLockerShrink = "Windows is encrypted with BitLocker, so it can only be shrunk from Windows (Disk Management, Shrink Volume); its free space then shows up here. Keep its recovery key at hand: Windows may ask for it.";
