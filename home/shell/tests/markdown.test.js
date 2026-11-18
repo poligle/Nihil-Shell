@@ -31,4 +31,20 @@ test("a link shows where it goes", () => {
     assert.strictEqual(M.host(""), "");
 });
 
+test("an address keeps its parentheses, and stays out of what ends the sentence", () => {
+    const wiki = "https://es.wikipedia.org/wiki/Nix_(gestor_de_paquetes)";
+    assert.deepStrictEqual(hrefs(M.html(`Mira ${wiki}.`, voices)), [wiki]);
+    assert.ok(M.html(`Mira ${wiki}.`, voices).includes(`${wiki}</a>.`));
+    const out = M.html(`[Nix](${wiki}) y (https://nixos.org)`, voices);
+    assert.deepStrictEqual(hrefs(out), [wiki, "https://nixos.org"]);
+    assert.ok(out.includes(">Nix</a> y (<a") && out.includes("nixos.org</a>)"));
+});
+
+test("emphasis doesn't reach into an address", () => {
+    const out = M.html("See https://example.com/_priv_/a and *this*", voices);
+    assert.deepStrictEqual(hrefs(out), ["https://example.com/_priv_/a"]);
+    assert.ok(out.includes(">https://example.com/_priv_/a</a>") && out.includes("<i>this</i>"));
+    assert.ok(M.html("[**the** manual](https://nixos.org/a_b_c)", voices).includes('href="https://nixos.org/a_b_c"'));
+});
+
 console.log(`${passed} passed`);

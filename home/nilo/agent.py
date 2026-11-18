@@ -620,7 +620,7 @@ SCHEMAS = {
         ["setting"])),
     "send_to_phone": ("desktop", schema(
         "send_to_phone",
-        "Send a text, or a file of this computer by its path, to the user's phone with Vector.",
+        "Send a text, or a file of this computer by its path, to the user's devices (a phone, a watch) with Vector.",
         {"text": {"type": "string", "description": "A text to send"},
          "path": {"type": "string", "description": "Or a file to send, by its path (~/…)"}})),
 }
@@ -740,7 +740,7 @@ VECTOR_ERRORS = {
     "empty": "there is nothing in it to send",
     "folder": "it is a folder: Vector sends files",
     "busy": "Vector is sending something else: try again in a moment",
-    "off": "Vector is off: the phone has to be paired in Preferences first",
+    "off": "Vector is off: a device has to be paired in Preferences, Devices first",
 }
 
 
@@ -1282,7 +1282,7 @@ class Tools:
             result = getattr(self, name)(cancel=cancel, **{k: v for k, v in args.items() if k in
                                           SCHEMAS[name][1]["function"]["parameters"]["properties"]})
         except subprocess.TimeoutExpired:
-            result = {"error": "it took too long"}
+            result = {"error": "it took too long", "reason": "timeout"}
         except Exception as e:
             log(f"{name} failed:", repr(e))
             result = {"error": str(e) or e.__class__.__name__}
@@ -1297,6 +1297,11 @@ class Tools:
     def facts(name, result):
         ok = "error" not in result and not result.get("declined")
         facts = {"ok": ok}
+        # What went wrong, for the chat: its words are the model's, in English; reason, for any language.
+        if "error" in result:
+            facts["error"] = str(result["error"])[:120]
+            if result.get("reason"):
+                facts["reason"] = result["reason"]
         if name == "web_search" and ok:
             facts["count"] = len(result.get("results", []))
         elif name == "open_url" and ok:
@@ -2537,7 +2542,7 @@ PROMPT = {
                    "una ventana. media controla lo que suena y pone una canción por su nombre; control cambia el "
                    "volumen, el micro, el brillo, no molestar, la cafeína, la luz nocturna y su intensidad, el wifi, "
                    "el bluetooth, el modo avión, el fondo, el cristal y el escritorio que se ve, hace capturas y graba "
-                   "la pantalla; send_to_phone manda algo al móvil. Para buscar un vídeo, abre su búsqueda "
+                   "la pantalla; send_to_phone manda algo a sus dispositivos. Para buscar un vídeo, abre su búsqueda "
                    "(https://www.youtube.com/results?search_query=…) con open_app. Hazlo directamente cuando te lo "
                    "pidan, sin preguntar antes: lo que tiene riesgo ya lo confirma el usuario.",
         "look": ", y look_at_screen te deja ver la pantalla",
@@ -2600,7 +2605,7 @@ PROMPT = {
                    "controls what plays and puts on a song by its name; control changes the volume, the microphone, "
                    "the brightness, do not disturb, caffeine, the night light and its strength, Wi-Fi, Bluetooth, "
                    "airplane mode, the wallpaper, the glass and the workspace shown, takes screenshots and records "
-                   "the screen; send_to_phone sends something to the phone. To look for a video, open its search "
+                   "the screen; send_to_phone sends something to the user's devices. To look for a video, open its search "
                    "(https://www.youtube.com/results?search_query=…) with open_app. Do it straight away when asked, "
                    "without asking first: whatever carries a risk, the user confirms already.",
         "look": ", and look_at_screen lets you see the screen",

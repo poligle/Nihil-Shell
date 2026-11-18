@@ -122,7 +122,7 @@ nihil-ipc glyph test true             # light the frame (critical = red)
 nihil-ipc glyph charge                # the charger's light, rising from the bottom
 nihil-ipc glyph progress <id> 0.4     # work that takes a while; then done, failed or clear <id>
 nihil-ipc notifs toggleDnd            # also: hide (the popups, keeping the list), clear
-nihil-ipc nilo toggle                 # also: open, sleep, ask "…", state, reset
+nihil-ipc nilo toggle                 # also: open, sleep, ask "…" (the chat says who asked), state, reset
 nihil-ipc caffeine toggle             # also: on, off, status
 nihil-ipc toggles state               # caffeine and the night light, as JSON
 nihil-ipc night level 40              # the night light at 40 %; also: toggle, on, off, status

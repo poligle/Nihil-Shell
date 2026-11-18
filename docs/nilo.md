@@ -26,6 +26,11 @@ That runs [Ollama](https://ollama.com) on `127.0.0.1` (`services.ollama`) and ad
 binds. The first time Nilo opens it introduces itself, shows how to call it, offers the
 models that suit the RAM and asks what it may do.
 
+Ollama has no password: any program on the computer, of any user, Flatpak apps too, can use
+its port to run, pull or delete models, and Nilo takes whatever answers there for Ollama. On
+a computer shared with people you don't trust, a firewall rule can keep the port to your
+user and Ollama's (nftables, `meta skuid`).
+
 | | |
 |---|---|
 | `SUPER + I`, the Copilot key | Open or close Nilo |
