@@ -27,8 +27,6 @@
 		./home/deck.nix
 	];
 
-	home.username = osConfig.nihil.user.name;
-	home.homeDirectory = "/home/${osConfig.nihil.user.name}";
 	home.stateVersion = "26.05";
 	programs.home-manager.enable = true;
 

@@ -11,12 +11,12 @@ let
             width = lib.mkOption
             {
                 type = lib.types.ints.positive;
-                description = "Logical width in px, after rotation.";
+                description = "Width in pixels of its mode, after rotation (not divided by the scale).";
             };
             height = lib.mkOption
             {
                 type = lib.types.ints.positive;
-                description = "Logical height in px, after rotation.";
+                description = "Height in pixels of its mode, after rotation (not divided by the scale).";
             };
             bar = lib.mkOption
             {
@@ -191,6 +191,9 @@ in
                 message = "theme/i18n.nix: every language needs the same keys.";
             }
         ];
+
+        # The lock screen's date is in the language's own locale, which the machine's may not be.
+        i18n.extraLocales = lib.optional (cfg.strings.lockLocale != "C.UTF-8") "${cfg.strings.lockLocale}/UTF-8";
 
         nihil.wallpapers = import ../theme/wallpapers.nix
         {

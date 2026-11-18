@@ -184,7 +184,6 @@ in
             OOMScoreAdjust = lib.mkDefault 1000;
         };
 
-        security.polkit.enable = lib.mkDefault true;
         security.polkit.extraConfig = ''
             polkit.addRule(function(action, subject)
             {

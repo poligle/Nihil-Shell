@@ -60,7 +60,8 @@
 		lib.mkSystem = { settings ? { }, modules ? [ ], home ? [ ] }: nixpkgs.lib.nixosSystem
 		{
 			inherit system;
-			modules = [ self.nixosModules.default { nihil = { inherit settings home revision; }; } ] ++ modules;
+			# Unfree packages are the machine's choice, not the module's: local.nix, after, can change it.
+			modules = [ self.nixosModules.default { nihil = { inherit settings home revision; }; nixpkgs.config.allowUnfree = true; } ] ++ modules;
 		};
 
 		nixosConfigurations =
