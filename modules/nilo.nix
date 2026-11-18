@@ -184,14 +184,13 @@ in
             OOMScoreAdjust = lib.mkDefault 1000;
         };
 
-        security.polkit.enable = lib.mkDefault true;
         security.polkit.extraConfig = ''
             polkit.addRule(function(action, subject)
             {
                 if (action.id == "org.freedesktop.systemd1.manage-units"
                     && action.lookup("unit") == "ollama.service"
                     && (action.lookup("verb") == "start" || action.lookup("verb") == "restart")
-                    && subject.isInGroup("wheel"))
+                    && subject.local && subject.active && subject.isInGroup("wheel"))
                     return polkit.Result.YES;
             });
         '';

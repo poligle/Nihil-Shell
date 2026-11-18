@@ -2,6 +2,7 @@
 # test_agent.py by poligle
 
 import http.server
+import ipaddress
 import json
 import os
 import queue
@@ -13,6 +14,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 
 NOTE = "Que la reunión es el jueves a las cinco en la sala azul\n"
 
@@ -1117,8 +1119,235 @@ class AgentTest(unittest.TestCase):
         self.assertNotIn("Writer only", prompt)
         self.assertIn("## Git\n\nShort messages.\n\n### Branches\n\nNever force.", prompt)
         self.assertIn("I am Pol. {web}", prompt)
+        # Any repository's notes are a file to read, not words in the prompt.
+        self.assertNotIn("Use tabs", prompt)
+        self.assertIn("La repo tiene notas en NILO.md", prompt)
+        self.agent.close()
+        # NIHIL's own checkout, the one nihil dev builds, is the user's: its notes go in.
+        dev = os.path.join(self.dir, "dev")
+        with open(dev, "w") as f:
+            f.write(repo + "\npol\n")
+        self.write_config(context=context, devFile=dev)
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "terminal", "repo": repo},
+                   env=dict(os.environ, XDG_CONFIG_HOME=config_home))
+        self.agent.send(op="ask", text="Hola")
+        self.agent.until_done()
+        prompt = self.ollama.chats[-1]["messages"][0]["content"]
         self.assertIn(f"Use tabs in {repo}.", prompt)
+        self.assertNotIn("La repo tiene notas", prompt)
         self.assertTrue(prompt.index("Ask ") < prompt.index("I am Pol") < prompt.index("Use tabs"))
+
+    def test_terminals_and_documents(self):
+        for name in ("kitty", "org.gnome.Ptyxis", "com.system76.CosmicTerm", "mate-terminal", "terminology",
+                     "cool-retro-term", "yakuake", "guake", "tilda", "dev.warp.Warp", "code", "Emacs", "jetbrains-idea"):
+            self.assertTrue(agent.Tools.terminal({"class": name}), name)
+        for name in ("libreoffice-writer", "zen", "Slack", "org.gnome.Nautilus"):
+            self.assertFalse(agent.Tools.terminal({"class": name}), name)
+        self.assertTrue(agent.Tools.document({"class": "libreoffice-writer"}))
+        self.assertTrue(agent.Tools.document({"initialClass": "org.gnome.TextEditor"}))
+        self.assertFalse(agent.Tools.document({"class": "Slack"}))
+
+    def test_enter_outside_a_document_asks(self):
+        self.desktop()
+        path = os.path.join(self.dir, "hypr.json")
+        with open(path) as f:
+            state = json.load(f)
+        state["clients"].append({"address": "0xc3", "class": "Slack", "initialClass": "Slack", "title": "Slack",
+                                 "focusHistoryID": 2, "workspace": {"id": 3, "name": "3"}, "mapped": True,
+                                 "hidden": False, "at": [0, 0], "size": [800, 600]})
+        with open(path, "w") as f:
+            json.dump(state, f)
+        self.start({"model": "qwen3.5:4b", "onboarded": True, "access": "system"})
+        confirms = []
+
+        def decline(event):
+            confirms.append(event)
+            self.agent.send(op="confirm", id=event["id"], ok=False)
+
+        self.agent.on_confirm = decline
+        self.agent.send(op="ask", text="Escribe en Slack")
+        self.agent.until_done()
+        self.assertEqual((confirms[0]["what"], confirms[0]["why"], confirms[0]["app"]), ("type", ["enter"], "Slack"))
+        self.assertEqual(self.logged("wtype-log"), [])
+
+    def test_secrets_reach_further(self):
+        home = os.path.join(self.dir, "home")
+        with mock.patch.dict(os.environ, {"HOME": home}):
+            for path in ("~/.config/sops/age/keys.txt", "~/.zsh_history", "~/.local/share/fish/fish_history",
+                         "~/backup/.gnupg/pubring.kbx", "~/.var/app/org.mozilla.firefox/.mozilla/x", "~/proj/auth.json",
+                         "~/.config/nix/nix.conf", "~/.cargo/credentials.toml", "~/.local/share/TelegramDesktop/tdata",
+                         "/run/agenix/token", "/etc/nix/netrc"):
+                self.assertTrue(agent.secret(path), path)
+            for path in ("~/notes/history.md", "~/proj/README.md", "~/nixos-config/flake.nix"):
+                self.assertFalse(agent.secret(path), path)
+
+    def test_public_addresses(self):
+        for address in ("8.8.8.8", "2606:4700::1111"):
+            self.assertTrue(agent.public(ipaddress.ip_address(address)), address)
+        for address in ("127.0.0.1", "192.168.1.1", "100.64.0.1", "::1", "64:ff9b::c0a8:101", "64:ff9b:1::1",
+                        "::ffff:127.0.0.1", "2002:c0a8:101::1"):
+            self.assertFalse(agent.public(ipaddress.ip_address(address)), address)
+
+    def test_fetch_connects_where_it_checked(self):
+        answers = []
+
+        def resolve(host, port, *args, **kwargs):
+            # The second time the name answers this computer, as a rebinding name would.
+            answers.append(host)
+            ip = "93.184.216.34" if len(answers) == 1 else "127.0.0.1"
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, port))]
+
+        connected = []
+
+        class Sock:
+            def __init__(self, *args):
+                pass
+
+            def settimeout(self, value):
+                pass
+
+            def connect(self, target):
+                connected.append(target)
+
+            def close(self):
+                pass
+
+        with mock.patch.object(agent.socket, "getaddrinfo", resolve), mock.patch.object(agent.socket, "socket", Sock):
+            agent.public_connection(("example.com", 80), 5)
+            self.assertEqual(connected, [("93.184.216.34", 80)])
+            with self.assertRaises(agent.FetchError):
+                agent.public_connection(("example.com", 80), 5)
+            self.assertEqual(connected, [("93.184.216.34", 80)])
+
+    def test_fetch_has_a_deadline_and_stops(self):
+        class Trickle(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                try:
+                    for _ in range(100):
+                        self.wfile.write(b"x")
+                        self.wfile.flush()
+                        time.sleep(0.1)
+                except OSError:
+                    pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Trickle)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        url = f"http://127.0.0.1:{server.server_address[1]}/"
+        try:
+            with mock.patch.object(agent, "public", lambda address: True), mock.patch.object(agent, "FETCH_SECONDS", 1):
+                began = time.monotonic()
+                with self.assertRaises(agent.FetchError) as raised:
+                    agent.fetch(url, "es")
+                self.assertIn("longer than", str(raised.exception))
+                self.assertLess(time.monotonic() - began, 4)
+                stopped = agent.Cancel()
+                stopped.cancelled = True
+                with self.assertRaises(agent.FetchError) as raised:
+                    agent.fetch(url, "es", cancel=stopped)
+                self.assertIn("stopped", str(raised.exception))
+            # Without that, the address itself is refused: this computer is not the internet.
+            with self.assertRaises(agent.FetchError):
+                agent.fetch(url, "es")
+        finally:
+            server.shutdown()
+
+    def test_reading_needs_a_regular_file(self):
+        with self.assertRaises(RuntimeError) as raised:
+            agent.Tools.text_of("/dev/zero")
+        self.assertIn("not a regular file", str(raised.exception))
+        fifo = os.path.join(self.dir, "fifo")
+        os.mkfifo(fifo)
+        began = time.monotonic()
+        with self.assertRaises(RuntimeError):
+            agent.Tools.text_of(fifo)
+        self.assertLess(time.monotonic() - began, 2)
+        big = os.path.join(self.dir, "big.txt")
+        with open(big, "w") as f:
+            f.write("x" * (agent.FILE_BYTES + 1))
+        with self.assertRaises(RuntimeError) as raised:
+            agent.Tools.text_of(big)
+        self.assertIn("larger than", str(raised.exception))
+
+    def test_copies_before_unasked_changes(self):
+        home = os.path.join(self.dir, "home")
+        state = os.path.join(self.dir, "state")
+        for folder in ("a", "b"):
+            os.makedirs(os.path.join(home, folder))
+            with open(os.path.join(home, folder, "list.txt"), "w") as f:
+                f.write(folder + "\n")
+        before = os.path.join(state, "nihil", "nilo", "before")
+        with mock.patch.dict(os.environ, {"HOME": home, "XDG_STATE_HOME": state}):
+            # Two files called the same, in the same second: a copy of each.
+            self.assertTrue(agent.Tools.keep_copy(os.path.join(home, "a", "list.txt")))
+            self.assertTrue(agent.Tools.keep_copy(os.path.join(home, "b", "list.txt")))
+            kept = sorted(os.listdir(before))
+            self.assertEqual(len(kept), 2)
+            texts = []
+            for name in kept:
+                with open(os.path.join(before, name)) as f:
+                    texts.append(f.read())
+            self.assertEqual(sorted(texts), ["a\n", "b\n"])
+            # The last few of each file, whatever the others did.
+            for _ in range(agent.KEPT_COPIES + 5):
+                agent.Tools.keep_copy(os.path.join(home, "a", "list.txt"))
+            self.assertEqual(len(os.listdir(before)), agent.KEPT_COPIES + 1)
+            # Without a copy, no change; and past AUTO_WRITES in one answer, changes ask.
+            asked = []
+            fake = type("A", (), {"settings": {"access": "system"}, "config": {}, "auto_writes": 0,
+                                  "ask_confirmation": lambda self, detail, cancel: asked.append(detail) or True})()
+            tools = agent.Tools(fake)
+            target = os.path.join(home, "a", "list.txt")
+            with mock.patch.object(agent.Tools, "keep_copy", staticmethod(lambda full: False)):
+                facts, refused = tools.confirm_change("list.txt", "a\n", "c\n", False, agent.Cancel(), False, target)
+            self.assertIsNone(facts)
+            self.assertIn("copy", refused["error"])
+            facts, refused = tools.confirm_change("list.txt", "a\n", "c\n", False, agent.Cancel(), False, target)
+            self.assertTrue(facts["auto"])
+            self.assertEqual((fake.auto_writes, asked), (1, []))
+            fake.auto_writes = agent.AUTO_WRITES
+            facts, refused = tools.confirm_change("list.txt", "a\n", "c\n", False, agent.Cancel(), False, target)
+            self.assertNotIn("auto", facts)
+            self.assertEqual(len(asked), 1)
+
+    def test_open_app_paths(self):
+        home = os.path.join(self.dir, "home")
+        os.makedirs(os.path.join(home, ".ssh"))
+        with open(os.path.join(home, ".ssh", "id_ed25519"), "w"):
+            pass
+        script = os.path.join(home, "run.sh")
+        with open(script, "w") as f:
+            f.write("#!/bin/sh\n")
+        os.chmod(script, 0o755)
+        photo = os.path.join(home, "Queen #1.jpg")
+        with open(photo, "w"):
+            pass
+        self.start({"model": "qwen3.5:4b", "onboarded": True}, env=dict(os.environ, HOME=home))
+        confirms = []
+
+        def decline(event):
+            confirms.append(event)
+            self.agent.send(op="confirm", id=event["id"], ok=False)
+
+        self.agent.on_confirm = decline
+        self.agent.send(op="ask", text="Abre ~/.ssh/id_ed25519")
+        self.assertIn("keys", self.text_of(self.agent.until_done()))
+        self.agent.send(op="ask", text="Abre /etc/passwd")
+        self.assertIn("home folder", self.text_of(self.agent.until_done()))
+        self.agent.send(op="ask", text="Abre ~/run.sh")
+        self.agent.until_done()
+        self.assertEqual((confirms[0]["what"], confirms[0]["why"]), ("launch", ["runs"]))
+        self.assertEqual([e for e in self.agent.log if e["ev"] == "launch"], [])
+        self.agent.send(op="ask", text="Abre ~/Queen #1.jpg")
+        launch = self.agent.wait("launch")
+        self.assertEqual((launch["kind"], launch["target"]), ("path", photo))
+        self.agent.send(op="launched", id=launch["id"], ok=True, name=photo)
+        self.agent.until_done()
 
     def test_notes(self):
         config_home = os.path.join(self.dir, "config")

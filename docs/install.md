@@ -15,11 +15,13 @@ version takes its place (`sudo nihil-install`, from any console):
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
+gh attestation verify nihil-*.iso -R poligle/Nihil-Shell    # built by this repository's CI, from its commit
 sudo dd if=nihil-*.iso of=/dev/sdX bs=4M status=progress oflag=sync    # sdX: the stick
 ```
 
-1. Language and keyboard, a network if there is no cable, and the time zone. Meanwhile it
-   reads the whole stick: one that cannot be read stops it before installing, saying so.
+1. Language and keyboard, a network if there is no cable (a Wi-Fi joined here is joined
+   again at the first boot), and the time zone. Meanwhile it reads the whole stick: one
+   that cannot be read stops it before installing, saying so.
 2. Your name, user name, password and the computer's name.
 3. The disk, and where on it: next to what is there, in its free space or in room a
    partition gives up (Windows' NTFS, an ext4 or a btrfs, shrunk keeping what it holds;
@@ -127,10 +129,15 @@ nihil generations changes N   # the packages generation N changed
 nihil generations switch N    # back to N, now and at boot
 nihil generations boot N      # N the next boot only
 nihil generations clean DAYS  # those older than DAYS days go, and what nothing needs
+nihil welcome     # the welcome, again
+nihil watch       # NIHIL for Wear OS on a watch (Devices)
+nihil passwd      # Preferences' own: the password it was given, for whoever runs it through sudo
 ```
 
 One change at a time: while one is being made, from a terminal or from Preferences, any
-other stops and says so. A change that fails with the system as it was leaves
+other stops and says so. Switching and cleaning run in `nihil-apply.service`, as Preferences'
+do, and the terminal follows them: closing it, or Ctrl+C, stops following, not the change
+(`--unit` starts it without following). A change that fails with the system as it was leaves
 `settings.json`, `flake.lock` and `nihil dev` as they were too, so the next rebuild builds
 what runs. `nihil apply` and `nihil settings` take settings for this machine's own account
 only (a different `user.name` would leave it out of the system), with `host.name`, and

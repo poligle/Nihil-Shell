@@ -278,6 +278,9 @@ Item {
                     anchors.margins: -5
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    Accessible.role: Accessible.Button
+                    Accessible.name: ({ copy: Lang.vectorCopy, save: Lang.vectorSave, open: Lang.vectorOpen, clear: Lang.vectorRemove, paste: Lang.vectorPaste })[key.modelData] ?? ""
+                    Accessible.onPressAction: key.modelData === "paste" ? Vector.send("") : Vector.act(key.modelData)
                     onClicked: key.modelData === "paste" ? Vector.send("") : Vector.act(key.modelData)
                 }
             }

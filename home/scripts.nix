@@ -23,7 +23,15 @@ let
 		fi
 		dir="$pictures/${strings.screenshotsDir}"
 		mkdir -p "$dir"
-		file="$dir/NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').png"
+		# Two in the same second keep both: the second gets a number.
+		file="$dir/NIHIL_$(date '+%Y-%m-%d_%H.%M.%S')"
+		name="$file.png"
+		n=1
+		while [ -e "$name" ]; do
+			n=$((n + 1))
+			name="$file-$n.png"
+		done
+		file=$name
 		case "''${1:-region}" in
 			screen)
 				output=$(${hyprctl} -j monitors | ${jq} -r '.[] | select(.focused) | .name')
@@ -63,10 +71,17 @@ let
 
 	nihil-record = pkgs.writeShellScriptBin "nihil-record" ''
 		set -uo pipefail
-		run="''${XDG_RUNTIME_DIR:-/tmp}/nihil-record"
+		run="''${XDG_RUNTIME_DIR:?}/nihil-record"
 		mkdir -p "$run"
+		# One at a time: two starts at once would leave two recorders on one file.
+		exec 9> "$run/lock"
+		${pkgs.util-linux}/bin/flock 9
 
-		recording() { [ -f "$run/pid" ] && kill -0 "$(cat "$run/pid")" 2>/dev/null; }
+		# Still the recorder: a PID that died and came back as another process isn't stopped.
+		recording() {
+			[ -f "$run/pid" ] && kill -0 "$(cat "$run/pid")" 2>/dev/null \
+				&& [ "$(cat "/proc/$(cat "$run/pid")/comm" 2>/dev/null)" = wf-recorder ]
+		}
 
 		videos() {
 			local dir
@@ -84,7 +99,14 @@ let
 			else
 				where=(-g "$(${pkgs.slurp}/bin/slurp)") || return 0
 			fi
-			printf '%s\n' "$dir/NIHIL_$(date '+%Y-%m-%d_%H.%M.%S').mp4" > "$run/file"
+			local base name n=1
+			base="$dir/NIHIL_$(date '+%Y-%m-%d_%H.%M.%S')"
+			name="$base.mp4"
+			while [ -e "$name" ]; do
+				n=$((n + 1))
+				name="$base-$n.mp4"
+			done
+			printf '%s\n' "$name" > "$run/file"
 			printf '%s\n' "$dir/.nihil-record.mp4" > "$run/raw"
 			${pkgs.wf-recorder}/bin/wf-recorder "''${where[@]}" -x yuv420p -c libx264 \
 				-p crf=20 -p preset=veryfast -f "$(cat "$run/raw")" > "$run/log" 2>&1 &
@@ -199,7 +221,7 @@ let
 	lock-screen = pkgs.writeShellScriptBin "lock-screen" ''
 		${pkgs.procps}/bin/pidof hyprlock >/dev/null && exit 0
 		${pkgs.pipewire}/bin/pw-play --volume 0.4 ${sound.lock} &
-		exec ${pkgs.systemd}/bin/systemd-run --user --scope --collect --quiet ${pkgs.hyprlock}/bin/hyprlock
+		exec ${pkgs.systemd}/bin/systemd-run --user --scope --collect --quiet ${config.programs.hyprlock.package}/bin/hyprlock
 	'';
 
 	power-off = pkgs.writeShellScriptBin "power-off" ''
@@ -220,5 +242,4 @@ in
 		nihil-record
 	];
 
-	home.file."Wallpapers".source = ../wallpapers;
 }

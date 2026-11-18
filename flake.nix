@@ -57,10 +57,15 @@
 			};
 		};
 
+		# Where NIHIL comes from, for the installer; a machine's flake writes it too, as inputs can't
+		# be worked out.
+		lib.source = "github:poligle/Nihil-Shell";
+
 		lib.mkSystem = { settings ? { }, modules ? [ ], home ? [ ] }: nixpkgs.lib.nixosSystem
 		{
 			inherit system;
-			modules = [ self.nixosModules.default { nihil = { inherit settings home revision; }; } ] ++ modules;
+			# Unfree packages are the machine's choice, not the module's: local.nix, after, can change it.
+			modules = [ self.nixosModules.default { nihil = { inherit settings home revision; }; nixpkgs.config.allowUnfree = true; } ] ++ modules;
 		};
 
 		nixosConfigurations =
@@ -86,6 +91,7 @@
 		{
 			path = ./templates/machine;
 			description = "A machine running NIHIL: settings.json, local.nix and home.nix";
+			welcomeText = "Write this computer's hardware-configuration.nix (nixos-generate-config --show-hardware-config > hardware-configuration.nix), then settings.json.";
 		};
 	};
 }

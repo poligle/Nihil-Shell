@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.theme
+import qs.config
 import qs.services
 import qs.components
 
@@ -39,6 +40,9 @@ Item {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
+        Accessible.role: Accessible.Button
+        Accessible.name: Lang.bindDashboard
+        Accessible.onPressAction: Drawers.toggle("dashboard", root.output)
         onClicked: Drawers.toggle("dashboard", root.output)
     }
 }

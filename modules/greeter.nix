@@ -29,6 +29,7 @@ let
 		    readonly property var environment: (${builtins.toJSON [ "XDG_SESSION_TYPE=wayland" ]})
 		    readonly property string wallpaper: "/var/lib/nihil/greeter/wallpaper.png"
 		    readonly property string glass: "/var/lib/nihil/greeter/glass"
+		    readonly property string primaryOutput: "${nihil.primaryOutput}"
 		    readonly property string touch: "${pkgs.coreutils}/bin/touch"
 		    readonly property var reboot: (${builtins.toJSON [ "${config.systemd.package}/bin/systemctl" "reboot" ]})
 		    readonly property var powerOff: (${builtins.toJSON [ "${config.systemd.package}/bin/systemctl" "poweroff" ]})
@@ -53,9 +54,19 @@ let
 		export QT_SCALE_FACTOR=${toString scale}
 		export XDG_CACHE_HOME=/var/cache/nihil-greeter
 		export XDG_STATE_HOME=/var/cache/nihil-greeter/state
-		run=''${XDG_RUNTIME_DIR:-/tmp}
+		# Never /tmp, where another user could make the file first.
+		run=''${XDG_RUNTIME_DIR:?}
 		export NIHIL_GREETER_READY="$run/nihil-greeter-ready"
 		rm -f "$NIHIL_GREETER_READY" "$run/nihil-greeter-password"
+
+		# greetd starts the same greeter after it falls, and again: after two falls in a row,
+		# ReGreet. A login ends it with a signal, which doesn't count.
+		falls="$run/nihil-greeter-falls"
+		if [ "$(cat "$falls" 2> /dev/null || echo 0)" -ge 2 ]; then
+			rm -f "$falls"
+			echo "nihil-greeter: it fell twice, ReGreet instead" >&2
+			exec ${lib.getExe config.programs.regreet.package}
+		fi
 
 		${quickshell}/bin/quickshell -p ${greeter} &
 		pid=$!
@@ -65,8 +76,13 @@ let
 			sleep 0.1
 		done
 		if [ -e "$NIHIL_GREETER_READY" ]; then
-			wait "$pid"
-			exit $?
+			status=0
+			wait "$pid" || status=$?
+			case $status in
+				0 | 130 | 143) rm -f "$falls" ;;
+				*) echo $(( $(cat "$falls" 2> /dev/null || echo 0) + 1 )) > "$falls" ;;
+			esac
+			exit "$status"
 		fi
 		echo "nihil-greeter: Quickshell didn't come up, ReGreet instead" >&2
 		kill "$pid" 2> /dev/null
@@ -87,8 +103,11 @@ in
 
 	config = lib.mkIf (nihil.greeter == "nihil")
 	{
+		# Every screen on, not only the last one connected (ReGreet's -m last): the greeter puts
+		# itself on the main one, the one QT_SCALE_FACTOR is for.
 		services.greetd.settings.default_session.command = lib.mkForce
-			"${pkgs.dbus}/bin/dbus-run-session ${lib.getExe pkgs.cage} ${lib.escapeShellArgs config.programs.regreet.cageArgs} -- ${start}";
+			# wlroots may draw in software where the GPU can't: a login screen, if slow, rather than none.
+			"${pkgs.dbus}/bin/dbus-run-session ${pkgs.coreutils}/bin/env WLR_RENDERER_ALLOW_SOFTWARE=1 ${lib.getExe pkgs.cage} -s -d -m extend -- ${start}";
 
 		systemd.tmpfiles.rules =
 		[

@@ -8,8 +8,21 @@ let
 	rgb = hex: "rgb(${hex})";
 
 	state = "${config.xdg.stateHome}/nihil";
+	# What the state's links point at: Home Manager's files, always this generation's, which no
+	# collection takes while it lives. A link straight into the store kept an older generation's,
+	# until a collection left it pointing at nothing.
+	data = "${config.xdg.dataHome}/nihil";
 
-	backgrounds = lib.mapAttrsToList (output: _:
+	# A screen not in nihil.outputs, a projector say, gets the primary's, under each screen's own.
+	backgrounds =
+	[
+		{
+			monitor = "";
+			path = "${state}/lock-current/${nihil.primaryOutput}.png";
+			color = rgb t.palette.void;
+			brightness = 0.55;
+		}
+	] ++ lib.mapAttrsToList (output: _:
 	{
 		monitor = output;
 		path = "${state}/lock-current/${output}.png";
@@ -82,10 +95,11 @@ let
 			panelArgs = "--panel ${toString panel.x} ${toString panel.y} ${toString panel.width} ${toString panel.height} ${toString panel.radius}";
 		in ''
 			state="${state}"
+			data="${data}"
 			mkdir -p "$state"
 			plain() {
 				ln -sfn "$state/wallpaper-current" "$state/lock-current"
-				ln -sfn ${plainLook} "$state/hyprlock-look.conf"
+				ln -sfn "$data/hyprlock-plain.conf" "$state/hyprlock-look.conf"
 			}
 			bake() {
 				${lib.concatMapStringsSep "\n" (output: ''
@@ -93,12 +107,21 @@ let
 						${glass} "$2/${output}.png" "$3/${output}.png" ${sizes output} ${fieldArgs} || return 1
 						${glass} "$2/${output}.png" "$3/${output}-media.png" ${sizes output} ${fieldArgs} ${panelArgs} || return 1
 					else
-						ln -s "$2/${output}.png" "$3/${output}.png"
+						ln -s "$state/wallpaper-current/${output}.png" "$3/${output}.png"
 						${glass} "$2/${output}.png" "$3/${output}-media.png" ${sizes output} ${panelArgs} --flat ${t.palette.void} ${t.palette.line} || return 1
 					fi'') (lib.attrNames nihil.outputs)}
 			}
 			if [ "''${1:-}" = --links ]; then
-				[ -e "$state/hyprlock-look.conf" ] || plain
+				# Links from before, into the store, point at Home Manager's files now.
+				wallpaper=$(readlink "$state/wallpaper-current" 2> /dev/null || true)
+				case "$wallpaper" in
+					/nix/store/*) ln -sfn "$data/wallpapers/''${wallpaper##*/}" "$state/wallpaper-current" ;;
+				esac
+				case "$(readlink "$state/hyprlock-look.conf" 2> /dev/null || true)" in
+					"$data"/*) ;;
+					*-hyprlock-glass.conf) ln -sfn "$data/hyprlock-glass.conf" "$state/hyprlock-look.conf" ;;
+					*) plain ;;
+				esac
 				[ -L "$state/lock-current" ] || plain
 				exit 0
 			fi
@@ -128,11 +151,7 @@ let
 				mv "$made.tmp" "$made"
 			fi
 			ln -sfn "$made" "$state/lock-current"
-			if [ "$look" = glass ]; then
-				ln -sfn ${glassLook} "$state/hyprlock-look.conf"
-			else
-				ln -sfn ${plainLook} "$state/hyprlock-look.conf"
-			fi
+			ln -sfn "$data/hyprlock-$look.conf" "$state/hyprlock-look.conf"
 			for other in "$state/lock-glass" "$state/lock-plain"; do
 				[ -d "$other" ] && find "$other" -mindepth 1 -maxdepth 1 ! -name "$key" -exec rm -rf {} +
 			done
@@ -193,6 +212,9 @@ in
 	stylix.targets.hyprlock.enable = false;
 
 	home.packages = [ lockGlass ];
+
+	xdg.dataFile."nihil/hyprlock-plain.conf".source = plainLook;
+	xdg.dataFile."nihil/hyprlock-glass.conf".source = glassLook;
 
 	home.activation.nihilLockLinks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
 		run ${lockGlass}/bin/nihil-lock-glass --links

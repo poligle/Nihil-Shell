@@ -16,7 +16,8 @@ let
 
 	bind = key: action: { _args = [ key (lua action) ]; };
 	bindWith = key: action: options: { _args = [ key (lua action) options ]; };
-	exec = command: ''hl.dsp.exec_cmd("${command}")'';
+	# JSON's string is Lua's too, for what binds.nix lets through: no control characters.
+	exec = command: "hl.dsp.exec_cmd(${builtins.toJSON command})";
 	withSound = file: action: ''function() hl.exec_cmd("${playSound file}") hl.dispatch(${action}) end'';
 	focusWorkspace = workspace: ''hl.dsp.focus({ workspace = "${workspace}" })'';
 	moveToWorkspace = workspace: ''hl.dsp.window.move({ workspace = "${workspace}" })'';
@@ -48,29 +49,41 @@ let
 	{
 		nilo = exec "nihil-ipc nilo toggle";
 	};
-	programBinds = map (program: bind program.keys (exec (lib.escape [ "\\" "\"" ] program.exec)))
+	programBinds = map (program: bind (canonical program.keys) (exec program.exec))
 		(builtins.filter (program: program.keys != null) osConfig.nihil.programs);
 
 	actionBinds = lib.mapAttrsToList (name: action:
-			if name == "lock" then bindWith keys.${name} action { locked = true; } else bind keys.${name} action)
+			if name == "lock" then bindWith (canonical keys.${name}) action { locked = true; } else bind (canonical keys.${name}) action)
 		(lib.filterAttrs (name: _: keys.${name} or null != null) actions)
 		++ lib.optional (keys.screenshot != null)
-			(bindWith keys.screenshot (exec "nihil-shot screen") { locked = true; })
+			(bindWith (canonical keys.screenshot) (exec "nihil-shot screen") { locked = true; })
+		# Not while locked: the lock screen covers the area to choose, and it would wait until
+		# unlocked, to show up then.
 		++ lib.optional (keys.snip or null != null)
-			(bindWith keys.snip (exec "nihil-shot region") { locked = true; })
-		++ lib.optional (keys.screenshot != null && !(hasShift keys.screenshot))
-			(bind "SHIFT + ${keys.screenshot}" (exec "nihil-record toggle screen"))
-		++ lib.optional (keys.snip or null != null && !(hasShift keys.snip))
-			(bind "SHIFT + ${keys.snip}" (exec "nihil-record toggle region"));
+			(bind (canonical keys.snip) (exec "nihil-shot region"))
+		++ lib.optional (recordScreen != null) (bind recordScreen (exec "nihil-record toggle screen"))
+		++ lib.optional (recordRegion != null) (bind recordRegion (exec "nihil-record toggle region"));
 
+	modifierAlias = { WIN = "SUPER"; LOGO = "SUPER"; MOD4 = "SUPER"; META = "SUPER"; CONTROL = "CTRL"; MOD1 = "ALT"; };
 	trim = text: let m = builtins.match "[[:space:]]*(.*[^[:space:]])[[:space:]]*" text; in if m == null then "" else lib.head m;
 	parts = combo: lib.filter (part: part != "") (map trim (lib.splitString "+" combo));
-	hasShift = combo: lib.elem "SHIFT" (map lib.toUpper (parts combo));
-	normal = combo: lib.concatStringsSep "+" (lib.sort (a: b: a < b)
-		(map (part: let up = lib.toUpper part; in if up == "CONTROL" then "CTRL" else up) (parts combo)));
-	takenBy = name: combo: combo != null && lib.elem (normal combo) (map normal (lib.filter (other: other != null)
-		(lib.mapAttrsToList (other: value: if other == name then null else value) keys
-			++ map (program: program.keys) osConfig.nihil.programs)));
+	modifier = part: let up = lib.toUpper part; in modifierAlias.${up} or up;
+	hasShift = combo: lib.elem "SHIFT" (map modifier (lib.init (parts combo)));
+	# Hyprland reads modifiers in capitals, before the key: as it takes them, whatever was written.
+	canonical = combo: let p = parts combo; in lib.concatStringsSep " + " (map modifier (lib.init p) ++ [ (lib.last p) ]);
+	normal = combo: let p = parts combo; in
+		lib.concatStringsSep "+" (lib.sort (a: b: a < b) (map modifier (lib.init p)) ++ [ (lib.toUpper (lib.last p)) ]);
+	recordScreen = if keys.screenshot != null && !(hasShift keys.screenshot) then canonical "SHIFT + ${keys.screenshot}" else null;
+	recordRegion = if keys.snip or null != null && !(hasShift keys.snip) then canonical "SHIFT + ${keys.snip}" else null;
+	# Everything a key does, Nilo only when it is on: two on one key would both fire.
+	bound = lib.mapAttrsToList (name: combo: { inherit name combo; })
+			(lib.filterAttrs (name: combo: combo != null && (name != "nilo" || osConfig.nihil.nilo.enable)) keys)
+		++ lib.optional (recordScreen != null) { name = "recording the screen"; combo = recordScreen; }
+		++ lib.optional (recordRegion != null) { name = "recording an area"; combo = recordRegion; }
+		++ map (program: { name = program.name; combo = program.keys; })
+			(builtins.filter (program: program.keys != null) osConfig.nihil.programs);
+	clashes = lib.filterAttrs (_: same: lib.length same > 1) (lib.groupBy (entry: normal entry.combo) bound);
+	takenBy = name: combo: combo != null && lib.any (entry: entry.name != name && normal entry.combo == normal combo) bound;
 	clipboardKey = keys.clipboard or null;
 	copyKey = keys.copy or null;
 	clipboardTaken = takenBy "clipboard" clipboardKey;
@@ -85,8 +98,7 @@ let
 		ALT = [ "Alt_L" "Alt_R" ];
 		SHIFT = [ "Shift_L" "Shift_R" ];
 	};
-	modifierAlias = { WIN = "SUPER"; LOGO = "SUPER"; MOD4 = "SUPER"; META = "SUPER"; CONTROL = "CTRL"; MOD1 = "ALT"; };
-	firstModifier = mods: let first = if mods == [ ] then "" else lib.toUpper (lib.head mods); in modifierAlias.${first} or first;
+	firstModifier = mods: if mods == [ ] then "" else modifier (lib.head mods);
 	pasteModifier = if clipboardOn then firstModifier (lib.init (parts clipboardKey)) else "";
 	modifierSyms = modifierKeys.${pasteModifier} or [ ];
 
@@ -98,7 +110,7 @@ let
 		end
 	'');
 
-	pasteMods = if clipboardOn then lib.init (parts clipboardKey) else [ ];
+	pasteMods = if clipboardOn then map modifier (lib.init (parts clipboardKey)) else [ ];
 	pasteKey = if clipboardOn then lib.last (parts clipboardKey) else "";
 	held = modifierSyms != [ ];
 	withMods = mods: key: lib.concatStringsSep " + " (mods ++ [ key ]);
@@ -111,7 +123,7 @@ let
 		++ map (key: { combo = withMods pasteMods key; name = "paste"; leave = true; }) [ "Return" "KP_Enter" ]
 		++ [ { combo = withMods pasteMods "Escape"; name = "cancel"; leave = true; } ];
 	overviewKey = keys.overview or null;
-	overviewMods = if overviewKey != null then lib.init (parts overviewKey) else [ ];
+	overviewMods = if overviewKey != null then map modifier (lib.init (parts overviewKey)) else [ ];
 	overviewLetter = if overviewKey != null then lib.last (parts overviewKey) else "";
 	overviewModifier = firstModifier overviewMods;
 	overviewHeld = modifierKeys ? ${overviewModifier};
@@ -138,7 +150,7 @@ let
 				hl.dispatch(hl.dsp.global("quickshell:nihil-" .. name))
 			end
 	'' + lib.optionalString clipboardOn ''
-			hl.bind(${luaString clipboardKey}, function()
+			hl.bind(${luaString (canonical clipboardKey)}, function()
 				say("clipboard")
 				${lib.optionalString held ''hl.dispatch(hl.dsp.submap("nihil-clipboard"))''}
 			end)
@@ -224,7 +236,8 @@ let
 		match.class = class;
 		float = true;
 		size = "640 400";
-		move = "1270 50";
+		# Against the right edge of any screen, inside the frame.
+		move = "monitor_w-window_w-${toString (t.frame.thickness + t.windows.gapsOut)} ${toString (t.frame.bar + t.windows.gapsOut)}";
 	};
 
 	lidClose = ''
@@ -268,8 +281,6 @@ let
 	autostart = ''
 		function()
 			(${keepLidState})()
-			hl.exec_cmd("lxqt-policykit-agent")
-			hl.exec_cmd("nm-applet --indicator")
 			hl.exec_cmd("mic-led-sync")
 			hl.exec_cmd("nihil-wallpaper restore")
 		end
@@ -278,7 +289,34 @@ in
 {
 	stylix.targets.hyprland.enable = false;
 
-	warnings = lib.optional clipboardTaken
+	# Units of the session, as the shell is: one that falls is started again. nm-applet answers
+	# NetworkManager when a network asks for what the shell doesn't (802.1X, a VPN).
+	systemd.user.services = lib.mapAttrs (name: command:
+	{
+		Unit =
+		{
+			Description = name;
+			After = [ "graphical-session.target" ];
+			PartOf = [ "graphical-session.target" ];
+		};
+		Service =
+		{
+			ExecStart = command;
+			Restart = "on-failure";
+			RestartSec = 2;
+			Environment = lib.mapAttrsToList (key: value: "${key}=${value}") (import ./session-env.nix);
+		};
+		Install.WantedBy = [ "graphical-session.target" ];
+	})
+	{
+		polkit-agent = "${pkgs.lxqt.lxqt-policykit}/bin/lxqt-policykit-agent";
+		nm-applet = "${pkgs.networkmanagerapplet}/bin/nm-applet --indicator";
+	};
+
+	warnings = lib.mapAttrsToList (combo: same:
+			"NIHIL: ${(lib.head same).combo} does ${lib.concatMapStringsSep " and " (entry: entry.name) same} at once: give one of them another key in Preferences, Shortcuts.")
+			(lib.filterAttrs (_: same: !(lib.any (entry: entry.name == "clipboard" || entry.name == "copy") same)) clashes)
+		++ lib.optional clipboardTaken
 		"NIHIL: ${clipboardKey}, the paste and clipboard history key, is taken by another action or program: give it another in Preferences, Shortcuts."
 		++ lib.optional copyTaken
 		"NIHIL: ${copyKey}, the copy key, is taken by another action or program: give it another in Preferences, Shortcuts.";
@@ -289,6 +327,9 @@ in
 		package = null;
 		portalPackage = null;
 		configType = "lua";
+		# UWSM starts the session's targets and exports its environment: Home Manager's own would
+		# run alongside it.
+		systemd.enable = false;
 		extraConfig = lib.optionalString (clipboardOn || overviewHeld) holdLua;
 
 		settings =
@@ -314,7 +355,12 @@ in
 			{
 				inherit (output) mode position scale transform;
 				output = name;
-			} // lib.optionalAttrs (name == internalPanel) { disabled = false; }) outputs;
+			} // lib.optionalAttrs (name == internalPanel)
+			{
+				# Decided as the rule is read: a reload, which applies the screens before it says it
+				# reloaded, would otherwise turn the panel on under a closed lid and off again.
+				disabled = lua ''lidIsClosed() and (function() for _, m in ipairs(hl.get_monitors()) do if m.name ~= "${internalPanel}" then return true end end return false end)()'';
+			}) outputs;
 
 			workspace_rule = map (name: { workspace = "m[${name}]"; layout_opts.orientation = "top"; }) verticalOutputs;
 

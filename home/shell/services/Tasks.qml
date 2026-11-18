@@ -29,7 +29,7 @@ Singleton {
 
     function add(text: string): void {
         const typed = clean(text);
-        if (typed === "") return;
+        if (typed === "" || cards.length >= TaskMerge.CARDS_MAX) return;
         const at = stamp();
         const todo = inColumn(0);
         cards = TaskMerge.ordered(cards.concat([{ id: newId(), text: typed, column: 0, textStamp: at, placeStamp: at,
@@ -73,8 +73,8 @@ Singleton {
         if (gone.length === 0) return;
         const next = Object.assign({}, removed);
         gone.forEach(c => { next[c.id] = stamp(); });
-        removed = next;
         cards = cards.filter(c => !(c.id in next));
+        removed = TaskMerge.newest(next);
         save();
     }
 
@@ -88,8 +88,9 @@ Singleton {
     }
 
     function sync(board: var): var {
-        const merged = TaskMerge.merge({ cards: cards, removed: removed }, board ?? {}, Date.now());
-        clock = Math.max(clock, TaskMerge.latest(merged));
+        const now = Date.now();
+        const merged = TaskMerge.sync({ cards: cards, removed: removed }, board ?? {}, now);
+        clock = Math.max(clock, Math.min(TaskMerge.latest(merged), now + TaskMerge.AHEAD));
         cards = merged.cards;
         removed = merged.removed;
         save();
@@ -107,8 +108,9 @@ Singleton {
         const loaded = list
             .filter(c => c && String(c.text ?? "").trim() !== "")
             .map((c, i) => {
+                const id = String(c.id ?? "");
                 const card = {
-                    id: String(c.id ?? newId()),
+                    id: TaskMerge.usable(id) ? id : newId(),
                     text: String(c.text).trim().slice(0, maxLength),
                     column: Math.max(0, Math.min(columns - 1, Number(c.column) || 0)),
                     textStamp: Number(c.textStamp) || 0,
@@ -117,11 +119,11 @@ Singleton {
                 if (typeof c.rank === "number" && isFinite(c.rank)) card.rank = c.rank;
                 return card;
             });
-        const gone = data?.removed && typeof data.removed === "object" && !Array.isArray(data.removed) ? data.removed : {};
-        const merged = TaskMerge.merge({ cards: loaded, removed: gone }, {}, Date.now());
+        const now = Date.now();
+        const merged = TaskMerge.merge(TaskMerge.trusted({ cards: loaded, removed: data?.removed }, now), {}, now);
         cards = merged.cards;
         removed = merged.removed;
-        clock = Math.max(clock, TaskMerge.latest(merged));
+        clock = Math.max(clock, Math.min(TaskMerge.latest(merged), now + TaskMerge.AHEAD));
     }
 
     function save(): void { saver.restart(); }
@@ -133,6 +135,13 @@ Singleton {
         watchChanges: true
         onFileChanged: reload()
         onLoaded: root.parse(text())
+    }
+
+    // The deck's boards, read here at once: see syncFile.
+    FileView {
+        id: incoming
+        blockLoading: true
+        printErrors: false
     }
 
     Timer {
@@ -157,6 +166,18 @@ Singleton {
         function sync(json: string): string {
             let board;
             try { board = JSON.parse(json); } catch (e) { return ""; }
+            return JSON.stringify(root.sync(board));
+        }
+        // The deck's board, from a file of this user's: as an argument it couldn't pass 128 KiB.
+        function syncFile(path: string): string {
+            const runtime = Quickshell.env("XDG_RUNTIME_DIR") ?? "";
+            if (runtime === "" || !path.startsWith(runtime + "/nihil-deck-tasks-") || path.includes("/../")) return "";
+            incoming.path = path;
+            incoming.reload();
+            const text = incoming.text();
+            incoming.path = "";
+            let board;
+            try { board = JSON.parse(text); } catch (e) { return ""; }
             return JSON.stringify(root.sync(board));
         }
     }

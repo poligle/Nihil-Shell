@@ -24,7 +24,25 @@ ShellRoot {
     property int attempts: 0
     property bool going: false
 
-    readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/nihil-greeter-password"
+    readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") ?? "") + "/nihil-greeter-password"
+
+    // Every screen is on (cage -m extend) and the window spans them all: the greeter goes on the
+    // main one, the one its scale is for, and the rest stay black. With one screen, or a layout
+    // that doesn't add up, it fills the window.
+    readonly property var main: Quickshell.screens.find(s => s.name === Config.primaryOutput)
+        ?? Quickshell.screens.find(s => /^(eDP|LVDS|DSI)/.test(s.name)) ?? Quickshell.screens[0] ?? null
+    readonly property rect area: {
+        const full = Qt.rect(0, 0, window.width, window.height);
+        const screens = Quickshell.screens;
+        if (!main || screens.length < 2)
+            return full;
+        const left = Math.min(...screens.map(s => s.x));
+        const top = Math.min(...screens.map(s => s.y));
+        const r = Qt.rect(main.x - left, main.y - top, main.width, main.height);
+        const fits = r.width > 0 && r.height > 0 && r.x >= 0 && r.y >= 0
+            && r.x + r.width <= window.width + 1 && r.y + r.height <= window.height + 1;
+        return fits ? r : full;
+    }
 
     function start(): void {
         asking = false;
@@ -67,6 +85,14 @@ ShellRoot {
         start();
     }
 
+    // What PAM and greetd say, as NIHIL writes: a failure in its own words, the rest with a capital.
+    function said(text: string): string {
+        const words = text.trim();
+        if (/^authentication failure$/i.test(words))
+            return Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
+        return words.length > 0 ? words.charAt(0).toLocaleUpperCase() + words.slice(1) : words;
+    }
+
     function reader(message: string): bool {
         return /finger|swipe|huella|dedo|sensor|lector/i.test(message);
     }
@@ -85,7 +111,7 @@ ShellRoot {
         function onAuthMessage(message: string, error: bool, responseRequired: bool, echoResponse: bool): void {
             if (responseRequired) {
                 root.echo = echoResponse;
-                root.note = echoResponse ? message.trim() : "";
+                root.note = echoResponse ? root.said(message) : "";
                 if (!echoResponse && root.waiting !== "") {
                     const text = root.waiting;
                     root.waiting = "";
@@ -97,7 +123,7 @@ ShellRoot {
                 root.asking = true;
                 return;
             }
-            root.note = root.reader(message) ? Lang.fingerprintReady : message.trim();
+            root.note = root.reader(message) ? Lang.fingerprintReady : root.said(message);
             root.wrong = error;
         }
 
@@ -121,7 +147,7 @@ ShellRoot {
         function onError(error: string): void {
             root.back();
             root.wrong = true;
-            root.note = error;
+            root.note = root.said(error);
             retry.restart();
         }
     }
@@ -174,7 +200,10 @@ ShellRoot {
 
         Item {
             id: face
-            anchors.fill: parent
+            x: root.area.x
+            y: root.area.y
+            width: root.area.width
+            height: root.area.height
             opacity: 0
 
             property Item glassBackdrop: glassFlag.text().trim() === "on" && wall.status === Image.Ready ? glassSource : null
@@ -202,8 +231,9 @@ ShellRoot {
             Item {
                 id: glassSource
                 readonly property Item texture: wall
-                readonly property vector2d origin: Qt.vector2d(0, 0)
-                readonly property vector2d screenSize: Qt.vector2d(window.width, window.height)
+                // The wallpaper covers the main screen only: from the window's corner to its own.
+                readonly property vector2d origin: Qt.vector2d(-face.x, -face.y)
+                readonly property vector2d screenSize: Qt.vector2d(face.width, face.height)
                 readonly property real dim: 0.55
             }
 
@@ -338,16 +368,24 @@ ShellRoot {
                         { label: Lang.actPowerOff, command: Config.powerOff }
                     ]
 
+                    // A second click within 3 s does it: one by chance doesn't turn the computer off.
                     Label {
                         id: action
 
                         required property var modelData
+                        property bool armed: false
 
-                        text: modelData.label
-                        color: area.containsMouse ? Tokens.ink : Tokens.muted
+                        text: armed ? Lang.confirmTo.arg(modelData.label.toLowerCase()) : modelData.label
+                        color: armed || area.containsMouse ? Tokens.ink : Tokens.muted
                         font.pixelSize: 12
 
                         Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+
+                        Timer {
+                            id: disarm
+                            interval: 3000
+                            onTriggered: action.armed = false
+                        }
 
                         MouseArea {
                             id: area
@@ -355,7 +393,14 @@ ShellRoot {
                             anchors.margins: -8
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(action.modelData.command)
+                            onClicked: {
+                                if (action.armed) {
+                                    Quickshell.execDetached(action.modelData.command);
+                                    return;
+                                }
+                                action.armed = true;
+                                disarm.restart();
+                            }
                         }
                     }
                 }
@@ -365,7 +410,7 @@ ShellRoot {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 40
-                text: "ex nihilo"
+                text: Tokens.motto
                 color: Tokens.off
                 font.italic: true
                 font.pixelSize: 12

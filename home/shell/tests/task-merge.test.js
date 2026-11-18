@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
 const source = fs.readFileSync(path.join(__dirname, "../services/TaskMerge.js"), "utf8").replace(".pragma library", "");
-const M = new Function(source + "\nreturn { merge, ordered, latest, KEEP_REMOVED, place, rankAt };")();
+const M = new Function(source + "\nreturn { merge, ordered, latest, KEEP_REMOVED, AHEAD, place, rankAt, stampOf, trusted, sync, newest, usable, REMOVED_MAX, ID_MAX };")();
 
 const now = 1800000000000;
 const card = (id, text, column, t, p = t) => ({ id, text, column, textStamp: now + t, placeStamp: now + p });
@@ -76,6 +76,48 @@ test("no room between two: the column is ranked again", () => {
     assert.deepStrictEqual(cards.map(c => c.rank), [now + 10, now + 11, now + 12]);
     assert.ok(cards.every(c => c.placeStamp === now + 10));
     assert.strictEqual(M.rankAt([], 0, now), now);
+});
+
+test("a stamp from elsewhere can't stop the clock", () => {
+    const later = now + M.AHEAD + 1;
+    const board = { cards: [card("a", "Huge", 0, 0), card("b", "Fine", 1, 5)], removed: { x: Infinity, y: now + 3, z: 1e20 } };
+    board.cards[0].textStamp = 1e400;
+    board.cards[0].placeStamp = later;
+    const clean = M.trusted(board, now);
+    assert.deepStrictEqual(clean.cards.map(c => [c.textStamp, c.placeStamp]), [[0, 0], [now + 5, now + 5]]);
+    assert.deepStrictEqual(clean.removed, { y: now + 3 });
+    assert.ok(Number.isSafeInteger(M.latest(M.merge(clean, {}, now))));
+    assert.strictEqual(M.stampOf(now + M.AHEAD, now), now + M.AHEAD);
+    for (const bad of [-1, 1.5, NaN, null, "5", Infinity, 2 ** 53])
+        assert.strictEqual(M.stampOf(bad, now), 0);
+});
+
+test("a card removed here long ago stays removed when an old device comes back", () => {
+    const later = now + M.KEEP_REMOVED + 1000;
+    const desktop = { cards: [card("k", "Kept", 0, 1)], removed: {} };
+    const tablet = { cards: [card("k", "Kept", 0, 1), card("old", "Removed in spring", 1, 2), card("new", "Written offline", 0, later - now - 50)], removed: {} };
+    assert.deepStrictEqual(ids(M.sync(desktop, tablet, later)).sort(), ["k", "new"]);
+    tablet.cards[1] = card("old", "Changed since", 1, 2, later - now - 10);
+    assert.deepStrictEqual(ids(M.sync(desktop, tablet, later)).sort(), ["k", "new", "old"]);
+});
+
+test("removals kept are the newest, as many as the deck takes", () => {
+    const removed = {};
+    for (let i = 0; i < M.REMOVED_MAX + 5; i++)
+        removed["r" + i] = now + i;
+    const merged = M.merge({ cards: [], removed: removed }, { cards: [], removed: {} }, now + M.REMOVED_MAX + 10);
+    assert.strictEqual(Object.keys(merged.removed).length, M.REMOVED_MAX);
+    assert.ok(!("r0" in merged.removed) && ("r" + (M.REMOVED_MAX + 4)) in merged.removed);
+    assert.deepStrictEqual(merged, M.merge({ cards: [], removed: {} }, { cards: [], removed: removed }, now + M.REMOVED_MAX + 10));
+});
+
+test("ids an object can't be keyed by are left out", () => {
+    const board = { cards: [card("__proto__", "Proto", 0, 1), card("constructor", "Ctor", 0, 2), card("x".repeat(M.ID_MAX + 1), "Long", 0, 3),
+                            card("text", "Fine", 0, 4)], removed: JSON.parse('{"__proto__": ' + (now + 5) + ', "toString": ' + (now + 5) + ', "ok": ' + (now + 5) + '}') };
+    const merged = M.sync({ cards: [], removed: {} }, board, now + 10);
+    assert.deepStrictEqual(ids(merged), ["text"]);
+    assert.deepStrictEqual(Object.keys(merged.removed), ["ok"]);
+    assert.ok(M.usable("lx3k9a2b1c") && !M.usable("") && !M.usable(7) && !M.usable("hasOwnProperty"));
 });
 
 console.log(passed + " passed");

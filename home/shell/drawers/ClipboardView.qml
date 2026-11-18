@@ -196,6 +196,9 @@ Item {
                         enabled: row.hovered
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        Accessible.role: Accessible.Button
+                        Accessible.name: Lang.clipForget
+                        Accessible.onPressAction: Clipboard.forget(row.modelData.id)
                         onClicked: Clipboard.forget(row.modelData.id)
                     }
                 }

@@ -45,7 +45,9 @@ let
         elif (.generations | either(type == "object" and (.days | either(whole(1; 3650))))) | not
             then "generations.days goes from 1 to 3650"
         elif (.clipboard | either(whole(0; 100))) | not then "clipboard goes from 0 to 100"
-        elif (.deck | either(type == "object" and (.enable | either(flag)))) | not then "deck.enable is true or false"
+        elif (.deck | either(type == "object" and (.enable | either(flag))
+                and (.interfaces | either(type == "array" and all(.[]; text and test("^[A-Za-z0-9_.:@-]{1,15}$")))))) | not
+            then "deck.enable is true or false, and deck.interfaces a list of network interfaces"
         else empty end
     '';
 
@@ -178,6 +180,24 @@ let
                 fi
             }
 
+            # A terminal follows the change it started, to its end: closed or interrupted halfway, it
+            # stops following, and the unit goes on. It answers as the change ended.
+            follow() {
+                local pid
+                exec 9>&-
+                pid=$(systemctl show -p MainPID --value nihil-apply.service 2> /dev/null || true)
+                if [ -n "$pid" ] && [ "$pid" != 0 ]; then
+                    tail -n +1 -f --pid="$pid" "$run/apply.log" || true
+                fi
+                while [ "$(cat "$run/apply.status" 2> /dev/null)" = running ]; do
+                    sleep 0.2
+                done
+                if [ -z "$pid" ] || [ "$pid" = 0 ]; then
+                    cat "$run/apply.log"
+                fi
+                [ "$(cat "$run/apply.status" 2> /dev/null)" = "done" ]
+            }
+
             # The change itself, in the unit: its output goes to the log Preferences reads, and it
             # takes the lock over.
             unit_start() {
@@ -232,6 +252,12 @@ let
             }
 
             # FILE as whoever asked through sudo: root doesn't follow their links to its own files.
+            usage() {
+                echo "usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | welcome | watch"
+                echo "       nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]"
+                echo "the machine's flake: $flake"
+            }
+
             read_as_caller() {
                 if [ -n "''${SUDO_USER:-}" ]; then
                     runuser -u "$SUDO_USER" -- cat -- "$1"
@@ -518,7 +544,7 @@ let
                             read -r -p "Edit it again? [Y/n] " again || again=n
                             case $again in
                                 [nN]*)
-                                    echo "Nothing applied."
+                                    echo "Nothing applied." >&2
                                     exit 1
                                     ;;
                             esac
@@ -629,8 +655,8 @@ let
                                     ;;
                                 switch:*)
                                     lock
-                                    begin
-                                    switch_to "$n"
+                                    in_unit generation generations switch-run "$n"
+                                    follow
                                     ;;
                                 clean:--unit)
                                     lock
@@ -639,8 +665,8 @@ let
                                     ;;
                                 clean:*)
                                     lock
-                                    begin
-                                    clean "$n"
+                                    in_unit clean generations clean-run "$n"
+                                    follow
                                     ;;
                             esac
                             ;;
@@ -692,17 +718,23 @@ let
                     update_nihil
                     ;;
                 passwd)
+                    # Preferences' own: the password of the user who ran sudo, and of nobody else. The
+                    # new one comes in a file of that user's, which goes once read; on stdin, after
+                    # the current one, sudo would take it for a second try.
                     if [ "$(id -u)" != 0 ]; then
                         exec sudo "$(readlink -f "$0")" passwd
                     fi
-                    # One line, user:password, and only for whoever ran sudo: a line break pasted
-                    # in the new password can't turn into another account.
-                    line=$(tail -n 1)
-                    case "$line" in
-                        "''${SUDO_USER:-}":*) ;;
-                        *) echo "nihil passwd: only the password of the user who runs it changes here" >&2; exit 3 ;;
+                    if [ -z "''${SUDO_USER:-}" ] || [ "$SUDO_USER" = root ]; then
+                        echo "nihil passwd: only for the user who runs it, through sudo" >&2
+                        exit 3
+                    fi
+                    file="/run/user/$(id -u -- "$SUDO_USER")/nihil-new-password"
+                    password=$(read_as_caller "$file") || exit 4
+                    runuser -u "$SUDO_USER" -- rm -f -- "$file"
+                    case "$password" in
+                        "" | *$'\n'* | *$'\r'*) exit 3 ;;
                     esac
-                    printf '%s\n' "$line" | chpasswd || exit 4
+                    printf '%s:%s\n' "$SUDO_USER" "$password" | chpasswd || exit 4
                     ;;
                 welcome)
                     exec nihil-ipc settings welcome
@@ -725,10 +757,12 @@ let
                         echo "  $flake/flake.lock pins $pinned: nihil rebuild applies it"
                     fi
                     ;;
+                help | -h | --help)
+                    usage
+                    ;;
                 *)
-                    echo "usage: nihil rebuild | update [--unit] | check [--json] | settings | version | dev [path|off] | apply FILE | passwd | welcome | watch"
-                    echo "       nihil generations [--json] | changes N | boot N | switch N [--unit] | clean DAYS [--unit]"
-                    echo "the machine's flake: $flake"
+                    usage >&2
+                    exit 2
                     ;;
             esac
         '';

@@ -48,10 +48,18 @@ Column {
                 Behavior on color { ColorAnimation { duration: Tokens.animFast } }
             }
 
+            // Wider than the dot, and as tall as half the gap on each side: 32 px across, and
+            // nothing left between one and the next.
             MouseArea {
                 anchors.fill: parent
-                anchors.margins: -3
+                anchors.leftMargin: -8
+                anchors.rightMargin: -8
+                anchors.topMargin: -root.spacing / 2
+                anchors.bottomMargin: -root.spacing / 2
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: Lang.workspace.arg(slot.wsId)
+                Accessible.onPressAction: slot.ws ? slot.ws.activate() : root.go(String(slot.wsId))
                 onClicked: slot.ws ? slot.ws.activate() : root.go(String(slot.wsId))
             }
         }

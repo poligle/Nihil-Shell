@@ -23,6 +23,8 @@ in
 		    readonly property color ink: "#${t.palette.ink}"
 		    readonly property color interrupt: "#${t.palette.signal}"
 
+		    readonly property string motto: "${t.motto}"
+
 		    readonly property string fontDot: Qt.fontFamilies().indexOf("${t.fonts.dot}") >= 0 ? "${t.fonts.dot}" : "${t.fonts.mono}"
 		    readonly property string fontSans: "${t.fonts.sans}"
 		    readonly property string fontMono: "${t.fonts.mono}"

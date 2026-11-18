@@ -19,18 +19,27 @@ Singleton {
     signal lit(string what)
     signal sent(var item)
 
-    function send(source: string): void {
-        root.run(["send"].concat(source !== "" ? [source] : []));
+    // Each takes an optional done(result), called with what the deck answered ({ ok, … } or { error }).
+    function send(source: string, done: var): void {
+        root.run(["send"].concat(source !== "" ? [source] : []), done);
     }
 
-    function sendText(value: string): void {
+    // Through stdin: an argument can't pass 128 KiB, and anyone could read it in /proc.
+    function sendText(value: string, done: var): void {
         if (value !== "")
-            root.run(["text", value]);
+            root.run(["text", "-"], done, value);
+        else if (done)
+            done({ error: "empty" });
     }
 
-    function run(words: var): void {
-        if (!root.enabled || sender.running)
+    function run(words: var, done: var, input: string): void {
+        if (!root.enabled || sender.running) {
+            if (done)
+                done({ error: root.enabled ? "busy" : "off" });
             return;
+        }
+        sender.done = done ?? null;
+        sender.input = input ?? "";
         sender.command = [Config.deck.command, "vector"].concat(words);
         sender.running = true;
     }
@@ -52,9 +61,11 @@ Singleton {
         return mine !== "" && path.startsWith(mine + "/") ? "~" + path.slice(mine.length) : path;
     }
 
+    // A body is markup, as the notification spec has it: a name a device chose is shown as written.
     function notify(title: string, body: string, picture: string): void {
+        const shown = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         Quickshell.execDetached([Config.cmd.notifySend, "-a", "NIHIL"].concat(
-            picture !== "" ? ["-h", "string:image-path:" + root.fileUrl(picture)] : [], ["--", title, body]));
+            picture !== "" ? ["-h", "string:image-path:" + root.fileUrl(picture)] : [], ["--", title, shown]));
     }
 
     function answer(text: string): var {
@@ -107,9 +118,25 @@ Singleton {
 
     Process {
         id: sender
+
+        property var done: null
+        property string input: ""
+
+        stdinEnabled: true
+        onStarted: {
+            write(input);
+            input = "";
+            stdinEnabled = false;
+        }
+        onExited: stdinEnabled = true
+
         stdout: StdioCollector {
             onStreamFinished: {
                 const result = root.answer(text);
+                const done = sender.done;
+                sender.done = null;
+                if (done)
+                    done(result);
                 if (result.ok) {
                     const devices = result.devices ?? [];
                     root.notify(devices.length > 0 ? Lang.vectorSent.arg(devices.join(", ")) : Lang.vectorWaiting,

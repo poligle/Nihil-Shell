@@ -39,8 +39,9 @@ Nihil-Shell/
   session (`modules/boot-sound.nix`). The snowflake's LEDs wait unlit for it and switch on
   as it starts (`plymouth update --status=nihil-open`), the last of them with its last
   note; without it, they don't wait.
-- **Login:** greetd + NIHIL's greeter (`greeter/shell.qml`, Quickshell) in cage on the last
-  connected monitor, with the shell's tokens and strings. If it isn't up within ten seconds,
+- **Login:** greetd + NIHIL's greeter (`greeter/shell.qml`, Quickshell) in cage, with every
+  screen on and the greeter on the main one (`nihil.primaryOutput`, else the computer's own
+  panel), with the shell's tokens and strings. If it isn't up within ten seconds,
   ReGreet takes its place, themed by Stylix plus NIHIL CSS; `nihil.greeter = "regreet"`
   keeps ReGreet alone.
 - **Hyprland in Lua:** the whole configuration is declared in Nix and Home Manager

@@ -12,6 +12,8 @@ let
 	{
 		name = "nihil-watch";
 		runtimeInputs = [ deck pkgs.android-tools pkgs.avahi pkgs.curl pkgs.jq pkgs.gawk pkgs.gnugrep pkgs.coreutils ];
+		# Its words, in the machine's language, as the rest of NIHIL's.
+		runtimeEnv.NIHIL_WATCH_STRINGS = pkgs.writeText "nihil-watch-strings.json" (builtins.toJSON osConfig.nihil.strings);
 		text = builtins.readFile ./deck/watch.sh;
 	};
 in
@@ -24,7 +26,7 @@ in
 		{
 			Unit =
 			{
-				Description = "NIHIL deck: the phone opens apps and pages here (docs/deck.md)";
+				Description = "NIHIL deck: your devices open apps and pages here (docs/deck.md)";
 				After = [ "graphical-session.target" ];
 				PartOf = [ "graphical-session.target" ];
 			};

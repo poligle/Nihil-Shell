@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.config
 import qs.services
 import qs.components
 
@@ -43,6 +44,9 @@ Item {
         anchors.fill: parent
         anchors.margins: -6
         cursorShape: Qt.PointingHandCursor
+        Accessible.role: Accessible.Button
+        Accessible.name: Lang.bindPanel
+        Accessible.onPressAction: Drawers.toggle("panel", root.output)
         onClicked: Drawers.toggle("panel", root.output)
         onWheel: wheel => {
             const v = Math.max(0, Math.min(1, Audio.volume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05)));

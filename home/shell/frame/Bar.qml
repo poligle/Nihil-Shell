@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.theme
+import qs.config
 import qs.services
 import qs.components
 import qs.nilo
@@ -32,6 +33,9 @@ Item {
                 anchors.margins: -8
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: Lang.bindLauncher
+                Accessible.onPressAction: Drawers.toggle("launcher", root.output)
                 onClicked: Drawers.toggle("launcher", root.output)
             }
         }
@@ -83,6 +87,9 @@ Item {
                 anchors.fill: parent
                 anchors.margins: -6
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: Lang.bindNilo
+                Accessible.onPressAction: Nilo.toggle()
                 onClicked: Nilo.toggle()
             }
         }
@@ -101,6 +108,9 @@ Item {
                 anchors.fill: parent
                 anchors.margins: -6
                 cursorShape: Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: Lang.caffeine
+                Accessible.onPressAction: Caffeine.set(false)
                 onClicked: Caffeine.set(false)
             }
         }
@@ -128,12 +138,18 @@ Item {
             radius: 3
             color: Tokens.interrupt
             visible: Audio.micInUse || Recorder.recording
+            opacity: dimmed ? 0.3 : 1
 
-            SequentialAnimation on opacity {
+            property bool dimmed: false
+
+            // A blink, not a fade: each frame of the frame's window redraws the whole screen, and a
+            // call with the microphone open lasts an hour. Two frames a second instead of sixty.
+            Timer {
+                interval: 900
+                repeat: true
                 running: privacy.visible
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.25; duration: 900; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: 900; easing.type: Easing.InOutSine }
+                onTriggered: privacy.dimmed = !privacy.dimmed
+                onRunningChanged: if (!running) privacy.dimmed = false
             }
         }
     }

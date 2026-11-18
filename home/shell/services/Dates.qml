@@ -20,6 +20,11 @@ Singleton {
         return Case.sentence(date.toLocaleString(Qt.locale(Lang.locale), Lang.dateShort)) + ", " + time;
     }
 
+    // A day within a sentence: «3 de marzo».
+    function day(seconds: real): string {
+        return new Date(seconds * 1000).toLocaleString(Qt.locale(Lang.locale), Lang.dateShort);
+    }
+
     function bytes(count: real): string {
         const units = ["B", "KB", "MB", "GB", "TB"];
         let value = Math.max(0, count);

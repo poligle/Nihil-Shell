@@ -2,20 +2,26 @@ name: tests
 
 on:
   push:
+    branches: [ nihil ]
   pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   python:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: The deck and Nilo
         run: python3 -m unittest home/deck/test_deck.py home/nilo/test_agent.py
-      - name: The kanban's merge
-        run: node home/shell/tests/task-merge.test.js
+      - name: The shell's JavaScript
+        run: for test in home/shell/tests/*.test.js; do node "$test"; done
 
   # What used to show only after merging, building the ISO: a machine that doesn't evaluate, the
   # nihil command, and the installer's script, which writeShellApplication checks with ShellCheck.

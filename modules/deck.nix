@@ -11,7 +11,7 @@ in
         {
             type = lib.types.bool;
             default = false;
-            description = "The phone as a deck: NIHIL Launcher, paired from Preferences, opens apps and pages here (docs/deck.md).";
+            description = "Devices as decks: NIHIL for Android, paired from Preferences, opens apps and pages here (docs/deck.md).";
         };
 
         port = lib.mkOption
@@ -20,13 +20,24 @@ in
             default = 64445;
             description = "The deck's HTTPS port on the local network.";
         };
+
+        interfaces = lib.mkOption
+        {
+            type = lib.types.listOf lib.types.str;
+            default = [ ];
+            example = [ "enp3s0" ];
+            description = "The network interfaces where the deck can be reached and is announced; every one when empty.";
+        };
     };
 
     config = lib.mkIf cfg.enable
     {
-        networking.firewall.allowedTCPPorts = [ cfg.port ];
+        networking.firewall.allowedTCPPorts = lib.mkIf (cfg.interfaces == [ ]) [ cfg.port ];
+        networking.firewall.interfaces = lib.genAttrs cfg.interfaces (_: { allowedTCPPorts = [ cfg.port ]; });
 
         boot.kernelModules = [ "uinput" ];
+        # uaccess gives /dev/uinput to the session at the screen, every program in it and not
+        # the deck alone: any can make a keyboard and type into any window (docs/deck.md).
         services.udev.packages =
         [
             (pkgs.writeTextFile
@@ -40,9 +51,13 @@ in
             })
         ];
 
+        # Announced as NIHIL, not by the computer's own name, which goes with it from network to
+        # network: the phone finds it by its pin, and has its name from the QR.
         services.avahi =
         {
             enable = true;
+            hostName = lib.mkDefault "nihil";
+            allowInterfaces = lib.mkIf (cfg.interfaces != [ ]) cfg.interfaces;
             publish =
             {
                 enable = true;
@@ -52,7 +67,7 @@ in
                 <?xml version="1.0" standalone="no"?>
                 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
                 <service-group>
-                  <name replace-wildcards="yes">%h</name>
+                  <name>NIHIL</name>
                   <service>
                     <type>_nihil-deck._tcp</type>
                     <port>${toString cfg.port}</port>

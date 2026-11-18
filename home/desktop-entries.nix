@@ -25,7 +25,6 @@ in
 
     xdg.dataFile =
     {
-        "applications/code-url-handler.desktop"                 = hidden "Visual Studio Code - URL Handler";
         "applications/kitty-open.desktop"                       = hidden "kitty URL Launcher";
         "applications/org.freedesktop.Xwayland.desktop"         = hidden "Xwayland";
         "applications/xdg-desktop-portal-gtk.desktop"           = hidden "Portal";
@@ -45,17 +44,5 @@ in
         "applications/kvantummanager.desktop"                   = hidden "Kvantum Manager";
         "applications/qt5ct.desktop"                            = hidden "Qt5 Settings";
         "applications/qt6ct.desktop"                            = hidden "Qt6 Settings";
-
-        "applications/startcenter.desktop"                      = hidden "LibreOffice";
-        "applications/draw.desktop"                             = hidden "LibreOffice Draw";
-        "applications/impress.desktop"                          = hidden "LibreOffice Impress";
-        "applications/math.desktop"                             = hidden "LibreOffice Math";
-        "applications/base.desktop"                             = hidden "LibreOffice Base";
-        "applications/xsltfilter.desktop"                       = hidden "LibreOffice XSLT based filters";
-        "applications/org.kicad.bitmap2component.desktop"       = hidden "KiCad Bitmap2Component";
-        "applications/org.kicad.eeschema.desktop"               = hidden "KiCad Eeschema";
-        "applications/org.kicad.gerbview.desktop"               = hidden "KiCad Gerbview";
-        "applications/org.kicad.pcbcalculator.desktop"          = hidden "KiCad PCB Calculator";
-        "applications/org.kicad.pcbnew.desktop"                 = hidden "KiCad PCBNew";
     };
 }

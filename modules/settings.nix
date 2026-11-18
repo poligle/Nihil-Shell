@@ -8,6 +8,10 @@ let
     firstWord = text: lib.head (lib.splitString " " text);
     outputs = get [ "outputs" ] { };
     sshKeys = get [ "sshKeys" ] [ ];
+    known = [ "version" "user" "host" "language" "locale" "timeZone" "keyboard" "outputs" "primaryOutput"
+        "wallpaper" "nilo" "binds" "gestures" "programs" "fingerprint" "ssh" "sshKeys" "generations" "deck"
+        "clipboard" "bootSound" ];
+    unknown = lib.subtractLists known (builtins.attrNames s);
 in
 {
     options.nihil =
@@ -67,6 +71,16 @@ in
 
     config =
     {
+        # A key written by hand that nothing reads would otherwise change nothing, silently.
+        warnings = lib.optional (unknown != [ ]) "settings.json: keys NIHIL doesn't read: ${lib.concatStringsSep ", " unknown}.";
+        assertions =
+        [
+            {
+                assertion = get [ "version" ] 1 == 1;
+                message = "settings.json: version ${toString (get [ "version" ] 1)} is newer than this NIHIL knows (1).";
+            }
+        ];
+
         networking.hostName = lib.mkDefault (get [ "host" "name" ] "nihil");
         time.timeZone = lib.mkDefault (get [ "timeZone" ] "UTC");
         i18n.defaultLocale = lib.mkDefault (get [ "locale" ] "en_US.UTF-8");
@@ -94,10 +108,13 @@ in
         users.users.${config.nihil.user.name}.openssh.authorizedKeys.keys = sshKeys;
         nihil.generations.days = lib.mkDefault (get [ "generations" "days" ] 7);
         nihil.deck.enable = lib.mkDefault (get [ "deck" "enable" ] false);
+        nihil.deck.interfaces = lib.mkDefault (get [ "deck" "interfaces" ] [ ]);
 
-        nihil.binds = get [ "binds" ] { };
-        nihil.gestures = get [ "gestures" ] { };
-        nihil.programs = lib.mkIf (get [ "programs" ] null != null) (get [ "programs" ] [ ]);
+        # Each at the lowest priority, key by key: local.nix changes one key, a screen or the list of
+        # programs without a conflict, and adds to them without losing settings.json's.
+        nihil.binds = lib.mapAttrs (_: lib.mkDefault) (get [ "binds" ] { });
+        nihil.gestures = lib.mapAttrs (_: lib.mkDefault) (get [ "gestures" ] { });
+        nihil.programs = lib.mkIf (get [ "programs" ] null != null) (lib.mkDefault (get [ "programs" ] [ ]));
 
         nihil =
         {
@@ -105,10 +122,15 @@ in
             clipboard = lib.mkDefault (get [ "clipboard" ] 8);
             bootSound = lib.mkDefault (get [ "bootSound" ] true);
             wallpaper = lib.mkDefault (get [ "wallpaper" ] "night");
-            outputs = lib.mkDefault outputs;
+            outputs = lib.mapAttrs (_: lib.mapAttrs (_: lib.mkDefault)) outputs;
+            # Among the screens in the end, local.nix's too: a laptop's panel, else one of settings.json's.
             primaryOutput = lib.mkDefault (get [ "primaryOutput" ]
-                (let names = builtins.attrNames outputs; panels = lib.filter (lib.hasPrefix "eDP") names; in
-                    if panels != [ ] then lib.head panels else if names != [ ] then lib.head names else ""));
+                (let
+                    names = builtins.attrNames config.nihil.outputs;
+                    order = lib.filter (lib.hasPrefix "eDP") names
+                        ++ lib.filter (name: outputs ? ${name}) names ++ names;
+                in
+                    if order != [ ] then lib.head order else ""));
 
             nilo =
             {

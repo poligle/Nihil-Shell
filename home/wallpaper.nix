@@ -7,9 +7,11 @@ let
 
 	nihil-wallpaper = pkgs.writeShellScriptBin "nihil-wallpaper" ''
 		set -euo pipefail
-		export PATH="${lib.makeBinPath [ pkgs.awww pkgs.jq pkgs.coreutils pkgs.procps ]}:${config.home.profileDirectory}/bin:$PATH"
+		export PATH="${lib.makeBinPath [ pkgs.awww pkgs.jq pkgs.coreutils pkgs.diffutils pkgs.procps ]}:${config.home.profileDirectory}/bin:$PATH"
 
-		dir="${nihil.wallpapers}"
+		# Through Home Manager's link, always this generation's: a link left in the state straight
+		# into the store would outlive it, and a collection would empty it.
+		dir="${config.xdg.dataHome}/nihil/wallpapers"
 		state="${config.xdg.stateHome}/nihil/wallpaper"
 		glass="${config.xdg.stateHome}/nihil/glass"
 		names=( ${lib.escapeShellArgs nihil.wallpapers.names} )
@@ -28,15 +30,25 @@ let
 			mkdir -p "$(dirname "$state")"
 			echo "$name" > "$state"
 			ln -sfn "$dir/$name" "$state-current"
+			# A copy for the login screen, which can't read the home.
 			if [ -w /var/lib/nihil/greeter ]; then
-				ln -sfn "$dir/$name/${nihil.primaryOutput}.png" /var/lib/nihil/greeter/wallpaper.png
+				shown=/var/lib/nihil/greeter/wallpaper.png
+				if [ -L "$shown" ] || ! cmp -s "$dir/$name/${nihil.primaryOutput}.png" "$shown"; then
+					cp -f "$dir/$name/${nihil.primaryOutput}.png" "$shown.tmp" && mv -f "$shown.tmp" "$shown"
+				fi
 				look > /var/lib/nihil/greeter/glass
 			fi
+			# Started with the daemon, the socket may not be there yet; and one screen awww doesn't
+			# know yet is no reason to leave the others bare.
+			for _ in $(seq 50); do
+				awww query > /dev/null 2>&1 && break
+				sleep 0.1
+			done
 			for output in $(${hyprctl} -j monitors | jq -r '.[].name'); do
 				file="$dir/$name/$output.gif"
 				[ -r "$file" ] || file="$dir/$name/$output.png"
 				[ -r "$file" ] || file="$dir/$name/${nihil.primaryOutput}.png"
-				awww img --outputs "$output" "$file"
+				awww img --outputs "$output" "$file" || echo "nihil-wallpaper: $output: awww img failed" >&2
 			done
 			if command -v nihil-lock-glass > /dev/null; then
 				nihil-lock-glass > /dev/null 2>&1 &
@@ -85,6 +97,8 @@ in
 {
 	home.packages = [ nihil-wallpaper ];
 
+	xdg.dataFile."nihil/wallpapers".source = nihil.wallpapers;
+
 	systemd.user.services.awww-daemon =
 	{
 		Unit =
@@ -97,7 +111,8 @@ in
 		Service =
 		{
 			ExecStart = "${pkgs.awww}/bin/awww-daemon";
-			ExecStartPost = "${nihil-wallpaper}/bin/nihil-wallpaper restore";
+			# A failure here would take the daemon down with it.
+			ExecStartPost = "-${nihil-wallpaper}/bin/nihil-wallpaper restore";
 			Restart = "on-failure";
 		};
 

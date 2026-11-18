@@ -24,12 +24,12 @@
   says when it was made, its NixOS, kernel and NIHIL, and which packages it changed;
   one click goes back to it, now and at boot, or boots it just once. How long they stay,
   and cleaning now, with what it frees.
-- **The phone as a deck.** With [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher) on Android, paired with a QR
-  from Preferences, the phone opens the computer's apps and web pages, plays and skips
+- **Devices.** With [NIHIL for Android](https://github.com/poligle/Nihil-Launcher), a phone or a tablet paired with a QR
+  from Preferences opens the computer's apps and web pages, plays and skips
   its music, turns its volume, locks it and is its trackpad, with this desktop's gestures;
   the dashboard's kanban stays in sync with it, and Vector carries things either way.
   Over HTTPS pinned to this computer. See
-  [The phone as a deck](phone.md).
+  [Devices](devices.md).
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](install.md).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
@@ -57,8 +57,8 @@
   Firefox or Chromium sends a faint stretch round until it ends. Anything else can use
   it too: `nihil-ipc glyph progress <id> <0..1>`, then `done <id>`.
 - **Wallpapers as LED matrices.** Every picture in `wallpapers/`, and in a machine's
-  `/etc/nixos/wallpapers` (PNG, JPEG, GIF or WebP, with any name), is rendered at build
-  time as dots, once per output at its native size, so each dot lands on exact pixels. A
+  `/etc/nixos/wallpapers` (PNG, JPEG, GIF or WebP, with any name; one named as one of
+  NIHIL's takes its place), is rendered at build time as dots, once per output at its native size, so each dot lands on exact pixels. A
   GIF moves on the desktop. Each picture on each screen is drawn once and kept: a rebuild
   only draws the new ones. The [studio](https://nihilshell.com/studio/) does the same in
   the browser with any picture, moving ones too (`docs/studio/`, the same numbers as

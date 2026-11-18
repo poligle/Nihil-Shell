@@ -20,6 +20,8 @@ Item {
     readonly property bool last: step === steps.length - 1
     readonly property bool applied: Machine.phase === "done" || Machine.phase === "warning"
     readonly property bool asking: last && Machine.changes > 0 && !Machine.busy && !applied
+    // While the finger is awaited, the password can be typed instead, as in Preferences.
+    readonly property bool fingerWait: last && Machine.phase === "auth" && Machine.auth === "finger"
     readonly property string firstName: String(Machine.get("user.fullName", "")).trim().split(" ")[0]
 
     function key(name: string): string {
@@ -28,6 +30,12 @@ Item {
     }
 
     function finish(): void {
+        if (root.fingerWait) {
+            if (password.text !== "")
+                Machine.apply(password.text);
+            password.clear();
+            return;
+        }
         if (root.asking) {
             if (password.text === "" && !Machine.fingerprint) {
                 password.grab();
@@ -40,6 +48,37 @@ Item {
             Machine.endWelcome();
         }
     }
+
+    function next(): void {
+        if (root.last)
+            root.finish();
+        else
+            root.step++;
+    }
+
+    function back(): void {
+        if (root.step > 0 && !Machine.busy && !root.applied)
+            root.step--;
+    }
+
+    // Enter goes on and Escape back, as the buttons below. A field keeps its Enter, and a
+    // button with the focus answers for itself.
+    focus: true
+    // A field on the page gone keeps nothing: the keys come back here.
+    onStepChanged: root.forceActiveFocus()
+    Keys.onReturnPressed: event => {
+        if (root.activeFocus && !event.isAutoRepeat)
+            root.next();
+        else
+            event.accepted = false;
+    }
+    Keys.onEnterPressed: event => {
+        if (root.activeFocus && !event.isAutoRepeat)
+            root.next();
+        else
+            event.accepted = false;
+    }
+    Keys.onEscapePressed: root.back()
 
     Item {
         id: body
@@ -140,27 +179,65 @@ Item {
                 sub: Lang.welBasicsBody
             }
 
-            Repeater {
-                model: [
-                    { what: Lang.bindLauncher, key: root.key("launcher") },
-                    { what: Lang.bindClose, key: root.key("close") },
-                    { what: Lang.welWorkspaces, key: "SUPER + 1 … 9" },
-                    { what: Lang.welMoveTo, key: "SUPER + SHIFT + 1 … 9" },
-                    { what: Lang.bindLock, key: root.key("lock") },
-                    { what: Lang.bindSettings, key: root.key("settings") }
-                ].concat(Config.binds.copy ? [{ what: Lang.bindCopy, key: root.key("copy") }] : [])
-                 .concat(Config.binds.clipboard ? [{ what: Lang.bindClipboard, key: root.key("clipboard") }] : [])
-                 .concat(Config.programs.filter(program => program.keys).slice(0, 3).map(program => ({ what: program.name, key: program.keys })))
+            // Two columns of short rows: as many keys as there may be fit in the window, which
+            // rows of Preferences' height overflowed.
+            GridLayout {
+                Layout.fillWidth: true
+                columns: 2
+                columnSpacing: 32
+                rowSpacing: 0
 
-                Setting {
-                    required property var modelData
+                Repeater {
+                    model: [
+                        { what: Lang.bindLauncher, key: root.key("launcher") },
+                        { what: Lang.bindClose, key: root.key("close") },
+                        { what: Lang.welWorkspaces, key: "SUPER + 1 … 9" },
+                        { what: Lang.welMoveTo, key: "SUPER + SHIFT + 1 … 9" },
+                        { what: Lang.bindLock, key: root.key("lock") },
+                        { what: Lang.bindSettings, key: root.key("settings") }
+                    ].concat(Config.binds.copy ? [{ what: Lang.bindCopy, key: root.key("copy") }] : [])
+                     .concat(Config.binds.clipboard ? [{ what: Lang.bindClipboard, key: root.key("clipboard") }] : [])
+                     .concat(Config.programs.filter(program => program.keys).slice(0, 3).map(program => ({ what: program.name, key: program.keys })))
 
-                    title: modelData.what
+                    Item {
+                        id: bind
 
-                    Txt {
-                        text: Case.keys(modelData.key)
-                        font.family: Tokens.fontMono
-                        font.pixelSize: 13
+                        required property var modelData
+
+                        // Both columns as wide.
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
+                        implicitHeight: 40
+
+                        Txt {
+                            anchors.left: parent.left
+                            anchors.right: combo.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: bind.modelData.what
+                            font.pixelSize: 14
+                        }
+
+                        Txt {
+                            id: combo
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(implicitWidth, bind.width * 0.6)
+                            horizontalAlignment: Text.AlignRight
+                            text: Case.keys(bind.modelData.key)
+                            color: Tokens.dim
+                            font.family: Tokens.fontMono
+                            font.pixelSize: 13
+                        }
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: 1
+                            color: Tokens.line
+                            opacity: 0.6
+                        }
                     }
                 }
             }
@@ -267,12 +344,16 @@ Item {
             KeyButton {
                 visible: root.step > 0 && !Machine.busy && !root.applied
                 text: Lang.welBack
-                onClicked: root.step--
+                onClicked: root.back()
             }
 
             Field {
                 id: password
-                visible: root.asking
+                visible: root.asking || root.fingerWait
+                onVisibleChanged: {
+                    if (!visible)
+                        clear();
+                }
                 Layout.preferredWidth: 220
                 password: true
                 placeholder: Lang.cfgApplyPassword
@@ -282,14 +363,9 @@ Item {
             KeyButton {
                 accent: true
                 text: !root.last ? Lang.welNext
-                    : root.asking ? Lang.welApplyStart
+                    : root.asking || root.fingerWait ? Lang.welApplyStart
                     : Machine.busy || root.applied ? Lang.welClose : Lang.welStart
-                onClicked: {
-                    if (root.last)
-                        root.finish();
-                    else
-                        root.step++;
-                }
+                onClicked: root.next()
             }
         }
     }

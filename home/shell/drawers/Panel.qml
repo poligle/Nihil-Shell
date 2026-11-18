@@ -13,6 +13,7 @@ Item {
     property bool active: false
     property string expanded: ""
     property string armed: ""
+    readonly property string armedName: ({ logout: Lang.actLogout, reboot: Lang.actReboot, power: Lang.actPowerOff })[armed] ?? ""
 
     focus: active
     Keys.onEscapePressed: Drawers.close()
@@ -84,6 +85,9 @@ Item {
         property string glyph: ""
         property real value: 0
         property bool muted: false
+        property string label: ""
+        // What the glyph does when clicked; none, and it does nothing.
+        property string glyphLabel: ""
 
         signal moved(real value)
         signal glyphClicked()
@@ -98,13 +102,19 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 anchors.margins: -6
+                enabled: row.glyphLabel !== ""
                 cursorShape: Qt.PointingHandCursor
                 onClicked: row.glyphClicked()
+
+                Accessible.role: Accessible.Button
+                Accessible.name: row.glyphLabel
+                Accessible.onPressAction: row.glyphClicked()
             }
         }
 
         SegSlider {
             Layout.fillWidth: true
+            label: row.label
             value: row.value
             muted: row.muted
             onMoved: v => row.moved(v)
@@ -114,67 +124,6 @@ Item {
             Layout.preferredWidth: 30
             horizontalAlignment: Text.AlignRight
             text: String(Math.round(row.value * 100))
-        }
-    }
-
-    component ListRow: Surface {
-        id: item
-
-        property string glyph: ""
-        property string title: ""
-        property string detail: ""
-        property bool current: false
-        property bool busy: false
-
-        signal clicked()
-
-        Layout.fillWidth: true
-        implicitHeight: 40
-        radius: 10
-        color: area.containsMouse ? Tokens.raised : "transparent"
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 10
-
-            Ico { glyph: item.glyph; color: item.current ? Tokens.ink : Tokens.muted }
-
-            Txt {
-                Layout.fillWidth: true
-                text: item.title
-                color: item.current ? Tokens.ink : Tokens.dim
-                font.weight: item.current ? Font.Medium : Font.Normal
-            }
-
-            Label {
-                visible: !item.busy
-                text: item.detail
-            }
-
-            Rectangle {
-                visible: item.busy
-                width: 6
-                height: 6
-                radius: 3
-                color: Tokens.ink
-
-                SequentialAnimation on opacity {
-                    running: item.busy
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 1; to: 0.2; duration: 600; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 0.2; to: 1; duration: 600; easing.type: Easing.InOutSine }
-                }
-            }
-        }
-
-        MouseArea {
-            id: area
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: item.clicked()
         }
     }
 
@@ -298,6 +247,8 @@ Item {
                 SliderRow {
                     Layout.fillWidth: true
                     glyph: Icons.volume(Audio.volume, Audio.muted)
+                    label: Lang.settingVolume
+                    glyphLabel: Audio.muted ? Lang.unmute : Lang.mute
                     value: Audio.volume
                     muted: Audio.muted
                     onMoved: v => Audio.setVolume(v)
@@ -307,6 +258,8 @@ Item {
                 SliderRow {
                     Layout.fillWidth: true
                     glyph: Audio.micMuted ? Icons.micOff : Icons.mic
+                    label: Lang.tileMic
+                    glyphLabel: Audio.micMuted ? Lang.unmute : Lang.mute
                     value: Audio.micVolume
                     muted: Audio.micMuted
                     onMoved: v => Audio.setMicVolume(v)
@@ -317,6 +270,7 @@ Item {
                     Layout.fillWidth: true
                     visible: Brightness.available
                     glyph: Icons.brightness
+                    label: Lang.settingBrightness
                     value: Brightness.value
                     onMoved: v => Brightness.set(v)
                 }
@@ -326,6 +280,8 @@ Item {
                 Layout.fillWidth: true
                 visible: root.expanded === "night"
                 glyph: Icons.night
+                label: Lang.actNight
+                glyphLabel: Lang.actNight
                 value: Toggles.nightLevel
                 onMoved: v => Toggles.setNightLevel(v)
                 onGlyphClicked: Toggles.night = !Toggles.night
@@ -341,47 +297,14 @@ Item {
 
                     Label { text: Network.scanning ? Lang.scanning : Lang.networks }
                     Item { Layout.fillWidth: true }
-                    CircleButton { glyph: Icons.refresh; size: 28; onClicked: Network.rescan() }
-                    CircleButton { glyph: Icons.cog; size: 28; onClicked: { Drawers.close(); Network.editor(); } }
+                    CircleButton { glyph: Icons.refresh; label: Lang.scan; size: 28; onClicked: Network.rescan() }
+                    CircleButton { glyph: Icons.cog; label: Lang.moreSettings; size: 28; onClicked: { Drawers.close(); Network.editor(); } }
                 }
 
-                Repeater {
-                    model: root.expanded === "wifi" ? Network.networks.slice(0, 12) : []
-
-                    ColumnLayout {
-                        id: net
-
-                        required property var modelData
-
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        ListRow {
-                            glyph: Icons.wifi(net.modelData.signal)
-                            title: net.modelData.ssid
-                            detail: net.modelData.active ? Icons.check : (net.modelData.secure ? Icons.lock : "")
-                            current: net.modelData.active
-                            busy: Network.pending === net.modelData.ssid
-                            onClicked: net.modelData.active ? Network.disconnect() : Network.connect(net.modelData, "")
-                        }
-
-                        Field {
-                            Layout.fillWidth: true
-                            visible: Network.askPassword === net.modelData.ssid
-                            password: true
-                            catchEscape: true
-                            placeholder: Lang.password
-                            onVisibleChanged: if (visible) { clear(); grab(); }
-                            onAccepted: Network.connect(net.modelData, text)
-                            onEscaped: Network.askPassword = ""
-                        }
-                    }
-                }
-
-                Alert {
+                WifiList {
                     Layout.fillWidth: true
-                    visible: Network.error !== ""
-                    text: Network.error
+                    limit: 12
+                    active: root.expanded === "wifi"
                 }
             }
 
@@ -395,8 +318,8 @@ Item {
 
                     Label { text: Bt.discovering ? Lang.scanning : Lang.devices }
                     Item { Layout.fillWidth: true }
-                    CircleButton { glyph: Icons.refresh; size: 28; onClicked: Bt.scan(!Bt.discovering) }
-                    CircleButton { glyph: Icons.cog; size: 28; onClicked: { Drawers.close(); Apps.run([Config.cmd.blueman]); } }
+                    CircleButton { glyph: Icons.refresh; label: Bt.discovering ? Lang.scanStop : Lang.scan; size: 28; onClicked: Bt.scan(!Bt.discovering) }
+                    CircleButton { glyph: Icons.cog; label: Lang.moreSettings; size: 28; onClicked: { Drawers.close(); Apps.run([Config.cmd.blueman]); } }
                 }
 
                 Repeater {
@@ -430,7 +353,7 @@ Item {
 
                     Label { text: Lang.audioOutput }
                     Item { Layout.fillWidth: true }
-                    CircleButton { glyph: Icons.cog; size: 28; onClicked: { Drawers.close(); Apps.run([Config.cmd.pavucontrol]); } }
+                    CircleButton { glyph: Icons.cog; label: Lang.moreSettings; size: 28; onClicked: { Drawers.close(); Apps.run([Config.cmd.pavucontrol]); } }
                 }
 
                 Repeater {
@@ -490,17 +413,18 @@ Item {
                     Layout.fillWidth: true
                     spacing: 10
 
-                    CircleButton { glyph: Icons.lock; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.lock]); } }
-                    CircleButton { glyph: Icons.sleep; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.systemctl, "suspend"]); } }
-                    CircleButton { glyph: Icons.logout; filled: root.armed === "logout"; onClicked: root.session("logout", [Config.cmd.uwsm, "stop"]) }
-                    CircleButton { glyph: Icons.restart; filled: root.armed === "reboot"; onClicked: root.session("reboot", [Config.cmd.systemctl, "reboot"]) }
-                    CircleButton { glyph: Icons.power; danger: true; filled: root.armed === "power"; onClicked: root.session("power", [Config.cmd.powerOff]) }
+                    CircleButton { glyph: Icons.lock; label: Lang.actLock; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.lock]); } }
+                    CircleButton { glyph: Icons.sleep; label: Lang.actSuspend; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.systemctl, "suspend"]); } }
+                    CircleButton { glyph: Icons.logout; label: Lang.actLogout; filled: root.armed === "logout"; onClicked: root.session("logout", [Config.cmd.uwsm, "stop"]) }
+                    CircleButton { glyph: Icons.restart; label: Lang.actReboot; filled: root.armed === "reboot"; onClicked: root.session("reboot", [Config.cmd.systemctl, "reboot"]) }
+                    CircleButton { glyph: Icons.power; label: Lang.actPowerOff; danger: true; filled: root.armed === "power"; onClicked: root.session("power", [Config.cmd.powerOff]) }
 
                     Item { Layout.fillWidth: true }
 
                     CircleButton {
                         id: updateButton
                         glyph: Icons.download
+                        label: Lang.updUpdate
                         filled: root.expanded === "update"
                         onClicked: root.toggleSection("update")
 
@@ -519,6 +443,7 @@ Item {
 
                     CircleButton {
                         glyph: Icons.cog
+                        label: Lang.bindSettings
                         onClicked: {
                             Drawers.close();
                             Machine.show("", false);
@@ -528,7 +453,7 @@ Item {
 
                 Alert {
                     Layout.fillWidth: true
-                    text: root.armed !== "" ? Lang.confirmAgain : Updates.summary
+                    text: root.armed !== "" ? Lang.confirmTo.arg(root.armedName.toLowerCase()) : Updates.summary
                     wrong: root.armed !== ""
                     opacity: root.armed !== "" || updateButton.hovered ? 1 : 0
                 }

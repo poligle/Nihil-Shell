@@ -10,6 +10,8 @@ let
             gum jq curl parted gptfdisk dosfstools btrfs-progs cryptsetup ntfs3g e2fsprogs
             util-linux pciutils usbutils kbd gnugrep gawk coreutils networkmanager lvm2 mdadm
         ];
+        # Where the keyboard layouts are listed, to check one typed in text.
+        runtimeEnv.NIHIL_XKB = "${pkgs.xkeyboard_config}";
         text = builtins.readFile ./nihil-install.sh;
     };
 
@@ -51,6 +53,8 @@ let
         cp ${../home/shell/components/KeyButton.qml} $out/components/KeyButton.qml
         cp ${../home/shell/components/Field.qml} $out/components/Field.qml
         cp ${../home/shell/components/Choice.qml} $out/components/Choice.qml
+        cp ${../home/shell/components/FocusRing.qml} $out/components/FocusRing.qml
+        cp ${../home/shell/components/Logo.qml} $out/components/Logo.qml
         cp ${import ../theme/shaders.nix { inherit pkgs; }}/surface.*.qsb $out/shaders/
         cp ${qml.tokens} $out/theme/Tokens.qml
         cp ${configQml} $out/config/Config.qml
@@ -69,9 +73,15 @@ let
             export WLR_RENDERER_ALLOW_SOFTWARE=1
             rm -f "$state"
 
+            # The screen the installer goes on, and its scale: the computer's own panel when there
+            # is one, else the first connected. cage turns every one on, and the window spans them.
             scale=1
-            for connector in /sys/class/drm/card*-*; do
+            screen=""
+            for connector in /sys/class/drm/card*-eDP-* /sys/class/drm/card*-LVDS-* /sys/class/drm/card*-DSI-* \
+                    /sys/class/drm/card*-*; do
                 [ "$(cat "$connector/status" 2> /dev/null)" = connected ] || continue
+                name=''${connector##*/}
+                screen=''${name#card*-}
                 mode=$(head -n 1 "$connector/modes" 2> /dev/null || true)
                 [[ $mode =~ ^([0-9]+)x ]] || break
                 pixels=''${BASH_REMATCH[1]}
@@ -90,8 +100,8 @@ let
                 if [ "$software" = yes ]; then
                     look=(WLR_RENDERER=pixman QT_QUICK_BACKEND=software)
                 fi
-                env XKB_DEFAULT_LAYOUT="$layout" QT_SCALE_FACTOR="$scale" "''${look[@]}" \
-                    cage -s -- quickshell -p ${gui} 2>> /tmp/nihil-installer.log &
+                env XKB_DEFAULT_LAYOUT="$layout" QT_SCALE_FACTOR="$scale" NIHIL_INSTALLER_SCREEN="$screen" "''${look[@]}" \
+                    cage -s -m extend -- quickshell -p ${gui} 2>> /tmp/nihil-installer.log &
                 pid=$!
                 for _ in $(seq 300); do
                     [ -e "$NIHIL_INSTALLER_READY" ] && break
@@ -135,8 +145,11 @@ in
     environment.etc =
     {
         "nihil/template".source = ../templates/machine;
-        "nihil/source".text = "github:poligle/Nihil-Shell";
-        "nihil/rev".text = nihil.rev or "";
+        "nihil/source".text = nihil.lib.source;
+        # A tree with changes has no revision: the image would install GitHub's default branch.
+        "nihil/rev".text = nihil.rev or (lib.warn "An image from a tree with changes installs GitHub's default branch, not this tree." "");
+        # The installer's words, both modes', in theme/i18n.nix with the shell's.
+        "nihil/strings.json".text = builtins.toJSON (import ../theme/i18n.nix);
     };
 
     hardware.graphics.enable = true;
@@ -152,6 +165,10 @@ in
             nihil-installer || true
         fi
     '';
+
+    # installation-device turns sshd on with root's login allowed: a desktop's installer has no
+    # use for it, and a password set with passwd would open root to the network.
+    services.openssh.enable = lib.mkForce false;
 
     services.getty.helpLine = lib.mkForce ''
 
