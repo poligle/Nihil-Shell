@@ -195,6 +195,19 @@ Item {
             Layout.fillWidth: true
             implicitHeight: 1
             color: Tokens.line
+            visible: Calendar.any
+        }
+
+        // The week ahead, once there's a calendar to read it from.
+        WeekStrip {
+            Layout.fillWidth: true
+            visible: Calendar.any
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Tokens.line
         }
 
         TaskBoard {

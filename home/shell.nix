@@ -7,6 +7,8 @@ let
 	quickshell = pkgs.quickshell;
 	profile = "${config.home.profileDirectory}/bin";
 	iconTheme = config.gtk.iconTheme.name;
+	# The calendars subscribed to in Preferences, read into what the shell shows (home/calendar).
+	calendar = import ./calendar { inherit pkgs; };
 
 	nilo =
 	{
@@ -23,7 +25,7 @@ let
 
 	# The desktop's widgets; Preferences shows each by its text, cfgWidgetClock for clock. Only
 	# the first ones are on until Preferences says otherwise.
-	widgets = [ "clock" "network" "system" "media" "weather" "photo" "github" ];
+	widgets = [ "clock" "calendar" "network" "system" "media" "weather" "photo" "github" ];
 	widgetDefaults = [ "clock" "media" ];
 	unlabelled = lib.filter (name: !(nihil.strings ? ${"cfgWidget" + lib.toUpper (lib.substring 0 1 name) + lib.substring 1 (lib.stringLength name) name}))
 		widgets;
@@ -53,6 +55,7 @@ let
 		ffmpeg = "${pkgs.ffmpeg-headless}/bin/ffmpeg";
 		curl = "${pkgs.curl}/bin/curl";
 		df = "${pkgs.coreutils}/bin/df";
+		calendar = "${calendar}/bin/nihil-calendar";
 		nmcli = "${pkgs.networkmanager}/bin/nmcli";
 		nmEditor = "${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
 		notifySend = "${pkgs.libnotify}/bin/notify-send";
@@ -163,6 +166,7 @@ in
 	[
 		quickshell
 		nihil-ipc
+		calendar
 	];
 
 	xdg.configFile."quickshell/nihil".source = shell;

@@ -625,8 +625,18 @@
 		weatherSnow = "Nieve";
 		weatherStorm = "Tormenta";
 		widgetSystemDisk = "Disco";
+		widgetCalendarNone = "Tus calendarios van en Preferencias, Aspecto";
+		calNow = "Ahora";
+		calToday = "Hoy";
+		calTomorrow = "Mañana";
+		calTomorrowAt = "Mañana, %1";
+		calDay = "ddd d";
+		calMore = "%1 más";
+		calNothing = "Nada a la vista";
+		calUntitled = "Sin título";
 		cfgGlass = "Cristal ahumado";
 		cfgWidgetClock = "Reloj";
+		cfgWidgetCalendar = "Calendario";
 		cfgWidgetNetwork = "Red";
 		cfgWidgetSystem = "Sistema";
 		cfgWidgetMedia = "Música";
@@ -641,6 +651,16 @@
 		cfgWeatherSearching = "Buscando…";
 		cfgWeatherNotFound = "No se ha encontrado «%1»";
 		cfgWeatherSearchFailed = "No se ha podido buscar";
+		cfgCalendars = "Calendarios";
+		cfgCalendarAdd = "Añadir un calendario";
+		cfgCalendarAddSub = "Su dirección secreta en formato iCal (Google Calendar, Outlook, iCloud, Nextcloud…): queda en este ordenador, y solo tú puedes leerla";
+		cfgCalendarAddButton = "Añadir";
+		cfgCalendarAdding = "Leyéndolo…";
+		cfgCalendarRemove = "Quitar";
+		cfgCalendarErrUrl = "Eso no es una dirección http, https o webcal";
+		cfgCalendarErrFetch = "No se ha podido leer esa dirección";
+		cfgCalendarErrCalendar = "Esa dirección no da un calendario";
+		cfgCalendarUnread = "No se ha podido leer la última vez";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.
@@ -1449,8 +1469,18 @@
 		weatherSnow = "Snow";
 		weatherStorm = "Thunderstorm";
 		widgetSystemDisk = "Disk";
+		widgetCalendarNone = "Your calendars go in Preferences, Appearance";
+		calNow = "Now";
+		calToday = "Today";
+		calTomorrow = "Tomorrow";
+		calTomorrowAt = "Tomorrow, %1";
+		calDay = "ddd d";
+		calMore = "%1 more";
+		calNothing = "Nothing coming up";
+		calUntitled = "No title";
 		cfgGlass = "Smoked glass";
 		cfgWidgetClock = "Clock";
+		cfgWidgetCalendar = "Calendar";
 		cfgWidgetNetwork = "Network";
 		cfgWidgetSystem = "System";
 		cfgWidgetMedia = "Music";
@@ -1465,6 +1495,16 @@
 		cfgWeatherSearching = "Searching…";
 		cfgWeatherNotFound = "“%1” wasn't found";
 		cfgWeatherSearchFailed = "Couldn't search";
+		cfgCalendars = "Calendars";
+		cfgCalendarAdd = "Add a calendar";
+		cfgCalendarAddSub = "Its secret address in iCal format (Google Calendar, Outlook, iCloud, Nextcloud…): it stays on this computer, readable by you alone";
+		cfgCalendarAddButton = "Add";
+		cfgCalendarAdding = "Reading it…";
+		cfgCalendarRemove = "Remove";
+		cfgCalendarErrUrl = "That isn't an http, https or webcal address";
+		cfgCalendarErrFetch = "Couldn't read that address";
+		cfgCalendarErrCalendar = "That address doesn't give a calendar";
+		cfgCalendarUnread = "Couldn't be read last time";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.

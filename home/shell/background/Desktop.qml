@@ -263,6 +263,7 @@ Scope {
         Region {
             id: held
             Region { item: clockCard.visible ? clockCard : null }
+            Region { item: calendarCard.visible ? calendarCard : null }
             Region { item: networkCard.visible ? networkCard : null }
             Region { item: systemCard.visible ? systemCard : null }
             Region { item: mediaCard.visible ? mediaCard : null }
@@ -353,6 +354,138 @@ Scope {
                     Layout.preferredHeight: 40
                     series: SysStats.rxHistory
                     secondary: SysStats.txHistory
+                }
+            }
+
+            // The month, a dot under each day with something on it, and what comes next.
+            Card {
+                id: calendarCard
+                widget: "calendar"
+
+                readonly property date now: clock.date
+                readonly property int year: calendarCard.now.getFullYear()
+                readonly property int month: calendarCard.now.getMonth()
+                readonly property int today: calendarCard.now.getDate()
+                readonly property int first: Qt.locale(Lang.locale).firstDayOfWeek
+                readonly property var days: Calendar.month(calendarCard.year, calendarCard.month, calendarCard.first)
+                readonly property var busy: Calendar.busy(calendarCard.year, calendarCard.month)
+                readonly property var next: Calendar.upcoming(calendarCard.now.getTime() / 1000, 3)
+                readonly property real cell: (calendarCard.width - 44) / 7
+
+                Label {
+                    text: Case.sentence(Qt.locale(Lang.locale).standaloneMonthName(calendarCard.month, Locale.LongFormat))
+                        + " " + calendarCard.year
+                }
+
+                Grid {
+                    Layout.topMargin: 4
+                    columns: 7
+
+                    Repeater {
+                        model: 7
+
+                        Item {
+                            id: weekday
+
+                            required property int index
+
+                            width: calendarCard.cell
+                            height: 18
+
+                            Txt {
+                                anchors.centerIn: parent
+                                text: Case.sentence(Qt.locale(Lang.locale).dayName((calendarCard.first + weekday.index) % 7, Locale.NarrowFormat))
+                                color: Tokens.muted
+                                font.pixelSize: 11
+                            }
+                        }
+                    }
+
+                    Repeater {
+                        model: 42
+
+                        Item {
+                            id: date
+
+                            required property int index
+                            readonly property var day: calendarCard.days[date.index]
+                            readonly property bool isToday: date.day.inMonth && date.day.d === calendarCard.today
+
+                            width: calendarCard.cell
+                            height: 30
+                            // A sixth week of nothing but the next month's days isn't drawn.
+                            visible: date.index < 35 || calendarCard.days[35].inMonth
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                anchors.verticalCenterOffset: -2
+                                width: 24
+                                height: 24
+                                radius: 12
+                                visible: date.isToday
+                                color: Tokens.ink
+                            }
+
+                            Txt {
+                                anchors.centerIn: parent
+                                anchors.verticalCenterOffset: -2
+                                text: date.day.d
+                                color: date.isToday ? Tokens.black : date.day.inMonth ? Tokens.ink : Tokens.off
+                                font.pixelSize: 12
+                            }
+
+                            Rectangle {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 1
+                                width: 4
+                                height: 4
+                                radius: 2
+                                visible: date.day.inMonth && calendarCard.busy[date.day.d] === true
+                                color: Tokens.dim
+                            }
+                        }
+                    }
+                }
+
+                // What comes next, or where the calendars go.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    spacing: 6
+
+                    Repeater {
+                        model: calendarCard.next
+
+                        RowLayout {
+                            id: coming
+
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            Txt {
+                                Layout.preferredWidth: 96
+                                text: Calendar.when(coming.modelData, calendarCard.now.getTime() / 1000)
+                                color: Tokens.dim
+                                font.pixelSize: 12
+                            }
+
+                            Txt {
+                                Layout.fillWidth: true
+                                text: Calendar.title(coming.modelData)
+                                font.pixelSize: 12
+                            }
+                        }
+                    }
+
+                    Txt {
+                        visible: calendarCard.next.length === 0
+                        text: Calendar.any ? Lang.calNothing : Lang.widgetCalendarNone
+                        color: Tokens.muted
+                        font.pixelSize: 12
+                    }
                 }
             }
 

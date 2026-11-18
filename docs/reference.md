@@ -137,6 +137,8 @@ nihil-ipc session lock                # the lock screen
 nihil-ipc recorder status             # whether it records; started and stopped are the recorder's own
 nihil-ipc vector received             # the deck, when the phone has sent something; reload, quietly
 nihil-wallpaper next                  # also: prev, set <name>, list, current, restore, glass [on|off]
+nihil-calendar list                   # the calendars, without their addresses; also: sync, remove <id>,
+                                      # add (the address on stdin: an argument shows in /proc)
 journalctl --user -u nihil-shell -f   # logs
 ```
 

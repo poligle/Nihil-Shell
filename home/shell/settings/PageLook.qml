@@ -154,5 +154,67 @@ Flickable {
                 }
             }
         }
+
+        // For the calendar widget and the Dashboard's week: what's subscribed to, read-only.
+        Heading {
+            Layout.topMargin: 18
+            title: Lang.cfgCalendars
+        }
+
+        Repeater {
+            model: Calendar.calendars
+
+            Setting {
+                id: subscribed
+
+                required property var modelData
+
+                title: subscribed.modelData.name
+                sub: subscribed.modelData.ok ? "" : Lang.cfgCalendarUnread
+
+                KeyButton {
+                    text: Lang.cfgCalendarRemove
+                    onClicked: Calendar.remove(subscribed.modelData.id)
+                }
+            }
+        }
+
+        // A new one by its address, which nihil-calendar keeps where only the user reads it, and
+        // never in settings.json: whoever has the address reads the calendar.
+        Setting {
+            title: Lang.cfgCalendarAdd
+            sub: Calendar.adding ? Lang.cfgCalendarAdding
+                : Calendar.addError === "url" ? Lang.cfgCalendarErrUrl
+                : Calendar.addError === "fetch" ? Lang.cfgCalendarErrFetch
+                : Calendar.addError === "calendar" ? Lang.cfgCalendarErrCalendar
+                : Lang.cfgCalendarAddSub
+
+            RowLayout {
+                spacing: 8
+
+                Field {
+                    id: address
+                    Layout.preferredWidth: 240
+                    placeholder: "webcal://, https://"
+                    invalid: Calendar.addError !== "" && !Calendar.adding
+                    onAccepted: Calendar.add(address.text)
+                    onEdited: Calendar.addError = ""
+                }
+
+                KeyButton {
+                    text: Lang.cfgCalendarAddButton
+                    onClicked: Calendar.add(address.text)
+                }
+            }
+
+            // Once it's in, the field is empty for the next.
+            Connections {
+                target: Calendar
+                function onAddingChanged(): void {
+                    if (!Calendar.adding && Calendar.addError === "")
+                        address.clear();
+                }
+            }
+        }
     }
 }

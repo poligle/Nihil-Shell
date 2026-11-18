@@ -20,6 +20,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: The deck and Nilo
         run: python3 -m unittest home/deck/test_deck.py home/nilo/test_agent.py
+      - name: The calendars
+        run: |
+          python3 -m venv "$RUNNER_TEMP/calendar"
+          "$RUNNER_TEMP/calendar/bin/pip" install --quiet "icalendar>=6,<7" "recurring-ical-events>=3,<4"
+          "$RUNNER_TEMP/calendar/bin/python" -m unittest home/calendar/test_calendars.py
       - name: The shell's JavaScript
         run: for test in home/shell/tests/*.test.js; do node "$test"; done
 
