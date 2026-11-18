@@ -12,8 +12,8 @@
 <p align="center">
   <a href="https://nihilshell.com/">Website</a> &nbsp;&nbsp;&nbsp;
   <a href="docs/install.md">Install</a> &nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/poligle/Nihil-Launcher">Launcher for Android</a> &nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/poligle/Nihil-Wear">Watch for Wear OS</a>
+  <a href="https://github.com/poligle/Nihil-Launcher">NIHIL for Android</a> &nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/poligle/Nihil-Wear">NIHIL for Wear OS</a>
 </p>
 
 ![NIHIL desktop](docs/assets/screens/desktop.webp)
@@ -52,7 +52,7 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
   what is really behind them.
 - **Nilo,** an assistant with a model that runs here, and as much of the system as you
   give it: a chat, a repository, or the whole desktop.
-- **Devices as decks,** a phone, a tablet and the watch, with [NIHIL Launcher](https://github.com/poligle/Nihil-Launcher)
+- **Devices as decks,** a phone, a tablet and the watch, with [NIHIL for Android](https://github.com/poligle/Nihil-Launcher)
   and [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear), and Vector to carry
   things between them and this computer.
 - **Preferences,** the whole system on one sheet, applied as a rebuild, with every

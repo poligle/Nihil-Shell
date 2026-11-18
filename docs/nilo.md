@@ -114,7 +114,7 @@ shows it before you confirm. That is the noreply address of
 to yours: [`assets/brand/nilo-avatar.png`](../assets/brand/nilo-avatar.png).
 
 <p align="center">
-  <img src="assets/screens/nilo-done.webp" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, fastfetch in dots.">
+  <img src="assets/screens/nilo-done.webp" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, the wallpaper in dots.">
 </p>
 
 <sub>Closed while it thinks, Nilo says when it's done, out of the bar.</sub>

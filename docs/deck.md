@@ -1,6 +1,6 @@
 # The deck: a device opens things on the computer
 
-[NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), on Android, can be a deck for a NIHIL computer: it opens the computer's
+[NIHIL for Android](https://github.com/poligle/Nihil-Launcher), the launcher, can be a deck for a NIHIL computer: it opens the computer's
 apps and web pages, plays and skips its music, turns its volume, locks it, is its
 trackpad and carries things to it and from it (Vector). This is what the computer offers,
 for whoever writes the device's side.

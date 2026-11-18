@@ -1,6 +1,6 @@
 # Devices: phone, tablet and watch as decks
 
-[NIHIL Launcher](https://github.com/poligle/Nihil-Launcher), the Android side of NIHIL, can be a deck for the computer:
+[NIHIL for Android](https://github.com/poligle/Nihil-Launcher), the launcher, can be a deck for the computer:
 its apps and web pages open here, its music plays and skips, its volume goes up and down,
 its screen locks and its pointer moves, from the phone, and Vector carries things between them. That is all it can do: an app is one
 the launcher shows, a page is `http` or `https`, the trackpad points and clicks as a touchpad
