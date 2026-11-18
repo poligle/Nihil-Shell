@@ -16,7 +16,6 @@
         ./greeter.nix
         ./desktop.nix
         ./storage.nix
-        ./services.nix
         ./nix.nix
         ./plymouth.nix
         ./boot-sound.nix

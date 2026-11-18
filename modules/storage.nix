@@ -3,7 +3,6 @@
 { config, lib, pkgs, ... }:
 {
     services.udisks2.enable = true;
-    security.polkit.enable = true;
 
     security.polkit.extraConfig = ''
         polkit.addRule(function(action, subject)

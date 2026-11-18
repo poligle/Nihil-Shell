@@ -22,7 +22,6 @@
             };
         };
 
-        systemd.timers.nix-gc.timerConfig.Persistent = true;
         # Collecting removes generations but not their boot entries: the menu kept offering ones
         # that no longer exist. Writing the entries again after it is what nihil generations clean does.
         systemd.services.nix-gc.serviceConfig.ExecStartPost =

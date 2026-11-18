@@ -9,7 +9,7 @@ them from its `settings.json` ([`modules/settings.nix`](../modules/settings.nix)
 | Option          | Default    | What it does                                                    |
 |-----------------|------------|-----------------------------------------------------------------|
 | `language`      | `"en"`     | `"es"` or `"en"`: shell, lock screen, greeter, script messages and their dates |
-| `outputs`       | —          | Screens of the host: logical size, whether it has the bar, dot pitch |
+| `outputs`       | —          | Screens of the host: size in pixels of the mode, after rotation and before the scale; whether it has the bar, dot pitch |
 | `primaryOutput` | —          | Screen for the desktop widgets, lock and login backgrounds      |
 | `wallpaper`     | `"night"`  | Default wallpaper, by name: its file's without the extension, with spaces and accents made plain (`Captura de pantalla.png` is `Captura-de-pantalla`) |
 | `extraWallpapers` | None    | More folders of pictures, drawn as dots too; a machine's `/etc/nixos/wallpapers` is one by default |
