@@ -21,17 +21,10 @@ in
             ];
         };
 
-        plugins = 
-        [
-            {
-                name = "zsh-autosuggestions";
-                src = "${pkgs.zsh-autosuggestions}/share/zsh-autosuggestions";
-            }
-            {
-                name = "zsh-syntax-highlighting";
-                src = "${pkgs.zsh-syntax-highlighting}/share/zsh-syntax-highlighting";
-            }
-        ];
+        # Home Manager's own: the plugin list looks for a .plugin.zsh, which syntax highlighting
+        # doesn't have, and it never loaded.
+        autosuggestion.enable = true;
+        syntaxHighlighting.enable = true;
 
         shellAliases = 
         {
