@@ -624,9 +624,11 @@
 		weatherShowers = "Chubascos";
 		weatherSnow = "Nieve";
 		weatherStorm = "Tormenta";
+		widgetSystemDisk = "Disco";
 		cfgGlass = "Cristal ahumado";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
+		cfgWidgetSystem = "Sistema";
 		cfgWidgetMedia = "Música";
 		cfgWidgetWeather = "Tiempo";
 		cfgWidgetPhoto = "Foto";
@@ -1446,9 +1448,11 @@
 		weatherShowers = "Showers";
 		weatherSnow = "Snow";
 		weatherStorm = "Thunderstorm";
+		widgetSystemDisk = "Disk";
 		cfgGlass = "Smoked glass";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";
+		cfgWidgetSystem = "System";
 		cfgWidgetMedia = "Music";
 		cfgWidgetWeather = "Weather";
 		cfgWidgetPhoto = "Photo";

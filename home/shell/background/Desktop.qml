@@ -113,6 +113,42 @@ Scope {
         }
     }
 
+    // A reading as a row of dots: its name, how full, and the figure.
+    component Gauge: RowLayout {
+        id: gauge
+
+        property string name: ""
+        property real value: 0
+        property string reading: ""
+        property bool alert: false
+
+        Layout.fillWidth: true
+        spacing: 10
+
+        Label {
+            Layout.preferredWidth: 36
+            text: gauge.name
+        }
+
+        DotMeter {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 100
+            count: Math.max(8, Math.floor((width + 3) / 7))
+            dot: 4
+            gap: 3
+            value: gauge.value
+            litColor: gauge.alert ? Tokens.interrupt : Tokens.ink
+        }
+
+        Txt {
+            Layout.preferredWidth: 40
+            horizontalAlignment: Text.AlignRight
+            text: gauge.reading
+            color: Tokens.dim
+            font.pixelSize: 12
+        }
+    }
+
     component Card: Surface {
         id: card
 
@@ -228,6 +264,7 @@ Scope {
             id: held
             Region { item: clockCard.visible ? clockCard : null }
             Region { item: networkCard.visible ? networkCard : null }
+            Region { item: systemCard.visible ? systemCard : null }
             Region { item: mediaCard.visible ? mediaCard : null }
             Region { item: weatherCard.visible ? weatherCard : null }
             Region { item: photoCard.visible ? photoCard : null }
@@ -316,6 +353,37 @@ Scope {
                     Layout.preferredHeight: 40
                     series: SysStats.rxHistory
                     secondary: SysStats.txHistory
+                }
+            }
+
+            // How the computer is: the processor, the memory, its temperature and the system's disk.
+            Card {
+                id: systemCard
+                widget: "system"
+
+                Gauge {
+                    name: "CPU"
+                    value: SysStats.cpu
+                    reading: Lang.percent.arg(Math.round(SysStats.cpu * 100))
+                }
+
+                Gauge {
+                    name: "RAM"
+                    value: SysStats.mem
+                    reading: Lang.percent.arg(Math.round(SysStats.mem * 100))
+                }
+
+                Gauge {
+                    name: "°C"
+                    value: Math.min(1, SysStats.temp / 100)
+                    reading: Math.round(SysStats.temp) + "°"
+                    alert: SysStats.temp >= 90
+                }
+
+                Gauge {
+                    name: Lang.widgetSystemDisk
+                    value: SysStats.disk
+                    reading: Lang.percent.arg(Math.round(SysStats.disk * 100))
                 }
             }
 
