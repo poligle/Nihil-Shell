@@ -224,7 +224,8 @@ let
 		match.class = class;
 		float = true;
 		size = "640 400";
-		move = "1270 50";
+		# Against the right edge of any screen, inside the frame.
+		move = "monitor_w-window_w-${toString (t.frame.thickness + t.windows.gapsOut)} ${toString (t.frame.bar + t.windows.gapsOut)}";
 	};
 
 	lidClose = ''
