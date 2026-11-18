@@ -14,7 +14,8 @@ Item {
     readonly property bool has: (root.shown.id ?? "") !== ""
     readonly property real radius: 14
     readonly property real pitch: 7
-    readonly property bool over: pointer.containsMouse || dropArea.containsDrag || keys.hovered
+    // Its keys show under the pointer, and with the focus: Tab, or a touch held.
+    readonly property bool over: pointer.containsMouse || dropArea.containsDrag || keys.hovered || root.activeFocus
     property real head: -1
     property real flash: 0
     property color flashColor: Tokens.ink
@@ -240,12 +241,25 @@ Item {
         }
     }
 
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: root.has ? root.shown.name ?? "" : Lang.vectorPaste
+    Accessible.onPressAction: root.primary()
+    Keys.onReturnPressed: event => { if (!event.isAutoRepeat) root.primary(); }
+    Keys.onEnterPressed: event => { if (!event.isAutoRepeat) root.primary(); }
+    Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.primary(); }
+
+    FocusRing {
+        round: root.radius
+    }
+
     MouseArea {
         id: pointer
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.primary()
+        onPressAndHold: root.forceActiveFocus()
     }
 
     Row {
@@ -294,6 +308,11 @@ Item {
         onExited: Vector.dropping = false
         onDropped: event => {
             Vector.dropping = false;
+            // Vector holds one thing: of several dropped, none goes, and it says why.
+            if (event.hasUrls && event.urls.length > 1) {
+                Vector.refuse("many");
+                return;
+            }
             if (event.hasUrls && event.urls.length > 0)
                 Vector.send(event.urls[0].toString());
             else if (event.hasText)

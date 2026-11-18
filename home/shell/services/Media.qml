@@ -37,6 +37,11 @@ Singleton {
         }
     }
 
+    // A time of what plays, or dashes with nothing playing.
+    function shown(seconds: real): string {
+        return active ? clock(seconds) : "--:--";
+    }
+
     function clock(seconds: real): string {
         const s = Math.max(0, Math.floor(seconds));
         return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");

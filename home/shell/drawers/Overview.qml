@@ -107,7 +107,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 16
-        text: Lang.ovHint.arg(Switcher.keyName !== "" ? Switcher.keyName : "Tab")
+        text: Lang.ovHint.arg(Case.key(Switcher.keyName !== "" ? Switcher.keyName : "Tab"))
     }
 
     ListView {

@@ -39,7 +39,7 @@ Item {
         { id: "night", name: Lang.actNight, hint: Toggles.night ? Lang.hintOn : Lang.hintOff, keys: "night light", glyph: Icons.night },
         { id: "caffeine", name: Lang.actCaffeine, hint: Caffeine.on ? Lang.hintOn : Lang.hintOff, keys: "caffeine cafeina coffee awake screen", glyph: Icons.coffee },
         { id: "settings", name: Lang.bindSettings, hint: Lang.hintSystem, keys: "settings preferences ajustes preferencias configuracion", glyph: Icons.cog },
-        { id: "terminal", name: Lang.actTerminal, hint: Config.cmd.terminal.split("/").pop(), glyph: Icons.terminal, command: [Config.cmd.terminal] }
+        { id: "terminal", name: Lang.actTerminal, hint: Case.sentence(Config.cmd.terminal.split("/").pop()), glyph: Icons.terminal, command: [Config.cmd.terminal] }
     ]
 
     readonly property var actions: mode !== "actions" ? [] : allActions.filter(a =>
@@ -103,6 +103,7 @@ Item {
         if (!action) return;
         if (action.confirm && armed !== action.id) {
             armed = action.id;
+            disarm.restart();
             return;
         }
         if (action.id === "wallpapers") {
@@ -402,7 +403,7 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
-                text: row.isArmed ? Lang.enterAgain : row.modelData.hint
+                text: row.isArmed ? Lang.confirmAgain : row.modelData.hint
                 color: row.isArmed ? Tokens.ink : Tokens.muted
             }
 
@@ -414,6 +415,19 @@ Item {
                 onClicked: root.runAction(row.modelData)
             }
         }
+    }
+
+    // Armed, an action waits a few seconds for its second Enter or click, as the panel's do.
+    Timer {
+        id: disarm
+        interval: 3000
+        onTriggered: root.armed = ""
+    }
+
+    Label {
+        anchors.centerIn: grid
+        visible: (root.mode === "apps" && root.apps.length === 0) || (root.mode === "actions" && root.actions.length === 0)
+        text: Lang.noResults
     }
 
     Column {

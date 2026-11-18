@@ -10,22 +10,46 @@ Item {
     property bool active: false
     property string before: ""
     property int index: 0
+    // Chosen with Enter or a click: closed any other way (Esc, a click outside, another drawer),
+    // the wallpaper goes back to the one it was.
+    property bool kept: false
     readonly property var names: Config.wallpapers
 
+    // Shown once the arrows rest a moment: a key held down doesn't start a set for every step.
     function show(i: int): void {
         if (names.length === 0)
             return;
         index = (i + names.length) % names.length;
-        Machine.liveWallpaper(names[index]);
+        apply.restart();
+    }
+
+    function choose(i: int): void {
+        show(i);
+        apply.stop();
+        if (names.length > 0 && Machine.wallpaper !== names[index])
+            Machine.liveWallpaper(names[index]);
+        kept = true;
+        Drawers.close();
     }
 
     onActiveChanged: {
         if (active) {
+            kept = false;
             before = Machine.wallpaper;
             index = Math.max(0, names.indexOf(before));
             list.positionViewAtIndex(index, ListView.Center);
             Qt.callLater(() => { if (root.active) keys.forceActiveFocus(); });
+        } else {
+            apply.stop();
+            if (!kept && before !== "" && Machine.wallpaper !== before)
+                Machine.liveWallpaper(before);
         }
+    }
+
+    Timer {
+        id: apply
+        interval: 150
+        onTriggered: if (root.names.length > 0 && Machine.wallpaper !== root.names[root.index]) Machine.liveWallpaper(root.names[root.index])
     }
 
     Item {
@@ -34,12 +58,9 @@ Item {
         focus: root.active
         Keys.onLeftPressed: root.show(root.index - 1)
         Keys.onRightPressed: root.show(root.index + 1)
-        Keys.onReturnPressed: Drawers.close()
-        Keys.onEnterPressed: Drawers.close()
-        Keys.onEscapePressed: {
-            Machine.liveWallpaper(root.before);
-            Drawers.close();
-        }
+        Keys.onReturnPressed: root.choose(root.index)
+        Keys.onEnterPressed: root.choose(root.index)
+        Keys.onEscapePressed: Drawers.close()
     }
 
     KeyHints {
@@ -99,10 +120,7 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    root.show(card.index);
-                    Drawers.close();
-                }
+                onClicked: root.choose(card.index)
             }
         }
     }
