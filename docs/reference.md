@@ -29,7 +29,7 @@ them from its `settings.json` ([`modules/settings.nix`](../modules/settings.nix)
 | `nilo.contextLength` | `16384` | Context window, in tokens |
 | `nilo.searxng`  | `null`     | A SearXNG instance for web searches instead of DuckDuckGo |
 | `nilo.coauthor` | [nilo-nihil](https://github.com/nilo-nihil) | Who Nilo signs its commits as (`Co-authored-by`); `null` for no trailer |
-| `deck.enable`   | `false`    | The phone as a deck ([The phone as a deck](phone.md)): its service, its port in the firewall, its name on the network (mDNS), uinput for the trackpad |
+| `deck.enable`   | `false`    | Devices as decks ([Devices](devices.md)): its service, its port in the firewall, its name on the network (mDNS), uinput for the trackpad |
 | `deck.port`     | `64445`    | The deck's HTTPS port ("NIHIL" on a phone's keypad) |
 
 Read-only: `tokens` (the design tokens), `strings` (the selected language), `sounds`,
