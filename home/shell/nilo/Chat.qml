@@ -140,7 +140,7 @@ Item {
         return ({ volume: Lang.settingVolume, mute: Lang.settingMute, mic: Lang.tileMic,
                   brightness: Lang.settingBrightness, dnd: Lang.settingDnd, caffeine: Lang.settingCaffeine,
                   night: Lang.settingNight, wifi: Lang.tileWifi, bluetooth: Lang.tileBluetooth,
-                  airplane: Lang.settingAirplane, wallpaper: Lang.settingWallpaper, glass: Lang.settingGlass,
+                  wallpaper: Lang.settingWallpaper, glass: Lang.settingGlass,
                   workspace: Lang.settingWorkspace, screenshot: Lang.tileShot, record: Lang.settingRecord,
                   lock: Lang.settingLock })[setting] ?? setting;
     }

@@ -13,8 +13,8 @@
 - **Quick settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
   locking or sleeping; the night light, with its intensity, and do not disturb, both as you
   left them), segmented sliders, Wi-Fi (with passwords and WPA-Enterprise hand-off),
-  Bluetooth, as you left it through restarts and sleep, airplane mode, which brings back only
-  the radios that were on, audio output, notification history, session.
+  Bluetooth, as you left it through restarts and sleep, audio output, notification history,
+  session.
 - **Preferences.** Your name and password, language, keyboard and time zone, wallpaper
   and desktop widgets, the screens, shortcuts and programs, the computer's name, Nilo,
   the clipboard history, the boot sound, fingerprint and SSH, in one sheet (`SUPER + O`) that the first login opens as a welcome. The wallpaper,

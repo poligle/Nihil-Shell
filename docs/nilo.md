@@ -77,7 +77,7 @@ it thinks. A click on them opens the conversation; when it ends, they go back to
   closed; the music (`playerctl`: pause, the next one, or a song by its name, found on
   Spotify and put on there, or on its page); NIHIL's volume, microphone, brightness, do not
   disturb, caffeine, night light and its intensity, Wi-Fi and Bluetooth (a saved network or
-  a paired device, by its name), airplane mode, wallpaper, glass, workspace, screenshots,
+  a paired device, by its name), wallpaper, glass, workspace, screenshots,
   screen recording and lock; and a text or a file sent to the phone with Vector. Files
   reach the whole home folder, and the rest of the computer to read, but never keys,
   passwords or browser profiles (`~/.ssh`, `~/.gnupg`, the browsers' profiles, `.env`

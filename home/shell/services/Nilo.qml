@@ -230,7 +230,6 @@ Singleton {
             mic: [!Audio.micMuted, on => { if (on === Audio.micMuted) Audio.toggleMic(); }],
             wifi: [Network.wifiEnabled, on => Network.setWifi(on)],
             bluetooth: [Bt.enabled, on => Bt.setEnabled(on)],
-            airplane: [Toggles.airplane, on => Toggles.setAirplane(on)],
             record: [Recorder.recording, on => { if (on !== Recorder.recording) { Drawers.close(); Recorder.toggle(); } }]
         };
         if (switches[setting]) {

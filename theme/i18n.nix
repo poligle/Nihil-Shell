@@ -269,7 +269,6 @@
 		settingWallpaper = "Fondo";
 		settingGlass = "Cristal";
 		settingWorkspace = "Escritorio";
-		settingAirplane = "Modo avión";
 		settingRecord = "Grabación";
 		settingLock = "Bloqueo";
 
@@ -1057,7 +1056,6 @@
 		settingWallpaper = "Wallpaper";
 		settingGlass = "Glass";
 		settingWorkspace = "Workspace";
-		settingAirplane = "Aeroplane mode";
 		settingRecord = "Recording";
 		settingLock = "Lock";
 
