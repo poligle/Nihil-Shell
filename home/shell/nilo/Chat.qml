@@ -50,27 +50,28 @@ Item {
         const running = status === "running";
         switch (name) {
         case "web_search":
-            return running ? Lang.toolSearching.arg(args.query ?? "") : Lang.toolSearched.arg(data.count ?? 0).arg(args.query ?? "");
+            return running ? Lang.toolSearching.arg(args.query ?? "") : Case.count(data.count ?? 0, Lang.toolSearchedOne, Lang.toolSearched).arg(args.query ?? "");
         case "open_url":
             return running ? Lang.toolReading.arg(host(args.url)) : Lang.toolRead.arg(data.title || data.host || host(args.url));
         case "system_info":
             return running ? Lang.toolSystem : Lang.toolSystemDone;
         case "git_status":
-            return running ? Lang.toolGitStatus : Lang.toolGitStatusDone.arg(data.changes ?? 0).arg(data.branch ?? "");
+            return running ? Lang.toolGitStatus : Case.count(data.changes ?? 0, Lang.toolGitStatusDoneOne, Lang.toolGitStatusDone).arg(data.branch ?? "");
         case "git_commit":
             if (running) return Lang.toolGitCommit;
             if (data.declined) return Lang.toolDeclined;
             if (data.pushed) return data.commit ? Lang.toolGitPushed.arg(data.commit) : Lang.toolGitPushedOnly;
             return Lang.toolGitCommitted.arg(data.commit ?? "");
         case "list_files":
-            return running ? Lang.toolListing : Lang.toolListed.arg(data.count ?? 0);
+            return running ? Lang.toolListing : Case.count(data.count ?? 0, Lang.toolListedOne, Lang.toolListed);
         case "read_file":
-            return running ? Lang.toolOpening.arg(args.path ?? "") : Lang.toolOpened.arg(data.path ?? args.path ?? "").arg(data.lines ?? 0);
+            return running ? Lang.toolOpening.arg(args.path ?? "") : ((data.lines ?? 0) === 1 ? Lang.toolOpenedOne.arg(data.path ?? args.path ?? "")
+                : Lang.toolOpened.arg(data.path ?? args.path ?? "").arg(data.lines ?? 0));
         case "edit_file":
         case "write_file":
             if (running) return Lang.toolChanging.arg(args.path ?? "");
             if (data.declined) return Lang.toolDeclined;
-            return data.created ? Lang.toolCreated.arg(data.path ?? "").arg(data.added ?? 0)
+            return data.created ? ((data.added ?? 0) === 1 ? Lang.toolCreatedOne.arg(data.path ?? "") : Lang.toolCreated.arg(data.path ?? "").arg(data.added ?? 0))
                 : Lang.toolChanged.arg(data.path ?? "").arg(data.added ?? 0).arg(data.removed ?? 0);
         case "run_command": {
             const line = String(args.command ?? "").split("\n")[0];
@@ -85,7 +86,7 @@ Item {
             return data.searched ? Lang.toolInBrowser.arg(data.opened || args.target || "")
                 : Lang.toolLaunched.arg(data.opened || args.target || "");
         case "list_windows":
-            return running ? Lang.toolWindows : Lang.toolWindowsDone.arg(data.count ?? 0);
+            return running ? Lang.toolWindows : Case.count(data.count ?? 0, Lang.toolWindowsDoneOne, Lang.toolWindowsDone);
         case "look_at_screen":
             if (running) return Lang.toolLooking;
             return data.what === "screen" || !data.app ? Lang.toolLookedScreen : Lang.toolLookedWindow.arg(data.app);
@@ -125,7 +126,7 @@ Item {
                 return data.value === "next" ? Lang.actNextWallpaper : Lang.actPrevWallpaper;
             if (setting === "screenshot") return Lang.toolShot;
             const value = data.value === "on" ? Lang.toolOn : data.value === "off" ? Lang.toolOff
-                : (setting === "volume" || setting === "brightness" || setting === "night") ? data.value + " %" : String(data.value ?? "");
+                : (setting === "volume" || setting === "brightness" || setting === "night") ? Lang.percent.arg(data.value) : String(data.value ?? "");
             return Lang.toolControlled.arg(label).arg(value);
         }
         case "send_to_phone":
@@ -796,7 +797,7 @@ Item {
 
                                 Txt {
                                     visible: !card.all && card.diff.length > Nilo.cardLines
-                                    text: Lang.confirmMoreLines.arg(card.diff.length - Nilo.cardLines)
+                                    text: Case.count(card.diff.length - Nilo.cardLines, Lang.confirmMoreLinesOne, Lang.confirmMoreLines)
                                     color: Tokens.muted
                                     font.family: Tokens.fontMono
                                     font.pixelSize: 12
@@ -835,7 +836,7 @@ Item {
 
                             Txt {
                                 visible: card.facts.action === "push" && (card.facts.ahead ?? 0) > 0
-                                text: Lang.confirmAhead.arg(card.facts.ahead ?? 0)
+                                text: Case.count(card.facts.ahead ?? 0, Lang.confirmAheadOne, Lang.confirmAhead)
                                 color: Tokens.muted
                                 font.family: Tokens.fontMono
                                 font.pixelSize: 12

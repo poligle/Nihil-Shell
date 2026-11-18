@@ -3,14 +3,14 @@
 - **Frame and bar.** One black shape around every screen. Its left side widens into the
   bar: NixOS mark, workspaces as LEDs, the active app, tray, status, a 10-LED battery
   gauge, the clock in dots and a red privacy LED while something records the mic.
-- **Drawers.** The dashboard, the settings panel and the launcher are bumps of the frame
+- **Drawers.** The dashboard, the quick settings and the launcher are bumps of the frame
   itself, with concave joints, so they look like part of the hardware.
 - **Dashboard.** Time, music with the cover rendered as a dot matrix and a spectrum in
   LED columns, CPU/RAM/temperature dials, a network oscilloscope, a kanban (to do, doing,
   done: drag a card where it goes, its pencil writes it again, a broom clears the done ones),
   and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
   it shrinks away to the phone; what the phone sends waits there, to copy, save or open.
-- **Settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
+- **Quick settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
   locking or sleeping; the night light, with its intensity, and do not disturb, both as you
   left them), segmented sliders, Wi-Fi (with passwords and WPA-Enterprise hand-off),
   Bluetooth, as you left it through restarts and sleep, airplane mode, which brings back only

@@ -170,7 +170,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WordWrap
                     elide: Text.ElideNone
-                    text: Lang.introSleep.arg(Nilo.settings.keepAlive ?? 5)
+                    text: Case.count(Nilo.settings.keepAlive ?? 5, Lang.introSleepOne, Lang.introSleep)
                     color: Tokens.muted
                     font.pixelSize: 13
                     lineHeight: 1.3

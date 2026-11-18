@@ -1,6 +1,8 @@
 # plymouth.nix by poligle
 
-{ pkgs, waitForSound ? false }:
+# passphrase: what the disk's password is called, in the system's language (theme/i18n.nix). It's
+# shown instead of what asks for it: systemd-cryptsetup's words are English, whatever the language.
+{ pkgs, waitForSound ? false, passphrase ? "Disk passphrase" }:
 let
   python = pkgs.python3.withPackages (ps: [ ps.pillow ]);
 
@@ -121,7 +123,7 @@ let
     fun password_callback (prompt_text, bullet_count) {
       stop_animation();
 
-      prompt.image = Image.Text(prompt_text, ${ink});
+      prompt.image = Image.Text(${builtins.toJSON passphrase}, ${ink});
       prompt.sprite = Sprite(prompt.image);
       prompt.sprite.SetPosition(
         center_x - (prompt.image.GetWidth() / 2),

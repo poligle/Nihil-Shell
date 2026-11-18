@@ -332,7 +332,7 @@ Item {
 
                         glyph: modelData.connected ? Icons.btConnected : Icons.btOn
                         title: modelData.name || modelData.address
-                        detail: modelData.batteryAvailable ? Math.round(modelData.battery * 100) + "%" : (modelData.paired ? "" : Lang.newDevice)
+                        detail: modelData.batteryAvailable ? Lang.percent.arg(Math.round(modelData.battery * 100)) : (modelData.paired ? "" : Lang.newDevice)
                         current: modelData.connected
                         busy: modelData.state === BluetoothDeviceState.Connecting || modelData.state === BluetoothDeviceState.Disconnecting
                         onClicked: Bt.toggleDevice(modelData)

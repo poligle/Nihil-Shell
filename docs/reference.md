@@ -71,7 +71,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + Escape`, 4 fingers       | Scratchpad (`SUPER + SHIFT + Escape` sends the window) |
 | `SUPER + H`                       | Colour picker                                 |
 | `Print` / `SHIFT + Print`         | Screenshot of the screen the pointer is on, kept in Pictures (Screenshots, or Capturas in Spanish) and copied / record it |
-| Snipping key / `SHIFT` with it    | Screenshot of an area, kept and copied / record it (`XF86SelectiveScreenshot`; another key in Preferences, Shortcuts). Recordings go to Videos and are copied as a file; either key stops them (also in the settings panel) |
+| Snipping key / `SHIFT` with it    | Screenshot of an area, kept and copied / record it (`XF86SelectiveScreenshot`; another key in Preferences, Shortcuts). Recordings go to Videos and are copied as a file; either key stops them (also in the quick settings) |
 | Volume, brightness, mic keys      | Change the value and show the OSD             |
 
 Scrolling over the bar switches workspaces (on the LEDs) or changes the volume (on the
@@ -142,7 +142,7 @@ journalctl --user -u nihil-shell -f   # logs
 | Folder        | Contents                                                        |
 |---------------|-----------------------------------------------------------------|
 | `frame/`      | Frame geometry (one path with the drawers as bumps), Glyph light, bar |
-| `drawers/`    | Dashboard, settings panel, launcher, wallpapers, clipboard history, OSD, notifications |
+| `drawers/`    | Dashboard, quick settings, launcher, wallpapers, clipboard history, OSD, notifications |
 | `background/` | Desktop widgets                                                 |
 | `services/`   | Audio, network (nmcli), Bluetooth, battery, MPRIS, IPC, system stats, tasks, caffeine, clipboard, Nilo, the machine's settings (`Machine.qml`), its generations, the deck and Vector |
 | `settings/`   | Preferences and the welcome                                     |

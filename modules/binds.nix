@@ -47,6 +47,10 @@ let
     valid = combo: let p = split combo; in p != [ ] && lib.all (part: lib.elem (lib.toUpper part) modifiers) (lib.init p);
     # A modifier as the key fires as it goes down, ahead of every combination with it.
     held = combo: let p = split combo; in p != [ ] && lib.elem (lib.toLower (lib.last p)) heldKeys;
+    # An action's text in theme/i18n.nix: launcher's is bindLauncher.
+    label = name: "bind" + lib.toUpper (lib.substring 0 1 name) + lib.substring 1 (lib.stringLength name) name;
+    unlabelled = lib.filter (name: !(config.nihil.strings ? ${label name})) (builtins.attrNames keys);
+
     combos = lib.filter (combo: combo != null)
         (builtins.attrValues config.nihil.binds ++ map (program: program.keys) config.nihil.programs);
 
@@ -130,6 +134,11 @@ in
         {
             assertion = lib.all (name: gestures ? ${name}) (builtins.attrNames config.nihil.gestures);
             message = "nihil.gestures: unknown gesture; the gestures are ${lib.concatStringsSep ", " (builtins.attrNames gestures)}.";
+        }
+        # Preferences shows each action by its text; one without would show its name.
+        {
+            assertion = unlabelled == [ ];
+            message = "theme/i18n.nix: every action in modules/binds.nix needs its text; ${lib.concatStringsSep ", " (map label unlabelled)} isn't there.";
         }
     ];
 }

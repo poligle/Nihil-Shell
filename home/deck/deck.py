@@ -2003,7 +2003,7 @@ def serve(config):
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
-    print(f"nihil-deck: on port {deck.port}, {len(deck.devices.listing())} phone(s) paired", file=sys.stderr)
+    print(f"nihil-deck: on port {deck.port}, devices paired: {len(deck.devices.listing())}", file=sys.stderr)
     try:
         server.serve_forever()
     finally:
@@ -2201,11 +2201,11 @@ def vector_command(config, action, argument):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="nihil-deck", description="The phone as a deck for this computer (docs/deck.md).")
+    parser = argparse.ArgumentParser(prog="nihil-deck", description="Your devices as a deck for this computer (docs/deck.md).")
     parser.add_argument("--config", help="configuration written by home/deck/default.nix")
     parser.add_argument("command", nargs="?", default="devices",
                         choices=["serve", "pair", "cancel", "devices", "forget", "allow", "deny", "vector"])
-    parser.add_argument("target", nargs="?", help="forget: a phone's id, or all; cancel: the invite to close (every one "
+    parser.add_argument("target", nargs="?", help="forget: a device's id, or all; cancel: the invite to close (every one "
                                                   "without); vector: send, text, copy, save, open, clear or status")
     parser.add_argument("argument", nargs="?",
                         help="vector send: a file (the clipboard without one); vector text: the text, or - to read it")
@@ -2242,7 +2242,7 @@ def main():
                "forget": {"op": "forget", "id": options.target or ""}, "allow": {"op": "allow", "id": options.target or ""},
                "deny": {"op": "deny", "id": options.target or ""}}[options.command]
     if options.command == "forget" and not options.target:
-        print("nihil-deck forget ID|all", file=sys.stderr)
+        print("Usage: nihil-deck forget ID|all", file=sys.stderr)
         return 2
     try:
         reply = ask(request)
@@ -2273,7 +2273,7 @@ def main():
     if options.json or options.command == "devices":
         print(json.dumps(reply))
     elif options.command == "forget" and not reply.get("ok"):
-        print(f"No phone {options.target}.", file=sys.stderr)
+        print(f"No device {options.target}.", file=sys.stderr)
         return 1
     return 0
 

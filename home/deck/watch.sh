@@ -223,7 +223,7 @@ case ${1:-install} in
         fi
         ;;
     *)
-        echo "nihil-watch [install | update | forget]" >&2
+        echo "Usage: nihil-watch [install | update | forget]" >&2
         exit 2
         ;;
 esac
