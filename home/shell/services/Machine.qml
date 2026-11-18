@@ -574,7 +574,12 @@ Singleton {
         function open(): void { root.show("", false); }
         function page(name: string): void { root.show(name, false); }
         function toggle(): void { if (root.shown) root.hide(); else root.show("", false); }
-        function close(): void { root.hide(); }
+        function close(): void {
+            if (root.welcoming)
+                root.endWelcome();
+            else
+                root.hide();
+        }
         function welcome(): void { root.show("hello", true); }
         function wallpapers(): void { Drawers.toggle("wallpapers", ""); }
         function glass(on: string): void { root.setGlass(on === "on"); }

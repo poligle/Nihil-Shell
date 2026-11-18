@@ -41,6 +41,37 @@ Item {
         }
     }
 
+    function next(): void {
+        if (root.last)
+            root.finish();
+        else
+            root.step++;
+    }
+
+    function back(): void {
+        if (root.step > 0 && !Machine.busy && !root.applied)
+            root.step--;
+    }
+
+    // Enter goes on and Escape back, as the buttons below. A field keeps its Enter, and a
+    // button with the focus answers for itself.
+    focus: true
+    // A field on the page gone keeps nothing: the keys come back here.
+    onStepChanged: root.forceActiveFocus()
+    Keys.onReturnPressed: event => {
+        if (root.activeFocus && !event.isAutoRepeat)
+            root.next();
+        else
+            event.accepted = false;
+    }
+    Keys.onEnterPressed: event => {
+        if (root.activeFocus && !event.isAutoRepeat)
+            root.next();
+        else
+            event.accepted = false;
+    }
+    Keys.onEscapePressed: root.back()
+
     Item {
         id: body
         anchors.left: parent.left
@@ -267,7 +298,7 @@ Item {
             KeyButton {
                 visible: root.step > 0 && !Machine.busy && !root.applied
                 text: Lang.welBack
-                onClicked: root.step--
+                onClicked: root.back()
             }
 
             Field {
@@ -284,12 +315,7 @@ Item {
                 text: !root.last ? Lang.welNext
                     : root.asking ? Lang.welApplyStart
                     : Machine.busy || root.applied ? Lang.welClose : Lang.welStart
-                onClicked: {
-                    if (root.last)
-                        root.finish();
-                    else
-                        root.step++;
-                }
+                onClicked: root.next()
             }
         }
     }

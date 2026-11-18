@@ -19,6 +19,27 @@ Item {
     ]
     readonly property var current: pages.find(page => page.name === Machine.page) ?? pages[0]
 
+    // Up and down go through the pages, from the list or from nowhere in particular; a control
+    // with the focus keeps its arrows.
+    function turn(by: int): void {
+        const at = pages.indexOf(current);
+        Machine.page = pages[Math.max(0, Math.min(pages.length - 1, at + by))].name;
+    }
+
+    focus: true
+    Keys.onUpPressed: event => {
+        if (root.activeFocus || side.activeFocus)
+            root.turn(-1);
+        else
+            event.accepted = false;
+    }
+    Keys.onDownPressed: event => {
+        if (root.activeFocus || side.activeFocus)
+            root.turn(1);
+        else
+            event.accepted = false;
+    }
+
     Column {
         id: side
         anchors.left: parent.left
@@ -26,6 +47,10 @@ Item {
         anchors.margins: 28
         width: 196
         spacing: 4
+        activeFocusOnTab: true
+
+        Accessible.role: Accessible.PageTabList
+        Accessible.name: Lang.cfgTitle
 
         Logo {
             size: 30
@@ -51,7 +76,18 @@ Item {
                 radius: 10
                 color: item.chosen ? Tokens.raised : navArea.containsMouse ? Tokens.surface : "transparent"
 
+                Accessible.role: Accessible.PageTab
+                Accessible.name: item.modelData.title
+                Accessible.selectable: true
+                Accessible.selected: item.chosen
+                Accessible.onPressAction: Machine.page = item.modelData.name
+
                 Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+
+                FocusRing {
+                    shown: side.activeFocus && item.chosen
+                    round: item.radius
+                }
 
                 Txt {
                     anchors.verticalCenter: parent.verticalCenter
@@ -79,6 +115,7 @@ Item {
         anchors.margins: 20
         size: 32
         glyph: Icons.close
+        label: Lang.welClose
         onClicked: Machine.hide()
     }
 

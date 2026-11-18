@@ -66,6 +66,11 @@
 		vectorNoCopy = "No se ha podido copiar";
 		vectorNoSave = "No se ha podido guardar";
 		vectorNoOpen = "No se ha podido abrir";
+		vectorCopy = "Copiar";
+		vectorSave = "Guardar";
+		vectorOpen = "Abrir";
+		vectorRemove = "Quitar";
+		vectorPaste = "Pegar";
 		networks = "Redes";
 		scanning = "Buscando";
 		devices = "Dispositivos";
@@ -77,6 +82,14 @@
 		dndOn = "No molestar activo";
 		nothingNew = "Nada nuevo";
 		confirmAgain = "Otra vez";
+		confirmTo = "Otra vez para %1";
+		scan = "Buscar";
+		scanStop = "Dejar de buscar";
+		moreSettings = "Más ajustes";
+		mute = "Silenciar";
+		unmute = "Activar el sonido";
+		dismiss = "Descartar";
+		workspace = "Escritorio %1";
 		connectFailed = "No se ha podido conectar";
 		connectedTo = "Conectado a %1";
 		enterpriseHint = "%1 usa WPA-Enterprise (p. ej. eduroam): créala en la configuración avanzada";
@@ -87,6 +100,10 @@
 		batteryLowLast = "Conecta el cargador ya: queda muy poco.";
 		media = "Multimedia";
 		nothingPlaying = "Nada sonando";
+		mediaPrevious = "Anterior";
+		mediaPlay = "Reproducir";
+		mediaPause = "Pausa";
+		mediaNext = "Siguiente";
 		caffeine = "Cafeína";
 		tasks = "Tareas";
 		tasksTodo = "Por hacer";
@@ -94,6 +111,10 @@
 		tasksDone = "Hecho";
 		tasksAdd = "Nueva tarea";
 		tasksClear = "Limpiar";
+		tasksLeft = "Mover a la izquierda";
+		tasksRight = "Mover a la derecha";
+		tasksEdit = "Editar";
+		tasksDelete = "Borrar";
 		notice = "Aviso";
 
 		cliMissing = "%1 no está instalado en %2";
@@ -114,6 +135,7 @@
 		niloFailed = "Nilo no consigue arrancar";
 		niloFailedHow = "Se ha cerrado cinco veces seguidas (código %1).";
 		niloRetry = "Reintentar";
+		niloNew = "Nueva conversación";
 		niloOffHow = "Actívalo en Preferencias, Sistema.";
 		niloAsleep = "Dormido";
 		niloWaking = "Despertando";
@@ -462,6 +484,7 @@
 		clipTitle = "Portapapeles";
 		clipEmpty = "Nada copiado todavía.";
 		clipPictureSize = "%1 × %2";
+		clipForget = "Olvidar";
 		cfgClipboard = "Historial del portapapeles";
 		cfgClipboardOff = "No";
 		cfgClipboardWipe = "Olvidar";
@@ -618,6 +641,11 @@
 		vectorNoCopy = "Couldn't copy it";
 		vectorNoSave = "Couldn't save it";
 		vectorNoOpen = "Couldn't open it";
+		vectorCopy = "Copy";
+		vectorSave = "Save";
+		vectorOpen = "Open";
+		vectorRemove = "Remove";
+		vectorPaste = "Paste";
 		networks = "Networks";
 		scanning = "Scanning";
 		devices = "Devices";
@@ -629,6 +657,14 @@
 		dndOn = "Do not disturb is on";
 		nothingNew = "Nothing new";
 		confirmAgain = "Again";
+		confirmTo = "Again to %1";
+		scan = "Scan";
+		scanStop = "Stop scanning";
+		moreSettings = "More settings";
+		mute = "Mute";
+		unmute = "Unmute";
+		dismiss = "Dismiss";
+		workspace = "Workspace %1";
 		connectFailed = "Could not connect";
 		connectedTo = "Connected to %1";
 		enterpriseHint = "%1 uses WPA-Enterprise (e.g. eduroam): set it up in the advanced settings";
@@ -639,6 +675,10 @@
 		batteryLowLast = "Plug in the charger now: very little is left.";
 		media = "Media";
 		nothingPlaying = "Nothing playing";
+		mediaPrevious = "Previous";
+		mediaPlay = "Play";
+		mediaPause = "Pause";
+		mediaNext = "Next";
 		caffeine = "Caffeine";
 		tasks = "Tasks";
 		tasksTodo = "To do";
@@ -646,6 +686,10 @@
 		tasksDone = "Done";
 		tasksAdd = "New task";
 		tasksClear = "Clear";
+		tasksLeft = "Move left";
+		tasksRight = "Move right";
+		tasksEdit = "Edit";
+		tasksDelete = "Delete";
 		notice = "Notice";
 
 		cliMissing = "%1 is not installed in %2";
@@ -666,6 +710,7 @@
 		niloFailed = "Nilo can't start";
 		niloFailedHow = "It closed five times in a row (code %1).";
 		niloRetry = "Retry";
+		niloNew = "New conversation";
 		niloOffHow = "Turn it on in Preferences, System.";
 		niloAsleep = "Asleep";
 		niloWaking = "Waking up";
@@ -1014,6 +1059,7 @@
 		clipTitle = "Clipboard";
 		clipEmpty = "Nothing copied yet.";
 		clipPictureSize = "%1 × %2";
+		clipForget = "Forget";
 		cfgClipboard = "Clipboard history";
 		cfgClipboardOff = "Off";
 		cfgClipboardWipe = "Forget";
