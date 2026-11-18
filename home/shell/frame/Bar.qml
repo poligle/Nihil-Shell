@@ -42,6 +42,7 @@ Item {
 
         Workspaces {
             anchors.horizontalCenter: parent.horizontalCenter
+            output: root.output
         }
     }
 

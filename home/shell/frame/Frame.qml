@@ -23,6 +23,10 @@ Scope {
     readonly property int inset: hasBar ? Tokens.barWidth : Tokens.frameThickness
     readonly property int edge: Tokens.frameThickness
 
+    // A screen unplugged with a drawer open takes it along: left as it was, the other screens'
+    // hot edges, which wait for no drawer to be open, and Nilo's peek would stay shut.
+    Component.onDestruction: if (Drawers.screen === root.output) Drawers.close()
+
     Exclusions {
         screen: root.modelData
         inset: root.inset
@@ -40,8 +44,10 @@ Scope {
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "nihil-frame"
         // OnDemand, not Exclusive: Hyprland drops every focus grab when a layer turns exclusive.
+        // A drawer the pointer opened, launcher included, takes no keys: with the pointer left at
+        // an edge, what's typed into a window would go to it. A click on it, or its keys, do.
         WlrLayershell.keyboardFocus: clipKeys ? WlrKeyboardFocus.Exclusive
-            : launcherOpen || wallOpen || ovOpen || ((panelOpen || dashOpen) && !Drawers.byHover)
+            : ((launcherOpen || panelOpen || dashOpen) && !Drawers.byHover) || wallOpen || ovOpen
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
         Loader {
@@ -143,7 +149,7 @@ Scope {
 
         HyprlandFocusGrab {
             windows: [win]
-            active: win.launcherOpen || win.wallOpen || win.ovOpen || ((win.panelOpen || win.dashOpen) && !Drawers.byHover)
+            active: ((win.launcherOpen || win.panelOpen || win.dashOpen) && !Drawers.byHover) || win.wallOpen || win.ovOpen
             onCleared: {
                 if (Drawers.current !== "clipboard")
                     Drawers.close();
