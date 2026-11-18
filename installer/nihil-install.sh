@@ -523,6 +523,9 @@ logged() {
 
 apply_plan() {
     say "$(t insPreparing)"
+    # What gets installed answers before the disk is touched: an image built from a revision that
+    # isn't on GitHub would otherwise fail after formatting.
+    nix flake metadata "$source${rev:+/$rev}" > /dev/null 2>&1 || fail "$(t insNoSource "$source${rev:+/$rev}")"
     umount -R /mnt 2>/dev/null || true
     cryptsetup close cryptroot 2>/dev/null || true
     if [ "$mode" = whole ]; then
@@ -847,6 +850,7 @@ apply_answers() {
     zone=$(get .zone)
     timedatectl list-timezones | grep -qxF "$zone" || fail "$(t insUnknownZone "$zone")"
     fullname=$(get .fullName)
+    fullname=${fullname//[:$'\r\n']/}
     username=$(get .user)
     valid_user "$username" || fail "$(t insBadUser)"
     password=$(get .password)
@@ -1005,6 +1009,7 @@ main_tui() {
     fi
 
     fullname=$(gum input --header "$(t insYourName)" --placeholder "Ada Lovelace")
+    fullname=${fullname//[:$'\r\n']/}
     suggested=$(printf '%s' "${fullname%% *}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
     until valid_user "${username:-}"; do
         username=$(gum input --header "$(t insUserHint)" \

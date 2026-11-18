@@ -423,7 +423,8 @@ ShellRoot {
     }
 
     function nameEdited(text: string): void {
-        fullName = text;
+        // Without «:» or line breaks: the system refuses them in a name, after the disk is formatted.
+        fullName = text.replace(/[:\r\n]/g, "");
         if (!userTyped)
             user = plain(text.trim().split(/\s+/)[0]).replace(/[^a-z0-9_-]/g, "");
     }
@@ -1609,7 +1610,7 @@ ShellRoot {
                 anchors.leftMargin: 40
                 anchors.verticalCenter: keys.verticalCenter
                 visible: root.pageName === "welcome"
-                text: "ex nihilo"
+                text: Tokens.motto
                 color: Tokens.off
                 font.italic: true
                 font.pixelSize: 12

@@ -59,6 +59,15 @@ let
 		export NIHIL_GREETER_READY="$run/nihil-greeter-ready"
 		rm -f "$NIHIL_GREETER_READY" "$run/nihil-greeter-password"
 
+		# greetd starts the same greeter after it falls, and again: after two falls in a row,
+		# ReGreet. A login ends it with a signal, which doesn't count.
+		falls="$run/nihil-greeter-falls"
+		if [ "$(cat "$falls" 2> /dev/null || echo 0)" -ge 2 ]; then
+			rm -f "$falls"
+			echo "nihil-greeter: it fell twice, ReGreet instead" >&2
+			exec ${lib.getExe config.programs.regreet.package}
+		fi
+
 		${quickshell}/bin/quickshell -p ${greeter} &
 		pid=$!
 		for _ in $(seq 100); do
@@ -67,8 +76,13 @@ let
 			sleep 0.1
 		done
 		if [ -e "$NIHIL_GREETER_READY" ]; then
-			wait "$pid"
-			exit $?
+			status=0
+			wait "$pid" || status=$?
+			case $status in
+				0 | 130 | 143) rm -f "$falls" ;;
+				*) echo $(( $(cat "$falls" 2> /dev/null || echo 0) + 1 )) > "$falls" ;;
+			esac
+			exit "$status"
 		fi
 		echo "nihil-greeter: Quickshell didn't come up, ReGreet instead" >&2
 		kill "$pid" 2> /dev/null
@@ -92,7 +106,8 @@ in
 		# Every screen on, not only the last one connected (ReGreet's -m last): the greeter puts
 		# itself on the main one, the one QT_SCALE_FACTOR is for.
 		services.greetd.settings.default_session.command = lib.mkForce
-			"${pkgs.dbus}/bin/dbus-run-session ${lib.getExe pkgs.cage} -s -d -m extend -- ${start}";
+			# wlroots may draw in software where the GPU can't: a login screen, if slow, rather than none.
+			"${pkgs.dbus}/bin/dbus-run-session ${pkgs.coreutils}/bin/env WLR_RENDERER_ALLOW_SOFTWARE=1 ${lib.getExe pkgs.cage} -s -d -m extend -- ${start}";
 
 		systemd.tmpfiles.rules =
 		[

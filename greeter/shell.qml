@@ -85,6 +85,14 @@ ShellRoot {
         start();
     }
 
+    // What PAM and greetd say, as NIHIL writes: a failure in its own words, the rest with a capital.
+    function said(text: string): string {
+        const words = text.trim();
+        if (/^authentication failure$/i.test(words))
+            return Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
+        return words.length > 0 ? words.charAt(0).toLocaleUpperCase() + words.slice(1) : words;
+    }
+
     function reader(message: string): bool {
         return /finger|swipe|huella|dedo|sensor|lector/i.test(message);
     }
@@ -103,7 +111,7 @@ ShellRoot {
         function onAuthMessage(message: string, error: bool, responseRequired: bool, echoResponse: bool): void {
             if (responseRequired) {
                 root.echo = echoResponse;
-                root.note = echoResponse ? message.trim() : "";
+                root.note = echoResponse ? root.said(message) : "";
                 if (!echoResponse && root.waiting !== "") {
                     const text = root.waiting;
                     root.waiting = "";
@@ -115,7 +123,7 @@ ShellRoot {
                 root.asking = true;
                 return;
             }
-            root.note = root.reader(message) ? Lang.fingerprintReady : message.trim();
+            root.note = root.reader(message) ? Lang.fingerprintReady : root.said(message);
             root.wrong = error;
         }
 
@@ -139,7 +147,7 @@ ShellRoot {
         function onError(error: string): void {
             root.back();
             root.wrong = true;
-            root.note = error;
+            root.note = root.said(error);
             retry.restart();
         }
     }
@@ -360,16 +368,24 @@ ShellRoot {
                         { label: Lang.actPowerOff, command: Config.powerOff }
                     ]
 
+                    // A second click within 3 s does it: one by chance doesn't turn the computer off.
                     Label {
                         id: action
 
                         required property var modelData
+                        property bool armed: false
 
-                        text: modelData.label
-                        color: area.containsMouse ? Tokens.ink : Tokens.muted
+                        text: armed ? Lang.confirmTo.arg(modelData.label.toLowerCase()) : modelData.label
+                        color: armed || area.containsMouse ? Tokens.ink : Tokens.muted
                         font.pixelSize: 12
 
                         Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+
+                        Timer {
+                            id: disarm
+                            interval: 3000
+                            onTriggered: action.armed = false
+                        }
 
                         MouseArea {
                             id: area
@@ -377,7 +393,14 @@ ShellRoot {
                             anchors.margins: -8
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(action.modelData.command)
+                            onClicked: {
+                                if (action.armed) {
+                                    Quickshell.execDetached(action.modelData.command);
+                                    return;
+                                }
+                                action.armed = true;
+                                disarm.restart();
+                            }
                         }
                     }
                 }
@@ -387,7 +410,7 @@ ShellRoot {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 40
-                text: "ex nihilo"
+                text: Tokens.motto
                 color: Tokens.off
                 font.italic: true
                 font.pixelSize: 12
