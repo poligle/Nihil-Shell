@@ -23,6 +23,18 @@ in
         categories = [ "Settings" ];
     };
 
+    # Files' Open with, for the kinds the photo widget shows; out of the launcher, and no
+    # picture's default (viewers.nix keeps imv for each of them).
+    xdg.desktopEntries.nihil-photo =
+    {
+        name = osConfig.nihil.strings.widgetPhotoApp;
+        exec = "nihil-ipc widgets photo %f";
+        icon = "image-x-generic";
+        terminal = false;
+        noDisplay = true;
+        mimeType = [ "image/png" "image/jpeg" "image/gif" "image/bmp" "image/webp" ];
+    };
+
     xdg.dataFile =
     {
         "applications/kitty-open.desktop"                       = hidden "kitty URL Launcher";

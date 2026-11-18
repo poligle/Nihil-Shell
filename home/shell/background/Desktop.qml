@@ -229,6 +229,7 @@ Scope {
             Region { item: clockCard.visible ? clockCard : null }
             Region { item: networkCard.visible ? networkCard : null }
             Region { item: mediaCard.visible ? mediaCard : null }
+            Region { item: photoCard.visible ? photoCard : null }
         }
 
         SystemClock {
@@ -370,6 +371,56 @@ Scope {
                     Item { Layout.fillWidth: true }
 
                     MediaKeys { size: 28 }
+                }
+            }
+
+            // A picture of one's own, in dots.
+            Card {
+                id: photoCard
+                widget: "photo"
+
+                DotScreen {
+                    id: photo
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 208
+                    source: Machine.photoUrl
+                    pitch: 4
+                    radius: 12
+
+                    Txt {
+                        anchors.centerIn: parent
+                        width: parent.width - 48
+                        visible: photo.status === Image.Null || photo.status === Image.Error
+                        text: Lang.widgetPhotoHow
+                        color: Tokens.dim
+                        font.pixelSize: 13
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideNone
+                    }
+
+                    // A picture from Files: one, of a kind it can show.
+                    DropArea {
+                        id: dropping
+                        anchors.fill: parent
+                        onEntered: drag => {
+                            drag.accepted = drag.hasUrls && drag.urls.length === 1
+                                && /^file:\/\/\/.+\.(png|jpe?g|gif|bmp|webp)$/i.test(drag.urls[0].toString());
+                        }
+                        onDropped: drop => {
+                            Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false);
+                            drop.accept();
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: dropping.containsDrag
+                        color: "transparent"
+                        radius: photo.radius
+                        border.width: 1
+                        border.color: Tokens.ink
+                    }
                 }
             }
 

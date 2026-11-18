@@ -8,6 +8,7 @@ Item {
     property string source: ""
     property int pitch: 5
     property int radius: 14
+    readonly property alias status: art.status
 
     clip: true
 
@@ -22,6 +23,7 @@ Item {
         anchors.fill: parent
         source: root.source
         fillMode: Image.PreserveAspectCrop
+        autoTransform: true
         asynchronous: true
         visible: false
         sourceSize.width: root.width * 2

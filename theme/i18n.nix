@@ -604,10 +604,15 @@
 		cfgWidgetsArrangeSub = "Arrastra cada uno donde lo quieras; también con una pulsación larga sobre él";
 		cfgArrange = "Colocar";
 		widgetsHint = "Arrastra un widget para moverlo|[Esc] Listo";
+		widgetPhotoHow = "Suelta aquí una foto, o ábrela con Widget de foto desde Archivos";
+		widgetPhotoApp = "Widget de foto";
+		widgetPhotoSet = "Foto puesta en el escritorio";
+		widgetPhotoFailed = "No se ha podido poner la foto";
 		cfgGlass = "Cristal ahumado";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
 		cfgWidgetMedia = "Música";
+		cfgWidgetPhoto = "Foto";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.
@@ -1395,10 +1400,15 @@
 		cfgWidgetsArrangeSub = "Drag each one where you want it; a long press on one does it too";
 		cfgArrange = "Arrange";
 		widgetsHint = "Drag a widget to move it|[Esc] Done";
+		widgetPhotoHow = "Drop a photo here, or open one with Photo widget from Files";
+		widgetPhotoApp = "Photo widget";
+		widgetPhotoSet = "Photo set on the desktop";
+		widgetPhotoFailed = "Couldn't set the photo";
 		cfgGlass = "Smoked glass";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";
 		cfgWidgetMedia = "Music";
+		cfgWidgetPhoto = "Photo";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.

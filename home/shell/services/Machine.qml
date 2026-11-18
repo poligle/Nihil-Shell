@@ -223,6 +223,66 @@ Singleton {
         root.saveWidgets();
     }
 
+    // The photo widget's picture: a copy, so it stays when the one it came from goes. Its name
+    // says nothing of what it is; the picture itself does. Each one put in counts, so the widget
+    // reads the file again; 0 is none yet.
+    readonly property string photoFile: stateDir + "/photo"
+    property int photoTaken: 0
+    readonly property string photoUrl: root.photoTaken > 0
+        ? "file://" + root.photoFile.split("/").map(encodeURIComponent).join("/") + "?" + root.photoTaken : ""
+    // Qt reads PNG, JPEG, GIF and BMP by itself; a WebP one goes in as PNG.
+    readonly property string photoScript: 'mkdir -p "$(dirname "$2")" && '
+        + 'if [ "$(head -c 12 -- "$1" | tail -c 4)" = WEBP ]; then '
+        + '"$3" -v error -y -f webp_pipe -i "file:$1" -frames:v 1 -c:v png -f image2pipe "file:$2.new"; '
+        + 'else cp -f -- "$1" "$2.new"; fi && mv -f -- "$2.new" "$2"'
+
+    // From the widget, where it shows at once, or from Files' Open with, which says it's done.
+    function setPhoto(path: string, told: bool): void {
+        if (!path.startsWith("/")) {
+            root.notify(Lang.widgetPhotoFailed, "");
+            return;
+        }
+        if (photoCopy.running) {
+            photoCopy.next = [path, told];
+            return;
+        }
+        photoCopy.told = told;
+        photoCopy.command = [Config.cmd.sh, "-c", root.photoScript, "sh", path, root.photoFile, Config.cmd.ffmpeg];
+        photoCopy.running = true;
+    }
+
+    Process {
+        id: photoCopy
+
+        property bool told: false
+        property var next: null
+
+        onExited: code => {
+            if (code !== 0) {
+                root.notify(Lang.widgetPhotoFailed, "");
+            } else {
+                root.photoTaken++;
+                if (root.widgets.indexOf("photo") < 0)
+                    root.setWidget("photo", true);
+                if (photoCopy.told)
+                    root.notify(Lang.widgetPhotoSet, "");
+            }
+            const next = photoCopy.next;
+            photoCopy.next = null;
+            if (next !== null)
+                root.setPhoto(next[0], next[1]);
+        }
+    }
+
+    Process {
+        command: [Config.cmd.sh, "-c", '[ -s "$1" ]', "sh", root.photoFile]
+        running: true
+        onExited: code => {
+            if (code === 0 && root.photoTaken === 0)
+                root.photoTaken = 1;
+        }
+    }
+
     function arrangeWidgets(): void {
         root.hide();
         root.arranging = true;
@@ -671,6 +731,8 @@ Singleton {
         function arrange(): void { root.arrangeWidgets(); }
         function done(): void { root.arranging = false; }
         function list(): string { return JSON.stringify({ on: root.widgets, at: root.widgetPlaces }); }
+        // A whole path, from /, as Files' Open with gives it.
+        function photo(path: string): void { root.setPhoto(path, true); }
     }
 
     IpcHandler {
