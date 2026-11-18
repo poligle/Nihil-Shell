@@ -38,7 +38,6 @@ Singleton {
     readonly property string bell: g(0xF009A)
     readonly property string bellOff: g(0xF009B)
     readonly property string night: g(0xF0594)
-    readonly property string airplane: g(0xF001D)
     readonly property string close: g(0xF0156)
     readonly property string search: g(0xF0349)
     readonly property string calculator: g(0xF00EC)

@@ -58,7 +58,12 @@ let
     };
 in
 {
-    imports = [ ./nilo.nix ./settings.nix ];
+    imports =
+    [
+        ./nilo.nix
+        ./settings.nix
+        (lib.mkRemovedOptionModule [ "nihil" "soundPack" ] "NIHIL has one pack of sounds, sounds/nihil.")
+    ];
 
     options.nihil =
     {
@@ -144,18 +149,11 @@ in
             '';
         };
 
-        soundPack = lib.mkOption
-        {
-            type = lib.types.enum [ "nihil" "classic" ];
-            default = "nihil";
-            description = "Interface sounds: the NIHIL pack (sounds/nihil) or the previous ones (sounds/).";
-        };
-
         sounds = lib.mkOption
         {
             type = lib.types.attrsOf lib.types.path;
             readOnly = true;
-            description = "Sound file for each interface event, from the selected pack.";
+            description = "Sound file for each interface event (sounds/nihil).";
         };
 
         wallpapers = lib.mkOption
@@ -203,21 +201,8 @@ in
         };
         nihil.fonts = import ../theme/fonts.nix { inherit pkgs; };
 
-        nihil.sounds =
-            let
-                freedesktop = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo";
-                events = [ "switch" "open" "close" "special" "fullscreen" "lock" "power" "menu" "notify" "critical" "volume" "charge" ];
-            in
-            if cfg.soundPack == "nihil" then
-                lib.genAttrs events (event: ../sounds/nihil + "/${event}.ogg")
-            else
-                lib.genAttrs [ "switch" "open" "close" "special" "fullscreen" "lock" "power" "menu" ] (event: ../sounds + "/${event}.ogg")
-                // {
-                    notify = "${freedesktop}/message.oga";
-                    critical = "${freedesktop}/dialog-error.oga";
-                    volume = "${freedesktop}/audio-volume-change.oga";
-                    charge = "${freedesktop}/power-plug.oga";
-                };
+        nihil.sounds = lib.genAttrs [ "switch" "open" "close" "special" "fullscreen" "lock" "power" "menu" "notify" "critical" "volume" "charge" ]
+            (event: ../sounds/nihil + "/${event}.ogg");
 
         fonts.packages = [ cfg.fonts ];
 

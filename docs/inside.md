@@ -55,7 +55,7 @@ Nihil-Shell/
   (`nihil-clipboard`) and the window keeps the keyboard; only a paste key without a
   modifier makes the frame `Exclusive` until it pastes.
 - **Charger:** plugging it in lights the frame from the bottom and plays `charge`, three
-  climbing notes (the classic pack uses freedesktop's `power-plug`).
+  climbing notes.
 - **Battery:** the shell reads it through UPower, which `modules/nihil.nix` enables. At
   15, 10 and 5 % it sends a critical notification, once per threshold and discharge; each
   one replaces the last (`x-nihil-tag` hint) and plugging in the charger dismisses it.

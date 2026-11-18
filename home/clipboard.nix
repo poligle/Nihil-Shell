@@ -48,7 +48,7 @@ let
 				paste) mods=SHIFT ;;
 				copy) mods=CTRL ;;
 				*)
-					echo "usage: nihil-clipboard keys paste|copy" >&2
+					echo "Usage: nihil-clipboard keys paste|copy" >&2
 					return 2
 					;;
 			esac
@@ -104,10 +104,10 @@ let
 				cat "$dir/list.new"
 				;;
 			copy)
-				copy "''${2:?usage: nihil-clipboard copy ID [TYPE]}" "''${3:-}"
+				copy "''${2:?Usage: nihil-clipboard copy ID [TYPE]}" "''${3:-}"
 				;;
 			paste)
-				copy "''${2:?usage: nihil-clipboard paste ID [TYPE]}" "''${3:-}"
+				copy "''${2:?Usage: nihil-clipboard paste ID [TYPE]}" "''${3:-}"
 				sleep 0.06
 				keys paste || exit 1
 				;;
@@ -115,14 +115,14 @@ let
 				keys "''${2:-}" || exit $?
 				;;
 			delete)
-				entry "''${2:?usage: nihil-clipboard delete ID}" | cliphist delete
+				entry "''${2:?Usage: nihil-clipboard delete ID}" | cliphist delete
 				;;
 			wipe)
 				cliphist wipe
 				rm -rf "$dir"
 				;;
 			*)
-				echo "usage: nihil-clipboard list [N] | copy ID [TYPE] | paste ID [TYPE] | keys paste|copy | delete ID | wipe" >&2
+				echo "Usage: nihil-clipboard list [N] | copy ID [TYPE] | paste ID [TYPE] | keys paste|copy | delete ID | wipe" >&2
 				exit 2
 				;;
 		esac

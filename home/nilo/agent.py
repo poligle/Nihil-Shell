@@ -483,8 +483,8 @@ def schema(name, description, properties=None, required=()):
     }}
 
 
-CONTROLS = ("volume", "mute", "mic", "brightness", "dnd", "caffeine", "night", "wifi", "bluetooth", "airplane",
-            "wallpaper", "glass", "workspace", "screenshot", "record", "lock")
+CONTROLS = ("volume", "mute", "mic", "brightness", "dnd", "caffeine", "night", "wifi", "bluetooth", "wallpaper",
+            "glass", "workspace", "screenshot", "record", "lock")
 
 # What marks the chat as having read the user's things, and the answer as having read the outside;
 # read_file, list_files and run_command mark the chat themselves, only for what isn't the repo.
@@ -612,7 +612,7 @@ SCHEMAS = {
         "Change something of NIHIL itself: volume (0-100, +10, -10), mute, mic (on, off), brightness (0-100, +10, "
         "-10), dnd (do not disturb), caffeine (keep the screen on), night (night light: on, off, or its strength "
         "0-100), wifi (on, off, or a saved network's name to join it), bluetooth (on, off, a paired device's name to "
-        "connect it, or 'disconnect' and its name), airplane, wallpaper (next, prev or a name), glass (the smoked "
+        "connect it, or 'disconnect' and its name), wallpaper (next, prev or a name), glass (the smoked "
         "glass look), workspace (a number, to show it), screenshot, record (the screen: on, off) or lock (the "
         "screen).",
         {"setting": {"type": "string", "enum": list(CONTROLS)},
@@ -2604,7 +2604,7 @@ PROMPT = {
                    "(ctrl+s saves, ctrl+b makes bold); use_window focuses, moves, enlarges or closes a window. media "
                    "controls what plays and puts on a song by its name; control changes the volume, the microphone, "
                    "the brightness, do not disturb, caffeine, the night light and its strength, Wi-Fi, Bluetooth, "
-                   "airplane mode, the wallpaper, the glass and the workspace shown, takes screenshots and records "
+                   "the wallpaper, the glass and the workspace shown, takes screenshots and records "
                    "the screen; send_to_phone sends something to the user's devices. To look for a video, open its search "
                    "(https://www.youtube.com/results?search_query=…) with open_app. Do it straight away when asked, "
                    "without asking first: whatever carries a risk, the user confirms already.",

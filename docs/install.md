@@ -4,6 +4,11 @@ Two ways in, to the same system: the installer, on any computer, or the NixOS yo
 have, from a clone of this repository. Either way the machine keeps what is its own in
 `/etc/nixos`, and NIHIL comes from here.
 
+To see it first, a NixOS runs it in a window, as it comes: `nix run
+github:poligle/Nihil-Shell#vm` logs in by itself (user `nihil`, password `nihil`) on a disk of
+its own in `~/.cache/nihil-vm`; `--fresh` starts it on a new one. The folder it's run from is
+at `/mnt/nihil` in it.
+
 ### With the installer
 
 [Releases](https://github.com/poligle/Nihil-Shell/releases) has the ISO: `latest`, built

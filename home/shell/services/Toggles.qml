@@ -10,39 +10,11 @@ Singleton {
 
     property bool night: false
     property real nightLevel: 0.5
-    property bool airplane: false
 
     readonly property int kelvin: Math.round(6000 - nightLevel * 3400)
     // Its level, and whether it's on: applying settings restarts the shell, and the night light
     // stays as it was through that, and into the next session.
     readonly property string nightFile: Machine.stateDir + "/night"
-    // While airplane mode is on, this file lists the radios it found on (wlan, bluetooth),
-    // the ones leaving it turns back on.
-    readonly property string airplaneFile: Machine.stateDir + "/airplane"
-
-    function setAirplane(on: bool): void {
-        root.airplane = on;
-        Quickshell.execDetached([Config.cmd.sh, "-c", on ? root.takeOff : root.land, "sh", Config.cmd.rfkill, root.airplaneFile]);
-        settle.restart();
-    }
-
-    // $1 is rfkill and $2 the file. Turning it on twice keeps the first list; with every
-    // radio already off, Wi-Fi is the one to bring back.
-    readonly property string takeOff: [
-        'mkdir -p "$(dirname "$2")"',
-        'if [ ! -e "$2" ]; then',
-        '  "$1" --noheadings --raw --output TYPE,SOFT | while read -r type soft; do [ "$soft" = unblocked ] && echo "$type"; done > "$2.new"',
-        '  [ -s "$2.new" ] || echo wlan > "$2.new"',
-        '  mv "$2.new" "$2"',
-        'fi',
-        '"$1" block all'
-    ].join("\n")
-    readonly property string land: [
-        'if [ -e "$2" ]; then',
-        '  while read -r type; do [ -n "$type" ] && "$1" unblock "$type"; done < "$2"',
-        '  rm -f "$2"',
-        'fi'
-    ].join("\n")
 
     function setNightLevel(level: real): void {
         root.nightLevel = Math.max(0, Math.min(1, level));
@@ -91,46 +63,6 @@ Singleton {
                                               "sh", root.nightFile, root.nightLevel.toFixed(2), root.night ? "on" : "off"])
     }
 
-    // Airplane mode is every radio off, as rfkill has them, whoever turned them off: this, the
-    // laptop's own key, rfkill itself, the last session (systemd keeps them through a restart).
-    // Read at start and on each change, once a change of ours has settled.
-    Process {
-        id: radios
-        command: [Config.cmd.rfkill, "--noheadings", "--raw", "--output", "SOFT"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const soft = text.split("\n").map(line => line.trim()).filter(line => line !== "");
-                if (!settle.running)
-                    root.airplane = soft.length > 0 && soft.every(state => state === "blocked");
-            }
-        }
-    }
-
-    Process {
-        id: events
-        running: true
-        command: [Config.cmd.rfkill, "event"]
-        stdout: SplitParser { onRead: line => reread.restart() }
-        onExited: eventsAgain.restart()
-    }
-
-    Timer {
-        id: reread
-        interval: 200
-        onTriggered: {
-            if (radios.running || settle.running)
-                restart();
-            else
-                radios.running = true;
-        }
-    }
-
-    Timer {
-        id: eventsAgain
-        interval: 30000
-        onTriggered: events.running = true
-    }
-
     Process {
         id: sunset
         command: [Config.cmd.hyprsunset, "-t", String(root.kelvin)]
@@ -170,14 +102,5 @@ Singleton {
         id: relaunch
         interval: 400
         onTriggered: sunset.running = root.night
-    }
-
-    Timer {
-        id: settle
-        interval: 800
-        onTriggered: {
-            Network.refresh();
-            reread.restart();
-        }
     }
 }

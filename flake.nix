@@ -29,6 +29,7 @@
 	outputs = inputs@{ self, nixpkgs, home-manager, stylix, zen-browser, ... }:
 	let
 		system = "x86_64-linux";
+		pkgs = nixpkgs.legacyPackages.${system};
 
 		date = self.lastModifiedDate or "19700101000000";
 		at = start: length: builtins.substring start length date;
@@ -80,12 +81,34 @@
 			example = self.lib.mkSystem
 			{
 				settings = builtins.fromJSON (builtins.readFile ./templates/machine/settings.json);
-				modules = [ ./templates/example/hardware-configuration.nix ./templates/machine/local.nix ];
+				modules = [ ./templates/example/hardware-configuration.nix ./templates/example/vm.nix ./templates/machine/local.nix ];
 				home = [ ./templates/machine/home.nix ];
 			};
 		};
 
 		packages.${system}.iso = self.nixosConfigurations.installer.config.system.build.isoImage;
+
+		# NIHIL as it comes, in a window (templates/example/vm.nix): nix run .#vm, from the folder to
+		# find in it at /mnt/nihil. --fresh starts it on a new disk; it keeps its own otherwise.
+		apps.${system}.vm =
+		{
+			type = "app";
+			meta.description = "NIHIL as it comes, in a window: user nihil, password nihil";
+			program = nixpkgs.lib.getExe (pkgs.writeShellApplication
+			{
+				name = "nihil-vm";
+				text = ''
+					disk="''${XDG_CACHE_HOME:-$HOME/.cache}/nihil-vm/nihil.qcow2"
+					if [ "''${1:-}" = --fresh ]; then
+						rm -f "$disk"
+						shift
+					fi
+					mkdir -p "$(dirname "$disk")"
+					echo "nihil-vm: user nihil, password nihil; $PWD is at /mnt/nihil" >&2
+					NIX_DISK_IMAGE="$disk" NIHIL_VM_SOURCE="$PWD" exec ${nixpkgs.lib.getExe self.nixosConfigurations.example.config.system.build.vm} "$@"
+				'';
+			});
+		};
 
 		templates.default =
 		{

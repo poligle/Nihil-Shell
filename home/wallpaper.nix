@@ -75,7 +75,7 @@ let
 			restore) apply "$(current)" ;;
 			next)    step 1 ;;
 			prev)    step -1 ;;
-			set)     apply "''${2:?usage: nihil-wallpaper set <name>}" ;;
+			set)     apply "''${2:?Usage: nihil-wallpaper set <name>}" ;;
 			list)    printf '%s\n' "''${names[@]}" ;;
 			current) current ;;
 			glass)
@@ -87,10 +87,10 @@ let
 						apply "$(current)"
 						pkill -USR1 -x 'kitty|\.kitty-wrapped' || true
 						;;
-					*) echo "usage: nihil-wallpaper glass [on|off]" >&2; exit 2 ;;
+					*) echo "Usage: nihil-wallpaper glass [on|off]" >&2; exit 2 ;;
 				esac
 				;;
-			*)       echo "usage: nihil-wallpaper [restore|next|prev|set <name>|list|current|glass [on|off]]" >&2; exit 2 ;;
+			*)       echo "Usage: nihil-wallpaper [restore|next|prev|set <name>|list|current|glass [on|off]]" >&2; exit 2 ;;
 		esac
 	'';
 in

@@ -63,7 +63,7 @@ def main():
     elif len(args) == 2:
         cover(args[0], args[1])
     else:
-        sys.exit("usage: cover.py SOURCE OUT.png | --placeholder OUT.png | --blank OUT.png")
+        sys.exit("Usage: cover.py SOURCE OUT.png | --placeholder OUT.png | --blank OUT.png")
 
 
 if __name__ == "__main__":
