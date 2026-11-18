@@ -17,7 +17,8 @@ Item {
     property int index: 0
 
     readonly property var monitor: Hyprland.monitors.values.find(m => m.name === root.output) ?? null
-    readonly property real ratio: root.monitor && root.monitor.height > 0 ? root.monitor.width / root.monitor.height : 16 / 9
+    readonly property var size: root.logical(root.monitor)
+    readonly property real ratio: root.size.w > 0 && root.size.h > 0 ? root.size.w / root.size.h : 16 / 9
     readonly property real cardH: 150
     readonly property real cardW: Math.round(root.cardH * root.ratio)
     readonly property var ids: {
@@ -32,6 +33,14 @@ Item {
     readonly property string wallpaper: Machine.wallpaper !== "" ? Machine.wallpaper : Machine.get("wallpaper", "night")
     function wallpaperFor(output: string): string {
         return "file://" + Config.wallpaperDir + "/" + root.wallpaper + "/" + output + ".png";
+    }
+
+    // A screen's size as windows see it: Hyprland gives its mode's, before scale and turn.
+    function logical(m: var): var {
+        const scale = m?.scale || 1;
+        const turned = ((m?.lastIpcObject?.transform ?? 0) % 2) === 1;
+        const w = (m?.width ?? 0) / scale, h = (m?.height ?? 0) / scale;
+        return turned ? { w: h, h: w } : { w: w, h: h };
     }
 
     function step(delta: int): void {
@@ -123,8 +132,9 @@ Item {
 
             readonly property var ws: Hyprland.workspaces.values.find(w => w.id === card.modelData) ?? null
             readonly property var mon: card.ws?.monitor ?? root.monitor
-            readonly property real logical: card.mon && card.mon.width > 0 ? card.mon.width / (card.mon.scale || 1) : root.cardW
-            readonly property real shrink: card.logical / root.cardW
+            readonly property var area: root.logical(card.mon)
+            readonly property real across: card.area.w > 0 ? card.area.w / root.cardW : 1
+            readonly property real down: card.area.h > 0 ? card.area.h / root.cardH : 1
             readonly property bool chosen: card.index === root.index || pointer.containsMouse
             readonly property bool current: (Hyprland.focusedWorkspace?.id ?? 0) === card.modelData
 
@@ -176,10 +186,10 @@ Item {
 
                         z: (client.ipc.fullscreen ?? 0) > 0 ? 2000
                             : client.ipc.floating ? 1000 - (client.ipc.focusHistoryID ?? 0) : 0
-                        x: client.ipc.at && card.mon ? (client.ipc.at[0] - card.mon.x) / card.shrink : 0
-                        y: client.ipc.at && card.mon ? (client.ipc.at[1] - card.mon.y) / card.shrink : 0
-                        width: client.ipc.size ? client.ipc.size[0] / card.shrink : 0
-                        height: client.ipc.size ? client.ipc.size[1] / card.shrink : 0
+                        x: client.ipc.at && card.mon ? (client.ipc.at[0] - card.mon.x) / card.across : 0
+                        y: client.ipc.at && card.mon ? (client.ipc.at[1] - card.mon.y) / card.down : 0
+                        width: client.ipc.size ? client.ipc.size[0] / card.across : 0
+                        height: client.ipc.size ? client.ipc.size[1] / card.down : 0
 
                         ScreencopyView {
                             anchors.fill: parent

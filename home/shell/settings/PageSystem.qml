@@ -45,7 +45,7 @@ Flickable {
                 Toggle {
                     anchors.verticalCenter: parent.verticalCenter
                     on: Machine.get("nilo.enable", false)
-                    onToggled: Machine.set("nilo.enable", !on)
+                    onToggled: Machine.set("nilo.enable", !on, false)
                 }
 
                 KeyButton {
@@ -67,7 +67,7 @@ Flickable {
             Choice {
                 options: [{ value: "cpu", label: "CPU" }, { value: "vulkan", label: "Vulkan" }, { value: "rocm", label: "ROCm" }, { value: "cuda", label: "CUDA" }]
                 value: Machine.get("nilo.acceleration", "cpu")
-                onPicked: value => Machine.set("nilo.acceleration", value)
+                onPicked: value => Machine.set("nilo.acceleration", value, "cpu")
             }
         }
 
@@ -82,7 +82,7 @@ Flickable {
                     options: [{ value: 0, label: Lang.cfgClipboardOff }, { value: 5, label: "5" }, { value: 8, label: "8" },
                               { value: 15, label: "15" }, { value: 30, label: "30" }]
                     value: Machine.get("clipboard", 8)
-                    onPicked: value => Machine.set("clipboard", value)
+                    onPicked: value => Machine.set("clipboard", value, 8)
                 }
 
                 CircleButton {
@@ -101,7 +101,7 @@ Flickable {
 
             Toggle {
                 on: Machine.get("bootSound", true)
-                onToggled: Machine.set("bootSound", !on)
+                onToggled: Machine.set("bootSound", !on, true)
             }
         }
 
@@ -110,7 +110,7 @@ Flickable {
 
             Toggle {
                 on: Machine.get("fingerprint", false)
-                onToggled: Machine.set("fingerprint", !on)
+                onToggled: Machine.set("fingerprint", !on, false)
             }
         }
 
@@ -120,7 +120,7 @@ Flickable {
 
             Toggle {
                 on: Machine.get("ssh", false)
-                onToggled: Machine.set("ssh", !on)
+                onToggled: Machine.set("ssh", !on, false)
             }
         }
     }

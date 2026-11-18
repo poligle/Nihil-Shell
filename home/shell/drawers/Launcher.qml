@@ -88,8 +88,9 @@ Item {
         armed = "";
         grid.currentIndex = 0;
         list.currentIndex = 0;
+        // A result belongs to its sum: none until the new one is worked out.
+        result = "";
         if (query.startsWith("=")) calcDelay.restart();
-        else result = "";
         if (query.startsWith("?") && query.slice(1).trim() !== "") Nilo.warm();
     }
 
@@ -122,7 +123,8 @@ Item {
         else if (mode === "apps" && apps.length > 0) launch(apps[Math.max(0, grid.currentIndex)]);
         else if (mode === "actions") runAction(actions[list.currentIndex]);
         else if (mode === "calc" && result) {
-            Quickshell.execDetached([Config.cmd.wlCopy, result]);
+            // Other programs read a minus as ASCII's, not qalc's U+2212.
+            Quickshell.execDetached([Config.cmd.wlCopy, "--", result.replace(/\u2212/g, "-")]);
             Drawers.close();
         }
     }
@@ -150,7 +152,13 @@ Item {
         id: calcDelay
         interval: 140
         onTriggered: {
-            if (root.term === "") { root.result = ""; return; }
+            if (root.term === "")
+                return;
+            if (calc.running) {
+                calc.again = true;
+                return;
+            }
+            calc.asked = root.term;
             calc.command = [Config.cmd.qalc, "-t", "--", root.term];
             calc.running = true;
         }
@@ -158,8 +166,21 @@ Item {
 
     Process {
         id: calc
+
+        property string asked: ""
+        property bool again: false
+
         stdout: StdioCollector {
-            onStreamFinished: root.result = text.trim().split("\n").pop()
+            onStreamFinished: {
+                if (calc.asked === root.term && root.mode === "calc")
+                    root.result = text.trim().split("\n").pop();
+            }
+        }
+        onExited: {
+            if (again) {
+                again = false;
+                calcDelay.restart();
+            }
         }
     }
 

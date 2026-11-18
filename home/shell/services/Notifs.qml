@@ -13,6 +13,8 @@ Singleton {
     property var popups: []
     readonly property var history: server.trackedNotifications.values.slice().reverse()
 
+    // Kept for the panel, newest first; the oldest go beyond this many.
+    readonly property int kept: 50
     readonly property int defaultTimeout: 5000
     readonly property int longestTimeout: 30000
     readonly property int criticalTimeout: 15000
@@ -30,6 +32,12 @@ Singleton {
         popups = popups.filter(p => p !== n);
     }
 
+    // A transient notice isn't kept: it goes with its popup, as the specification asks.
+    function leave(gone: var): void {
+        for (const n of gone)
+            if (n.transient) n.expire();
+    }
+
     function hold(n, on: bool): void {
         if (!n) return;
         if (on) {
@@ -44,18 +52,24 @@ Singleton {
         const now = Date.now();
         const keep = popups.filter(p => p.id === held || (deadlines[p.id] ?? 0) > now);
         if (keep.length === popups.length) return;
-        for (const p of popups)
-            if (keep.indexOf(p) < 0) delete deadlines[p.id];
+        const gone = popups.filter(p => keep.indexOf(p) < 0);
+        for (const p of gone)
+            delete deadlines[p.id];
         popups = keep;
+        leave(gone);
     }
 
     function hidePopups(): void {
+        const gone = popups;
         popups = [];
         deadlines = ({});
+        leave(gone);
     }
 
     function markSeen(): void {
+        const gone = popups.filter(p => !isCritical(p));
         popups = popups.filter(p => isCritical(p));
+        leave(gone);
     }
 
     function clear(): void {
@@ -123,10 +137,15 @@ Singleton {
             n.tracked = true;
             n.closed.connect(() => root.hidePopup(n));
             if (root.tagOf(n) !== "") root.dismissTag(root.tagOf(n), n);
+            const all = server.trackedNotifications.values;
+            for (let i = 0; i < all.length - root.kept; i++)
+                if (all[i] !== n) all[i].dismiss();
 
             const critical = root.isCritical(n);
-            if (root.dnd && !critical)
+            if (root.dnd && !critical) {
+                if (n.transient) n.expire();
                 return;
+            }
 
             if (root.niloKind(n) !== "") {
                 Glyph.nilo();

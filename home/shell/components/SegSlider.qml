@@ -13,6 +13,10 @@ Item {
 
     signal moved(real value)
 
+    // A wheel's notch is 120; a touchpad or a fine wheel sends it in small parts, which add up
+    // to the 5 % a notch moves.
+    property real wheeled: 0
+
     function nudge(by: real): void {
         root.moved(Math.max(0, Math.min(1, root.value + by)));
     }
@@ -73,7 +77,18 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onPressed: mouse => root.emitAt(mouse.x - 6)
         onPositionChanged: mouse => { if (pressed) root.emitAt(mouse.x - 6); }
-        onWheel: wheel => root.nudge(wheel.angleDelta.y > 0 ? 0.05 : -0.05)
+        onWheel: wheel => {
+            if (wheel.angleDelta.y === 0) {
+                wheel.accepted = false;
+                return;
+            }
+            root.wheeled += wheel.angleDelta.y;
+            const notches = Math.trunc(root.wheeled / 120);
+            if (notches === 0)
+                return;
+            root.wheeled -= notches * 120;
+            root.nudge(notches * 0.05);
+        }
     }
 
     FocusRing {

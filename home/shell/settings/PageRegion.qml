@@ -108,7 +108,7 @@ Flickable {
                         placeholder: Lang.cfgVariant
                         value: Machine.get("keyboard.variant", "")
                         invalid: text.trim() !== "" && !page.variantExists(text.trim())
-                        onEdited: text => Machine.set("keyboard.variant", text.trim())
+                        onEdited: text => Machine.set("keyboard.variant", text.trim(), "")
                     }
                 }
             }
