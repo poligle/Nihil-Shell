@@ -30,8 +30,10 @@ Item {
         }
     }
 
+    Component.onDestruction: Network.watching(root, false)
+
     onActiveChanged: {
-        Network.watch = active;
+        Network.watching(root, active);
         if (active) {
             Qt.callLater(() => { if (root.active) root.forceActiveFocus(); });
             Brightness.refresh();

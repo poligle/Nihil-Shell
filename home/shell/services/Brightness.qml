@@ -35,11 +35,7 @@ Singleton {
         }
     }
 
-    Timer {
-        interval: 5000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root.refresh()
-    }
+    // Read at start and as the panel opens, not every few seconds: the brightness keys tell the
+    // OSD what they set (osd brightness), and a computer with no backlight would be asked forever.
+    Component.onCompleted: root.refresh()
 }

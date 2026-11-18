@@ -47,8 +47,10 @@ Singleton {
         });
     }
 
+    // Hyprland tells of no window moving, so the windows are read; most often while a drawer's
+    // glass shows them, and once a second at rest, sooner while one is seen moving.
     Timer {
-        interval: root.live > 0 ? (root.moving ? 50 : 200) : 400
+        interval: root.live > 0 ? (root.moving ? 50 : 200) : (root.moving ? 200 : 1000)
         running: root.enabled && Hyprland.toplevels.values.length > 0
         repeat: true
         onTriggered: {

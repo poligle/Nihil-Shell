@@ -134,7 +134,7 @@ Item {
                     Image {
                         id: picture
                         anchors.fill: parent
-                        source: row.kind === "image" ? "file://" + row.modelData.file : ""
+                        source: row.kind === "image" && row.modelData.file !== "" ? "file://" + row.modelData.file : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         visible: false

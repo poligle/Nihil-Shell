@@ -141,6 +141,28 @@ Singleton {
         return count;
     }
 
+    // What the draft changed from `base`, over `next`: settings.json changed under a draft (by
+    // nihil settings, say) keeps both, and applying the draft doesn't undo the other change. A
+    // value both changed keeps the draft's, the one on screen.
+    function rebase(base: var, draft: var, next: var): var {
+        if (root.differences(base, draft) === 0)
+            return next;
+        if (root.differences(base, next) === 0)
+            return draft;
+        const plain = value => value !== null && typeof value === "object" && !Array.isArray(value);
+        if (![base, draft, next].every(value => value === undefined || plain(value)))
+            return draft;
+        const node = value => value ?? {};
+        const out = {};
+        const keys = Object.keys(node(base)).concat(Object.keys(node(draft)), Object.keys(node(next)));
+        for (const key of keys.filter((key, i) => keys.indexOf(key) === i)) {
+            const value = root.rebase(node(base)[key], node(draft)[key], node(next)[key]);
+            if (value !== undefined)
+                out[key] = value;
+        }
+        return out;
+    }
+
     function discard(): void {
         root.draft = clone(root.saved);
         if (!root.busy)
@@ -235,7 +257,8 @@ Singleton {
         root.detail = "";
         root.log = "";
         process.mode = root.auth;
-        process.input = input + (root.auth === "password" ? password + "\n" : "");
+        // The password first, the line sudo reads; what's left is the command's.
+        process.input = (root.auth === "password" ? password + "\n" : "") + input;
         process.running = true;
     }
 
@@ -376,9 +399,8 @@ Singleton {
             try {
                 const next = JSON.parse(text());
                 const pending = root.loaded && root.differences(root.saved, root.draft) > 0;
+                root.draft = pending ? root.clone(root.rebase(root.saved, root.draft, next)) : root.clone(next);
                 root.saved = next;
-                if (!pending)
-                    root.draft = root.clone(next);
                 root.loaded = true;
             } catch (error) {
                 console.warn("nihil: settings:", path, "is not valid JSON:", error);
@@ -442,7 +464,6 @@ Singleton {
 
     // Never /tmp: another user could make these files first, and root reads them.
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") ?? ""
-    readonly property string settingsDraft: runtimeDir + "/nihil-settings.json"
     readonly property string newPassword: runtimeDir + "/nihil-new-password"
     readonly property string sudoAsk: 'umask 077; flag="${XDG_RUNTIME_DIR:?}/nihil-sudo-password"; '
         + 'if [ "$1" = password ]; then echo $$ > "$flag"; else rm -f "$flag"; fi; '
@@ -455,8 +476,11 @@ Singleton {
         property string input: ""
         property string mode: "password"
 
-        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", mode, root.settingsDraft,
-            Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "apply", root.settingsDraft]
+        // The draft reaches root on stdin, after the password: a file, written before sudo asks
+        // and read once it's answered (as long as a finger takes), could be changed in between by
+        // anything running as this user, and applied with the authority given for this one.
+        command: [Config.cmd.sh, "-c", root.sudoAsk, "sh", mode, "",
+            Config.cmd.sudo, "-k", "-S", "-p", "", Config.cmd.nihil, "apply", "-"]
         stdinEnabled: true
         onStarted: {
             write(input);
