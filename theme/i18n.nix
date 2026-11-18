@@ -608,11 +608,18 @@
 		widgetPhotoApp = "Widget de foto";
 		widgetPhotoSet = "Foto puesta en el escritorio";
 		widgetPhotoFailed = "No se ha podido poner la foto";
+		widgetGithubTotal = "%1 contribuciones en el último año";
+		widgetGithubTotalOne = "1 contribución en el último año";
+		widgetGithubNoUser = "Tu usuario va en Preferencias, Aspecto";
+		widgetGithubFailed = "No se ha podido leer GitHub";
 		cfgGlass = "Cristal ahumado";
 		cfgWidgetClock = "Reloj";
 		cfgWidgetNetwork = "Red";
 		cfgWidgetMedia = "Música";
 		cfgWidgetPhoto = "Foto";
+		cfgWidgetGithub = "Contribuciones de GitHub";
+		cfgGithubUser = "Usuario de GitHub";
+		cfgGithubUserSub = "Las de su perfil, tal como las muestra GitHub; se leen cada hora";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.
@@ -1404,11 +1411,18 @@
 		widgetPhotoApp = "Photo widget";
 		widgetPhotoSet = "Photo set on the desktop";
 		widgetPhotoFailed = "Couldn't set the photo";
+		widgetGithubTotal = "%1 contributions in the last year";
+		widgetGithubTotalOne = "1 contribution in the last year";
+		widgetGithubNoUser = "Your username goes in Preferences, Appearance";
+		widgetGithubFailed = "Couldn't read GitHub";
 		cfgGlass = "Smoked glass";
 		cfgWidgetClock = "Clock";
 		cfgWidgetNetwork = "Network";
 		cfgWidgetMedia = "Music";
 		cfgWidgetPhoto = "Photo";
+		cfgWidgetGithub = "GitHub contributions";
+		cfgGithubUser = "GitHub username";
+		cfgGithubUserSub = "Those on its profile, as GitHub shows them; read every hour";
 
 		# The installer: its window (installer/gui) and its text mode (nihil-install), from
 		# /etc/nihil/strings.json. %1, %2… are what each fills in.

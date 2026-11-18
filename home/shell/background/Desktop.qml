@@ -230,6 +230,7 @@ Scope {
             Region { item: networkCard.visible ? networkCard : null }
             Region { item: mediaCard.visible ? mediaCard : null }
             Region { item: photoCard.visible ? photoCard : null }
+            Region { item: githubCard.visible ? githubCard : null }
         }
 
         SystemClock {
@@ -420,6 +421,67 @@ Scope {
                         radius: photo.radius
                         border.width: 1
                         border.color: Tokens.ink
+                    }
+                }
+            }
+
+            // A year of GitHub contributions, a dot a day: the more, the brighter.
+            Card {
+                id: githubCard
+                widget: "github"
+
+                readonly property int weeks: 53
+                readonly property int pitch: 8
+                readonly property int dot: 5
+                readonly property string today: Qt.formatDate(clock.date, "yyyy-MM-dd")
+                readonly property var cells: Contributions.cells(githubCard.weeks, Qt.locale(Lang.locale).firstDayOfWeek, githubCard.today)
+                // Off, then lit a step at a time to full.
+                readonly property var shades: [0, 0.3, 0.52, 0.75, 1].map(f => Qt.tint(Tokens.off, Qt.rgba(Tokens.ink.r, Tokens.ink.g, Tokens.ink.b, f)))
+
+                // A year of weeks side by side, as GitHub has it.
+                width: 44 + githubCard.weeks * githubCard.pitch - (githubCard.pitch - githubCard.dot)
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Label {
+                        text: Contributions.user !== "" ? Contributions.user : Lang.cfgWidgetGithub
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Txt {
+                        text: !Contributions.valid(Contributions.user) ? Lang.widgetGithubNoUser
+                            : Contributions.current && Contributions.total === 1 ? Lang.widgetGithubTotalOne
+                            : Contributions.current && Contributions.total >= 0
+                                ? Lang.widgetGithubTotal.arg(Contributions.total.toLocaleString(Qt.locale(Lang.locale), "f", 0))
+                            : Contributions.failed ? Lang.widgetGithubFailed : ""
+                        color: Tokens.dim
+                        font.pixelSize: 12
+                    }
+                }
+
+                Item {
+                    Layout.topMargin: 6
+                    Layout.preferredWidth: githubCard.weeks * githubCard.pitch - (githubCard.pitch - githubCard.dot)
+                    Layout.preferredHeight: 7 * githubCard.pitch - (githubCard.pitch - githubCard.dot)
+
+                    Repeater {
+                        model: githubCard.weeks * 7
+
+                        Rectangle {
+                            required property int index
+                            readonly property int level: githubCard.cells[index] ?? 0
+
+                            x: Math.floor(index / 7) * githubCard.pitch
+                            y: index % 7 * githubCard.pitch
+                            width: githubCard.dot
+                            height: githubCard.dot
+                            radius: githubCard.dot / 2
+                            visible: level >= 0
+                            color: githubCard.shades[Math.max(0, level)]
+                        }
                     }
                 }
             }

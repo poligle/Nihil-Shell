@@ -42,9 +42,11 @@ Singleton {
     // Where each widget was put on the desktop, by name: [x, y] from the desktop's top left,
     // inside the frame. One with none goes where there's room.
     property var widgetPlaces: ({})
+    // What a widget is told, by name and then by key: whose GitHub contributions, for one.
+    property var widgetOptions: ({})
     // Moving them about: a long press on one, Arrange in Preferences, nihil-ipc widgets arrange.
     property bool arranging: false
-    // Both, and kept as they are: no rebuild for either.
+    // All of it, kept as it is: no rebuild for any.
     readonly property string widgetsFile: stateDir + "/widgets.json"
     property var timeZones: []
 
@@ -206,7 +208,7 @@ Singleton {
 
     function saveWidgets(): void {
         Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile,
-                                 JSON.stringify({ on: root.widgets, at: root.widgetPlaces })]);
+                                 JSON.stringify({ on: root.widgets, at: root.widgetPlaces, opts: root.widgetOptions })]);
     }
 
     function setWidget(name: string, on: bool): void {
@@ -214,6 +216,14 @@ Singleton {
         if (on)
             next.push(name);
         root.widgets = next;
+        root.saveWidgets();
+    }
+
+    // A widget's own setting, with the rest: a text, a number or yes or no.
+    function setWidgetOption(name: string, key: string, value: var): void {
+        const mine = Object.assign({}, root.widgetOptions[name] ?? {});
+        mine[key] = value;
+        root.widgetOptions = Object.assign({}, root.widgetOptions, { [name]: mine });
         root.saveWidgets();
     }
 
@@ -531,6 +541,17 @@ Singleton {
                             places[name] = [Math.round(at[0]), Math.round(at[1])];
                     }
                     root.widgetPlaces = places;
+                    const options = {};
+                    for (const [name, set] of Object.entries(kept?.opts ?? {})) {
+                        if (Config.widgets.indexOf(name) < 0 || set === null || typeof set !== "object" || Array.isArray(set))
+                            continue;
+                        options[name] = {};
+                        for (const [key, value] of Object.entries(set)) {
+                            if (["string", "number", "boolean"].indexOf(typeof value) >= 0)
+                                options[name][key] = value;
+                        }
+                    }
+                    root.widgetOptions = options;
                 } catch (error) {
                 }
             }

@@ -113,5 +113,25 @@ Flickable {
                 }
             }
         }
+
+        // The GitHub one's: whose contributions.
+        Setting {
+            visible: Machine.widgets.indexOf("github") >= 0
+            title: Lang.cfgGithubUser
+            sub: Lang.cfgGithubUserSub
+
+            Field {
+                id: githubUser
+                width: 240
+                value: Machine.widgetOptions.github?.user ?? ""
+                invalid: githubUser.text !== "" && !Contributions.valid(githubUser.text)
+                // Kept when it's left, and only a name GitHub could have.
+                onFinished: {
+                    const name = githubUser.text;
+                    if (name !== githubUser.value && (name === "" || Contributions.valid(name)))
+                        Machine.setWidgetOption("github", "user", name);
+                }
+            }
+        }
     }
 }
