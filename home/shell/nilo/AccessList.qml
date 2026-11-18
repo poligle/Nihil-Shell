@@ -1,8 +1,6 @@
 import QtQuick
-import qs.theme
 import qs.config
 import qs.services
-import qs.components
 
 Column {
     id: root
