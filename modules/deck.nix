@@ -11,7 +11,7 @@ in
         {
             type = lib.types.bool;
             default = false;
-            description = "The phone as a deck: NIHIL Launcher, paired from Preferences, opens apps and pages here (docs/deck.md).";
+            description = "Devices as decks: NIHIL for Android, paired from Preferences, opens apps and pages here (docs/deck.md).";
         };
 
         port = lib.mkOption

@@ -129,6 +129,9 @@ nihil generations changes N   # the packages generation N changed
 nihil generations switch N    # back to N, now and at boot
 nihil generations boot N      # N the next boot only
 nihil generations clean DAYS  # those older than DAYS days go, and what nothing needs
+nihil welcome     # the welcome, again
+nihil watch       # NIHIL for Wear OS on a watch (Devices)
+nihil passwd      # Preferences' own: the password it was given, for whoever runs it through sudo
 ```
 
 One change at a time: while one is being made, from a terminal or from Preferences, any
