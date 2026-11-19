@@ -33,7 +33,9 @@ let
         {
             enable = config.security.pam.services.${service}.fprintAuth;
             order = config.security.pam.services.${service}.rules.auth.fprintd.order - 1;
-            control = "[success=ignore default=1]";
+            # pam_exec answers setcred with PAM_IGNORE, which a jump would make the whole stack's
+            # answer: greetd starts its greeter without authenticating, and it would never show.
+            control = "[success=ignore ignore=ignore default=1]";
             modulePath = "${config.security.pam.package}/lib/security/pam_exec.so";
             args = [ "quiet" "${skipReader}" ];
         };
