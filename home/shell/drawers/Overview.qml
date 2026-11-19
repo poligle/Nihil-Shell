@@ -49,7 +49,7 @@ Item {
     }
 
     Connections {
-        target: Switcher
+        target: Switcher.overview
         function onStepped(delta: int): void {
             if (root.active)
                 root.step(delta);
@@ -96,7 +96,7 @@ Item {
         Keys.onTabPressed: root.step(1)
         Keys.onBacktabPressed: root.step(-1)
         Keys.onPressed: event => {
-            if (Switcher.keyCode > 0 && event.key === Switcher.keyCode) {
+            if (Switcher.overview.keyCode > 0 && event.key === Switcher.overview.keyCode) {
                 root.step(event.modifiers & Qt.ShiftModifier ? -1 : 1);
                 event.accepted = true;
             }
@@ -107,7 +107,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 16
-        text: Lang.ovHint.arg(Case.key(Switcher.keyName !== "" ? Switcher.keyName : "Tab"))
+        text: Lang.ovHint.arg(Case.key(Switcher.overview.keyName !== "" ? Switcher.overview.keyName : "Tab"))
     }
 
     ListView {
@@ -123,6 +123,10 @@ Item {
         currentIndex: root.index
         highlightMoveDuration: Tokens.animFast
         boundsBehavior: Flickable.StopAtBounds
+        // However many there are, the chosen one in the middle, where it can be.
+        highlightRangeMode: ListView.ApplyRange
+        preferredHighlightBegin: (width - root.cardW) / 2
+        preferredHighlightEnd: (width + root.cardW) / 2
 
         delegate: Item {
             id: card
@@ -141,83 +145,92 @@ Item {
             width: root.cardW
             height: ListView.view.height
 
-            MouseArea {
-                id: pointer
+            // The chosen one as it is, the rest smaller.
+            Item {
+                id: face
                 width: root.cardW
                 height: root.cardH
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.go(card.modelData)
-            }
+                scale: card.index === root.index ? 1 : 0.86
 
-            ClippingRectangle {
-                id: screen
-                width: root.cardW
-                height: root.cardH
-                radius: 14
-                color: Tokens.black
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    saturation: card.chosen ? 0 : -1
+                Behavior on scale { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
+
+                MouseArea {
+                    id: pointer
+                    width: root.cardW
+                    height: root.cardH
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.go(card.modelData)
                 }
 
-                Image {
-                    property bool primary: false
-                    anchors.fill: parent
-                    source: root.wallpaperFor(primary ? Config.primaryOutput : (card.mon?.name ?? root.output))
-                    sourceSize.width: root.cardW * 2
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    onStatusChanged: {
-                        if (status === Image.Error && !primary)
-                            primary = true;
+                ClippingRectangle {
+                    id: screen
+                    width: root.cardW
+                    height: root.cardH
+                    radius: 14
+                    color: Tokens.black
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        saturation: card.chosen ? 0 : -1
+                    }
+
+                    Image {
+                        property bool primary: false
+                        anchors.fill: parent
+                        source: root.wallpaperFor(primary ? Config.primaryOutput : (card.mon?.name ?? root.output))
+                        sourceSize.width: root.cardW * 2
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        onStatusChanged: {
+                            if (status === Image.Error && !primary)
+                                primary = true;
+                        }
+                    }
+
+                    Repeater {
+                        model: card.ws ? card.ws.toplevels : null
+
+                        delegate: Item {
+                            id: client
+
+                            required property var modelData
+
+                            readonly property var ipc: client.modelData.lastIpcObject ?? ({})
+
+                            z: (client.ipc.fullscreen ?? 0) > 0 ? 2000
+                                : client.ipc.floating ? 1000 - (client.ipc.focusHistoryID ?? 0) : 0
+                            x: client.ipc.at && card.mon ? (client.ipc.at[0] - card.mon.x) / card.across : 0
+                            y: client.ipc.at && card.mon ? (client.ipc.at[1] - card.mon.y) / card.down : 0
+                            width: client.ipc.size ? client.ipc.size[0] / card.across : 0
+                            height: client.ipc.size ? client.ipc.size[1] / card.down : 0
+
+                            ScreencopyView {
+                                anchors.fill: parent
+                                captureSource: root.active ? client.modelData.wayland : null
+                                live: false
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.reach(client.modelData)
+                            }
+                        }
                     }
                 }
 
-                Repeater {
-                    model: card.ws ? card.ws.toplevels : null
-
-                    delegate: Item {
-                        id: client
-
-                        required property var modelData
-
-                        readonly property var ipc: client.modelData.lastIpcObject ?? ({})
-
-                        z: (client.ipc.fullscreen ?? 0) > 0 ? 2000
-                            : client.ipc.floating ? 1000 - (client.ipc.focusHistoryID ?? 0) : 0
-                        x: client.ipc.at && card.mon ? (client.ipc.at[0] - card.mon.x) / card.across : 0
-                        y: client.ipc.at && card.mon ? (client.ipc.at[1] - card.mon.y) / card.down : 0
-                        width: client.ipc.size ? client.ipc.size[0] / card.across : 0
-                        height: client.ipc.size ? client.ipc.size[1] / card.down : 0
-
-                        ScreencopyView {
-                            anchors.fill: parent
-                            captureSource: root.active ? client.modelData.wayland : null
-                            live: false
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.reach(client.modelData)
-                        }
-                    }
+                Rectangle {
+                    width: root.cardW
+                    height: root.cardH
+                    radius: 14
+                    color: "transparent"
+                    border.width: card.chosen ? 2 : 1
+                    border.color: card.chosen ? Tokens.ink : Tokens.line
                 }
-            }
-
-            Rectangle {
-                width: root.cardW
-                height: root.cardH
-                radius: 14
-                color: "transparent"
-                border.width: card.chosen ? 2 : 1
-                border.color: card.chosen ? Tokens.ink : Tokens.line
             }
 
             Label {
-                anchors.top: screen.bottom
-                anchors.topMargin: 8
+                y: root.cardH * (1 + face.scale) / 2 + 8
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: card.modelData
                 color: card.current ? Tokens.ink : Tokens.dim

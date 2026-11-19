@@ -500,11 +500,11 @@
 		welClose = "Cerrar";
 		cfgShowLog = "Registro";
 		cfgHideLog = "Ocultar";
-		bindWallpapers = "Elegir fondo";
+		bindWallpapers = "Los fondos; mantenida, elegir uno";
 		welNetTitle = "Una red";
 		welNetBody = "NIHIL se actualiza y aplica cambios por internet: conéctate a una red.";
 		welNetDone = "Conectado a %1.";
-		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
+		wpHint = "[%1] Siguiente|[Shift + %1] Anterior|[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
 		ovHint = "[%1] Siguiente|[Shift + %1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
 		bindCopy = "Copiar";
@@ -598,7 +598,6 @@
 		cfgWidgets = "Widgets";
 		cfgWidgetsArrange = "Colocar en el escritorio";
 		cfgArrange = "Colocar";
-		widgetsHint = "Arrastra para mover, por la esquina para el tamaño y a la cruz para quitar|[Enter] Aplicar|[Esc] Descartar";
 		widgetsRemove = "Quitar";
 		widgetPhotoHow = "Suelta aquí una foto, o ábrela con Widget de foto desde Archivos";
 		widgetPhotoApp = "Widget de foto";
@@ -638,6 +637,12 @@
 		cfgWidgetWeather = "Tiempo";
 		cfgWidgetPhoto = "Fotos";
 		cfgWidgetAdd = "Añadir";
+		textUndo = "Deshacer";
+		textRedo = "Rehacer";
+		textCut = "Cortar";
+		textCopy = "Copiar";
+		textPaste = "Pegar";
+		textSelectAll = "Seleccionar todo";
 		cfgWidgetNote = "Notas";
 		noteWrite = "Escribir";
 		noteAnother = "Otra nota";
@@ -1340,11 +1345,11 @@
 		welClose = "Close";
 		cfgShowLog = "Log";
 		cfgHideLog = "Hide";
-		bindWallpapers = "Choose wallpaper";
+		bindWallpapers = "Wallpapers; held, choose one";
 		welNetTitle = "A network";
 		welNetBody = "NIHIL updates and applies changes over the internet: connect to a network.";
 		welNetDone = "Connected to %1.";
-		wpHint = "[← →] Choose|[Enter] Keep|[Esc] Back";
+		wpHint = "[%1] Next|[Shift + %1] Previous|[← →] Choose|[Enter] Keep|[Esc] Back";
 		ovHint = "[%1] Next|[Shift + %1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
 
 		bindCopy = "Copy";
@@ -1438,7 +1443,6 @@
 		cfgWidgets = "Widgets";
 		cfgWidgetsArrange = "Arrange on the desktop";
 		cfgArrange = "Arrange";
-		widgetsHint = "Drag to move, by the corner to resize and onto the cross to remove|[Enter] Apply|[Esc] Discard";
 		widgetsRemove = "Remove";
 		widgetPhotoHow = "Drop a photo here, or open one with Photo widget from Files";
 		widgetPhotoApp = "Photo widget";
@@ -1478,6 +1482,12 @@
 		cfgWidgetWeather = "Weather";
 		cfgWidgetPhoto = "Photos";
 		cfgWidgetAdd = "Add";
+		textUndo = "Undo";
+		textRedo = "Redo";
+		textCut = "Cut";
+		textCopy = "Copy";
+		textPaste = "Paste";
+		textSelectAll = "Select all";
 		cfgWidgetNote = "Notes";
 		noteWrite = "Write";
 		noteAnother = "Another note";

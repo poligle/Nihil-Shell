@@ -67,16 +67,30 @@ Surface {
     Surface {
         id: tip
 
-        // Above, unless the window ends there.
+        // Above it, or under it where there's no room above; and along, so as not to be cut by
+        // what it's in: the nearest that clips, or else the window.
         property bool below: false
+        property real along: 0
+
+        function place(): void {
+            let area = root.parent;
+            while (area !== null && area.parent !== null && !area.clip)
+                area = area.parent;
+            if (area === null)
+                return;
+            const at = root.mapToItem(area, 0, 0);
+            tip.below = at.y < tip.height + 12 && area.height - at.y - root.height >= tip.height + 12;
+            const left = at.x + (root.width - tip.width) / 2;
+            tip.along = left < 4 ? 4 - left : Math.min(0, area.width - 4 - left - tip.width);
+        }
 
         visible: root.label !== "" && (root.lingered || root.activeFocus)
         onVisibleChanged: {
             if (visible)
-                below = root.mapToItem(null, 0, 0).y < height + 12;
+                tip.place();
         }
         z: 10
-        anchors.horizontalCenter: parent.horizontalCenter
+        x: (parent.width - width) / 2 + along
         y: below ? parent.height + 8 : -height - 8
         width: words.implicitWidth + 16
         height: words.implicitHeight + 8

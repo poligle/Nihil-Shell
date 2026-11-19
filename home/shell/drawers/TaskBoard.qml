@@ -156,6 +156,9 @@ Item {
 
             QQC.TextField {
                 id: field
+                QQC.ContextMenu.menu: TextMenu {
+                    target: field
+                }
                 Layout.preferredWidth: 300
                 Layout.preferredHeight: 30
                 placeholderText: Lang.tasksAddHint
@@ -416,6 +419,9 @@ Item {
 
                             QQC.TextArea {
                                 id: editor
+                                QQC.ContextMenu.menu: TextMenu {
+                                    target: editor
+                                }
                                 visible: card.editing
                                 anchors.left: led.right
                                 anchors.leftMargin: 10

@@ -56,7 +56,7 @@ Read-only: `tokens` (the design tokens), `strings` (the selected language), `sou
 | `SUPER + P`                       | Settings panel (or rest the pointer in the top-right corner) |
 | `SUPER + K`                       | Lock                                          |
 | `SUPER + O`                       | Preferences (also the cog in quick settings, and `>` in the launcher) |
-| `SUPER + W`                       | Wallpapers, out of the bottom edge: arrows to look, Enter to keep |
+| `SUPER + W`                       | Wallpapers, out of the bottom edge, each shown as it's reached. Held as `SUPER + A`: `W` again the next, `SHIFT + W` the one before, letting go of `SUPER` keeps it; let go first and it stays, for the arrows, Enter, Escape or a click |
 | `SUPER` (alone)                   | Terminal (kitty), a program                   |
 | `SUPER + E / X`                   | Files (Thunar) and Zen, programs too          |
 | `SUPER + C` / `SUPER + V`         | Copy / paste; `SUPER + V` held, the clipboard history (`V` again for the next one, let go to paste, `Esc`: none) |

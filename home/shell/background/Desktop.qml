@@ -1068,7 +1068,7 @@ Scope {
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 36 + 20
+                anchors.bottomMargin: 20
                 z: 0.5
                 visible: Machine.arranging
                 width: 56
@@ -1087,25 +1087,6 @@ Scope {
                     glyph: Icons.close
                     font.pixelSize: 24
                     color: bin.hot ? Tokens.ink : Tokens.dim
-                }
-            }
-
-            Surface {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: parent.bottom
-                z: 2
-                visible: Machine.arranging
-                width: hints.implicitWidth + 28
-                height: 36
-                radius: 18
-                color: Tokens.black
-                border.width: 1
-                border.color: Tokens.line
-
-                KeyHints {
-                    id: hints
-                    anchors.centerIn: parent
-                    text: Lang.widgetsHint
                 }
             }
         }
