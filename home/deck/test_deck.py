@@ -1230,5 +1230,159 @@ class ControlTest(Base):
             self.assertEqual(json.loads(raw.recv(4096)), {"error": "unknown"})
 
 
+class BluetoothTest(Base):
+    PIN = "8-eMVPli0fpzjeUBe-b_bmRtjDMwo1bNYXaVTyPSbVc"
+
+    def test_the_uuid_comes_from_the_pin(self):
+        raw = bytearray(hashlib.sha256(b"nihil-deck ble\0" + self.PIN.encode()).digest()[:16])
+        made = deck.ble_uuid(self.PIN)
+        self.assertEqual(made, deck.ble_uuid(self.PIN))
+        self.assertNotEqual(made, deck.ble_uuid(self.PIN[:-1] + "d"))
+        self.assertRegex(made, r"^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+        # Only the version's and the variant's bits are the UUID's own; the rest is the hash.
+        got = bytes.fromhex(made.replace("-", ""))
+        self.assertEqual(got[:6] + got[7:8] + got[9:], bytes(raw[:6] + raw[7:8] + raw[9:]))
+        self.assertEqual(got[6] & 0x0F, raw[6] & 0x0F)
+        self.assertEqual(got[8] & 0x3F, raw[8] & 0x3F)
+
+    def test_the_qr_says_where_over_bluetooth(self):
+        plain = deck.pair_uri("nihil", 64445, ["192.168.1.20"], "7JTX39F4", self.PIN)
+        self.assertNotIn("ble=", plain)
+        uri = deck.pair_uri("nihil", 64445, ["192.168.1.20"], "7JTX39F4", self.PIN, {"uuid": deck.ble_uuid(self.PIN), "psm": 129})
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(uri).query)
+        self.assertEqual(query["ble"], [deck.ble_uuid(self.PIN)])
+        self.assertEqual(query["psm"], ["129"])
+        self.assertEqual(query["pin"], [self.PIN])
+
+    def test_the_address_as_linux_has_it(self):
+        L2 = deck.SockaddrL2
+        self.assertEqual(deck.ctypes.sizeof(L2), 14)
+        self.assertEqual([L2.family.offset, L2.psm.offset, L2.bdaddr.offset, L2.cid.offset, L2.bdaddr_type.offset], [0, 2, 4, 10, 12])
+        self.assertEqual(deck.bluetooth_order(0x81).to_bytes(2, sys.byteorder), b"\x81\x00")
+
+    def test_a_channel_is_served_as_a_connection_is(self):
+        state = os.path.join(self.folder, "state")
+        server = deck.make_server(self.config, state, host="127.0.0.1")
+        server.deck.ble = {"uuid": deck.ble_uuid(server.deck.pin), "psm": 129}
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        # A stream like an LE channel's, from a TCP socket: what comes in goes where a connection does.
+        channel = socket.socket()
+        channel.bind(("127.0.0.1", 0))
+        channel.listen(4)
+        self.addCleanup(channel.close)
+        threading.Thread(target=deck.ble_serve, args=(server, channel), daemon=True).start()
+        phone = Phone(channel.getsockname()[1], server.deck.pin)
+        self.assertEqual(phone.request("GET", "/v1/hello"), (200, {"deck": deck.API}))
+        code = server.deck.control({"op": "pair"})
+        self.assertIn("ble=" + server.deck.ble["uuid"], code["uri"])
+        self.assertEqual(code["ble"], server.deck.ble)
+        answer = {}
+        asking = threading.Thread(target=lambda: answer.update(reply=phone.request("POST", "/v1/pair", {"code": code["code"], "device": "Phone"})))
+        asking.start()
+        for _ in range(100):
+            waiting = server.deck.pairing.waiting()
+            if waiting:
+                server.deck.pairing.answer(waiting[0]["id"], True)
+                break
+            time.sleep(0.05)
+        asking.join(10)
+        status, paired = answer["reply"]
+        self.assertEqual(status, 200)
+        self.assertEqual(paired["ble"], server.deck.ble)
+        phone.token = paired["token"]
+        status, state_now = phone.request("GET", "/v1/state")
+        self.assertEqual(status, 200)
+        self.assertEqual(state_now["ble"], server.deck.ble)
+        # Devices says the phone came over Bluetooth, until it comes over the network again.
+        listed = lambda: [device["bluetooth"] for device in server.deck.control({"op": "devices"})["devices"]]
+        self.assertEqual(listed(), [True])
+        self.assertEqual(Phone(server.deck.port, server.deck.pin, phone.token).request("GET", "/v1/state")[0], 200)
+        self.assertEqual(listed(), [False])
+
+
+DBUS_DAEMON = shutil.which("dbus-daemon")
+
+
+class FakeBluez:
+    """BlueZ as the deck meets it on D-Bus: an adapter with LE advertising, which asks an
+    advertisement for its properties before it answers RegisterAdvertisement, and can drop it."""
+
+    def __init__(self, address):
+        self.address = address
+        self.adverts = []        # (registrant, path, properties), one per registration
+        self.stop = False
+
+    def serve(self):
+        with deck.jeepney.io.blocking.open_dbus_connection(bus=self.address) as connection:
+            self.connection = connection
+            connection.send_and_get_reply(deck.jeepney.message_bus.RequestName("org.bluez"))
+            while not self.stop:
+                try:
+                    message = connection.receive(timeout=0.2)
+                except TimeoutError:
+                    continue
+                except OSError:
+                    return
+                fields = message.header.fields
+                if message.header.message_type != deck.jeepney.MessageType.method_call:
+                    continue
+                member = fields.get(deck.jeepney.HeaderFields.member)
+                if member == "GetManagedObjects":
+                    objects = {"/org/bluez/hci0": {"org.bluez.Adapter1": {"Powered": ("b", True)},
+                                                   "org.bluez.LEAdvertisingManager1": {"ActiveInstances": ("y", len(self.adverts))}}}
+                    connection.send(deck.jeepney.new_method_return(message, "a{oa{sa{sv}}}", (objects,)))
+                elif member == "RegisterAdvertisement":
+                    sender = fields.get(deck.jeepney.HeaderFields.sender)
+                    path = message.body[0]
+                    ask = deck.jeepney.new_method_call(deck.jeepney.DBusAddress(path, bus_name=sender, interface="org.freedesktop.DBus.Properties"),
+                                                      "GetAll", "s", ("org.bluez.LEAdvertisement1",))
+                    reply = connection.send_and_get_reply(ask, timeout=5)
+                    self.adverts.append((sender, path, reply.body[0]))
+                    connection.send(deck.jeepney.new_method_return(message))
+
+    def release(self):
+        sender, path, _ = self.adverts[-1]
+        self.connection.send(deck.jeepney.new_method_call(deck.jeepney.DBusAddress(path, bus_name=sender, interface="org.bluez.LEAdvertisement1"), "Release"))
+
+
+@unittest.skipIf(deck.jeepney is None or DBUS_DAEMON is None, "needs jeepney and dbus-daemon")
+class AdvertTest(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(setattr, deck, "BLE_RETRY", deck.BLE_RETRY)
+        deck.BLE_RETRY = 0.2
+        self.bus = subprocess.Popen([DBUS_DAEMON, "--session", "--nofork", "--print-address"], stdout=subprocess.PIPE, text=True)
+        self.addCleanup(self.bus.stdout.close)
+        self.addCleanup(self.bus.wait)
+        self.addCleanup(self.bus.kill)
+        self.address = self.bus.stdout.readline().strip()
+        self.bluez = FakeBluez(self.address)
+        threading.Thread(target=self.bluez.serve, daemon=True).start()
+        self.addCleanup(setattr, self.bluez, "stop", True)
+        time.sleep(0.3)
+
+    def until(self, test, seconds=5):
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            if test():
+                return True
+            time.sleep(0.05)
+        return False
+
+    def test_announced_with_the_uuid_alone_and_again_when_dropped(self):
+        advert = deck.Advert(deck.ble_uuid(BluetoothTest.PIN), bus=self.address)
+        threading.Thread(target=advert.run, daemon=True).start()
+        self.assertTrue(self.until(lambda: len(self.bluez.adverts) == 1))
+        _, path, properties = self.bluez.adverts[0]
+        self.assertEqual(path, deck.Advert.PATH)
+        self.assertEqual(properties["Type"], ("s", "peripheral"))
+        self.assertEqual(properties["ServiceUUIDs"], ("as", [deck.ble_uuid(BluetoothTest.PIN)]))
+        self.assertNotIn("LocalName", properties)
+        self.assertTrue(self.until(lambda: advert.registered))
+        self.bluez.release()
+        self.assertTrue(self.until(lambda: len(self.bluez.adverts) == 2))
+
+
 if __name__ == "__main__":
     unittest.main()

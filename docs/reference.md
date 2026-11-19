@@ -128,6 +128,8 @@ nihil-ipc night level 40              # the night light at 40 %; also: toggle, o
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome, wallpapers, glass on|off, look
+nihil-ipc widgets arrange             # move the desktop widgets; also: done, list (which are on and where, as JSON)
+nihil-ipc widgets photo /path/to.jpg  # the photo widget's picture, from a whole path; it turns the widget on
 nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
 nihil-ipc apps list                   # the launcher's apps, as JSON; also: launch <id>, url <https://…>
 nihil-ipc media toggle                # also: next, previous, now (what plays, as JSON)
@@ -135,6 +137,8 @@ nihil-ipc session lock                # the lock screen
 nihil-ipc recorder status             # whether it records; started and stopped are the recorder's own
 nihil-ipc vector received             # the deck, when the phone has sent something; reload, quietly
 nihil-wallpaper next                  # also: prev, set <name>, list, current, restore, glass [on|off]
+nihil-calendar list                   # the calendars, without their addresses; also: sync, remove <id>,
+                                      # add (the address on stdin: an argument shows in /proc)
 journalctl --user -u nihil-shell -f   # logs
 ```
 

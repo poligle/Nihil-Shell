@@ -7,6 +7,8 @@ let
 	quickshell = pkgs.quickshell;
 	profile = "${config.home.profileDirectory}/bin";
 	iconTheme = config.gtk.iconTheme.name;
+	# The calendars subscribed to in Preferences, read into what the shell shows (home/calendar).
+	calendar = import ./calendar { inherit pkgs; };
 
 	nilo =
 	{
@@ -21,8 +23,10 @@ let
 		inherit (nihil.deck) port;
 	};
 
-	# The desktop's widgets; Preferences shows each by its text, cfgWidgetClock for clock.
-	widgets = [ "clock" "network" "media" ];
+	# The desktop's widgets; Preferences shows each by its text, cfgWidgetClock for clock. Only
+	# the first ones are on until Preferences says otherwise.
+	widgets = [ "clock" "calendar" "network" "system" "media" "weather" "photo" "github" ];
+	widgetDefaults = [ "clock" "media" ];
 	unlabelled = lib.filter (name: !(nihil.strings ? ${"cfgWidget" + lib.toUpper (lib.substring 0 1 name) + lib.substring 1 (lib.stringLength name) name}))
 		widgets;
 
@@ -48,6 +52,10 @@ let
 	commands =
 	{
 		sh = "${pkgs.bash}/bin/sh";
+		ffmpeg = "${pkgs.ffmpeg-headless}/bin/ffmpeg";
+		curl = "${pkgs.curl}/bin/curl";
+		df = "${pkgs.coreutils}/bin/df";
+		calendar = "${calendar}/bin/nihil-calendar";
 		nmcli = "${pkgs.networkmanager}/bin/nmcli";
 		nmEditor = "${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
 		notifySend = "${pkgs.libnotify}/bin/notify-send";
@@ -111,6 +119,7 @@ let
 		    readonly property string primaryOutput: "${nihil.primaryOutput}"
 		    readonly property int persistentWorkspaces: 3
 		    readonly property var widgets: ${builtins.toJSON widgets}
+		    readonly property var widgetDefaults: ${builtins.toJSON widgetDefaults}
 		    readonly property var trayHidden: ${builtins.toJSON nihil.trayHidden}
 		    readonly property var wallpapers: ${builtins.toJSON nihil.wallpapers.names}
 		    readonly property int clipboard: ${toString nihil.clipboard}
@@ -157,6 +166,7 @@ in
 	[
 		quickshell
 		nihil-ipc
+		calendar
 	];
 
 	xdg.configFile."quickshell/nihil".source = shell;

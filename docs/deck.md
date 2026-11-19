@@ -35,6 +35,8 @@ nihil-deck://pair?v=1&name=nihil&hosts=192.168.1.20,100.64.0.7&port=64445&code=7
 | `port`    | Its port, `64445` unless the machine sets `nihil.deck.port` |
 | `code`    | The one-time code: 8 characters of `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` |
 | `pin`     | SHA-256 of the certificate's public key (SubjectPublicKeyInfo, DER), base64url without padding |
+| `ble`     | The UUID the computer announces itself by over Bluetooth LE, when it does (below) |
+| `psm`     | The LE channel it takes connections on over Bluetooth: `129` |
 
 The code pairs **one** device, for **five minutes**, and a watch being installed gets its
 own, open at the same time. Wrong codes don't close it: past thirty in a minute, from anyone,
@@ -98,7 +100,56 @@ from the QR, then looks on the local network: the computer announces itself with
 record `v=1`: not by the computer's name, which would go with it from network to network
 (`services.avahi.hostName` gives it back).
 On Android, `NsdManager.discoverServices("_nihil-deck._tcp", NsdManager.PROTOCOL_DNS_SD, …)`.
-Whatever it finds, the pin still decides whether it is the right computer.
+Whatever it finds, the pin still decides whether it is the right computer. When no network
+reaches it, Bluetooth may.
+
+## Without a network: Bluetooth
+
+A phone that reaches none of the computer's addresses can reach it over Bluetooth LE, with
+nothing to pair in the system's Bluetooth settings. While the deck runs, the computer
+announces itself and takes LE connection-oriented channels (L2CAP) on PSM `129` (0x81);
+Preferences, Devices turns that off (`"deck": { "bluetooth": false }`,
+`nihil.deck.bluetooth`). On a channel go the same TLS, checked by the same pin, and the same
+HTTP as over the network: every request here, the trackpad's stream too.
+
+`ble` and `psm` come in the QR, in the answer to `POST /v1/pair` and in `GET /v1/state`, when
+the computer is on Bluetooth. The UUID is made from the pin, so a phone paired before knows it
+without pairing again: the first 16 bytes of SHA-256 over `nihil-deck ble`, a zero byte and
+the pin as the QR has it, with the version (8) and the variant set as RFC 9562 has them.
+
+```kotlin
+fun bleUuid(pin: String): UUID {
+    val hash = MessageDigest.getInstance("SHA-256").digest("nihil-deck ble\u0000$pin".toByteArray())
+    hash[6] = ((hash[6].toInt() and 0x0F) or 0x80).toByte()
+    hash[8] = ((hash[8].toInt() and 0x3F) or 0x80).toByte()
+    val bytes = ByteBuffer.wrap(hash, 0, 16)
+    return UUID(bytes.long, bytes.long)
+}
+```
+
+The advertisement says that UUID and nothing else, no name: a stranger learns only that some
+computer is near. Android 12 and later ask for `BLUETOOTH_SCAN` (with `neverForLocation`) and
+`BLUETOOTH_CONNECT`:
+
+```kotlin
+val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(bleUuid(pin))).build()
+val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
+scanner.startScan(listOf(filter), settings, found)      // found: the first result's device; then stop
+val channel = device.createInsecureL2capChannel(psm)   // insecure: no bonding, TLS is the check
+channel.connect()
+```
+
+TLS then goes over the channel's two streams, by an `SSLEngine` (the launcher's `TlsPipe`, in
+`deck/Wire.kt`), and the pin is checked before anything is sent, as over the network. On top
+goes HTTP/1.1 as over the network, a channel carrying one request after another until the
+computer lets it go, 10 s after the last. It is slower than Wi-Fi: from a few hundred kilobits a
+second to about a megabit, depending on the phone. That is enough for every request and the
+trackpad, but a big file to Vector takes minutes, so the phone says so before sending.
+
+The phone tries the network first, and Bluetooth when no address answers; once Bluetooth has
+answered where the network didn't, it goes first for half a minute, so each request doesn't wait
+for the network to fail. A watch tries its default network, then Bluetooth, then Wi-Fi asked
+for. Preferences, Devices marks a device whose last request came over Bluetooth.
 
 ## Requests
 

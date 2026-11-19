@@ -38,7 +38,15 @@ Singleton {
     property string wallpaper: ""
     property bool glass: false
 
-    property var widgets: Config.widgets
+    property var widgets: Config.widgetDefaults
+    // Where each widget was put on the desktop, by name: [x, y] from the desktop's top left,
+    // inside the frame. One with none goes where there's room.
+    property var widgetPlaces: ({})
+    // What a widget is told, by name and then by key: whose GitHub contributions, for one.
+    property var widgetOptions: ({})
+    // Moving them about: a long press on one, Arrange in Preferences, nihil-ipc widgets arrange.
+    property bool arranging: false
+    // All of it, kept as it is: no rebuild for any.
     readonly property string widgetsFile: stateDir + "/widgets.json"
     property var timeZones: []
 
@@ -198,12 +206,103 @@ Singleton {
         root.shown = false;
     }
 
+    function saveWidgets(): void {
+        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile,
+                                 JSON.stringify({ on: root.widgets, at: root.widgetPlaces, opts: root.widgetOptions })]);
+    }
+
     function setWidget(name: string, on: bool): void {
         const next = root.widgets.filter(widget => widget !== name);
         if (on)
             next.push(name);
         root.widgets = next;
-        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile, JSON.stringify(next)]);
+        root.saveWidgets();
+    }
+
+    // A widget's own settings, over those it has: texts, numbers, yes or no; null takes one away.
+    function setWidgetOptions(name: string, values: var): void {
+        const mine = Object.assign({}, root.widgetOptions[name] ?? {}, values);
+        for (const key of Object.keys(mine)) {
+            if (mine[key] === null)
+                delete mine[key];
+        }
+        root.widgetOptions = Object.assign({}, root.widgetOptions, { [name]: mine });
+        root.saveWidgets();
+    }
+
+    function setWidgetOption(name: string, key: string, value: var): void {
+        root.setWidgetOptions(name, { [key]: value });
+    }
+
+    // places: { name: [x, y] }, over what's kept.
+    function placeWidgets(places: var): void {
+        root.widgetPlaces = Object.assign({}, root.widgetPlaces, places);
+        root.saveWidgets();
+    }
+
+    // The photo widget's picture: a copy, so it stays when the one it came from goes. Its name
+    // says nothing of what it is; the picture itself does. Each one put in counts, so the widget
+    // reads the file again; 0 is none yet.
+    readonly property string photoFile: stateDir + "/photo"
+    property int photoTaken: 0
+    readonly property string photoUrl: root.photoTaken > 0
+        ? "file://" + root.photoFile.split("/").map(encodeURIComponent).join("/") + "?" + root.photoTaken : ""
+    // Qt reads PNG, JPEG, GIF and BMP by itself; a WebP one goes in as PNG.
+    readonly property string photoScript: 'mkdir -p "$(dirname "$2")" && '
+        + 'if [ "$(head -c 12 -- "$1" | tail -c 4)" = WEBP ]; then '
+        + '"$3" -v error -y -f webp_pipe -i "file:$1" -frames:v 1 -c:v png -f image2pipe "file:$2.new"; '
+        + 'else cp -f -- "$1" "$2.new"; fi && mv -f -- "$2.new" "$2"'
+
+    // From the widget, where it shows at once, or from Files' Open with, which says it's done.
+    function setPhoto(path: string, told: bool): void {
+        if (!path.startsWith("/")) {
+            root.notify(Lang.widgetPhotoFailed, "");
+            return;
+        }
+        if (photoCopy.running) {
+            photoCopy.next = [path, told];
+            return;
+        }
+        photoCopy.told = told;
+        photoCopy.command = [Config.cmd.sh, "-c", root.photoScript, "sh", path, root.photoFile, Config.cmd.ffmpeg];
+        photoCopy.running = true;
+    }
+
+    Process {
+        id: photoCopy
+
+        property bool told: false
+        property var next: null
+
+        onExited: code => {
+            if (code !== 0) {
+                root.notify(Lang.widgetPhotoFailed, "");
+            } else {
+                root.photoTaken++;
+                if (root.widgets.indexOf("photo") < 0)
+                    root.setWidget("photo", true);
+                if (photoCopy.told)
+                    root.notify(Lang.widgetPhotoSet, "");
+            }
+            const next = photoCopy.next;
+            photoCopy.next = null;
+            if (next !== null)
+                root.setPhoto(next[0], next[1]);
+        }
+    }
+
+    Process {
+        command: [Config.cmd.sh, "-c", '[ -s "$1" ]', "sh", root.photoFile]
+        running: true
+        onExited: code => {
+            if (code === 0 && root.photoTaken === 0)
+                root.photoTaken = 1;
+        }
+    }
+
+    function arrangeWidgets(): void {
+        root.hide();
+        root.arranging = true;
     }
 
     function liveWallpaper(name: string): void {
@@ -438,9 +537,28 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const chosen = JSON.parse(text);
-                    if (Array.isArray(chosen))
-                        root.widgets = chosen;
+                    const kept = JSON.parse(text);
+                    // Before places were kept, the file was only the list of those on.
+                    const on = Array.isArray(kept) ? kept : kept?.on;
+                    if (Array.isArray(on))
+                        root.widgets = on.filter(name => Config.widgets.indexOf(name) >= 0);
+                    const places = {};
+                    for (const [name, at] of Object.entries(kept?.at ?? {})) {
+                        if (Array.isArray(at) && at.length === 2 && at.every(n => Number.isFinite(n) && n >= 0))
+                            places[name] = [Math.round(at[0]), Math.round(at[1])];
+                    }
+                    root.widgetPlaces = places;
+                    const options = {};
+                    for (const [name, set] of Object.entries(kept?.opts ?? {})) {
+                        if (Config.widgets.indexOf(name) < 0 || set === null || typeof set !== "object" || Array.isArray(set))
+                            continue;
+                        options[name] = {};
+                        for (const [key, value] of Object.entries(set)) {
+                            if (["string", "number", "boolean"].indexOf(typeof value) >= 0)
+                                options[name][key] = value;
+                        }
+                    }
+                    root.widgetOptions = options;
                 } catch (error) {
                 }
             }
@@ -633,6 +751,16 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: root.report(text)
         }
+    }
+
+    IpcHandler {
+        target: "widgets"
+
+        function arrange(): void { root.arrangeWidgets(); }
+        function done(): void { root.arranging = false; }
+        function list(): string { return JSON.stringify({ on: root.widgets, at: root.widgetPlaces }); }
+        // A whole path, from /, as Files' Open with gives it.
+        function photo(path: string): void { root.setPhoto(path, true); }
     }
 
     IpcHandler {

@@ -9,11 +9,14 @@ Singleton {
     id: root
 
     readonly property bool active: Drawers.current === "dashboard"
-    // Read only while shown, by the Dashboard or the desktop's network card.
-    readonly property bool shown: active || Machine.widgets.indexOf("network") >= 0
+    // The processor, memory and temperature, for the Dashboard and the desktop's system card.
+    readonly property bool measuring: active || Machine.widgets.indexOf("system") >= 0
+    // Read only while shown, by those or the desktop's network card.
+    readonly property bool shown: measuring || Machine.widgets.indexOf("network") >= 0
     property real cpu: 0            // 0..1
     property real mem: 0            // 0..1
     property real temp: 0           // degrees C
+    property real disk: 0           // 0..1, of the system's filesystem, for the system card
     property string iface: ""
     property real rx: 0             // bytes/s
     property real tx: 0
@@ -74,11 +77,11 @@ Singleton {
         }
     }
 
-    onActiveChanged: {
-        if (active && !tempPath && !findTemp.running)
+    onMeasuringChanged: {
+        if (measuring && !tempPath && !findTemp.running)
             findTemp.running = true;
         // Counted afresh on opening: from the last time, it would be the use over all the time between.
-        if (!active)
+        if (!measuring)
             lastCpu = null;
     }
 
@@ -124,7 +127,7 @@ Singleton {
         root.rxHistory = root.push(root.rxHistory, root.rx);
         root.txHistory = root.push(root.txHistory, root.tx);
 
-        if (!root.active) return;
+        if (!root.measuring) return;
 
         stat.reload();
         const cpuLine = stat.text().split("\n")[0].trim().split(/\s+/).slice(1).map(Number);
@@ -172,5 +175,27 @@ Singleton {
         repeat: true
         triggeredOnStart: true
         onTriggered: route.running = true
+    }
+
+    // A disk fills slowly: once a minute.
+    Process {
+        id: diskUse
+        command: [Config.cmd.df, "-kP", "/"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const fields = text.trim().split("\n").pop().trim().split(/\s+/);
+                const used = Number(fields[2]), free = Number(fields[3]);
+                if (used >= 0 && free >= 0 && used + free > 0)
+                    root.disk = used / (used + free);
+            }
+        }
+    }
+
+    Timer {
+        interval: 60000
+        running: Machine.widgets.indexOf("system") >= 0
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: diskUse.running = true
     }
 }

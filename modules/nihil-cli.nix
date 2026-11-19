@@ -45,9 +45,9 @@ let
         elif (.generations | either(type == "object" and (.days | either(whole(1; 3650))))) | not
             then "generations.days goes from 1 to 3650"
         elif (.clipboard | either(whole(0; 100))) | not then "clipboard goes from 0 to 100"
-        elif (.deck | either(type == "object" and (.enable | either(flag))
+        elif (.deck | either(type == "object" and (.enable | either(flag)) and (.bluetooth | either(flag))
                 and (.interfaces | either(type == "array" and all(.[]; text and test("^[A-Za-z0-9_.:@-]{1,15}$")))))) | not
-            then "deck.enable is true or false, and deck.interfaces a list of network interfaces"
+            then "deck.enable and deck.bluetooth are true or false, and deck.interfaces a list of network interfaces"
         else empty end
     '';
 

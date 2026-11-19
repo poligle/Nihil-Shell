@@ -109,6 +109,7 @@ in
         nihil.generations.days = lib.mkDefault (get [ "generations" "days" ] 7);
         nihil.deck.enable = lib.mkDefault (get [ "deck" "enable" ] false);
         nihil.deck.interfaces = lib.mkDefault (get [ "deck" "interfaces" ] [ ]);
+        nihil.deck.bluetooth = lib.mkDefault (get [ "deck" "bluetooth" ] true);
 
         # Each at the lowest priority, key by key: local.nix changes one key, a screen or the list of
         # programs without a conflict, and adds to them without losing settings.json's.

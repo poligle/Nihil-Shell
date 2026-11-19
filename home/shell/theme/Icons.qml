@@ -6,6 +6,17 @@ Singleton {
     function g(cp: int): string { return String.fromCodePoint(cp); }
 
     readonly property string nix: g(0xF1105)
+    readonly property string weatherClear: g(0xF0599)
+    readonly property string weatherNight: g(0xF0594)
+    readonly property string weatherPartly: g(0xF0595)
+    readonly property string weatherNightPartly: g(0xF0F31)
+    readonly property string weatherCloudy: g(0xF0590)
+    readonly property string weatherFog: g(0xF0591)
+    readonly property string weatherDrizzle: g(0xF0597)
+    readonly property string weatherRain: g(0xF0596)
+    readonly property string weatherShowers: g(0xF0F33)
+    readonly property string weatherSnow: g(0xF0598)
+    readonly property string weatherStorm: g(0xF067E)
     readonly property string wifiOff: g(0xF05AA)
     readonly property string wifiOn: g(0xF05A9)
     readonly property var wifiLevels: [g(0xF092F), g(0xF091F), g(0xF0922), g(0xF0925), g(0xF0928)]
