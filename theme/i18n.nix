@@ -409,6 +409,7 @@
 		cfgTimeZone = "Zona horaria";
 		cfgTimeZoneSub = "Busca tu ciudad";
 		cfgLook = "Aspecto";
+		cfgApps = "Aplicaciones";
 		cfgWallpaper = "Fondo";
 		cfgKeys = "Atajos";
 		cfgKeyNone = "Sin tecla";
@@ -1254,6 +1255,7 @@
 		cfgTimeZone = "Time zone";
 		cfgTimeZoneSub = "Look for your city";
 		cfgLook = "Appearance";
+		cfgApps = "Apps";
 		cfgWallpaper = "Wallpaper";
 		cfgKeys = "Shortcuts";
 		cfgKeyNone = "No key";

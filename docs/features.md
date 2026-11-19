@@ -41,7 +41,9 @@
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](install.md).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
-  actions, `=` for a calculator, `?` for Nilo.
+  actions, `=` for a calculator, `?` for Nilo. Preferences, Apps hides those you don't want
+  there, from the phone's deck too; they're kept in `~/.local/state/nihil/apps.json`, with no
+  rebuild.
 - **Copy, paste and the clipboard history.** One modifier for both, as on a Mac: `SUPER + C`
   copies and `SUPER + V` pastes, in kitty too. Held a moment longer, `SUPER + V`
   brings out the last copies, text and pictures, from the top of the frame: `V` again goes

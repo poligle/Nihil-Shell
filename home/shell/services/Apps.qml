@@ -8,9 +8,23 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property var all: DesktopEntries.applications.values
+    // Every app, and those the launcher shows: one hidden in Preferences is hidden from the deck,
+    // and from Nilo, too. Kept as ids in apps.json, with no rebuild.
+    readonly property var every: DesktopEntries.applications.values
         .filter(e => !e.noDisplay)
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+    property var hidden: []
+    readonly property var all: root.every.filter(e => root.hidden.indexOf(e.id) < 0)
+    readonly property string keptFile: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/nihil/apps.json"
+
+    function setHidden(id: string, hide: bool): void {
+        const next = root.hidden.filter(other => other !== id);
+        if (hide)
+            next.push(id);
+        root.hidden = next;
+        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.keptFile,
+                                 JSON.stringify({ hidden: root.hidden })]);
+    }
 
     function score(e, q: string): int {
         const name = e.name.toLowerCase();
@@ -53,6 +67,21 @@ Singleton {
             Quickshell.execDetached(e.workingDirectory ? { command: line, workingDirectory: e.workingDirectory } : line);
         } else {
             root.run([e.id + ".desktop"]);
+        }
+    }
+
+    Process {
+        command: [Config.cmd.sh, "-c", "cat \"$1\" 2>/dev/null", "sh", root.keptFile]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const kept = JSON.parse(text)?.hidden;
+                    if (Array.isArray(kept))
+                        root.hidden = kept.filter(id => typeof id === "string");
+                } catch (error) {
+                }
+            }
         }
     }
 
