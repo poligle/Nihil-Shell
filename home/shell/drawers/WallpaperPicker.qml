@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Widgets
 import qs.theme
 import qs.config
 import qs.services
@@ -129,13 +130,20 @@ Item {
 
             Behavior on scale { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
 
-            Image {
+            // Rounded with the card, inside its line.
+            ClippingRectangle {
                 anchors.fill: parent
                 anchors.margins: 3
-                source: "file://" + Config.wallpaperDir + "/" + card.modelData + "/" + Config.primaryOutput + ".png"
-                sourceSize.width: 416
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
+                radius: card.radius - 3
+                color: "transparent"
+
+                Image {
+                    anchors.fill: parent
+                    source: "file://" + Config.wallpaperDir + "/" + card.modelData + "/" + Config.primaryOutput + ".png"
+                    sourceSize.width: 416
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                }
             }
 
             Label {

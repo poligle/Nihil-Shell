@@ -1,8 +1,9 @@
 # zen.nix by poligle
 
-{ config, lib, pkgs, inputs, ... }:
+{ config, osConfig, lib, pkgs, inputs, ... }:
 let
     colors = config.lib.stylix.colors.withHashtag;
+    palette = lib.mapAttrs (_: hex: "#${hex}") osConfig.nihil.tokens.palette;
 in
 {
     imports = [ inputs.zen-browser.homeModules.beta ];
@@ -25,6 +26,12 @@ in
                 userChrome = ''
                     findbar
                     {
+                        --toolbar-field-background-color: ${palette.raised} !important;
+                        --toolbar-field-background-color-focus: ${palette.raised} !important;
+                        --toolbar-field-text-color: ${palette.ink} !important;
+                        --toolbar-field-text-color-focus: ${palette.ink} !important;
+                        --input-background-color: ${palette.raised} !important;
+                        --input-text-color: ${palette.ink} !important;
                         background-color: ${colors.base00} !important;
                         color: ${colors.base05} !important;
                         border-color: ${colors.base02} !important;
@@ -33,17 +40,18 @@ in
 
                     findbar .findbar-textbox
                     {
-                        background-color: ${colors.base01} !important;
-                        color: ${colors.base06} !important;
-                        border: 1px solid ${colors.base02} !important;
+                        appearance: none !important;
+                        background: ${palette.raised} !important;
+                        color: ${palette.ink} !important;
+                        border: 1px solid ${palette.line} !important;
                         border-radius: 8px !important;
                         outline: none !important;
                         box-shadow: none !important;
                     }
 
-                    findbar .findbar-textbox:focus { border-color: ${colors.base03} !important; }
-                    findbar .findbar-textbox[status="notfound"] { border-color: ${colors.base08} !important; }
-                    findbar .findbar-textbox::placeholder { color: ${colors.base04} !important; }
+                    findbar .findbar-textbox:focus { border-color: ${palette.muted} !important; }
+                    findbar .findbar-textbox[status="notfound"] { border-color: ${palette.signal} !important; }
+                    findbar .findbar-textbox::placeholder { color: ${palette.muted} !important; }
 
                     findbar :is(label, description, .findbar-label, .found-matches, .findbar-find-status)
                     {
