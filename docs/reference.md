@@ -128,8 +128,8 @@ nihil-ipc night level 40              # the night light at 40 %; also: toggle, o
 nihil-ipc tasks add "Hand in the lab" # also: list
 nihil-ipc battery warn 10             # show the low-battery warning
 nihil-ipc settings open               # Preferences; also: toggle, close, page keys, welcome, wallpapers, glass on|off, look
-nihil-ipc widgets arrange             # move the desktop widgets; also: done, list (which are on, where and how big, as JSON)
-nihil-ipc widgets photo /path/to.jpg  # a photo widget's picture, from a whole path: one with none, else a new one, else the last
+nihil-ipc widgets arrange             # move the desktop widgets; also: done, cancel (what Enter and Esc do), list (which are on, where and how big, as JSON)
+nihil-ipc widgets photo /path/to.jpg  # a photo widget's picture, from a whole path: one with none, else a new one
 nihil-ipc clipboard open              # the history; also: next, previous, released, paste, cancel
 nihil-ipc apps list                   # the launcher's apps, as JSON; also: launch <id>, url <https://…>
 nihil-ipc media toggle                # also: next, previous, now (what plays, as JSON)

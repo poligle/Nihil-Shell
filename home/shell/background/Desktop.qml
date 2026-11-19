@@ -6,6 +6,7 @@ import qs.theme
 import qs.config
 import qs.services
 import qs.components
+import "Desk.js" as Desk
 
 Scope {
     id: root
@@ -31,6 +32,14 @@ Scope {
     // How small and how big one can be made, against its own size.
     readonly property real smallest: 0.75
     readonly property real largest: 2.5
+    // A new photo's size, as it comes.
+    readonly property int photoWidth: 320
+    readonly property int photoHeight: 248
+
+    // One file from Files, of a kind a photo can show.
+    function picture(drag: var): bool {
+        return drag.hasUrls && drag.urls.length === 1 && /^file:\/\/\/.+\.(png|jpe?g|gif|bmp|webp)$/i.test(drag.urls[0].toString());
+    }
 
     function enabled(name: string): bool {
         return Machine.widgets.indexOf(name) >= 0;
@@ -57,33 +66,15 @@ Scope {
         return y;
     }
 
+    // The others, as boxes in the desk.
+    function boxes(card: var): var {
+        return root.cards().filter(other => other !== card && other.visible).map(other => ({ x: other.x, y: other.y, w: other.width, h: other.height }));
+    }
+
     // The place on the grid nearest (x, y) where the card fits, a gap clear of the others.
     function room(card: var, x: real, y: real): point {
-        const others = root.cards().filter(other => other !== card && other.visible);
-        const clear = (px, py) => others.every(o => px + card.width + root.spacing <= o.x || px >= o.x + o.width + root.spacing
-            || py + card.height + root.spacing <= o.y || py >= o.y + o.height + root.spacing);
-        const fit = (v, size, limit) => Math.max(0, Math.min(Math.floor((limit - size) / root.cell) * root.cell, Math.round(v / root.cell) * root.cell));
-        const sx = fit(x, card.width, desk.width), sy = fit(y, card.height, desk.height);
-        if (clear(sx, sy))
-            return Qt.point(sx, sy);
-        for (let ring = 1; ring < 120; ring++) {
-            let best = null, far = Infinity;
-            for (let i = -ring; i <= ring; i++) {
-                for (const [dx, dy] of [[i, -ring], [i, ring], [-ring, i], [ring, i]]) {
-                    const px = sx + dx * root.cell, py = sy + dy * root.cell;
-                    if (px < 0 || py < 0 || px + card.width > desk.width || py + card.height > desk.height)
-                        continue;
-                    const d = dx * dx + dy * dy;
-                    if (d < far && clear(px, py)) {
-                        best = Qt.point(px, py);
-                        far = d;
-                    }
-                }
-            }
-            if (best !== null)
-                return best;
-        }
-        return Qt.point(sx, sy);
+        const at = Desk.room(card.width, card.height, x, y, root.boxes(card), { w: desk.width, h: desk.height }, root.spacing, root.cell);
+        return Qt.point(at.x, at.y);
     }
 
     // The first one moved keeps the rest where they show: from then on each one has its place.
@@ -101,19 +92,13 @@ Scope {
     // The size a card takes as its corner goes (dx, dy) from where it was at size `from`: its width
     // on the grid, all of it within the desk, and short of the others it would run into.
     function resized(card: var, from: real, dx: real, dy: real): real {
-        const want = Math.max(from + dx / card.base, from + dy / card.tall);
-        let most = Math.min(root.largest, (desk.width - card.x) / card.base, (desk.height - card.y) / card.tall);
-        for (const other of root.cards()) {
-            if (other === card || !other.visible || other.x + other.width + root.spacing <= card.x
-                    || other.y + other.height + root.spacing <= card.y)
-                continue;
-            const room = Math.max((other.x - card.x - root.spacing) / card.base, (other.y - card.y - root.spacing) / card.tall);
-            if (room >= from - 0.001)
-                most = Math.min(most, room);
-        }
-        const size = Math.max(root.smallest, Math.min(most, want));
-        const snapped = Math.round(card.base * size / root.cell) * root.cell / card.base;
-        return snapped > most ? Math.floor(card.base * most / root.cell) * root.cell / card.base : Math.max(root.smallest, snapped);
+        return Desk.scaled({ x: card.x, y: card.y, base: card.base, tall: card.tall }, from, dx, dy, root.boxes(card),
+                           { w: desk.width, h: desk.height }, { gap: root.spacing, cell: root.cell, smallest: root.smallest, largest: root.largest });
+    }
+
+    // Whether a point in the desk is on the cross, where a card dropped is taken away.
+    function onBin(point: point): bool {
+        return Machine.arranging && Math.hypot(point.x - (bin.x + bin.width / 2), point.y - (bin.y + bin.height / 2)) <= bin.width / 2 + 16;
     }
 
     // Turned on once the others have places: it goes where there's room, near the top left.
@@ -181,15 +166,19 @@ Scope {
         readonly property var place: Machine.widgetPlaces[card.widget] ?? null
         readonly property real tall: inner.implicitHeight + 40
         readonly property real size: card.sizing > 0 ? card.sizing : (Machine.widgetSizes[card.widget] ?? 1)
-        // While it's dragged: where the pointer took it, and how far it has gone since, in the desk.
+        // While it's dragged: where the pointer took it, in the desk and on the card, and how far it
+        // has gone since. Over the cross it shrinks towards the pointer.
         property point grab: Qt.point(0, 0)
+        property point hold: Qt.point(0, 0)
         property point moved: Qt.point(0, 0)
         property bool dragging: false
+        readonly property bool binned: card.dragging && root.onBin(Qt.point(card.grab.x + card.moved.x, card.grab.y + card.moved.y))
         // While its corner is dragged: the size it's taking.
         property real sizing: 0
 
         function take(area: Item, mx: real, my: real): void {
             card.grab = area.mapToItem(desk, mx, my);
+            card.hold = area.mapToItem(card, mx, my);
             card.moved = Qt.point(0, 0);
             card.dragging = true;
         }
@@ -204,10 +193,13 @@ Scope {
         function leave(): void {
             if (!card.dragging)
                 return;
-            const x = card.x, y = card.y;
+            const x = card.x, y = card.y, binned = card.binned;
             card.dragging = false;
             card.moved = Qt.point(0, 0);
-            root.drop(card, x, y);
+            if (binned)
+                Machine.removeWidget(card.widget);
+            else
+                root.drop(card, x, y);
         }
 
         function sized(): void {
@@ -223,9 +215,21 @@ Scope {
         width: card.base * card.size
         implicitHeight: card.tall * card.size
         height: implicitHeight
-        x: Math.max(0, Math.min(desk.width - card.width, (card.place !== null ? card.place[0] : 0) + card.moved.x))
-        y: Math.max(0, Math.min(desk.height - card.height, (card.place !== null ? card.place[1] : root.flow(card)) + card.moved.y))
+        // Within the desk; while dragged, where the pointer takes it, the cross included.
+        readonly property real leftAt: (card.place !== null ? card.place[0] : 0) + card.moved.x
+        readonly property real topAt: (card.place !== null ? card.place[1] : root.flow(card)) + card.moved.y
+        x: card.dragging ? card.leftAt : Math.max(0, Math.min(desk.width - card.width, card.leftAt))
+        y: card.dragging ? card.topAt : Math.max(0, Math.min(desk.height - card.height, card.topAt))
         z: card.dragging ? 1 : 0
+        transform: Scale {
+            origin.x: card.hold.x
+            origin.y: card.hold.y
+            xScale: card.binned ? 0.35 : 1
+            yScale: xScale
+
+            Behavior on xScale { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
+        }
+        opacity: card.binned ? 0.75 : 1
         pane: true
         radius: Tokens.drawerRadius
         color: Tokens.black
@@ -241,7 +245,7 @@ Scope {
             preventStealing: true
             cursorShape: Machine.arranging ? Qt.SizeAllCursor : Qt.ArrowCursor
             onPressAndHold: mouse => {
-                Machine.arranging = true;
+                Machine.arrangeWidgets();
                 card.take(hold, mouse.x, mouse.y);
             }
             onPressed: mouse => {
@@ -337,7 +341,7 @@ Scope {
 
     PanelWindow {
         screen: root.target
-        visible: root.target !== null && Machine.widgets.length > 0
+        visible: root.target !== null
         color: "transparent"
 
         // Under the windows, and over them while arranging: the desktop may be covered.
@@ -348,23 +352,6 @@ Scope {
 
         anchors { top: true; left: true; right: true; bottom: true }
         margins { top: root.deskTop; left: root.deskLeft; right: root.deskEdge; bottom: root.deskEdge }
-
-        // Only the widgets take the pointer, but all of it while arranging.
-        mask: Machine.arranging ? null : held
-        Region {
-            id: held
-            Region { item: clockCard.visible ? clockCard : null }
-            Region { item: calendarCard.visible ? calendarCard : null }
-            Region { item: networkCard.visible ? networkCard : null }
-            Region { item: systemCard.visible ? systemCard : null }
-            Region { item: mediaCard.visible ? mediaCard : null }
-            Region { item: weatherCard.visible ? weatherCard : null }
-            Region { item: photos.count > 0 ? photos.itemAt(0) : null }
-            Region { item: photos.count > 1 ? photos.itemAt(1) : null }
-            Region { item: photos.count > 2 ? photos.itemAt(2) : null }
-            Region { item: photos.count > 3 ? photos.itemAt(3) : null }
-            Region { item: githubCard.visible ? githubCard : null }
-        }
 
         SystemClock {
             id: clock
@@ -387,8 +374,11 @@ Scope {
 
             property Item glassBackdrop: Machine.glass ? backdrop.item : null
 
-            Keys.onEscapePressed: Machine.arranging = false
-            Keys.onReturnPressed: Machine.arranging = false
+            // Esc puts back what was there when arranging began; Enter, or a click away from them,
+            // keeps what's there now.
+            Keys.onEscapePressed: Machine.stopArranging(false)
+            Keys.onReturnPressed: Machine.stopArranging(true)
+            Keys.onEnterPressed: Machine.stopArranging(true)
 
             Connections {
                 target: Machine
@@ -408,8 +398,39 @@ Scope {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: Machine.arranging = false
+                    onClicked: Machine.stopArranging(true)
                 }
+            }
+
+            // A picture dropped from Files where there's no photo is a new one, where it fell.
+            DropArea {
+                id: deskDrop
+
+                readonly property point at: {
+                    const spot = Desk.room(root.photoWidth, root.photoHeight, deskDrop.drag.x - root.photoWidth / 2, deskDrop.drag.y - root.photoHeight / 2,
+                                           root.boxes(null), { w: desk.width, h: desk.height }, root.spacing, root.cell);
+                    return Qt.point(spot.x, spot.y);
+                }
+
+                anchors.fill: parent
+                z: -1
+                onEntered: drag => drag.accepted = root.picture(drag)
+                onDropped: drop => {
+                    Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false, "", [deskDrop.at.x, deskDrop.at.y]);
+                    drop.accept();
+                }
+            }
+
+            Rectangle {
+                visible: deskDrop.containsDrag
+                x: deskDrop.at.x
+                y: deskDrop.at.y
+                width: root.photoWidth
+                height: root.photoHeight
+                radius: Tokens.drawerRadius
+                color: "transparent"
+                border.width: 1
+                border.color: Tokens.ink
             }
 
             Card {
@@ -780,7 +801,7 @@ Scope {
                 }
             }
 
-            // Pictures of one's own, in dots: up to four.
+            // Pictures of one's own, in dots, as many as wanted.
             Repeater {
                 id: photos
                 model: Machine.photos
@@ -812,16 +833,13 @@ Scope {
                             elide: Text.ElideNone
                         }
 
-                        // A picture from Files: one, of a kind it can show.
+                        // A picture from Files, in place of the one it has.
                         DropArea {
                             id: dropping
                             anchors.fill: parent
-                            onEntered: drag => {
-                                drag.accepted = drag.hasUrls && drag.urls.length === 1
-                                    && /^file:\/\/\/.+\.(png|jpe?g|gif|bmp|webp)$/i.test(drag.urls[0].toString());
-                            }
+                            onEntered: drag => drag.accepted = root.picture(drag)
                             onDropped: drop => {
-                                Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false, photoCard.modelData);
+                                Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false, photoCard.modelData, null);
                                 drop.accept();
                             }
                         }
@@ -896,6 +914,36 @@ Scope {
                             color: githubCard.shades[Math.max(0, level)]
                         }
                     }
+                }
+            }
+
+            // Where a card dropped is taken away: turned off, or, a photo or a note, gone.
+            Surface {
+                id: bin
+
+                readonly property bool hot: root.cards().some(card => card.binned)
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 36 + 20
+                z: 0.5
+                visible: Machine.arranging
+                width: 56
+                height: 56
+                radius: 28
+                scale: bin.hot ? 1.2 : 1
+                color: Tokens.black
+                border.width: 1
+                border.color: bin.hot ? Tokens.ink : Tokens.line
+                Accessible.name: Lang.widgetsRemove
+
+                Behavior on scale { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
+
+                Ico {
+                    anchors.centerIn: parent
+                    glyph: Icons.close
+                    font.pixelSize: 24
+                    color: bin.hot ? Tokens.ink : Tokens.dim
                 }
             }
 

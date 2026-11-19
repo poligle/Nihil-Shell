@@ -80,15 +80,18 @@
   how the computer is (processor, memory, temperature and the system's disk, in rows of dots),
   the weather where you say (now, today's highest and lowest and the three days after, from
   [Open-Meteo](https://open-meteo.com), with no key; the place goes in Preferences, Appearance),
-  up to four photos of yours in dots (drop a picture on one, or open one with Photo widget
-  from Files, which puts it in one with none or in a new one: PNG, JPEG, GIF, BMP or WebP,
-  of which it keeps a copy; Another, by Photo in Preferences, Appearance, adds one) and a year
-  of GitHub contributions, a dot a day, brighter the more there were (the username goes in
+  photos of yours in dots, as many as you like (drop a picture on one to change it, or on the
+  desktop for a new one where it falls, or open one with Photo widget from Files, which puts
+  it in one with none or in a new one: PNG, JPEG, GIF, BMP or WebP, of which it keeps a copy;
+  Add, by Photos in Preferences, Appearance, makes an empty one) and a year of GitHub
+  contributions, a dot a day, brighter the more there were (the username goes in
   Preferences, Appearance; it reads the page GitHub draws its own calendar from, every hour,
   and keeps the last one for when there's no network).
   A long press on one, or Arrange in Preferences, Appearance, lets you drag each where you
-  want it, on a grid and clear of the others, and its corner makes it from three quarters to
-  two and a half times as big; each keeps its place and its size, with no rebuild.
+  want it, on a grid and clear of the others; its corner makes it from three quarters to two
+  and a half times as big, and dropped on the cross it's turned off or, a photo, gone. Enter
+  keeps it all and Esc puts back what was there; each keeps its place and its size, with no
+  rebuild.
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down) with the power-off notes going
   up, unless the session was left muted, a greeter with the lock screen's face (its
