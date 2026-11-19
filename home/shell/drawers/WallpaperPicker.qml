@@ -105,6 +105,10 @@ Item {
         currentIndex: root.index
         highlightMoveDuration: Tokens.animFast
         boundsBehavior: Flickable.StopAtBounds
+        // However many there are, the chosen one in the middle, where it can be.
+        highlightRangeMode: ListView.ApplyRange
+        preferredHighlightBegin: (width - 208) / 2
+        preferredHighlightEnd: (width + 208) / 2
 
         delegate: Surface {
             id: card
@@ -116,10 +120,14 @@ Item {
 
             width: 208
             height: ListView.view.height
+            // The chosen one as it is, the rest smaller.
+            scale: chosen ? 1 : 0.86
             radius: 14
             color: Tokens.surface
             border.width: chosen ? 2 : 1
             border.color: chosen ? Tokens.ink : Tokens.line
+
+            Behavior on scale { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
 
             Image {
                 anchors.fill: parent
