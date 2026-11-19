@@ -34,6 +34,7 @@ const ADDRESS = "https?:\\/\\/(?:[^\\s<()]|\\([^\\s<()]*\\))+";
 
 function emphasis(text) {
     return text.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+        .replace(/~~([^~\n]+)~~/g, "<s>$1</s>")
         .replace(/(^|[^*\w])\*([^*\s][^*\n]*?)\*(?![*\w])/g, "$1<i>$2</i>")
         .replace(/(^|[^\w])_([^_\s][^_\n]*?)_(?!\w)/g, "$1<i>$2</i>");
 }
@@ -57,18 +58,30 @@ function inline(text, s) {
         (m, i) => `<span style="font-family:'${s.mono}'; font-size:13px; color:${s.code};">${codes[+i]}</span>`);
 }
 
+// A task's mark, open or done: with s.tasks, a link to tick it, task:<its line>.
+function task(done, line, s) {
+    const mark = `<span style="font-family:'${s.icons}'; color:${done ? s.ink : s.dim};">${done ? "&#xF0133;" : "&#xF0130;"}</span>`;
+    return s.tasks ? `<a href="task:${line}" style="text-decoration:none;">${mark}</a>` : mark;
+}
+
+// s: the colours and fonts (ink, dim, code, surface, mono, icons); with s.breaks, a line's end
+// is one in what shows too, as in a note, rather than a space.
 function html(text, s) {
     const lines = escape(String(text ?? "")).split("\n");
     const out = [];
     let para = [];
+    let quote = [];
     let list = null;
     let code = null;
     let indent = 0;
     const p = "margin-top:0px; margin-bottom:10px;";
+    const joined = parts => parts.join(s.breaks ? "<br>" : " ");
 
     function flushPara() {
-        if (para.length) out.push(`<p style="${p}">${inline(para.join(" "), s)}</p>`);
+        if (para.length) out.push(`<p style="${p}">${inline(joined(para), s)}</p>`);
         para = [];
+        if (quote.length) out.push(`<p style="${p} margin-left:12px; color:${s.dim};">${inline(joined(quote), s)}</p>`);
+        quote = [];
     }
     function flushList() {
         if (list) {
@@ -84,7 +97,8 @@ function html(text, s) {
         code = null;
     }
 
-    for (const line of lines) {
+    for (let at = 0; at < lines.length; at++) {
+        const line = lines[at];
         if (code !== null) {
             if (fence(line) >= 0) flushCode();
             else code.push(dedent(line, indent));
@@ -103,6 +117,20 @@ function html(text, s) {
             flushList();
             const size = [20, 18, 16, 15][heading[1].length - 1];
             out.push(`<p style="${p} font-size:${size}px;"><b>${inline(heading[2], s)}</b></p>`);
+            continue;
+        }
+        const todo = line.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
+        if (todo) {
+            flushPara();
+            flushList();
+            out.push(`<p style="margin-top:0px; margin-bottom:4px;">${task(todo[1] !== " ", at, s)}&nbsp; ${inline(todo[2], s)}</p>`);
+            continue;
+        }
+        const said = line.match(/^\s*&gt;\s?(.*)$/);
+        if (said) {
+            if (para.length) flushPara();
+            flushList();
+            quote.push(said[1].trim());
             continue;
         }
         const bullet = line.match(/^\s*[-*•]\s+(.*)$/);
@@ -127,6 +155,7 @@ function html(text, s) {
             continue;
         }
         flushList();
+        if (quote.length) flushPara();
         para.push(line.trim());
     }
     if (code !== null) flushCode();
@@ -168,4 +197,14 @@ function segments(text) {
         found.push({ kind: "code", text: code.join("\n"), language: lang, open: true });
     flushProse();
     return found;
+}
+
+// The text with the task on a line ticked, or unticked: what a task's mark, task:<line>, does.
+function toggled(text, line) {
+    const lines = String(text ?? "").split("\n");
+    const m = line >= 0 && line < lines.length ? /^(\s*[-*]\s+\[)([ xX])(\].*)$/.exec(lines[line]) : null;
+    if (m === null)
+        return String(text ?? "");
+    lines[line] = m[1] + (m[2] === " " ? "x" : " ") + m[3];
+    return lines.join("\n");
 }

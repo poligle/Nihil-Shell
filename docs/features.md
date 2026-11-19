@@ -83,16 +83,18 @@
   photos of yours in dots, as many as you like (drop a picture on one to change it, or on the
   desktop for a new one where it falls, or open one with Photo widget from Files, which puts
   it in one with none or in a new one: PNG, JPEG, GIF, BMP or WebP, of which it keeps a copy;
-  Add, by Photos in Preferences, Appearance, makes an empty one) and a year of GitHub
-  contributions, a dot a day, brighter the more there were (the username goes in
+  Add, by Photos in Preferences, Appearance, makes an empty one), notes, as many as you like,
+  in Markdown (headings, bold, italics, strikethrough, lists, tasks ticked with a click,
+  quotes, code and links; the pencil writes in one and + puts another beside it), and a year
+  of GitHub contributions, a dot a day, brighter the more there were (the username goes in
   Preferences, Appearance; it reads the page GitHub draws its own calendar from, every hour,
   and keeps the last one for when there's no network).
   A long press on one, or Arrange in Preferences, Appearance, lets you drag each where you
-  want it, on a grid and clear of the others; its corner makes photos, the network and the
-  calendar any shape (the calendar lists as much of what comes next as fits), and the rest
-  from three quarters to two and a half times as big, as a whole. Dropped on the cross, one is
-  turned off or, a photo, gone. Enter keeps it all and Esc puts back what was there; each
-  keeps its place and its size, with no rebuild.
+  want it, on a grid and clear of the others; its corner makes photos, notes, the network and
+  the calendar any shape (the calendar lists as much of what comes next as fits), and the
+  rest from three quarters to two and a half times as big, as a whole. Dropped on the cross,
+  one is turned off or, a photo or a note, gone. Enter keeps it all and Esc puts back what
+  was there; each keeps its place and its size, with no rebuild.
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down) with the power-off notes going
   up, unless the session was left muted, a greeter with the lock screen's face (its

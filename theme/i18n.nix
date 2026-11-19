@@ -638,6 +638,10 @@
 		cfgWidgetWeather = "Tiempo";
 		cfgWidgetPhoto = "Fotos";
 		cfgWidgetAdd = "Añadir";
+		cfgWidgetNote = "Notas";
+		noteWrite = "Escribir";
+		noteAnother = "Otra nota";
+		noteDone = "Listo";
 		cfgWidgetGithub = "Contribuciones de GitHub";
 		cfgGithubUser = "Usuario de GitHub";
 		cfgWeatherPlace = "Lugar del tiempo";
@@ -1474,6 +1478,10 @@
 		cfgWidgetWeather = "Weather";
 		cfgWidgetPhoto = "Photos";
 		cfgWidgetAdd = "Add";
+		cfgWidgetNote = "Notes";
+		noteWrite = "Write";
+		noteAnother = "Another note";
+		noteDone = "Done";
 		cfgWidgetGithub = "GitHub contributions";
 		cfgGithubUser = "GitHub username";
 		cfgWeatherPlace = "Weather location";

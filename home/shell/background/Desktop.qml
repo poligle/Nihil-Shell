@@ -7,6 +7,7 @@ import qs.config
 import qs.services
 import qs.components
 import "Desk.js" as Desk
+import "../nilo/Markdown.js" as Markdown
 
 Scope {
     id: root
@@ -35,6 +36,54 @@ Scope {
     // A new photo's size, as it comes.
     readonly property int photoWidth: 320
     readonly property int photoHeight: 248
+
+    // The note being written, by name, in its sheet over the windows; "" while none is.
+    property string writing: ""
+    readonly property var noteVoices: ({ ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6", surface: String(Tokens.surface),
+                                         mono: Tokens.fontMono, icons: Tokens.fontIcons, breaks: true, tasks: true })
+
+    function write(name: string): void {
+        if (Machine.arranging || root.target === null)
+            return;
+        root.written();
+        root.writing = name;
+        words.text = Machine.widgetOptions[name]?.text ?? "";
+        words.cursorPosition = words.length;
+        Qt.callLater(() => words.forceActiveFocus());
+    }
+
+    // Kept as it's written, and once more as it's left.
+    function written(): void {
+        if (root.writing === "")
+            return;
+        saving.stop();
+        if (words.text !== (Machine.widgetOptions[root.writing]?.text ?? ""))
+            Machine.setWidgetOption(root.writing, "text", words.text);
+        root.writing = "";
+    }
+
+    // Another note, as big as this one and beside it if there's room, written at once.
+    function noteBeside(card: var): void {
+        const at = Desk.beside({ x: card.x, y: card.y, w: card.width, h: card.height }, card.width, card.height, root.boxes(card),
+                               { w: desk.width, h: desk.height }, root.spacing, root.cell);
+        root.write(Machine.addWidget("note", [at.x, at.y], [Math.round(card.width), Math.round(card.height)]));
+    }
+
+    // A task's mark ticks it; any other link, of the web only, opens.
+    function followNote(name: string, link: string): void {
+        if (link.startsWith("task:"))
+            Machine.setWidgetOption(name, "text", Markdown.toggled(Machine.widgetOptions[name]?.text ?? "", Number(link.slice(5))));
+        else if (/^https?:\/\//i.test(link))
+            Apps.open(link);
+    }
+
+    Connections {
+        target: Machine
+        function onArrangingChanged(): void {
+            if (Machine.arranging)
+                root.written();
+        }
+    }
 
     // One file from Files, of a kind a photo can show.
     function picture(drag: var): bool {
@@ -890,6 +939,66 @@ Scope {
                 }
             }
 
+            // Notes of one's own, as many as wanted: Markdown, written with the pencil.
+            Repeater {
+                id: notes
+                model: Machine.notes
+
+                Card {
+                    id: noteCard
+
+                    required property string modelData
+                    readonly property string text: Machine.widgetOptions[noteCard.modelData]?.text ?? ""
+
+                    widget: noteCard.modelData
+                    base: 280
+                    free: true
+                    least: Qt.size(200, 120)
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Item {
+                            Layout.fillWidth: true
+                        }
+
+                        CircleButton {
+                            size: 26
+                            glyph: Icons.plus
+                            label: Lang.noteAnother
+                            onClicked: root.noteBeside(noteCard)
+                        }
+
+                        CircleButton {
+                            size: 26
+                            glyph: Icons.pencil
+                            label: Lang.noteWrite
+                            onClicked: root.write(noteCard.modelData)
+                        }
+                    }
+
+                    Text {
+                        id: noteText
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.preferredHeight: 96
+                        text: Markdown.html(noteCard.text, root.noteVoices)
+                        textFormat: Text.RichText
+                        wrapMode: Text.Wrap
+                        color: Tokens.ink
+                        font.family: Tokens.fontSans
+                        font.pixelSize: 13
+                        clip: true
+                        onLinkActivated: link => root.followNote(noteCard.modelData, link)
+
+                        HoverHandler {
+                            cursorShape: noteText.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        }
+                    }
+                }
+            }
+
             // A year of GitHub contributions, a dot a day: the more, the brighter.
             Card {
                 id: githubCard
@@ -997,6 +1106,117 @@ Scope {
                     id: hints
                     anchors.centerIn: parent
                     text: Lang.widgetsHint
+                }
+            }
+        }
+    }
+
+    // Writing a note: its sheet over the windows, where it is, with the keyboard until Esc, its
+    // tick or a click away from it.
+    PanelWindow {
+        screen: root.target
+        visible: root.target !== null && root.writing !== ""
+        color: "transparent"
+
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "nihil-note"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        exclusionMode: ExclusionMode.Ignore
+
+        anchors { top: true; left: true; right: true; bottom: true }
+        margins { top: root.deskTop; left: root.deskLeft; right: root.deskEdge; bottom: root.deskEdge }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.written()
+        }
+
+        Timer {
+            id: saving
+            interval: 800
+            onTriggered: {
+                if (root.writing !== "")
+                    Machine.setWidgetOption(root.writing, "text", words.text);
+            }
+        }
+
+        Surface {
+            id: sheet
+
+            readonly property Item note: root.cards().find(card => card.widget === root.writing) ?? null
+
+            x: sheet.note?.x ?? 0
+            y: sheet.note?.y ?? 0
+            width: sheet.note?.width ?? 280
+            height: sheet.note?.height ?? 168
+            radius: Tokens.drawerRadius
+            color: Tokens.black
+            border.width: 1
+            border.color: Tokens.ink
+
+            // A click on it stays in it.
+            MouseArea {
+                anchors.fill: parent
+                onClicked: words.forceActiveFocus()
+            }
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 20
+                anchors.leftMargin: 22
+                anchors.rightMargin: 22
+                spacing: 6
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Item {
+                        Layout.fillWidth: true
+                    }
+
+                    CircleButton {
+                        size: 26
+                        glyph: Icons.check
+                        label: Lang.noteDone
+                        onClicked: root.written()
+                    }
+                }
+
+                Flickable {
+                    id: page
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    contentWidth: page.width
+                    contentHeight: words.implicitHeight
+                    boundsBehavior: Flickable.StopAtBounds
+                    clip: true
+
+                    // What's being written stays in sight.
+                    function follow(r: rect): void {
+                        if (r.y < page.contentY)
+                            page.contentY = r.y;
+                        else if (r.y + r.height > page.contentY + page.height)
+                            page.contentY = r.y + r.height - page.height;
+                    }
+
+                    TextEdit {
+                        id: words
+                        width: page.width
+                        wrapMode: TextEdit.Wrap
+                        textFormat: TextEdit.PlainText
+                        color: Tokens.ink
+                        selectionColor: Tokens.ink
+                        selectedTextColor: Tokens.black
+                        font.family: Tokens.fontMono
+                        font.pixelSize: 13
+                        selectByMouse: true
+                        Keys.onEscapePressed: root.written()
+                        onTextChanged: {
+                            if (root.writing !== "")
+                                saving.restart();
+                        }
+                        onCursorRectangleChanged: page.follow(words.cursorRectangle)
+                    }
                 }
             }
         }
