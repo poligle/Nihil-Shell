@@ -56,12 +56,5 @@ in
         "applications/kvantummanager.desktop"                   = hidden "Kvantum Manager";
         "applications/qt5ct.desktop"                            = hidden "Qt5 Settings";
         "applications/qt6ct.desktop"                            = hidden "Qt6 Settings";
-    }
-    # Thunar's compress and extract; out of the launcher, but still what opens archives.
-    // lib.optionalAttrs osConfig.programs.thunar.enable
-    {
-        "applications/xarchiver.desktop".source = pkgs.runCommand "xarchiver.desktop" { } ''
-            sed '/^\[Desktop Entry\]$/a NoDisplay=true' ${pkgs.xarchiver}/share/applications/xarchiver.desktop > $out
-        '';
     };
 }
