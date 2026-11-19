@@ -17,7 +17,8 @@
   no app to register: whoever has the address reads the calendar, so it's kept in
   `~/.config/nihil/calendars.json`, readable by you alone, and never in `settings.json`,
   which ends in the Nix store. While the calendar widget is on, they're read every quarter of
-  an hour, a month back to two ahead, repeats and time zones included (`home/calendar`).
+  an hour, a month back to two ahead, repeats and time zones included (`home/calendar`); an
+  event in two of them, as an invitation is in the organiser's calendar and in yours, shows once.
 - **Quick settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
   locking or sleeping; the night light, with its intensity, and do not disturb, both as you
   left them), segmented sliders, Wi-Fi (with passwords and WPA-Enterprise hand-off),
