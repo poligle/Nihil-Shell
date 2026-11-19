@@ -234,6 +234,9 @@ Item {
 
         QQC.TextField {
             id: input
+            QQC.ContextMenu.menu: TextMenu {
+                target: input
+            }
             anchors.left: searchIcon.right
             anchors.right: modeLabel.left
             anchors.leftMargin: 12

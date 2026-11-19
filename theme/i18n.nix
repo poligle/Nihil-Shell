@@ -637,6 +637,12 @@
 		cfgWidgetWeather = "Tiempo";
 		cfgWidgetPhoto = "Fotos";
 		cfgWidgetAdd = "Añadir";
+		textUndo = "Deshacer";
+		textRedo = "Rehacer";
+		textCut = "Cortar";
+		textCopy = "Copiar";
+		textPaste = "Pegar";
+		textSelectAll = "Seleccionar todo";
 		cfgWidgetNote = "Notas";
 		noteWrite = "Escribir";
 		noteAnother = "Otra nota";
@@ -1476,6 +1482,12 @@
 		cfgWidgetWeather = "Weather";
 		cfgWidgetPhoto = "Photos";
 		cfgWidgetAdd = "Add";
+		textUndo = "Undo";
+		textRedo = "Redo";
+		textCut = "Cut";
+		textCopy = "Copy";
+		textPaste = "Paste";
+		textSelectAll = "Select all";
 		cfgWidgetNote = "Notes";
 		noteWrite = "Write";
 		noteAnother = "Another note";

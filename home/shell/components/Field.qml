@@ -43,6 +43,9 @@ Surface {
 
     QQC.TextField {
         id: input
+        QQC.ContextMenu.menu: TextMenu {
+            target: input
+        }
         anchors.fill: parent
         anchors.leftMargin: 12
         anchors.rightMargin: 12
