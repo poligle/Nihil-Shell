@@ -91,7 +91,6 @@ Flickable {
         Setting {
             visible: Machine.widgets.length > 0 && !Machine.welcoming
             title: Lang.cfgWidgetsArrange
-            sub: Lang.cfgWidgetsArrangeSub
 
             KeyButton {
                 text: Lang.cfgArrange
@@ -141,7 +140,7 @@ Flickable {
             sub: Weather.searching !== "" ? Lang.cfgWeatherSearching
                 : Weather.notFound !== "" ? Lang.cfgWeatherNotFound.arg(Weather.notFound)
                 : Weather.searchFailed ? Lang.cfgWeatherSearchFailed
-                : Weather.placed ? Lang.cfgWeatherAt.arg(Weather.where.label ?? "") : Lang.cfgWeatherPlaceSub
+                : Weather.placed ? Lang.cfgWeatherAt.arg(Weather.where.label ?? "") : ""
 
             Field {
                 id: weatherPlace
@@ -159,7 +158,6 @@ Flickable {
         Setting {
             visible: Machine.widgets.indexOf("github") >= 0
             title: Lang.cfgGithubUser
-            sub: Lang.cfgGithubUserSub
 
             Field {
                 id: githubUser
@@ -208,8 +206,7 @@ Flickable {
             sub: Calendar.adding ? Lang.cfgCalendarAdding
                 : Calendar.addError === "url" ? Lang.cfgCalendarErrUrl
                 : Calendar.addError === "fetch" ? Lang.cfgCalendarErrFetch
-                : Calendar.addError === "calendar" ? Lang.cfgCalendarErrCalendar
-                : Lang.cfgCalendarAddSub
+                : Calendar.addError === "calendar" ? Lang.cfgCalendarErrCalendar : ""
 
             RowLayout {
                 spacing: 8

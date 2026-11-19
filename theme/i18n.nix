@@ -565,7 +565,6 @@
 		cfgDevices = "Dispositivos";
 		deckUse = "Usar dispositivos";
 		deckBluetooth = "Sin red, por Bluetooth";
-		deckBluetoothSub = "Sin una red en común, los dispositivos llegan por Bluetooth LE; el ordenador se anuncia mientras el deck está encendido";
 		deckApply = "Se enciende al aplicar.";
 		deckNetworks = "Apágalo en redes que no son tuyas: cualquiera en ellas llega a su puerto";
 		deckDown = "El servicio no responde: systemctl --user status nihil-deck";
@@ -604,7 +603,6 @@
 		cfgProgramMissing = "Falta el nombre o el comando";
 		cfgWidgets = "Widgets";
 		cfgWidgetsArrange = "Colocar en el escritorio";
-		cfgWidgetsArrangeSub = "Arrastra cada uno donde lo quieras; también con una pulsación larga sobre él";
 		cfgArrange = "Colocar";
 		widgetsHint = "Arrastra un widget para moverlo, o su esquina para cambiarle el tamaño|[Esc] Listo";
 		widgetPhotoHow = "Suelta aquí una foto, o ábrela con Widget de foto desde Archivos";
@@ -648,16 +646,13 @@
 		cfgWidgetPhotoAdd = "Otra";
 		cfgWidgetGithub = "Contribuciones de GitHub";
 		cfgGithubUser = "Usuario de GitHub";
-		cfgGithubUserSub = "Las de su perfil, tal como las muestra GitHub; se leen cada hora";
 		cfgWeatherPlace = "Lugar del tiempo";
-		cfgWeatherPlaceSub = "Una ciudad o un pueblo; datos de Open-Meteo";
 		cfgWeatherAt = "%1; datos de Open-Meteo";
 		cfgWeatherSearching = "Buscando…";
 		cfgWeatherNotFound = "No se ha encontrado «%1»";
 		cfgWeatherSearchFailed = "No se ha podido buscar";
 		cfgCalendars = "Calendarios";
 		cfgCalendarAdd = "Añadir un calendario";
-		cfgCalendarAddSub = "Su dirección secreta en formato iCal (Google Calendar, Outlook, iCloud, Nextcloud…): queda en este ordenador, y solo tú puedes leerla";
 		cfgCalendarAddButton = "Añadir";
 		cfgCalendarAdding = "Leyéndolo…";
 		cfgCalendarRemove = "Quitar";
@@ -1413,7 +1408,6 @@
 		cfgDevices = "Devices";
 		deckUse = "Use devices";
 		deckBluetooth = "Without a network, over Bluetooth";
-		deckBluetoothSub = "With no network in common, devices reach it over Bluetooth LE; the computer announces itself while the deck is on";
 		deckApply = "It turns on when applied.";
 		deckNetworks = "Turn it off on networks that aren't yours: anyone on them reaches its port";
 		deckDown = "The service doesn't answer: systemctl --user status nihil-deck";
@@ -1452,7 +1446,6 @@
 		cfgProgramMissing = "The name or the command is missing";
 		cfgWidgets = "Widgets";
 		cfgWidgetsArrange = "Arrange on the desktop";
-		cfgWidgetsArrangeSub = "Drag each one where you want it; a long press on one does it too";
 		cfgArrange = "Arrange";
 		widgetsHint = "Drag a widget to move it, or its corner to resize it|[Esc] Done";
 		widgetPhotoHow = "Drop a photo here, or open one with Photo widget from Files";
@@ -1496,16 +1489,13 @@
 		cfgWidgetPhotoAdd = "Another";
 		cfgWidgetGithub = "GitHub contributions";
 		cfgGithubUser = "GitHub username";
-		cfgGithubUserSub = "Those on its profile, as GitHub shows them; read every hour";
 		cfgWeatherPlace = "Weather location";
-		cfgWeatherPlaceSub = "A city or a town; weather data by Open-Meteo";
 		cfgWeatherAt = "%1; weather data by Open-Meteo";
 		cfgWeatherSearching = "Searching…";
 		cfgWeatherNotFound = "“%1” wasn't found";
 		cfgWeatherSearchFailed = "Couldn't search";
 		cfgCalendars = "Calendars";
 		cfgCalendarAdd = "Add a calendar";
-		cfgCalendarAddSub = "Its secret address in iCal format (Google Calendar, Outlook, iCloud, Nextcloud…): it stays on this computer, readable by you alone";
 		cfgCalendarAddButton = "Add";
 		cfgCalendarAdding = "Reading it…";
 		cfgCalendarRemove = "Remove";
