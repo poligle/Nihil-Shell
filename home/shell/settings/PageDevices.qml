@@ -156,8 +156,20 @@ Flickable {
                 Txt {
                     x: 14
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - x - seen.width - forget.width - 48
+                    width: parent.width - x - seen.width - forget.width - (air.visible ? air.width + 8 : 0) - 48
                     text: device.modelData.name
+                }
+
+                // It came last over Bluetooth, with no network in common.
+                Ico {
+                    id: air
+                    visible: device.modelData.bluetooth === true
+                    anchors.right: seen.left
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    glyph: Icons.btConnected
+                    font.pixelSize: 13
+                    color: Tokens.muted
                 }
 
                 // When it was last seen; in its last month unused, the day the deck forgets it.

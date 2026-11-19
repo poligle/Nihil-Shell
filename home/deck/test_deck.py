@@ -1295,6 +1295,11 @@ class BluetoothTest(Base):
         status, state_now = phone.request("GET", "/v1/state")
         self.assertEqual(status, 200)
         self.assertEqual(state_now["ble"], server.deck.ble)
+        # Devices says the phone came over Bluetooth, until it comes over the network again.
+        listed = lambda: [device["bluetooth"] for device in server.deck.control({"op": "devices"})["devices"]]
+        self.assertEqual(listed(), [True])
+        self.assertEqual(Phone(server.deck.port, server.deck.pin, phone.token).request("GET", "/v1/state")[0], 200)
+        self.assertEqual(listed(), [False])
 
 
 DBUS_DAEMON = shutil.which("dbus-daemon")

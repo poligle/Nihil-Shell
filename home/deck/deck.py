@@ -221,6 +221,7 @@ class Devices:
         self.lock = threading.Lock()
         self.items = []
         self.saved = 0
+        self.bluetooth = set()      # the devices whose last request came over Bluetooth, while the deck runs
         try:
             with open(path) as file:
                 found = json.load(file)
@@ -268,9 +269,13 @@ class Devices:
                     found = item
         return found
 
-    def touch(self, device):
+    def touch(self, device, bluetooth=False):
         with self.lock:
             device["seen"] = int(now())
+            if bluetooth:
+                self.bluetooth.add(device["id"])
+            else:
+                self.bluetooth.discard(device["id"])
             if now() - self.saved >= SEEN_EVERY:
                 self._save()
 
@@ -297,7 +302,8 @@ class Devices:
         with self.lock:
             self._sweep()
             return [{**{key: item.get(key) for key in ("id", "name", "paired", "seen")},
-                     "expires": item["seen"] + TOKEN_DAYS * 86400} for item in self.items]
+                     "expires": item["seen"] + TOKEN_DAYS * 86400, "bluetooth": item["id"] in self.bluetooth}
+                    for item in self.items]
 
 
 class Pairing:
@@ -1713,7 +1719,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         # Only a device that's paired has its body read, and may take its time.
         self.deadline.cancel()
-        deck.devices.touch(device)
+        deck.devices.touch(device, self.client_address[0].startswith(BLUETOOTH_ORIGIN))
         body = {}
         if method == "POST" and path == "/v1/vector":
             self.close_connection = True
@@ -1984,6 +1990,7 @@ BT_SECURITY_LOW = 1             # no bonding or encryption at the link: TLS is o
 BT_RCVMTU = 13
 BLE_MTU = 4096                  # the biggest piece the phone may send in one go: fewer, larger pieces
 BDADDR_LE_PUBLIC = 1
+BLUETOOTH_ORIGIN = "bt:"        # before a channel's address, where a connection's IP would be
 
 
 class SockaddrL2(ctypes.Structure):
@@ -2025,7 +2032,7 @@ def ble_listener(psm):
 
 def ble_serve(server, listener):
     """Each channel goes to the network's server as a connection would, counted, limited and timed
-    as one: its address is the device's Bluetooth address."""
+    as one: its address is the device's Bluetooth address, after BLUETOOTH_ORIGIN."""
     while True:
         try:
             connection, address = listener.accept()
@@ -2036,7 +2043,7 @@ def ble_serve(server, listener):
             continue
         connection.settimeout(server.timeout_seconds)
         request = server.context.wrap_socket(connection, server_side=True, do_handshake_on_connect=False)
-        server.process_request(request, (str(address[0]), address[1] if len(address) > 1 else 0))
+        server.process_request(request, (BLUETOOTH_ORIGIN + str(address[0]), address[1] if len(address) > 1 else 0))
 
 
 class Advert:
@@ -2492,7 +2499,8 @@ def main():
     if options.command == "devices" and not options.json:
         for device in reply.get("devices", []):
             seen = time.strftime("%Y-%m-%d %H:%M", time.localtime(device.get("seen") or 0))
-            print(f"{device['id']}  {device['name']}  (last seen {seen})")
+            over = ", over Bluetooth" if device.get("bluetooth") else ""
+            print(f"{device['id']}  {device['name']}  (last seen {seen}{over})")
         return 0
     if options.json or options.command == "devices":
         print(json.dumps(reply))

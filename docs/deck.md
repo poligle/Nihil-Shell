@@ -139,12 +139,17 @@ val channel = device.createInsecureL2capChannel(psm)   // insecure: no bonding, 
 channel.connect()
 ```
 
-TLS then goes over the channel's two streams, an `SSLEngine` on them or a `Socket` that hands
-them to the `SSLSocketFactory`, and the pin is checked before anything is sent, as over the
-network. It is slower than Wi-Fi: from a few hundred kilobits a second to about a megabit,
-depending on the phone. That is enough for every request and the trackpad, but a big file to
-Vector takes minutes, so the phone says so before sending. The phone tries the network first,
-every time.
+TLS then goes over the channel's two streams, by an `SSLEngine` (the launcher's `TlsPipe`, in
+`deck/Wire.kt`), and the pin is checked before anything is sent, as over the network. On top
+goes HTTP/1.1 as over the network, a channel carrying one request after another until the
+computer lets it go, 10 s after the last. It is slower than Wi-Fi: from a few hundred kilobits a
+second to about a megabit, depending on the phone. That is enough for every request and the
+trackpad, but a big file to Vector takes minutes, so the phone says so before sending.
+
+The phone tries the network first, and Bluetooth when no address answers; once Bluetooth has
+answered where the network didn't, it goes first for half a minute, so each request doesn't wait
+for the network to fail. A watch tries its default network, then Bluetooth, then Wi-Fi asked
+for. Preferences, Devices marks a device whose last request came over Bluetooth.
 
 ## Requests
 
