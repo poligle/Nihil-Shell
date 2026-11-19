@@ -99,17 +99,37 @@ Flickable {
             }
         }
 
+        // The photos past the first go under it, while they're on; one turned off goes for good.
         Repeater {
-            model: Config.widgets
+            model: Config.widgets.flatMap(name => name === "photo" ? Machine.photoNames.filter(photo => photo === "photo" || Machine.photos.indexOf(photo) >= 0) : [name])
 
             Setting {
+                id: widget
+
                 required property string modelData
+                readonly property bool more: widget.modelData.startsWith("photo-")
 
-                title: Lang["cfgWidget" + modelData.charAt(0).toUpperCase() + modelData.slice(1)] ?? modelData
+                title: widget.more ? Lang.cfgWidgetPhotoMore.arg(widget.modelData.slice(6))
+                    : Lang["cfgWidget" + widget.modelData.charAt(0).toUpperCase() + widget.modelData.slice(1)] ?? widget.modelData
 
-                Toggle {
-                    on: Machine.widgets.indexOf(modelData) >= 0
-                    onToggled: Machine.setWidget(modelData, !on)
+                RowLayout {
+                    spacing: 12
+
+                    Toggle {
+                        on: Machine.widgets.indexOf(widget.modelData) >= 0
+                        onToggled: {
+                            if (widget.more)
+                                Machine.dropPhoto(widget.modelData);
+                            else
+                                Machine.setWidget(widget.modelData, !on);
+                        }
+                    }
+
+                    KeyButton {
+                        visible: widget.modelData === "photo" && Machine.photos.length > 0 && Machine.photos.length < Machine.photoNames.length
+                        text: Lang.cfgWidgetPhotoAdd
+                        onClicked: Machine.addPhoto()
+                    }
                 }
             }
         }

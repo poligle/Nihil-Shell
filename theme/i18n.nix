@@ -606,7 +606,7 @@
 		cfgWidgetsArrange = "Colocar en el escritorio";
 		cfgWidgetsArrangeSub = "Arrastra cada uno donde lo quieras; también con una pulsación larga sobre él";
 		cfgArrange = "Colocar";
-		widgetsHint = "Arrastra un widget para moverlo|[Esc] Listo";
+		widgetsHint = "Arrastra un widget para moverlo, o su esquina para cambiarle el tamaño|[Esc] Listo";
 		widgetPhotoHow = "Suelta aquí una foto, o ábrela con Widget de foto desde Archivos";
 		widgetPhotoApp = "Widget de foto";
 		widgetPhotoSet = "Foto puesta en el escritorio";
@@ -644,6 +644,8 @@
 		cfgWidgetMedia = "Música";
 		cfgWidgetWeather = "Tiempo";
 		cfgWidgetPhoto = "Foto";
+		cfgWidgetPhotoMore = "Foto %1";
+		cfgWidgetPhotoAdd = "Otra";
 		cfgWidgetGithub = "Contribuciones de GitHub";
 		cfgGithubUser = "Usuario de GitHub";
 		cfgGithubUserSub = "Las de su perfil, tal como las muestra GitHub; se leen cada hora";
@@ -1452,7 +1454,7 @@
 		cfgWidgetsArrange = "Arrange on the desktop";
 		cfgWidgetsArrangeSub = "Drag each one where you want it; a long press on one does it too";
 		cfgArrange = "Arrange";
-		widgetsHint = "Drag a widget to move it|[Esc] Done";
+		widgetsHint = "Drag a widget to move it, or its corner to resize it|[Esc] Done";
 		widgetPhotoHow = "Drop a photo here, or open one with Photo widget from Files";
 		widgetPhotoApp = "Photo widget";
 		widgetPhotoSet = "Photo set on the desktop";
@@ -1490,6 +1492,8 @@
 		cfgWidgetMedia = "Music";
 		cfgWidgetWeather = "Weather";
 		cfgWidgetPhoto = "Photo";
+		cfgWidgetPhotoMore = "Photo %1";
+		cfgWidgetPhotoAdd = "Another";
 		cfgWidgetGithub = "GitHub contributions";
 		cfgGithubUser = "GitHub username";
 		cfgGithubUserSub = "Those on its profile, as GitHub shows them; read every hour";

@@ -28,6 +28,9 @@ Scope {
     readonly property int spacing: 14
     // A widget lands on a grid, so those side by side line up.
     readonly property int cell: 8
+    // How small and how big one can be made, against its own size.
+    readonly property real smallest: 0.75
+    readonly property real largest: 2.5
 
     function enabled(name: string): bool {
         return Machine.widgets.indexOf(name) >= 0;
@@ -95,6 +98,24 @@ Scope {
         Machine.placeWidgets({ [card.widget]: [at.x, at.y] });
     }
 
+    // The size a card takes as its corner goes (dx, dy) from where it was at size `from`: its width
+    // on the grid, all of it within the desk, and short of the others it would run into.
+    function resized(card: var, from: real, dx: real, dy: real): real {
+        const want = Math.max(from + dx / card.base, from + dy / card.tall);
+        let most = Math.min(root.largest, (desk.width - card.x) / card.base, (desk.height - card.y) / card.tall);
+        for (const other of root.cards()) {
+            if (other === card || !other.visible || other.x + other.width + root.spacing <= card.x
+                    || other.y + other.height + root.spacing <= card.y)
+                continue;
+            const room = Math.max((other.x - card.x - root.spacing) / card.base, (other.y - card.y - root.spacing) / card.tall);
+            if (room >= from - 0.001)
+                most = Math.min(most, room);
+        }
+        const size = Math.max(root.smallest, Math.min(most, want));
+        const snapped = Math.round(card.base * size / root.cell) * root.cell / card.base;
+        return snapped > most ? Math.floor(card.base * most / root.cell) * root.cell / card.base : Math.max(root.smallest, snapped);
+    }
+
     // Turned on once the others have places: it goes where there's room, near the top left.
     function settle(card: var): void {
         if (!card.visible || card.place !== null || !root.cards().some(other => other.place !== null))
@@ -153,13 +174,19 @@ Scope {
         id: card
 
         property string widget: ""
+        // Its width at its own size: all of it grows and shrinks from there, from its corner.
+        property real base: 320
         default property alias content: inner.data
 
         readonly property var place: Machine.widgetPlaces[card.widget] ?? null
+        readonly property real tall: inner.implicitHeight + 40
+        readonly property real size: card.sizing > 0 ? card.sizing : (Machine.widgetSizes[card.widget] ?? 1)
         // While it's dragged: where the pointer took it, and how far it has gone since, in the desk.
         property point grab: Qt.point(0, 0)
         property point moved: Qt.point(0, 0)
         property bool dragging: false
+        // While its corner is dragged: the size it's taking.
+        property real sizing: 0
 
         function take(area: Item, mx: real, my: real): void {
             card.grab = area.mapToItem(desk, mx, my);
@@ -183,10 +210,18 @@ Scope {
             root.drop(card, x, y);
         }
 
+        function sized(): void {
+            if (card.sizing <= 0)
+                return;
+            Machine.sizeWidget(card.widget, card.sizing);
+            card.sizing = 0;
+            root.drop(card, card.x, card.y);
+        }
+
         visible: root.enabled(card.widget)
         onVisibleChanged: settling.restart()
-        width: 320
-        implicitHeight: inner.implicitHeight + 40
+        width: card.base * card.size
+        implicitHeight: card.tall * card.size
         height: implicitHeight
         x: Math.max(0, Math.min(desk.width - card.width, (card.place !== null ? card.place[0] : 0) + card.moved.x))
         y: Math.max(0, Math.min(desk.height - card.height, (card.place !== null ? card.place[1] : root.flow(card)) + card.moved.y))
@@ -218,15 +253,22 @@ Scope {
             onCanceled: card.leave()
         }
 
-        ColumnLayout {
-            id: inner
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 20
-            anchors.leftMargin: 22
-            anchors.rightMargin: 22
-            spacing: 6
+        Item {
+            width: card.base
+            height: card.tall
+            scale: card.size
+            transformOrigin: Item.TopLeft
+
+            ColumnLayout {
+                id: inner
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 20
+                anchors.leftMargin: 22
+                anchors.rightMargin: 22
+                spacing: 6
+            }
         }
 
         // While arranging, all of the card moves it, its buttons too.
@@ -241,6 +283,55 @@ Scope {
             onPositionChanged: mouse => card.follow(handle, mouse.x, mouse.y)
             onReleased: card.leave()
             onCanceled: card.leave()
+        }
+
+        // While arranging, its corner makes it bigger or smaller.
+        MouseArea {
+            id: corner
+
+            property point from: Qt.point(0, 0)
+            property real start: 1
+
+            z: 11
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            width: 30
+            height: 30
+            visible: Machine.arranging
+            preventStealing: true
+            cursorShape: Qt.SizeFDiagCursor
+            onPressed: mouse => {
+                corner.from = corner.mapToItem(desk, mouse.x, mouse.y);
+                corner.start = card.size;
+                card.sizing = card.size;
+            }
+            onPositionChanged: mouse => {
+                if (card.sizing <= 0)
+                    return;
+                const now = corner.mapToItem(desk, mouse.x, mouse.y);
+                card.sizing = root.resized(card, corner.start, now.x - corner.from.x, now.y - corner.from.y);
+            }
+            onReleased: card.sized()
+            onCanceled: card.sized()
+
+            Repeater {
+                model: [[0, 0], [6, 0], [0, 6]]
+
+                Rectangle {
+                    id: dot
+
+                    required property var modelData
+
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.rightMargin: 8 + dot.modelData[0]
+                    anchors.bottomMargin: 8 + dot.modelData[1]
+                    width: 3
+                    height: 3
+                    radius: 1.5
+                    color: Tokens.ink
+                }
+            }
         }
     }
 
@@ -268,7 +359,10 @@ Scope {
             Region { item: systemCard.visible ? systemCard : null }
             Region { item: mediaCard.visible ? mediaCard : null }
             Region { item: weatherCard.visible ? weatherCard : null }
-            Region { item: photoCard.visible ? photoCard : null }
+            Region { item: photos.count > 0 ? photos.itemAt(0) : null }
+            Region { item: photos.count > 1 ? photos.itemAt(1) : null }
+            Region { item: photos.count > 2 ? photos.itemAt(2) : null }
+            Region { item: photos.count > 3 ? photos.itemAt(3) : null }
             Region { item: githubCard.visible ? githubCard : null }
         }
 
@@ -370,7 +464,7 @@ Scope {
                 readonly property var days: Calendar.month(calendarCard.year, calendarCard.month, calendarCard.first)
                 readonly property var busy: Calendar.busy(calendarCard.year, calendarCard.month)
                 readonly property var next: Calendar.upcoming(calendarCard.now.getTime() / 1000, 3)
-                readonly property real cell: (calendarCard.width - 44) / 7
+                readonly property real cell: (calendarCard.base - 44) / 7
 
                 Label {
                     text: Case.sentence(Qt.locale(Lang.locale).standaloneMonthName(calendarCard.month, Locale.LongFormat))
@@ -686,52 +780,60 @@ Scope {
                 }
             }
 
-            // A picture of one's own, in dots.
-            Card {
-                id: photoCard
-                widget: "photo"
+            // Pictures of one's own, in dots: up to four.
+            Repeater {
+                id: photos
+                model: Machine.photos
 
-                DotScreen {
-                    id: photo
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 208
-                    source: Machine.photoUrl
-                    pitch: 4
-                    radius: 12
+                Card {
+                    id: photoCard
 
-                    Txt {
-                        anchors.centerIn: parent
-                        width: parent.width - 48
-                        visible: photo.status === Image.Null || photo.status === Image.Error
-                        text: Lang.widgetPhotoHow
-                        color: Tokens.dim
-                        font.pixelSize: 13
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        elide: Text.ElideNone
-                    }
+                    required property string modelData
 
-                    // A picture from Files: one, of a kind it can show.
-                    DropArea {
-                        id: dropping
-                        anchors.fill: parent
-                        onEntered: drag => {
-                            drag.accepted = drag.hasUrls && drag.urls.length === 1
-                                && /^file:\/\/\/.+\.(png|jpe?g|gif|bmp|webp)$/i.test(drag.urls[0].toString());
+                    widget: photoCard.modelData
+
+                    DotScreen {
+                        id: photo
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 208
+                        source: Machine.photoUrl(photoCard.modelData)
+                        pitch: 4
+                        radius: 12
+
+                        Txt {
+                            anchors.centerIn: parent
+                            width: parent.width - 48
+                            visible: photo.status === Image.Null || photo.status === Image.Error
+                            text: Lang.widgetPhotoHow
+                            color: Tokens.dim
+                            font.pixelSize: 13
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            elide: Text.ElideNone
                         }
-                        onDropped: drop => {
-                            Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false);
-                            drop.accept();
-                        }
-                    }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        visible: dropping.containsDrag
-                        color: "transparent"
-                        radius: photo.radius
-                        border.width: 1
-                        border.color: Tokens.ink
+                        // A picture from Files: one, of a kind it can show.
+                        DropArea {
+                            id: dropping
+                            anchors.fill: parent
+                            onEntered: drag => {
+                                drag.accepted = drag.hasUrls && drag.urls.length === 1
+                                    && /^file:\/\/\/.+\.(png|jpe?g|gif|bmp|webp)$/i.test(drag.urls[0].toString());
+                            }
+                            onDropped: drop => {
+                                Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false, photoCard.modelData);
+                                drop.accept();
+                            }
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            visible: dropping.containsDrag
+                            color: "transparent"
+                            radius: photo.radius
+                            border.width: 1
+                            border.color: Tokens.ink
+                        }
                     }
                 }
             }
@@ -750,7 +852,7 @@ Scope {
                 readonly property var shades: [0, 0.3, 0.52, 0.75, 1].map(f => Qt.tint(Tokens.off, Qt.rgba(Tokens.ink.r, Tokens.ink.g, Tokens.ink.b, f)))
 
                 // A year of weeks side by side, as GitHub has it.
-                width: 44 + githubCard.weeks * githubCard.pitch - (githubCard.pitch - githubCard.dot)
+                base: 44 + githubCard.weeks * githubCard.pitch - (githubCard.pitch - githubCard.dot)
 
                 RowLayout {
                     Layout.fillWidth: true
