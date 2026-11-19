@@ -598,7 +598,6 @@
 		cfgWidgets = "Widgets";
 		cfgWidgetsArrange = "Colocar en el escritorio";
 		cfgArrange = "Colocar";
-		widgetsHint = "Arrastra para mover, por la esquina para el tamaño y a la cruz para quitar|[Enter] Aplicar|[Esc] Descartar";
 		widgetsRemove = "Quitar";
 		widgetPhotoHow = "Suelta aquí una foto, o ábrela con Widget de foto desde Archivos";
 		widgetPhotoApp = "Widget de foto";
@@ -1438,7 +1437,6 @@
 		cfgWidgets = "Widgets";
 		cfgWidgetsArrange = "Arrange on the desktop";
 		cfgArrange = "Arrange";
-		widgetsHint = "Drag to move, by the corner to resize and onto the cross to remove|[Enter] Apply|[Esc] Discard";
 		widgetsRemove = "Remove";
 		widgetPhotoHow = "Drop a photo here, or open one with Photo widget from Files";
 		widgetPhotoApp = "Photo widget";

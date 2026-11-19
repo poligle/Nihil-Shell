@@ -89,7 +89,7 @@ function settle(keep, on, doomed, staged) {
         return { remove: staged.map(name => name + ".staged"), move: [] };
     const gone = staged.filter(name => on.indexOf(name) < 0 && doomed.indexOf(name) < 0);
     return {
-        remove: doomed.flatMap(name => [name, name + ".staged"]).concat(gone.map(name => name + ".staged")),
+        remove: doomed.reduce((out, name) => out.concat([name, name + ".staged"]), []).concat(gone.map(name => name + ".staged")),
         move: staged.filter(name => on.indexOf(name) >= 0),
     };
 }
