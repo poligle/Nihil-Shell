@@ -5,6 +5,7 @@ import argparse
 import base64
 import codecs
 import collections
+import ctypes
 import errno
 import fcntl
 import functools
@@ -35,9 +36,20 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
+
+# BlueZ is reached over D-Bus to announce the computer over Bluetooth; without jeepney, the deck
+# still runs, on the network alone (the tests need neither).
+try:
+    import jeepney
+    import jeepney.io.blocking
+except ImportError:
+    jeepney = None
 
 API = 1
 PORT = 64445                    # NIHIL on a phone's keypad
+BLE_PSM = 0x81                  # the LE channel, from the range left to programs (0x80 to 0xFF)
+BLE_RETRY = 30                  # seconds between tries to announce, while Bluetooth is off or gone
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 8
 CODE_LIFETIME = 300             # seconds a code pairs
@@ -1225,10 +1237,22 @@ def addresses(ip):
     return [address for address in dict.fromkeys(found) if not address.startswith("127.")]
 
 
-def pair_uri(name, port, hosts, code, pin):
-    query = urllib.parse.urlencode({"v": API, "name": name, "hosts": ",".join(hosts), "port": port,
-                                    "code": code, "pin": pin}, safe=",")
-    return "nihil-deck://pair?" + query
+def pair_uri(name, port, hosts, code, pin, ble=None):
+    fields = {"v": API, "name": name, "hosts": ",".join(hosts), "port": port, "code": code, "pin": pin}
+    if ble:
+        fields.update(ble=ble["uuid"], psm=ble["psm"])
+    return "nihil-deck://pair?" + urllib.parse.urlencode(fields, safe=",")
+
+
+def ble_uuid(pin):
+    """The UUID this computer announces itself by over Bluetooth: from its pin, so a phone paired
+    before Bluetooth came knows it without pairing again, and anyone else learns only that some
+    computer is near. A version 8 UUID (RFC 9562): the first 16 bytes of SHA-256 over
+    "nihil-deck ble", a zero byte and the pin, with the version and variant bits set."""
+    raw = bytearray(hashlib.sha256(b"nihil-deck ble\0" + pin.encode()).digest()[:16])
+    raw[6] = (raw[6] & 0x0F) | 0x80
+    raw[8] = (raw[8] & 0x3F) | 0x80
+    return str(uuid.UUID(bytes=bytes(raw)))
 
 
 def vector_dir():
@@ -1446,14 +1470,16 @@ class Deck:
         self.streams = {}
         self.streams_lock = threading.Lock()
         self.uploading = set()      # devices sending to Vector: one thing at a time each
+        self.ble = None             # {"uuid", "psm"} once listening over Bluetooth
 
     def control(self, request):
         op = request.get("op") if isinstance(request, dict) else None
         if op == "pair":
             code, expires, invite = self.pairing.open()
             hosts = addresses(self.config.get("ip"))
-            return {"uri": pair_uri(self.name, self.port, hosts, code, self.pin), "code": code, "invite": invite,
-                    "expires": int(expires), "hosts": hosts, "port": self.port, "pin": self.pin}
+            return {"uri": pair_uri(self.name, self.port, hosts, code, self.pin, self.ble), "code": code,
+                    "invite": invite, "expires": int(expires), "hosts": hosts, "port": self.port, "pin": self.pin,
+                    **({"ble": self.ble} if self.ble else {})}
         if op == "cancel":
             self.pairing.close(str(request.get("invite") or "") or None)
             return {"ok": True}
@@ -1470,7 +1496,7 @@ class Deck:
             return {"ok": ok}
         if op == "status":
             return {"port": self.port, "pin": self.pin, "devices": len(self.devices.listing()),
-                    "pairing": self.pairing.open_now}
+                    "pairing": self.pairing.open_now, "ble": self.ble}
         if op == "vector":
             self.vector.poke()
             return {"devices": self.vector.connected(self.devices)}
@@ -1718,7 +1744,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         device, token = deck.devices.add(name)
         deck.paired(name)
-        self.reply(200, {"token": token, "device": device, "name": deck.name})
+        self.reply(200, {"token": token, "device": device, "name": deck.name, **({"ble": deck.ble} if deck.ble else {})})
 
     def trackpad(self, deck, device):
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
@@ -1807,7 +1833,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 self.reply(200, merged)
         elif method == "GET" and path == "/v1/state":
-            self.reply(200, {"media": session.playing(), "volume": session.volume(), **session.toggles()})
+            self.reply(200, {"media": session.playing(), "volume": session.volume(), **session.toggles(),
+                             **({"ble": deck.ble} if deck.ble else {})})
         elif method == "POST" and path == "/v1/open":
             if "app" in body:
                 result = session.launch(body.get("app"))
@@ -1945,6 +1972,200 @@ class DeckServer(http.server.ThreadingHTTPServer):
             print(f"nihil-deck: {client_address[0]}: {error!r}", file=sys.stderr)
 
 
+# Without a network: Bluetooth LE. A phone that reaches none of the computer's addresses looks for
+# its UUID and opens an LE connection-oriented channel (L2CAP) on BLE_PSM: a stream of bytes, and on
+# it the same TLS and HTTP as over TCP, the pin the check as ever. No pairing in the system's
+# Bluetooth settings: the channel is open to devices that aren't bonded, as the port is to the
+# network, and only one with the pin and a token gets anything (docs/deck.md).
+
+SOL_BLUETOOTH = 274
+BT_SECURITY = 4
+BT_SECURITY_LOW = 1             # no bonding or encryption at the link: TLS is on top
+BT_RCVMTU = 13
+BLE_MTU = 4096                  # the biggest piece the phone may send in one go: fewer, larger pieces
+BDADDR_LE_PUBLIC = 1
+
+
+class SockaddrL2(ctypes.Structure):
+    """Linux's struct sockaddr_l2, for Python before 3.14, whose sockets can't say an address is LE."""
+    _fields_ = [("family", ctypes.c_ushort), ("psm", ctypes.c_ushort), ("bdaddr", ctypes.c_ubyte * 6),
+                ("cid", ctypes.c_ushort), ("bdaddr_type", ctypes.c_ubyte)]
+
+
+def bluetooth_order(value):
+    """A 16-bit number as Bluetooth has it, little-endian, in a field the host reads in its own order."""
+    return int.from_bytes(value.to_bytes(2, "little"), sys.byteorder)
+
+
+def ble_listener(psm):
+    """A socket that takes LE channels on psm, set as BlueZ's l2test listens for Android: a stream,
+    at the lowest security, so devices that aren't bonded get in."""
+    listener = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_L2CAP)
+    try:
+        listener.setsockopt(SOL_BLUETOOTH, BT_SECURITY, struct.pack("BB", BT_SECURITY_LOW, 0))
+        if hasattr(socket, "BDADDR_LE_PUBLIC"):
+            listener.bind((socket.BDADDR_ANY, psm, 0, socket.BDADDR_LE_PUBLIC))
+        else:
+            libc = ctypes.CDLL(None, use_errno=True)
+            libc.bind.argtypes = [ctypes.c_int, ctypes.POINTER(SockaddrL2), ctypes.c_uint]
+            address = SockaddrL2(socket.AF_BLUETOOTH, bluetooth_order(psm), (ctypes.c_ubyte * 6)(), 0, BDADDR_LE_PUBLIC)
+            if libc.bind(listener.fileno(), ctypes.byref(address), ctypes.sizeof(address)) != 0:
+                code = ctypes.get_errno()
+                raise OSError(code, os.strerror(code))
+        try:
+            listener.setsockopt(SOL_BLUETOOTH, BT_RCVMTU, struct.pack("H", BLE_MTU))
+        except OSError:
+            pass                    # an older kernel keeps its own, smaller
+        listener.listen(8)
+    except BaseException:
+        listener.close()
+        raise
+    return listener
+
+
+def ble_serve(server, listener):
+    """Each channel goes to the network's server as a connection would, counted, limited and timed
+    as one: its address is the device's Bluetooth address."""
+    while True:
+        try:
+            connection, address = listener.accept()
+        except OSError as error:
+            if error.errno in (errno.EBADF, errno.EINVAL):
+                return
+            time.sleep(1)
+            continue
+        connection.settimeout(server.timeout_seconds)
+        request = server.context.wrap_socket(connection, server_side=True, do_handshake_on_connect=False)
+        server.process_request(request, (str(address[0]), address[1] if len(address) > 1 else 0))
+
+
+class Advert:
+    """The computer's Bluetooth LE advertisement, through BlueZ's D-Bus API: connectable, and with
+    nothing in it but the UUID, no name. BlueZ asks this object for what it says (GetAll) and tells
+    it when it's dropped (Release); it's offered again when Bluetooth comes back, as BlueZ restarts
+    or the adapter is powered on."""
+
+    PATH = "/org/nihil/deck/advert"
+    IFACE = "org.bluez.LEAdvertisement1"
+    MANAGER = "org.bluez.LEAdvertisingManager1"
+
+    def __init__(self, ble_id, bus="SYSTEM"):
+        self.uuid = ble_id
+        self.bus = bus
+        self.adapter = None
+        self.registered = False
+        self.said = None             # the last thing logged, so it isn't said again every retry
+
+    def log(self, text):
+        if text != self.said:
+            self.said = text
+            print(f"nihil-deck: {text}", file=sys.stderr)
+
+    def properties(self):
+        return {"Type": ("s", "peripheral"), "ServiceUUIDs": ("as", [self.uuid]), "Discoverable": ("b", True)}
+
+    # What BlueZ sends this object; any other call is answered as unknown, a signal only listened to.
+    def handle(self, connection, message):
+        fields = message.header.fields
+        kind = message.header.message_type
+        if kind == jeepney.MessageType.signal:
+            member = fields.get(jeepney.HeaderFields.member)
+            if member == "NameOwnerChanged" and message.body[:1] == ("org.bluez",):
+                self.registered = False
+            return
+        if kind != jeepney.MessageType.method_call:
+            return
+        path = fields.get(jeepney.HeaderFields.path)
+        member = fields.get(jeepney.HeaderFields.member)
+        if path == self.PATH and member == "GetAll" and message.body[:1] == (self.IFACE,):
+            connection.send(jeepney.new_method_return(message, "a{sv}", (self.properties(),)))
+        elif path == self.PATH and member == "Get" and message.body[:1] == (self.IFACE,) and message.body[1] in self.properties():
+            connection.send(jeepney.new_method_return(message, "v", (self.properties()[message.body[1]],)))
+        elif path == self.PATH and member == "Release":
+            self.registered = False
+            connection.send(jeepney.new_method_return(message))
+        else:
+            connection.send(jeepney.new_error(message, "org.freedesktop.DBus.Error.UnknownMethod"))
+
+    # A call that waits for its answer and meanwhile answers BlueZ, which asks GetAll before it
+    # answers RegisterAdvertisement: jeepney's own send_and_get_reply would drop that and wait.
+    def call(self, connection, message, timeout=10):
+        serial = next(connection.outgoing_serial)
+        connection.send(message, serial=serial)
+        deadline = time.monotonic() + timeout
+        while True:
+            reply = connection.receive(timeout=max(0.0, deadline - time.monotonic()))
+            if reply.header.fields.get(jeepney.HeaderFields.reply_serial) == serial:
+                if reply.header.message_type == jeepney.MessageType.error:
+                    raise jeepney.DBusErrorResponse(reply)
+                return reply.body
+            self.handle(connection, reply)
+
+    def find_adapter(self, connection):
+        objects = self.call(connection, jeepney.new_method_call(
+            jeepney.DBusAddress("/", bus_name="org.bluez", interface="org.freedesktop.DBus.ObjectManager"),
+            "GetManagedObjects"))[0]
+        for path, interfaces in sorted(objects.items()):
+            powered = interfaces.get("org.bluez.Adapter1", {}).get("Powered", ("b", False))[1]
+            if self.MANAGER in interfaces and powered:
+                return path
+        return None
+
+    def offer(self, connection):
+        self.adapter = self.find_adapter(connection)
+        if self.adapter is None:
+            self.log("no Bluetooth adapter on: the deck is on the network alone until there is")
+            return
+        self.call(connection, jeepney.new_method_call(
+            jeepney.DBusAddress(self.adapter, bus_name="org.bluez", interface=self.MANAGER),
+            "RegisterAdvertisement", "oa{sv}", (self.PATH, {})))
+        self.registered = True
+        self.log(f"announced over Bluetooth as {self.uuid}")
+
+    def run(self):
+        while True:
+            try:
+                with jeepney.io.blocking.open_dbus_connection(bus=self.bus) as connection:
+                    rule = jeepney.MatchRule(type="signal", sender="org.freedesktop.DBus", interface="org.freedesktop.DBus",
+                                             member="NameOwnerChanged", path="/org/freedesktop/DBus")
+                    rule.add_arg_condition(0, "org.bluez")
+                    self.call(connection, jeepney.message_bus.AddMatch(rule))
+                    tried = 0.0
+                    while True:
+                        if not self.registered and time.monotonic() - tried >= BLE_RETRY:
+                            tried = time.monotonic()
+                            try:
+                                self.offer(connection)
+                            except jeepney.DBusErrorResponse as error:
+                                self.log(f"Bluetooth won't announce it: {error.name}")
+                        try:
+                            self.handle(connection, connection.receive(timeout=BLE_RETRY))
+                        except TimeoutError:
+                            pass
+            except (OSError, ValueError, EOFError) as error:
+                self.registered = False
+                self.log(f"no D-Bus for Bluetooth ({error.__class__.__name__}): trying again")
+            time.sleep(BLE_RETRY)
+
+
+def start_bluetooth(server, psm):
+    """The channel and the advertisement, if this computer can: with no Bluetooth in the kernel or
+    no jeepney, the deck goes on, on the network alone."""
+    deck = server.deck
+    try:
+        listener = ble_listener(psm)
+    except (OSError, AttributeError) as error:
+        print(f"nihil-deck: not over Bluetooth: {error}", file=sys.stderr)
+        return None
+    deck.ble = {"uuid": ble_uuid(deck.pin), "psm": psm}
+    threading.Thread(target=ble_serve, args=(server, listener), daemon=True).start()
+    if jeepney is None:
+        print("nihil-deck: listening over Bluetooth but not announced: jeepney is missing", file=sys.stderr)
+    else:
+        threading.Thread(target=Advert(deck.ble["uuid"]).run, daemon=True).start()
+    return listener
+
+
 class ControlHandler(socketserver.StreamRequestHandler):
     def handle(self):
         line = self.rfile.readline(65536)
@@ -1994,6 +2215,7 @@ def make_server(config, folder, host="::"):
 def serve(config):
     server = make_server(config, state_dir())
     deck = server.deck
+    listener = start_bluetooth(server, int(config.get("blePsm", BLE_PSM))) if config.get("bluetooth", True) else None
     path = control_path()
     control = ControlServer(path, deck)
     threading.Thread(target=control.serve_forever, daemon=True).start()
@@ -2008,6 +2230,8 @@ def serve(config):
         server.serve_forever()
     finally:
         control.shutdown()
+        if listener is not None:
+            listener.close()
         try:
             os.unlink(path)
         except FileNotFoundError:

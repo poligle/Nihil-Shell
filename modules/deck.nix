@@ -28,6 +28,13 @@ in
             example = [ "enp3s0" ];
             description = "The network interfaces where the deck can be reached and is announced; every one when empty.";
         };
+
+        bluetooth = lib.mkOption
+        {
+            type = lib.types.bool;
+            default = true;
+            description = "Reached over Bluetooth LE too, when a device shares no network with the computer, which then announces itself while the deck runs (docs/deck.md).";
+        };
     };
 
     config = lib.mkIf cfg.enable

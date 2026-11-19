@@ -563,6 +563,8 @@
 		genGone = "Esa generación ya no está";
 		cfgDevices = "Dispositivos";
 		deckUse = "Usar dispositivos";
+		deckBluetooth = "Sin red, por Bluetooth";
+		deckBluetoothSub = "Sin una red en común, los dispositivos llegan por Bluetooth LE; el ordenador se anuncia mientras el deck está encendido";
 		deckApply = "Se enciende al aplicar.";
 		deckNetworks = "Apágalo en redes que no son tuyas: cualquiera en ellas llega a su puerto";
 		deckDown = "El servicio no responde: systemctl --user status nihil-deck";
@@ -1407,6 +1409,8 @@
 		genGone = "That generation is gone";
 		cfgDevices = "Devices";
 		deckUse = "Use devices";
+		deckBluetooth = "Without a network, over Bluetooth";
+		deckBluetoothSub = "With no network in common, devices reach it over Bluetooth LE; the computer announces itself while the deck is on";
 		deckApply = "It turns on when applied.";
 		deckNetworks = "Turn it off on networks that aren't yours: anyone on them reaches its port";
 		deckDown = "The service doesn't answer: systemctl --user status nihil-deck";

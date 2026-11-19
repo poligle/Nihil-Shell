@@ -3,10 +3,12 @@
 { pkgs, lib, osConfig, profile, iconTheme }:
 let
     nihil = osConfig.nihil;
+    # jeepney speaks D-Bus to BlueZ, to announce the deck over Bluetooth.
+    python = pkgs.python3.withPackages (ps: [ ps.jeepney ]);
 
     config = pkgs.writeText "nihil-deck.json" (builtins.toJSON
     {
-        inherit (nihil.deck) port;
+        inherit (nihil.deck) port bluetooth;
         inherit iconTheme;
         name = osConfig.networking.hostName;
         strings = { inherit (nihil.strings) deckPaired deckPairedBody; };
@@ -24,5 +26,5 @@ let
     });
 in
 pkgs.writeShellScriptBin "nihil-deck" ''
-    exec ${pkgs.python3}/bin/python3 -I ${./deck.py} --config ${config} "$@"
+    exec ${python}/bin/python3 -I ${./deck.py} --config ${config} "$@"
 ''

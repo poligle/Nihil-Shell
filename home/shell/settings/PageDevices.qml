@@ -37,6 +37,18 @@ Flickable {
             }
         }
 
+        // Away from any network: the computer announces itself over Bluetooth LE while the deck runs.
+        Setting {
+            visible: page.wanted
+            title: Lang.deckBluetooth
+            sub: Lang.deckBluetoothSub
+
+            Toggle {
+                on: Machine.get("deck.bluetooth", true)
+                onToggled: Machine.set("deck.bluetooth", !on, false)
+            }
+        }
+
         Alert {
             Layout.fillWidth: true
             visible: Deck.enabled && Deck.loaded && !Deck.running
