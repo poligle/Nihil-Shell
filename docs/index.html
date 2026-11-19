@@ -170,13 +170,13 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .looks { di
   <div class="pin">
     <div class="box" id="box">
       <div class="shots">
-        <img class="on" src="assets/screens/small/desktop-1200.webp" width="1920" height="1200" fetchpriority="high" alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper, the bar on the left with its LEDs, and the clock, the network and what is playing.">
-        <img src="assets/screens/small/desktop-1200.webp" alt="" width="1920" height="1200">
+        <img class="on" src="assets/screens/desktop.png" width="1920" height="1200" fetchpriority="high" alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper, the bar on the left with its LEDs, and the widgets: the clock, the network, the system, what plays, a photo, GitHub contributions, the month and the weather.">
+        <img src="assets/screens/desktop.png" alt="" width="1920" height="1200">
       </div>
       <ol class="says" aria-live="polite">
         <li class="say hero on" data-name="The desktop" data-shot="desktop" data-looks="plain glass"
-          data-alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper, the bar on the left with its LEDs, and the clock, the network and what is playing."
-          data-alt-glass="The desktop in smoked glass: the frame, the widgets and an answer of Nilo's as dark glass over the wallpaper in dots.">
+          data-alt="The NIHIL desktop: a black frame around a dot-matrix wallpaper, the bar on the left with its LEDs, and the widgets: the clock, the network, the system, what plays, a photo, GitHub contributions, the month and the weather."
+          data-alt-glass="The desktop in smoked glass: the frame and the widgets as dark glass over the wallpaper in dots.">
           <div class="wordmark" id="wordmark"><img src="assets/nihil-logo-dark.svg" alt="NIHIL" width="330" height="90"></div>
           <p class="motto"><i>ex nihilo</i></p>
           <h1>A monochrome, <span class="nowrap">dot-matrix</span> desktop for NixOS</h1>
@@ -190,6 +190,13 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .looks { di
               <li><a href="studio/"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="0.9"/><circle cx="8" cy="3" r="1.3"/><circle cx="13" cy="3" r="0.9"/><circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="2"/><circle cx="13" cy="8" r="1.3"/><circle cx="3" cy="13" r="0.9"/><circle cx="8" cy="13" r="1.3"/><circle cx="13" cy="13" r="0.9"/></svg>Studio</a></li>
             </ul>
           </div>
+        </li>
+        <li class="say" data-name="Widgets" data-shot="desktop" data-looks="plain glass"
+          data-alt="The widgets on the desktop: the clock, the network, the system, what plays and a photo on the left, GitHub contributions at the top, the month and the weather on the right."
+          data-alt-glass="The widgets in smoked glass over the wallpaper in dots.">
+          <h2>Widgets</h2>
+          <p>The month, photos and notes, the weather and more, where you put them and as big as you make them.</p>
+          <div class="keys"><span>a long press on one</span></div>
         </li>
         <li class="say" data-name="Dashboard" data-shot="dashboard" data-looks="plain glass"
           data-alt="The dashboard out of the top edge: the clock in dots, what is playing, the system's dials and the kanban."
@@ -241,8 +248,8 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .looks { di
           <p>Every notification runs round the frame; critical ones twice, in red.</p>
         </li>
         <li class="say" data-name="Preferences" data-shot="preferences" data-looks="plain glass"
-          data-alt="Preferences open on Desktop: the wallpapers in dots and the widgets."
-          data-alt-glass="Preferences in smoked glass, open on Desktop: the wallpapers in dots.">
+          data-alt="Preferences open on Appearance: the wallpapers in dots, smoked glass and the widgets."
+          data-alt-glass="Preferences in smoked glass, open on Appearance: the wallpapers in dots.">
           <h2>Preferences</h2>
           <p>The whole system on one sheet, applied as a rebuild.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>O</kbd></div>
@@ -254,7 +261,7 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .looks { di
           <p>The clock in dots, and what's playing.</p>
           <div class="keys"><kbd>SUPER</kbd><kbd>K</kbd></div>
         </li>
-        <li class="say top" data-name="Nilo" data-shot="nilo" data-looks="plain glass"
+        <li class="say top" data-name="Nilo" data-shot="nilo" data-looks="plain glass" data-probe
           data-alt="Nilo in the launcher, writing: its two eyes, the question and the start of the answer."
           data-alt-glass="Nilo in the launcher in smoked glass, writing: its two eyes, the question and the start of the answer.">
           <h2>Nilo</h2>
@@ -299,7 +306,7 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .looks { di
           <a class="more" href="https://github.com/poligle/Nihil-Shell/blob/nihil/docs/nilo.md">How Nilo works</a>
         </div>
         <figure class="shot">
-          <img src="assets/screens/small/nilo-done-1200.webp" srcset="assets/screens/small/nilo-done-640.webp 640w, assets/screens/small/nilo-done-1200.webp 1200w, assets/screens/nilo-done.webp 1920w" sizes="(max-width: 860px) 100vw, 600px" width="1920" height="1200" loading="lazy" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote.">
+          <img src="assets/screens/nilo-done.png" width="1920" height="1200" loading="lazy" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote.">
         </figure>
       </div>
     </section>
@@ -307,7 +314,7 @@ html:not(.js) .say::before, html:not(.js) .say::after, html:not(.js) .looks { di
     <section class="block" id="devices" aria-labelledby="devices-title">
       <div class="prose">
         <h2 id="devices-title">Devices, as decks</h2>
-        <p class="quiet">NIHIL for Android opens this computer's apps, plays its music and is its trackpad; Vector carries files either way. The watch turns the music and the volume on its bezel.</p>
+        <p class="quiet">NIHIL for Android opens this computer's apps, plays its music and is its trackpad, over the network or, with none in common, Bluetooth; Vector carries files either way. The watch turns the music and the volume on its bezel.</p>
       </div>
       <div class="devices">
         <img class="phone" src="assets/screens/android/small/home-540.webp" srcset="assets/screens/android/small/home-540.webp 540w, assets/screens/android/home.webp 1080w" sizes="(max-width: 860px) 33vw, 190px" width="1080" height="2340" loading="lazy" alt="NIHIL for Android's home screen: the frame, the clock in dots and the apps in grey.">
@@ -393,8 +400,9 @@ window.nihil = {
     const base = which === "glass" ? "assets/screens/glass/" : "assets/screens/";
     const name = step.dataset.shot;
     const pixels = Math.min(innerWidth, innerHeight * 1.6) * (devicePixelRatio || 1);
-    const full = `${base}${name}.webp`;
-    return pixels > 1300 ? [full] : [`${base}small/${name}-${pixels > 680 ? 1200 : 640}.webp`, full];
+    // The tour takes each as PNG, with smaller copies in WebP when it makes them; older ones are WebP.
+    const full = [`${base}${name}.png`, `${base}${name}.webp`];
+    return pixels > 1300 ? full : [`${base}small/${name}-${pixels > 680 ? 1200 : 640}.webp`].concat(full);
   }
 };
 </script>

@@ -4,6 +4,13 @@
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const look = () => root.dataset.look === "glass" ? "glass" : "plain";
 
+  // A picture the tour hasn't taken leaves no gap.
+  document.querySelectorAll("figure.shot img").forEach(image => {
+    const hide = () => { image.closest("figure").hidden = true; };
+    if (image.complete && image.naturalWidth === 0) hide();
+    else image.addEventListener("error", hide);
+  });
+
   const stage = document.querySelector(".stage");
   let refresh = () => {};
   if (stage) {

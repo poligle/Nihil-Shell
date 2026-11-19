@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import qs.config
+import "Widgets.js" as Widgets
 
 Singleton {
     id: root
@@ -42,12 +43,23 @@ Singleton {
     // Where each widget was put on the desktop, by name: [x, y] from the desktop's top left,
     // inside the frame. One with none goes where there's room.
     property var widgetPlaces: ({})
-    // How big each is, by name, against its own size: one not there is at 1.
+    // How big each is, by name: how many times its own size, or its width and height for one made
+    // to any shape. One not there is as it comes.
     property var widgetSizes: ({})
-    // What a widget is told, by name and then by key: whose GitHub contributions, for one.
+    // What a widget is told, by name and then by key: whose GitHub contributions, a note's text.
     property var widgetOptions: ({})
     // Moving them about: a long press on one, Arrange in Preferences, nihil-ipc widgets arrange.
+    // Nothing is kept until it ends with Enter; Esc puts back what was there when it began.
     property bool arranging: false
+    property var arrangedFrom: null
+    // While arranging: photos thrown away, whose pictures go once it's kept, and pictures put in,
+    // beside the ones they'd take the place of until then.
+    property var doomed: []
+    property var staged: []
+    // Those being moved into place once it's kept, shown from where they were until they're there.
+    property var moving: []
+    property bool keptLast: false
+    property bool widgetsRead: false
     // All of it, kept as it is: no rebuild for any.
     readonly property string widgetsFile: stateDir + "/widgets.json"
     property var timeZones: []
@@ -208,14 +220,25 @@ Singleton {
         root.shown = false;
     }
 
+    // Written whole, and never as an argument, which anyone on the computer could read in /proc:
+    // notes are in it.
     function saveWidgets(): void {
-        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.widgetsFile,
-                                 JSON.stringify({ on: root.widgets, at: root.widgetPlaces, size: root.widgetSizes, opts: root.widgetOptions })]);
+        if (root.arranging || !root.widgetsRead)
+            return;
+        widgetsKept.setText(JSON.stringify({ on: root.widgets, at: root.widgetPlaces, size: root.widgetSizes, opts: root.widgetOptions }));
     }
 
-    // The widgets there are: those Config has, and the photos past the first.
+    // The widgets there are: one of each kind Config has, and photos and notes as many as wanted.
     function known(name: string): bool {
-        return Config.widgets.indexOf(name) >= 0 || root.photoNames.indexOf(name) >= 0;
+        return Widgets.known(name, Config.widgets);
+    }
+
+    function several(name: string): bool {
+        return Widgets.several(name);
+    }
+
+    function kindOf(name: string): string {
+        return Widgets.kindOf(name);
     }
 
     function setWidget(name: string, on: bool): void {
@@ -247,9 +270,12 @@ Singleton {
         root.saveWidgets();
     }
 
-    function sizeWidget(name: string, size: real): void {
+    // How many times its size, or [width, height]; as it comes, it isn't kept.
+    function sizeWidget(name: string, size: var): void {
         const sizes = Object.assign({}, root.widgetSizes);
-        if (Math.abs(size - 1) < 0.005)
+        if (Array.isArray(size))
+            sizes[name] = [Math.round(size[0]), Math.round(size[1])];
+        else if (Math.abs(size - 1) < 0.005)
             delete sizes[name];
         else
             sizes[name] = Math.round(size * 1000) / 1000;
@@ -257,11 +283,118 @@ Singleton {
         root.saveWidgets();
     }
 
-    // Up to four photo widgets, each with its picture: a copy, so it stays when the one it came
-    // from goes, named as its widget. The name says nothing of what it is; the picture itself
-    // does. Each one put in counts, so the widget reads the file again; 0 is none yet.
-    readonly property var photoNames: ["photo", "photo-2", "photo-3", "photo-4"]
-    readonly property var photos: root.photoNames.filter(name => root.widgets.indexOf(name) >= 0)
+    // Another of a kind there can be several of, where it's put and as big as it's made, or where
+    // there's room and as it comes.
+    function addWidget(kind: string, at: var, size: var): string {
+        const name = Widgets.freeName(kind, root.widgets, root.doomed.concat(Object.keys(root.photoTaken)));
+        if (at)
+            root.widgetPlaces = Object.assign({}, root.widgetPlaces, { [name]: at });
+        if (size)
+            root.widgetSizes = Object.assign({}, root.widgetSizes, { [name]: size });
+        root.widgets = root.widgets.concat([name]);
+        root.saveWidgets();
+        return name;
+    }
+
+    // Dropped on the cross: a photo or a note goes for good, with its picture or its text; any
+    // other is turned off, keeping its place for when it's back.
+    function removeWidget(name: string): void {
+        if (!root.several(name)) {
+            root.setWidget(name, false);
+            return;
+        }
+        const places = Object.assign({}, root.widgetPlaces), sizes = Object.assign({}, root.widgetSizes);
+        const options = Object.assign({}, root.widgetOptions), taken = Object.assign({}, root.photoTaken);
+        delete places[name];
+        delete sizes[name];
+        delete options[name];
+        delete taken[name];
+        root.widgets = root.widgets.filter(widget => widget !== name);
+        root.widgetPlaces = places;
+        root.widgetSizes = sizes;
+        root.widgetOptions = options;
+        root.photoTaken = taken;
+        root.saveWidgets();
+        if (root.kindOf(name) !== "photo")
+            return;
+        if (root.arranging)
+            root.doomed = root.doomed.concat([name]);
+        else
+            root.dropFiles([name, name + ".staged"], []);
+    }
+
+    // Files in the state folder, by name: some go, and some put in while arranging take their places.
+    function dropFiles(gone: var, moved: var): void {
+        if (gone.length === 0 && moved.length === 0)
+            return;
+        if (filing.running) {
+            filing.queue = filing.queue.concat([[gone, moved]]);
+            return;
+        }
+        root.moving = moved;
+        filing.command = [Config.cmd.sh, "-c", 'dir=$1; shift; while [ "$1" != -- ]; do rm -f -- "$dir/$1"; shift; done; shift; '
+                          + 'for name in "$@"; do mv -f -- "$dir/$name.staged" "$dir/$name"; done', "sh", root.stateDir].concat(gone, ["--"], moved);
+        filing.running = true;
+    }
+
+    Process {
+        id: filing
+
+        property var queue: []
+
+        // Read again from where they now are.
+        onExited: {
+            const taken = Object.assign({}, root.photoTaken);
+            for (const name of root.moving)
+                taken[name] = (taken[name] ?? 0) + 1;
+            root.photoTaken = taken;
+            root.moving = [];
+            const next = filing.queue[0];
+            filing.queue = filing.queue.slice(1);
+            if (next !== undefined)
+                root.dropFiles(next[0], next[1]);
+        }
+    }
+
+    function arrangeWidgets(): void {
+        root.hide();
+        if (root.arranging)
+            return;
+        root.arrangedFrom = { on: root.widgets.slice(), at: Object.assign({}, root.widgetPlaces), size: Object.assign({}, root.widgetSizes),
+                              opts: Object.assign({}, root.widgetOptions), taken: Object.assign({}, root.photoTaken) };
+        root.doomed = [];
+        root.staged = [];
+        root.arranging = true;
+    }
+
+    // Enter keeps what's there, Esc puts back what was.
+    function stopArranging(keep: bool): void {
+        if (!root.arranging)
+            return;
+        const from = root.arrangedFrom;
+        const files = Widgets.settle(keep, root.widgets, root.doomed, root.staged);
+        if (!keep) {
+            root.widgets = from.on;
+            root.widgetPlaces = from.at;
+            root.widgetSizes = from.size;
+            root.widgetOptions = from.opts;
+            root.photoTaken = from.taken;
+        }
+        root.arranging = false;
+        root.keptLast = keep;
+        root.arrangedFrom = null;
+        root.doomed = [];
+        root.staged = [];
+        root.dropFiles(files.remove, files.move);
+        if (keep)
+            root.saveWidgets();
+    }
+
+    // Photos, each with its picture: a copy, so it stays when the one it came from goes, named as
+    // its widget. The name says nothing of what it is; the picture itself does. Each one put in
+    // counts, so the widget reads the file again; 0 is none yet.
+    readonly property var photos: Widgets.instances(root.widgets, "photo")
+    readonly property var notes: Widgets.instances(root.widgets, "note")
     property var photoTaken: ({})
 
     function photoFile(name: string): string {
@@ -270,106 +403,94 @@ Singleton {
 
     function photoUrl(name: string): string {
         const taken = root.photoTaken[name] ?? 0;
-        return taken > 0 ? "file://" + root.photoFile(name).split("/").map(encodeURIComponent).join("/") + "?" + taken : "";
+        const file = root.photoFile(name) + (root.staged.indexOf(name) >= 0 || root.moving.indexOf(name) >= 0 ? ".staged" : "");
+        return taken > 0 ? "file://" + file.split("/").map(encodeURIComponent).join("/") + "?" + taken : "";
     }
 
-    // Another one, where there's none yet.
-    function addPhoto(): void {
-        const free = root.photoNames.find(name => root.widgets.indexOf(name) < 0);
-        if (free !== undefined)
-            root.setWidget(free, true);
-    }
-
-    // One past the first goes with its picture, its place and its size.
-    function dropPhoto(name: string): void {
-        if (name === "photo" || root.photoNames.indexOf(name) < 0)
-            return;
-        root.setWidget(name, false);
-        const places = Object.assign({}, root.widgetPlaces), sizes = Object.assign({}, root.widgetSizes), taken = Object.assign({}, root.photoTaken);
-        delete places[name];
-        delete sizes[name];
-        delete taken[name];
-        root.widgetPlaces = places;
-        root.widgetSizes = sizes;
-        root.photoTaken = taken;
-        root.saveWidgets();
-        Quickshell.execDetached([Config.cmd.sh, "-c", 'rm -f -- "$1"', "sh", root.photoFile(name)]);
-    }
     // Qt reads PNG, JPEG, GIF and BMP by itself; a WebP one goes in as PNG.
     readonly property string photoScript: 'mkdir -p "$(dirname "$2")" && '
         + 'if [ "$(head -c 12 -- "$1" | tail -c 4)" = WEBP ]; then '
         + '"$3" -v error -y -f webp_pipe -i "file:$1" -frames:v 1 -c:v png -f image2pipe "file:$2.new"; '
         + 'else cp -f -- "$1" "$2.new"; fi && mv -f -- "$2.new" "$2"'
 
-    // Where a picture goes with no widget named: the first one on with none, then a new one,
-    // then the last.
-    function photoFor(): string {
-        const empty = root.photos.find(name => (root.photoTaken[name] ?? 0) === 0);
-        if (empty !== undefined)
-            return empty;
-        const free = root.photoNames.find(name => root.widgets.indexOf(name) < 0);
-        return free !== undefined ? free : root.photos[root.photos.length - 1];
-    }
-
-    // From a widget, where it shows at once, or from Files' Open with, which says it's done.
-    function setPhoto(path: string, told: bool, name: string): void {
+    // From a widget, where it shows at once; dropped on the desktop, a new one where it fell, at
+    // `at`; or from Files' Open with, which says it's done: the first one on with none, else a new one.
+    function setPhoto(path: string, told: bool, name: string, at: var): void {
         if (!path.startsWith("/")) {
             root.notify(Lang.widgetPhotoFailed, "");
             return;
         }
         if (photoCopy.running) {
-            photoCopy.waiting = photoCopy.waiting.concat([[path, told, name]]);
+            photoCopy.waiting = photoCopy.waiting.concat([[path, told, name, at]]);
             return;
         }
-        const into = root.photoNames.indexOf(name) >= 0 ? name : root.photoFor();
+        const empty = root.photos.find(photo => (root.photoTaken[photo] ?? 0) === 0 && root.staged.indexOf(photo) < 0);
+        const into = root.known(name) && root.kindOf(name) === "photo" ? name
+            : at === null && empty !== undefined ? empty
+            : Widgets.freeName("photo", root.widgets, root.doomed.concat(Object.keys(root.photoTaken)));
+        photoCopy.path = path;
         photoCopy.told = told;
         photoCopy.into = into;
-        photoCopy.command = [Config.cmd.sh, "-c", root.photoScript, "sh", path, root.photoFile(into), Config.cmd.ffmpeg];
+        photoCopy.at = at;
+        photoCopy.staging = root.arranging;
+        photoCopy.command = [Config.cmd.sh, "-c", root.photoScript, "sh", path, root.photoFile(into) + (root.arranging ? ".staged" : ""), Config.cmd.ffmpeg];
         photoCopy.running = true;
     }
 
     Process {
         id: photoCopy
 
+        property string path: ""
         property bool told: false
         property string into: ""
+        property var at: null
+        property bool staging: false
         property var waiting: []
 
         onExited: code => {
             if (code !== 0) {
                 root.notify(Lang.widgetPhotoFailed, "");
+            } else if (photoCopy.staging && !root.arranging) {
+                // Arranging ended while it was copied: put back, it goes; kept, it goes in again
+                // as one put in now.
+                root.dropFiles([photoCopy.into + ".staged"], []);
+                if (root.keptLast)
+                    root.setPhoto(photoCopy.path, photoCopy.told, photoCopy.into, photoCopy.at);
             } else {
+                if (photoCopy.staging && root.staged.indexOf(photoCopy.into) < 0)
+                    root.staged = root.staged.concat([photoCopy.into]);
                 root.photoTaken = Object.assign({}, root.photoTaken, { [photoCopy.into]: (root.photoTaken[photoCopy.into] ?? 0) + 1 });
+                if (photoCopy.at !== null)
+                    root.widgetPlaces = Object.assign({}, root.widgetPlaces, { [photoCopy.into]: photoCopy.at });
                 if (root.widgets.indexOf(photoCopy.into) < 0)
                     root.setWidget(photoCopy.into, true);
+                else if (photoCopy.at !== null)
+                    root.saveWidgets();
                 if (photoCopy.told)
                     root.notify(Lang.widgetPhotoSet, "");
             }
             const next = photoCopy.waiting[0];
             photoCopy.waiting = photoCopy.waiting.slice(1);
             if (next !== undefined)
-                root.setPhoto(next[0], next[1], next[2]);
+                root.setPhoto(next[0], next[1], next[2], next[3]);
         }
     }
 
+    // The pictures there are, by the names of their widgets.
     Process {
-        command: [Config.cmd.sh, "-c", 'for name in "$@"; do [ -s "$0/$name" ] && echo "$name"; done; true', root.stateDir].concat(root.photoNames)
+        command: [Config.cmd.sh, "-c", 'mkdir -p "$0" && cd "$0" || exit 0; for name in photo photo-*; do '
+                  + 'case "$name" in *[!a-z0-9-]*) continue ;; esac; [ -s "$name" ] && echo "$name"; done; true', root.stateDir]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 const taken = Object.assign({}, root.photoTaken);
                 for (const name of text.split("\n")) {
-                    if (root.photoNames.indexOf(name) >= 0 && (taken[name] ?? 0) === 0)
+                    if (root.kindOf(name) === "photo" && (taken[name] ?? 0) === 0)
                         taken[name] = 1;
                 }
                 root.photoTaken = taken;
             }
         }
-    }
-
-    function arrangeWidgets(): void {
-        root.hide();
-        root.arranging = true;
     }
 
     function liveWallpaper(name: string): void {
@@ -598,44 +719,25 @@ Singleton {
         }
     }
 
-    Process {
-        command: [Config.cmd.sh, "-c", "cat \"$1\" 2>/dev/null", "sh", root.widgetsFile]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const kept = JSON.parse(text);
-                    // Before places were kept, the file was only the list of those on.
-                    const on = Array.isArray(kept) ? kept : kept?.on;
-                    if (Array.isArray(on))
-                        root.widgets = on.filter(name => root.known(name));
-                    const places = {};
-                    for (const [name, at] of Object.entries(kept?.at ?? {})) {
-                        if (Array.isArray(at) && at.length === 2 && at.every(n => Number.isFinite(n) && n >= 0))
-                            places[name] = [Math.round(at[0]), Math.round(at[1])];
-                    }
-                    root.widgetPlaces = places;
-                    const sizes = {};
-                    for (const [name, size] of Object.entries(kept?.size ?? {})) {
-                        if (root.known(name) && Number.isFinite(size) && size >= 0.5 && size <= 3)
-                            sizes[name] = size;
-                    }
-                    root.widgetSizes = sizes;
-                    const options = {};
-                    for (const [name, set] of Object.entries(kept?.opts ?? {})) {
-                        if (Config.widgets.indexOf(name) < 0 || set === null || typeof set !== "object" || Array.isArray(set))
-                            continue;
-                        options[name] = {};
-                        for (const [key, value] of Object.entries(set)) {
-                            if (["string", "number", "boolean"].indexOf(typeof value) >= 0)
-                                options[name][key] = value;
-                        }
-                    }
-                    root.widgetOptions = options;
-                } catch (error) {
-                }
+    FileView {
+        id: widgetsKept
+        path: root.widgetsFile
+        printErrors: false
+        // Read once: what's written after is what it already has.
+        onLoaded: {
+            if (root.widgetsRead)
+                return;
+            const kept = Widgets.read(text(), Config.widgets);
+            if (kept !== null) {
+                if (kept.on !== null)
+                    root.widgets = kept.on;
+                root.widgetPlaces = kept.at;
+                root.widgetSizes = kept.size;
+                root.widgetOptions = kept.opts;
             }
+            root.widgetsRead = true;
         }
+        onLoadFailed: root.widgetsRead = true
     }
 
     Process {
@@ -830,10 +932,11 @@ Singleton {
         target: "widgets"
 
         function arrange(): void { root.arrangeWidgets(); }
-        function done(): void { root.arranging = false; }
+        function done(): void { root.stopArranging(true); }
+        function cancel(): void { root.stopArranging(false); }
         function list(): string { return JSON.stringify({ on: root.widgets, at: root.widgetPlaces, size: root.widgetSizes }); }
         // A whole path, from /, as Files' Open with gives it.
-        function photo(path: string): void { root.setPhoto(path, true, ""); }
+        function photo(path: string): void { root.setPhoto(path, true, "", null); }
     }
 
     IpcHandler {

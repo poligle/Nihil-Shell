@@ -98,36 +98,29 @@ Flickable {
             }
         }
 
-        // The photos past the first go under it, while they're on; one turned off goes for good.
+        // Photos and notes, as many as wanted, are added here and taken away on the desktop.
         Repeater {
-            model: Config.widgets.flatMap(name => name === "photo" ? Machine.photoNames.filter(photo => photo === "photo" || Machine.photos.indexOf(photo) >= 0) : [name])
+            model: Config.widgets
 
             Setting {
                 id: widget
 
                 required property string modelData
-                readonly property bool more: widget.modelData.startsWith("photo-")
+                readonly property bool several: Machine.several(widget.modelData)
 
-                title: widget.more ? Lang.cfgWidgetPhotoMore.arg(widget.modelData.slice(6))
-                    : Lang["cfgWidget" + widget.modelData.charAt(0).toUpperCase() + widget.modelData.slice(1)] ?? widget.modelData
+                title: Lang["cfgWidget" + widget.modelData.charAt(0).toUpperCase() + widget.modelData.slice(1)] ?? widget.modelData
 
                 RowLayout {
-                    spacing: 12
-
                     Toggle {
+                        visible: !widget.several
                         on: Machine.widgets.indexOf(widget.modelData) >= 0
-                        onToggled: {
-                            if (widget.more)
-                                Machine.dropPhoto(widget.modelData);
-                            else
-                                Machine.setWidget(widget.modelData, !on);
-                        }
+                        onToggled: Machine.setWidget(widget.modelData, !on)
                     }
 
                     KeyButton {
-                        visible: widget.modelData === "photo" && Machine.photos.length > 0 && Machine.photos.length < Machine.photoNames.length
-                        text: Lang.cfgWidgetPhotoAdd
-                        onClicked: Machine.addPhoto()
+                        visible: widget.several
+                        text: Lang.cfgWidgetAdd
+                        onClicked: Machine.addWidget(widget.modelData, null, null)
                     }
                 }
             }
@@ -139,8 +132,7 @@ Flickable {
             title: Lang.cfgWeatherPlace
             sub: Weather.searching !== "" ? Lang.cfgWeatherSearching
                 : Weather.notFound !== "" ? Lang.cfgWeatherNotFound.arg(Weather.notFound)
-                : Weather.searchFailed ? Lang.cfgWeatherSearchFailed
-                : Weather.placed ? Lang.cfgWeatherAt.arg(Weather.where.label ?? "") : ""
+                : Weather.searchFailed ? Lang.cfgWeatherSearchFailed : ""
 
             Field {
                 id: weatherPlace

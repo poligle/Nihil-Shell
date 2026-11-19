@@ -16,7 +16,7 @@ Item {
     readonly property real maxAnswer: 280
 
     readonly property var voices: ({ ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6",
-                                     surface: String(Tokens.surface), mono: Tokens.fontMono })
+                                     surface: String(Tokens.surface), mono: Tokens.fontMono, icons: Tokens.fontIcons })
 
     implicitHeight: content.implicitHeight + 40
 

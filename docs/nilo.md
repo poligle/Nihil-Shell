@@ -1,9 +1,5 @@
 # Nilo
 
-<p align="center">
-  <img src="assets/screens/nilo.webp" width="720" alt="Nilo in the launcher, writing: its two eyes, qwen3.5:9b chosen on its own, the question and the start of the answer.">
-</p>
-
 An assistant in the launcher, with a model that runs on this computer. Two white eyes
 on black: asleep while the model is unloaded, awake as soon as you type, looking up
 while they think and from side to side while they search or look. It answers, searches
@@ -119,11 +115,7 @@ shows it before you confirm. That is the noreply address of
 [github.com/nilo-nihil](https://github.com/nilo-nihil), so GitHub draws Nilo's face next
 to yours: [`assets/brand/nilo-avatar.png`](../assets/brand/nilo-avatar.png).
 
-<p align="center">
-  <img src="assets/screens/nilo-done.webp" width="720" alt="Nilo's answer in a panel out of the bar, next to its eyes, after the launcher was closed while it wrote; behind it, the wallpaper in dots.">
-</p>
-
-<sub>Closed while it thinks, Nilo says when it's done, out of the bar.</sub>
+Closed while it thinks, Nilo says when it's done, out of the bar.
 
 **Memory.** Ollama loads the model on the first question (Nilo starts loading it while
 you type) and unloads it after the minutes chosen in the settings without questions: 5

@@ -170,11 +170,8 @@ Flickable {
                 }
 
                 Label {
-                    visible: row.changed === null || row.changed.failed || row.changed.before === null || row.changed.same
-                    text: row.changed === null ? Lang.genComparing
-                        : row.changed.failed ? Lang.genCompareFailed
-                        : row.changed.before === null ? Lang.genOldest
-                        : Lang.genSame
+                    visible: row.changed === null || row.changed.failed
+                    text: row.changed === null ? Lang.genComparing : Lang.genCompareFailed
                 }
 
                 Column {

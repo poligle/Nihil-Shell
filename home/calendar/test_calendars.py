@@ -177,6 +177,62 @@ class Calendars(unittest.TestCase):
         self.assertEqual(titles, {"Lab", "Day off", "Meeting with tutor", "Dinner"})
         self.assertTrue(all(e["cal"] == uni for e in kept["events"]))
 
+    def test_one_event_in_two_calendars_shows_once(self):
+        # The organiser's calendar and the guest's have the same meeting, the guest's an older copy;
+        # the guest's also has it imported twice under other names, and a talk at other times.
+        mine = self.add("https://example.org/mine.ics", b"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//test//EN
+BEGIN:VEVENT
+UID:meet@org
+SEQUENCE:0
+DTSTART:20261120T090000Z
+DTEND:20261120T100000Z
+SUMMARY:Meeting
+END:VEVENT
+BEGIN:VEVENT
+UID:copy-1@me
+DTSTART:20261121T090000Z
+DTEND:20261121T100000Z
+SUMMARY:Talk
+END:VEVENT
+BEGIN:VEVENT
+UID:copy-2@me
+DTSTART:20261121T090000Z
+DTEND:20261121T100000Z
+SUMMARY:talk
+END:VEVENT
+BEGIN:VEVENT
+UID:copy-3@me
+DTSTART:20261122T090000Z
+DTEND:20261122T100000Z
+SUMMARY:Talk
+END:VEVENT
+END:VCALENDAR
+""")["id"]
+        team = self.add("https://example.org/team.ics", b"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//test//EN
+BEGIN:VEVENT
+UID:meet@org
+SEQUENCE:2
+DTSTART:20261120T090000Z
+DTEND:20261120T100000Z
+SUMMARY:Meeting, room 3
+END:VEVENT
+END:VCALENDAR
+""")["id"]
+        kept = calendars.sync(today=TODAY, reader=self.reader)
+        events = [(e["title"], e["start"], e["cal"]) for e in kept["events"]]
+        self.assertEqual(events, [("Meeting, room 3", at(2026, 11, 20, 10), team), ("Talk", at(2026, 11, 21, 10), mine),
+                                  ("Talk", at(2026, 11, 22, 10), mine)])
+        self.assertTrue(all(not key.startswith("_") for e in kept["events"] for key in e))
+        # And so when one can't be read: what it showed doesn't come back beside the same, read now.
+        self.pages["https://example.org/team.ics"] = urllib.error.URLError("offline")
+        self.pages["https://example.org/mine.ics"] = self.pages["https://example.org/mine.ics"].replace(b"Meeting", b"Meeting, room 3")
+        again = calendars.sync(today=TODAY, reader=self.reader)
+        self.assertEqual([e["title"] for e in again["events"]].count("Meeting, room 3"), 1)
+
     def test_removed(self):
         uni = self.add("https://example.org/uni.ics", LAB)["id"]
         self.assertEqual(calendars.remove("nope"), {"error": "unknown"})

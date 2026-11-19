@@ -16,6 +16,8 @@ $XDG_CACHE_HOME/nihil/calendar.json, the user's alone as well.
 
 Every answer is JSON on stdout. An address comes on stdin, never as an argument, which anyone on
 the computer could read in /proc. A calendar that can't be read keeps what was read of it before.
+An event in two of them (an invitation is in the organiser's calendar and in the guest's, and a
+calendar can be added by two addresses) shows once.
 """
 
 import datetime as dt
@@ -153,7 +155,38 @@ def occurrences(calendar, cal_id, first_day, last_day):
             "allDay": all_day,
             "start": start,
             "end": max(start, end),
+            # Only to tell copies apart, and not kept.
+            "_uid": str(event.get("UID") or ""),
+            "_seq": sequence(event),
         })
+    return out
+
+
+def sequence(event):
+    try:
+        return int(event.get("SEQUENCE", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def merged(events):
+    """One of each: the same event at the same time in two calendars, the newest of its copies,
+    and of those that would show alike (the same title at the same times) the first."""
+    newest = {}
+    for event in events:
+        if event.get("_uid"):
+            key = (event["_uid"], event.get("start"), event.get("end"))
+            if key not in newest or event.get("_seq", 0) > newest[key].get("_seq", 0):
+                newest[key] = event
+    out, shown = [], set()
+    for event in events:
+        if event.get("_uid") and newest[(event["_uid"], event.get("start"), event.get("end"))] is not event:
+            continue
+        looks = (str(event.get("title", "")).casefold(), event.get("start"), event.get("end"), bool(event.get("allDay")))
+        if looks in shown:
+            continue
+        shown.add(looks)
+        out.append({key: value for key, value in event.items() if not key.startswith("_")})
     return out
 
 
@@ -181,6 +214,7 @@ def sync(today=None, reader=None):
         except Exception:  # noqa: BLE001 — a calendar that can't be read shows what it showed
             calendars.append({"id": cal["id"], "name": cal.get("name") or host(cal["url"]), "ok": False})
             events += [e for e in old if isinstance(e, dict) and e.get("cal") == cal["id"]]
+    events = merged(events)
     events.sort(key=lambda e: (e.get("start", 0), e.get("end", 0), e.get("title", "")))
     kept = {"updated": int(time.time()), "calendars": calendars, "events": events[:MAX_EVENTS]}
     write_private(cache_path(), kept)

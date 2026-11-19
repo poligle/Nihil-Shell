@@ -16,7 +16,7 @@
   <a href="https://github.com/poligle/Nihil-Wear">NIHIL for Wear OS</a>
 </p>
 
-![NIHIL desktop](docs/assets/screens/desktop.webp)
+![NIHIL desktop](docs/assets/screens/desktop.png)
 
 NIHIL is a personal NixOS configuration. It takes the structure of
 [Caelestia](https://github.com/caelestia-dots/shell), a frame around the screen with
@@ -31,15 +31,17 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
 
 | | |
 |:---:|:---:|
-| ![Dashboard](docs/assets/screens/dashboard.webp) | ![Quick settings](docs/assets/screens/settings.webp) |
+| ![Dashboard](docs/assets/screens/dashboard.png) | ![Quick settings](docs/assets/screens/settings.png) |
 | Dashboard <kbd>SUPER</kbd> <kbd>D</kbd> | Quick settings <kbd>SUPER</kbd> <kbd>P</kbd> |
-| ![Launcher](docs/assets/screens/launcher.webp) | ![Clipboard history](docs/assets/screens/clipboard.webp) |
+| ![Launcher](docs/assets/screens/launcher.png) | ![Clipboard history](docs/assets/screens/clipboard.png) |
 | Launcher <kbd>SUPER</kbd> <kbd>Space</kbd> | Clipboard history, holding <kbd>SUPER</kbd> <kbd>V</kbd> |
-| ![Wallpapers](docs/assets/screens/wallpapers.webp) | ![Preferences](docs/assets/screens/preferences.webp) |
+| ![Wallpapers](docs/assets/screens/wallpapers.png) | ![Preferences](docs/assets/screens/preferences.png) |
 | Wallpapers in dots <kbd>SUPER</kbd> <kbd>W</kbd> | Preferences <kbd>SUPER</kbd> <kbd>O</kbd> |
+| ![Every workspace](docs/assets/screens/overview.png) | ![A notification](docs/assets/screens/notification.png) |
+| Every workspace, holding <kbd>SUPER</kbd> <kbd>A</kbd> | A notification, its light along the frame |
 
 <p align="center">
-  <img src="docs/assets/screens/glass/terminal.webp" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
+  <img src="docs/assets/screens/glass/terminal.png" width="720" alt="kitty with fastfetch in dots, the wallpaper blurred and darkened through it, and the frame and the bar in smoked glass.">
 </p>
 
 <p align="center"><sub>The same, in smoked glass: one switch in Preferences.</sub></p>
@@ -50,11 +52,14 @@ GTK, the terminal, the compositor, the lock screen and the shell are made from.
   side, and the dashboard, quick settings and the launcher grow out of it.
 - **Smoked glass,** if you choose it: the frame and every drawer turn to dark glass over
   what is really behind them.
+- **Widgets on the desktop:** the clock, the month with what comes next from your
+  calendars, photos and notes as many as you like, the weather, the network, the system,
+  what plays and GitHub contributions, each where you put it and as big as you make it.
 - **Nilo,** an assistant with a model that runs here, and as much of the system as you
   give it: a chat, a repository, or the whole desktop.
 - **Devices as decks,** a phone, a tablet and the watch, with [NIHIL for Android](https://github.com/poligle/Nihil-Launcher)
-  and [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear), and Vector to carry
-  things between them and this computer.
+  and [NIHIL for Wear OS](https://github.com/poligle/Nihil-Wear), over the network or, with
+  none in common, Bluetooth, and Vector to carry things between them and this computer.
 - **Preferences,** the whole system on one sheet, applied as a rebuild, with every
   generation a click away.
 - **Wallpapers in dots,** its own sounds, and the boot splash, greeter and lock screen in
