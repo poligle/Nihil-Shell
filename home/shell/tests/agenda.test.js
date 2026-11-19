@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
 const source = fs.readFileSync(path.join(__dirname, "../services/Agenda.js"), "utf8").replace(".pragma library", "");
-const A = new Function(source + "\nreturn { key, midnight, onDay, busy, month, upcoming, daysAway };")();
+const A = new Function(source + "\nreturn { key, midnight, touches, busy, month, upcoming, daysAway };")();
 
 let passed = 0;
 function test(name, body) { body(); passed++; console.log("ok", name); }
@@ -28,12 +28,13 @@ test("a day's key, on this clock", () => {
 });
 
 test("what touches a day, from midnight to midnight", () => {
-    assert.deepStrictEqual(A.onDay(events, 2026, 10, 19).map(e => e.title), ["Lab", "Reminder", "Late"]);
-    assert.deepStrictEqual(A.onDay(events, 2026, 10, 20).map(e => e.title), ["Late", "Day off"]);
-    assert.deepStrictEqual(A.onDay(events, 2026, 10, 21).map(e => e.title), []);
+    const day = (y, m, d) => events.filter(e => A.touches(e, A.midnight(y, m, d), A.midnight(y, m, d + 1))).map(e => e.title);
+    assert.deepStrictEqual(day(2026, 10, 19), ["Lab", "Reminder", "Late"]);
+    assert.deepStrictEqual(day(2026, 10, 20), ["Late", "Day off"]);
+    assert.deepStrictEqual(day(2026, 10, 21), []);
     // An all-day one ends at the next midnight, which isn't its day.
-    assert.deepStrictEqual(A.onDay(events, 2026, 9, 27).map(e => e.title), []);
-    assert.deepStrictEqual(A.onDay(events, 2026, 9, 25).map(e => e.title), ["Trip"]);
+    assert.deepStrictEqual(day(2026, 9, 27), []);
+    assert.deepStrictEqual(day(2026, 9, 25), ["Trip"]);
 });
 
 test("the busy days of a month, one lasting several marking each", () => {

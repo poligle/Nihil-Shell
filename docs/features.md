@@ -10,15 +10,14 @@
   done: drag a card where it goes, its pencil writes it again, a broom clears the done ones),
   and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
   it shrinks away to the phone; what the phone sends waits there, to copy, save or open.
-  With a calendar subscribed to, the week ahead too: today and the six days after.
 - **Calendars.** Read-only subscriptions by their secret iCal address, added in Preferences,
   Appearance: in Google Calendar, a calendar's settings, “Secret address in iCal format”; in
   Outlook, Settings, Calendar, Shared calendars, “Publish a calendar”, its ICS link; in
   iCloud, a public calendar's link; in Nextcloud, “Copy subscription link”. No account and
   no app to register: whoever has the address reads the calendar, so it's kept in
   `~/.config/nihil/calendars.json`, readable by you alone, and never in `settings.json`,
-  which ends in the Nix store. They're read every quarter of an hour, a month back to two
-  ahead, repeats and time zones included (`home/calendar`).
+  which ends in the Nix store. While the calendar widget is on, they're read every quarter of
+  an hour, a month back to two ahead, repeats and time zones included (`home/calendar`).
 - **Quick settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
   locking or sleeping; the night light, with its intensity, and do not disturb, both as you
   left them), segmented sliders, Wi-Fi (with passwords and WPA-Enterprise hand-off),

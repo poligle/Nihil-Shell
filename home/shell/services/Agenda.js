@@ -1,6 +1,6 @@
 .pragma library
 
-// Days and events as the calendar widget and the Dashboard show them, on this computer's clock.
+// Days and events as the calendar widget shows them, on this computer's clock.
 // Events are what nihil-calendar keeps: { cal, title, where, allDay, start, end }, from the
 // soonest, start and end in seconds (end left out; an event without length ends as it starts).
 
@@ -16,12 +16,6 @@ function midnight(y, m, d) {
 
 function touches(event, from, to) {
     return event.start < to && (event.end > from || (event.end === event.start && event.start >= from));
-}
-
-// Those that touch a day, from its midnight to the next.
-function onDay(events, y, m, d) {
-    const from = midnight(y, m, d), to = midnight(y, m, d + 1);
-    return (events ?? []).filter(event => touches(event, from, to));
 }
 
 // The days of a month that have something, as keys: one lasting several marks each of them.

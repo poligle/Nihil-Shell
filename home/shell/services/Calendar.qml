@@ -6,9 +6,10 @@ import Quickshell.Io
 import qs.config
 import "Agenda.js" as Agenda
 
-// The calendars subscribed to in Preferences, read by nihil-calendar (home/calendar): what it kept
-// at the last read first, then every quarter of an hour while there's any, again when the network
-// comes back after a read that didn't, and at once after one is added or taken away.
+// The calendars subscribed to in Preferences, read by nihil-calendar (home/calendar) for the
+// calendar widget: what it kept at the last read first, then, while the widget is on and there's
+// any, every quarter of an hour, again when the network comes back after a read that didn't, and
+// at once after one is added or taken away.
 Singleton {
     id: root
 
@@ -18,6 +19,7 @@ Singleton {
     property real updated: 0
     readonly property bool any: root.calendars.length > 0
     readonly property bool failed: root.calendars.some(calendar => !calendar.ok)
+    readonly property bool shown: Machine.widgets.indexOf("calendar") >= 0
     // Adding one: the address goes in on stdin, which no one else can read. Done once its answer is
     // read, so what went wrong is known by then.
     property bool adding: false
@@ -65,11 +67,7 @@ Singleton {
         remover.running = true;
     }
 
-    // As the widget and the Dashboard ask: on a day, the next ones, the busy days of a month.
-    function onDay(y: int, m: int, d: int): var {
-        return Agenda.onDay(root.events, y, m, d);
-    }
-
+    // As the widget asks: the next ones, the busy days of a month.
     function upcoming(now: real, count: int): var {
         return Agenda.upcoming(root.events, now, count);
     }
@@ -112,15 +110,20 @@ Singleton {
 
     Timer {
         interval: 15 * root.minute
-        running: root.any
+        running: root.any && root.shown
         repeat: true
         onTriggered: root.sync()
+    }
+
+    onShownChanged: {
+        if (root.shown && root.any)
+            root.sync();
     }
 
     Connections {
         target: Network
         function onConnectedChanged(): void {
-            if (Network.connected && root.failed)
+            if (Network.connected && root.failed && root.shown)
                 root.sync();
         }
     }
@@ -194,7 +197,7 @@ Singleton {
                 const cut = text.indexOf("\n");
                 root.take(text.slice(cut + 1));
                 root.loaded = true;
-                if (text.slice(0, cut) === "some" || root.any)
+                if ((text.slice(0, cut) === "some" || root.any) && root.shown)
                     root.sync();
             }
         }

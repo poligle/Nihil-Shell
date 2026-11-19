@@ -633,7 +633,6 @@
 		calTomorrow = "Mañana";
 		calTomorrowAt = "Mañana, %1";
 		calDay = "ddd d";
-		calMore = "%1 más";
 		calNothing = "Nada a la vista";
 		calUntitled = "Sin título";
 		cfgGlass = "Cristal ahumado";
@@ -1479,7 +1478,6 @@
 		calTomorrow = "Tomorrow";
 		calTomorrowAt = "Tomorrow, %1";
 		calDay = "ddd d";
-		calMore = "%1 more";
 		calNothing = "Nothing coming up";
 		calUntitled = "No title";
 		cfgGlass = "Smoked glass";

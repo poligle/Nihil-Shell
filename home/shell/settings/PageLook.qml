@@ -155,14 +155,15 @@ Flickable {
             }
         }
 
-        // For the calendar widget and the Dashboard's week: what's subscribed to, read-only.
+        // The calendar widget's: what's subscribed to, read-only.
         Heading {
             Layout.topMargin: 18
+            visible: Calendar.shown
             title: Lang.cfgCalendars
         }
 
         Repeater {
-            model: Calendar.calendars
+            model: Calendar.shown ? Calendar.calendars : []
 
             Setting {
                 id: subscribed
@@ -182,6 +183,7 @@ Flickable {
         // A new one by its address, which nihil-calendar keeps where only the user reads it, and
         // never in settings.json: whoever has the address reads the calendar.
         Setting {
+            visible: Calendar.shown
             title: Lang.cfgCalendarAdd
             sub: Calendar.adding ? Lang.cfgCalendarAdding
                 : Calendar.addError === "url" ? Lang.cfgCalendarErrUrl
