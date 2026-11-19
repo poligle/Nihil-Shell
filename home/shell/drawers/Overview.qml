@@ -49,7 +49,7 @@ Item {
     }
 
     Connections {
-        target: Switcher
+        target: Switcher.overview
         function onStepped(delta: int): void {
             if (root.active)
                 root.step(delta);
@@ -96,7 +96,7 @@ Item {
         Keys.onTabPressed: root.step(1)
         Keys.onBacktabPressed: root.step(-1)
         Keys.onPressed: event => {
-            if (Switcher.keyCode > 0 && event.key === Switcher.keyCode) {
+            if (Switcher.overview.keyCode > 0 && event.key === Switcher.overview.keyCode) {
                 root.step(event.modifiers & Qt.ShiftModifier ? -1 : 1);
                 event.accepted = true;
             }
@@ -107,7 +107,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 16
-        text: Lang.ovHint.arg(Case.key(Switcher.keyName !== "" ? Switcher.keyName : "Tab"))
+        text: Lang.ovHint.arg(Case.key(Switcher.overview.keyName !== "" ? Switcher.overview.keyName : "Tab"))
     }
 
     ListView {

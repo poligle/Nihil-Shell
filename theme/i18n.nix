@@ -500,11 +500,11 @@
 		welClose = "Cerrar";
 		cfgShowLog = "Registro";
 		cfgHideLog = "Ocultar";
-		bindWallpapers = "Elegir fondo";
+		bindWallpapers = "Los fondos; mantenida, elegir uno";
 		welNetTitle = "Una red";
 		welNetBody = "NIHIL se actualiza y aplica cambios por internet: conéctate a una red.";
 		welNetDone = "Conectado a %1.";
-		wpHint = "[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
+		wpHint = "[%1] Siguiente|[Shift + %1] Anterior|[← →] Elegir|[Enter] Quedárselo|[Esc] Volver";
 		ovHint = "[%1] Siguiente|[Shift + %1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
 		bindCopy = "Copiar";
@@ -1339,11 +1339,11 @@
 		welClose = "Close";
 		cfgShowLog = "Log";
 		cfgHideLog = "Hide";
-		bindWallpapers = "Choose wallpaper";
+		bindWallpapers = "Wallpapers; held, choose one";
 		welNetTitle = "A network";
 		welNetBody = "NIHIL updates and applies changes over the internet: connect to a network.";
 		welNetDone = "Connected to %1.";
-		wpHint = "[← →] Choose|[Enter] Keep|[Esc] Back";
+		wpHint = "[%1] Next|[Shift + %1] Previous|[← →] Choose|[Enter] Keep|[Esc] Back";
 		ovHint = "[%1] Next|[Shift + %1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
 
 		bindCopy = "Copy";

@@ -36,7 +36,7 @@ let
 		colourPicker = exec "hyprpicker -a";
 		lock = exec "lock-screen";
 		settings = exec "nihil-ipc settings toggle";
-		wallpapers = exec "nihil-ipc drawers toggle wallpapers";
+		wallpapers = ''hl.dsp.global("quickshell:nihil-wallpapers")'';
 		overview = ''hl.dsp.global("quickshell:nihil-overview")'';
 		close = "hl.dsp.window.close()";
 		float = ''hl.dsp.window.float({ action = "toggle" })'';
@@ -122,22 +122,30 @@ let
 		++ map (key: { combo = withMods pasteMods key; name = "forget"; leave = false; }) [ "Delete" "BackSpace" ]
 		++ map (key: { combo = withMods pasteMods key; name = "paste"; leave = true; }) [ "Return" "KP_Enter" ]
 		++ [ { combo = withMods pasteMods "Escape"; name = "cancel"; leave = true; } ];
-	overviewKey = keys.overview or null;
-	overviewMods = if overviewKey != null then map modifier (lib.init (parts overviewKey)) else [ ];
-	overviewLetter = if overviewKey != null then lib.last (parts overviewKey) else "";
-	overviewModifier = firstModifier overviewMods;
-	overviewHeld = modifierKeys ? ${overviewModifier};
-	overviewShifted = key: lib.optional (!lib.elem "SHIFT" (map lib.toUpper overviewMods)) (withMods (overviewMods ++ [ "SHIFT" ]) key);
-	overviewKeys =
-		map (key: { combo = withMods overviewMods key; name = "next"; leave = false; }) [ overviewLetter "Tab" "Right" ]
-		++ map (combo: { inherit combo; name = "back"; leave = false; }) (overviewShifted overviewLetter ++ overviewShifted "Tab")
-		++ map (key: { combo = withMods overviewMods key; name = "back"; leave = false; }) [ "Left" ]
-		++ map (key: { combo = withMods overviewMods key; name = "go"; leave = true; }) [ "Return" "KP_Enter" ]
-		++ [ { combo = withMods overviewMods "Escape"; name = "cancel"; leave = true; } ];
+	# Drawers gone through with their own key while its modifier is held, Shift going back, and
+	# chosen when it's let go: the workspaces and the wallpapers.
+	heldDrawer = name: let
+		combo = keys.${name} or null;
+		mods = if combo != null then map modifier (lib.init (parts combo)) else [ ];
+		letter = if combo != null then lib.last (parts combo) else "";
+		shiftedKey = key: lib.optional (!lib.elem "SHIFT" (map lib.toUpper mods)) (withMods (mods ++ [ "SHIFT" ]) key);
+	in
+	{
+		inherit name;
+		modifier = firstModifier mods;
+		held = combo != null && modifierKeys ? ${firstModifier mods};
+		keys =
+			map (key: { combo = withMods mods key; name = "next"; leave = false; }) [ letter "Tab" "Right" ]
+			++ map (c: { combo = c; name = "back"; leave = false; }) (shiftedKey letter ++ shiftedKey "Tab")
+			++ map (key: { combo = withMods mods key; name = "back"; leave = false; }) [ "Left" ]
+			++ map (key: { combo = withMods mods key; name = "go"; leave = true; }) [ "Return" "KP_Enter" ]
+			++ [ { combo = withMods mods "Escape"; name = "cancel"; leave = true; } ];
+	};
+	heldDrawers = builtins.filter (drawer: drawer.held) (map heldDrawer [ "overview" "wallpapers" ]);
 
-	watched = lib.unique (lib.optional held pasteModifier ++ lib.optional overviewHeld overviewModifier);
+	watched = lib.unique (lib.optional held pasteModifier ++ map (drawer: drawer.modifier) heldDrawers);
 	leaves = modifier: lib.optional (held && modifier == pasteModifier) "nihil-clipboard"
-		++ lib.optional (overviewHeld && modifier == overviewModifier) "nihil-overview";
+		++ map (drawer: "nihil-${drawer.name}") (builtins.filter (drawer: drawer.modifier == modifier) heldDrawers);
 	watchBinds = indent: lib.concatMapStringsSep "\n${indent}" (modifier:
 		"for _, sym in ipairs({ ${luaList modifierKeys.${modifier}} }) do hl.bind(sym, watcher(${luaString (lib.toLower modifier)}, { ${luaList (leaves modifier)} }), watch) end") watched;
 	submapKeys = prefix: list: lib.concatMapStringsSep "\n\t\t\t\t" (k: "key(${luaString k.combo}, ${luaString "${prefix}-${k.name}"}, ${lib.boolToString k.leave})") list;
@@ -181,8 +189,8 @@ let
 				${submapKeys "clipboard" historyKeys}
 				${watchBinds "\t\t\t\t"}
 			end)
-	'' + lib.optionalString overviewHeld ''
-			hl.define_submap("nihil-overview", function()
+	'' + lib.concatMapStrings (drawer: ''
+			hl.define_submap("nihil-${drawer.name}", function()
 				local function key(combo, name, leave)
 					hl.bind(combo, function()
 						say(name)
@@ -191,10 +199,10 @@ let
 						end
 					end)
 				end
-				${submapKeys "overview" overviewKeys}
+				${submapKeys drawer.name drawer.keys}
 				${watchBinds "\t\t\t\t"}
 			end)
-	'' + ''
+	'') heldDrawers + ''
 		end
 	'';
 
@@ -330,7 +338,7 @@ in
 		# UWSM starts the session's targets and exports its environment: Home Manager's own would
 		# run alongside it.
 		systemd.enable = false;
-		extraConfig = lib.optionalString (clipboardOn || overviewHeld) holdLua;
+		extraConfig = lib.optionalString (clipboardOn || heldDrawers != [ ]) holdLua;
 
 		settings =
 		{

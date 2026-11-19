@@ -46,6 +46,19 @@ Item {
         }
     }
 
+    // Its key held: each press the next, with Shift the one before; let go, the one reached stays.
+    Connections {
+        target: Switcher.wallpapers
+        function onStepped(delta: int): void {
+            if (root.active)
+                root.show(root.index + delta);
+        }
+        function onCommit(): void {
+            if (root.active)
+                root.choose(root.index);
+        }
+    }
+
     Timer {
         id: apply
         interval: 150
@@ -61,13 +74,21 @@ Item {
         Keys.onReturnPressed: root.choose(root.index)
         Keys.onEnterPressed: root.choose(root.index)
         Keys.onEscapePressed: Drawers.close()
+        Keys.onTabPressed: root.show(root.index + 1)
+        Keys.onBacktabPressed: root.show(root.index - 1)
+        Keys.onPressed: event => {
+            if (Switcher.wallpapers.keyCode > 0 && event.key === Switcher.wallpapers.keyCode) {
+                root.show(root.index + (event.modifiers & Qt.ShiftModifier ? -1 : 1));
+                event.accepted = true;
+            }
+        }
     }
 
     KeyHints {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 16
-        text: Lang.wpHint
+        text: Lang.wpHint.arg(Case.key(Switcher.wallpapers.keyName !== "" ? Switcher.wallpapers.keyName : "Tab"))
     }
 
     ListView {
