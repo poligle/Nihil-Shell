@@ -41,7 +41,6 @@ Flickable {
         Setting {
             visible: page.wanted
             title: Lang.deckBluetooth
-            sub: Lang.deckBluetoothSub
 
             Toggle {
                 on: Machine.get("deck.bluetooth", true)

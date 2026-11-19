@@ -10,15 +10,14 @@
   done: drag a card where it goes, its pencil writes it again, a broom clears the done ones),
   and Vector, a box in LEDs: paste or drop on it a text, a picture, a video or any file and
   it shrinks away to the phone; what the phone sends waits there, to copy, save or open.
-  With a calendar subscribed to, the week ahead too: today and the six days after.
 - **Calendars.** Read-only subscriptions by their secret iCal address, added in Preferences,
   Appearance: in Google Calendar, a calendar's settings, “Secret address in iCal format”; in
   Outlook, Settings, Calendar, Shared calendars, “Publish a calendar”, its ICS link; in
   iCloud, a public calendar's link; in Nextcloud, “Copy subscription link”. No account and
   no app to register: whoever has the address reads the calendar, so it's kept in
   `~/.config/nihil/calendars.json`, readable by you alone, and never in `settings.json`,
-  which ends in the Nix store. They're read every quarter of an hour, a month back to two
-  ahead, repeats and time zones included (`home/calendar`).
+  which ends in the Nix store. While the calendar widget is on, they're read every quarter of
+  an hour, a month back to two ahead, repeats and time zones included (`home/calendar`).
 - **Quick settings.** Circular toggles (caffeine among them, which keeps the screen from dimming,
   locking or sleeping; the night light, with its intensity, and do not disturb, both as you
   left them), segmented sliders, Wi-Fi (with passwords and WPA-Enterprise hand-off),
@@ -42,7 +41,9 @@
 - **An installer.** An ISO that installs NIHIL on a whole disk, or next to Windows or
   another Linux in room it makes by shrinking it safely. See [Install](install.md).
 - **Launcher.** Monochrome app grid that regains colour on the selection, `>` for
-  actions, `=` for a calculator, `?` for Nilo.
+  actions, `=` for a calculator, `?` for Nilo. Preferences, Apps hides those you don't want
+  there, from the phone's deck too; they're kept in `~/.local/state/nihil/apps.json`, with no
+  rebuild.
 - **Copy, paste and the clipboard history.** One modifier for both, as on a Mac: `SUPER + C`
   copies and `SUPER + V` pastes, in kitty too. Held a moment longer, `SUPER + V`
   brings out the last copies, text and pictures, from the top of the frame: `V` again goes
@@ -78,13 +79,15 @@
   how the computer is (processor, memory, temperature and the system's disk, in rows of dots),
   the weather where you say (now, today's highest and lowest and the three days after, from
   [Open-Meteo](https://open-meteo.com), with no key; the place goes in Preferences, Appearance),
-  a photo of yours in dots (drop a picture on it, or open one with Photo widget from Files:
-  PNG, JPEG, GIF, BMP or WebP, of which it keeps a copy) and a year of GitHub contributions,
-  a dot a day, brighter the more there were (the username goes in Preferences, Appearance;
-  it reads the page GitHub draws its own calendar from, every hour, and keeps the last one
-  for when there's no network).
+  up to four photos of yours in dots (drop a picture on one, or open one with Photo widget
+  from Files, which puts it in one with none or in a new one: PNG, JPEG, GIF, BMP or WebP,
+  of which it keeps a copy; Another, by Photo in Preferences, Appearance, adds one) and a year
+  of GitHub contributions, a dot a day, brighter the more there were (the username goes in
+  Preferences, Appearance; it reads the page GitHub draws its own calendar from, every hour,
+  and keeps the last one for when there's no network).
   A long press on one, or Arrange in Preferences, Appearance, lets you drag each where you
-  want it, on a grid and clear of the others; each stays where it was left, with no rebuild.
+  want it, on a grid and clear of the others, and its corner makes it from three quarters to
+  two and a half times as big; each keeps its place and its size, with no rebuild.
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down) with the power-off notes going
   up, unless the session was left muted, a greeter with the lock screen's face (its

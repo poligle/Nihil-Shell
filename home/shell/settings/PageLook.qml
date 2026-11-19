@@ -91,7 +91,6 @@ Flickable {
         Setting {
             visible: Machine.widgets.length > 0 && !Machine.welcoming
             title: Lang.cfgWidgetsArrange
-            sub: Lang.cfgWidgetsArrangeSub
 
             KeyButton {
                 text: Lang.cfgArrange
@@ -99,17 +98,37 @@ Flickable {
             }
         }
 
+        // The photos past the first go under it, while they're on; one turned off goes for good.
         Repeater {
-            model: Config.widgets
+            model: Config.widgets.flatMap(name => name === "photo" ? Machine.photoNames.filter(photo => photo === "photo" || Machine.photos.indexOf(photo) >= 0) : [name])
 
             Setting {
+                id: widget
+
                 required property string modelData
+                readonly property bool more: widget.modelData.startsWith("photo-")
 
-                title: Lang["cfgWidget" + modelData.charAt(0).toUpperCase() + modelData.slice(1)] ?? modelData
+                title: widget.more ? Lang.cfgWidgetPhotoMore.arg(widget.modelData.slice(6))
+                    : Lang["cfgWidget" + widget.modelData.charAt(0).toUpperCase() + widget.modelData.slice(1)] ?? widget.modelData
 
-                Toggle {
-                    on: Machine.widgets.indexOf(modelData) >= 0
-                    onToggled: Machine.setWidget(modelData, !on)
+                RowLayout {
+                    spacing: 12
+
+                    Toggle {
+                        on: Machine.widgets.indexOf(widget.modelData) >= 0
+                        onToggled: {
+                            if (widget.more)
+                                Machine.dropPhoto(widget.modelData);
+                            else
+                                Machine.setWidget(widget.modelData, !on);
+                        }
+                    }
+
+                    KeyButton {
+                        visible: widget.modelData === "photo" && Machine.photos.length > 0 && Machine.photos.length < Machine.photoNames.length
+                        text: Lang.cfgWidgetPhotoAdd
+                        onClicked: Machine.addPhoto()
+                    }
                 }
             }
         }
@@ -121,7 +140,7 @@ Flickable {
             sub: Weather.searching !== "" ? Lang.cfgWeatherSearching
                 : Weather.notFound !== "" ? Lang.cfgWeatherNotFound.arg(Weather.notFound)
                 : Weather.searchFailed ? Lang.cfgWeatherSearchFailed
-                : Weather.placed ? Lang.cfgWeatherAt.arg(Weather.where.label ?? "") : Lang.cfgWeatherPlaceSub
+                : Weather.placed ? Lang.cfgWeatherAt.arg(Weather.where.label ?? "") : ""
 
             Field {
                 id: weatherPlace
@@ -139,7 +158,6 @@ Flickable {
         Setting {
             visible: Machine.widgets.indexOf("github") >= 0
             title: Lang.cfgGithubUser
-            sub: Lang.cfgGithubUserSub
 
             Field {
                 id: githubUser
@@ -155,14 +173,15 @@ Flickable {
             }
         }
 
-        // For the calendar widget and the Dashboard's week: what's subscribed to, read-only.
+        // The calendar widget's: what's subscribed to, read-only.
         Heading {
             Layout.topMargin: 18
+            visible: Calendar.shown
             title: Lang.cfgCalendars
         }
 
         Repeater {
-            model: Calendar.calendars
+            model: Calendar.shown ? Calendar.calendars : []
 
             Setting {
                 id: subscribed
@@ -182,12 +201,12 @@ Flickable {
         // A new one by its address, which nihil-calendar keeps where only the user reads it, and
         // never in settings.json: whoever has the address reads the calendar.
         Setting {
+            visible: Calendar.shown
             title: Lang.cfgCalendarAdd
             sub: Calendar.adding ? Lang.cfgCalendarAdding
                 : Calendar.addError === "url" ? Lang.cfgCalendarErrUrl
                 : Calendar.addError === "fetch" ? Lang.cfgCalendarErrFetch
-                : Calendar.addError === "calendar" ? Lang.cfgCalendarErrCalendar
-                : Lang.cfgCalendarAddSub
+                : Calendar.addError === "calendar" ? Lang.cfgCalendarErrCalendar : ""
 
             RowLayout {
                 spacing: 8
