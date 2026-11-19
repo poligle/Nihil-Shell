@@ -13,7 +13,8 @@ let
 	# until a collection left it pointing at nothing.
 	data = "${config.xdg.dataHome}/nihil";
 
-	# A screen not in nihil.outputs, a projector say, gets the primary's, under each screen's own.
+	# A screen not in nihil.outputs, a projector say, gets the primary's, under each screen's own:
+	# a layer below theirs, as hyprlock's sort doesn't keep the order of equal ones.
 	backgrounds =
 	[
 		{
@@ -21,6 +22,7 @@ let
 			path = "${state}/lock-current/${nihil.primaryOutput}.png";
 			color = rgb t.palette.void;
 			brightness = 0.55;
+			zindex = -2;
 		}
 	] ++ lib.mapAttrsToList (output: _:
 	{
