@@ -88,10 +88,11 @@
   Preferences, Appearance; it reads the page GitHub draws its own calendar from, every hour,
   and keeps the last one for when there's no network).
   A long press on one, or Arrange in Preferences, Appearance, lets you drag each where you
-  want it, on a grid and clear of the others; its corner makes it from three quarters to two
-  and a half times as big, and dropped on the cross it's turned off or, a photo, gone. Enter
-  keeps it all and Esc puts back what was there; each keeps its place and its size, with no
-  rebuild.
+  want it, on a grid and clear of the others; its corner makes photos, the network and the
+  calendar any shape (the calendar lists as much of what comes next as fits), and the rest
+  from three quarters to two and a half times as big, as a whole. Dropped on the cross, one is
+  turned off or, a photo, gone. Enter keeps it all and Esc puts back what was there; each
+  keeps its place and its size, with no rebuild.
 - **Boot, login, lock.** The NixOS snowflake switching on LED by LED (Plymouth, played
   whole at least once on the way up and on the way down) with the power-off notes going
   up, unless the session was left muted, a greeter with the lock screen's face (its

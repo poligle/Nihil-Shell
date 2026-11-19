@@ -96,6 +96,13 @@ Scope {
                            { w: desk.width, h: desk.height }, { gap: root.spacing, cell: root.cell, smallest: root.smallest, largest: root.largest });
     }
 
+    // The width and height one made to any shape takes as its corner goes (dx, dy) from `from`.
+    function stretched(card: var, from: var, dx: real, dy: real): var {
+        const out = Desk.stretched({ x: card.x, y: card.y, least: { w: card.least.width, h: card.least.height } }, from, dx, dy,
+                                   root.boxes(card), { w: desk.width, h: desk.height }, { gap: root.spacing, cell: root.cell });
+        return [out.w, out.h];
+    }
+
     // Whether a point in the desk is on the cross, where a card dropped is taken away.
     function onBin(point: point): bool {
         return Machine.arranging && Math.hypot(point.x - (bin.x + bin.width / 2), point.y - (bin.y + bin.height / 2)) <= bin.width / 2 + 16;
@@ -159,13 +166,22 @@ Scope {
         id: card
 
         property string widget: ""
-        // Its width at its own size: all of it grows and shrinks from there, from its corner.
+        // Its width as it comes: all of it grows and shrinks from there, from its corner.
         property real base: 320
+        // Or, made to any shape, its width and height apart, and what's in it laid out again; at
+        // the least this big.
+        property bool free: false
+        property size least: Qt.size(200, 120)
         default property alias content: inner.data
 
         readonly property var place: Machine.widgetPlaces[card.widget] ?? null
         readonly property real tall: inner.implicitHeight + 40
-        readonly property real size: card.sizing > 0 ? card.sizing : (Machine.widgetSizes[card.widget] ?? 1)
+        // How big it is: being resized, as kept, or as it comes. A number is how many times its
+        // size; [width, height], for one made to any shape.
+        readonly property var shape: card.sizing !== null ? card.sizing : (Machine.widgetSizes[card.widget] ?? null)
+        readonly property real times: typeof card.shape === "number" ? card.shape : 1
+        readonly property bool shaped: card.free && Array.isArray(card.shape)
+        readonly property real size: card.free ? 1 : card.times
         // While it's dragged: where the pointer took it, in the desk and on the card, and how far it
         // has gone since. Over the cross it shrinks towards the pointer.
         property point grab: Qt.point(0, 0)
@@ -174,7 +190,7 @@ Scope {
         property bool dragging: false
         readonly property bool binned: card.dragging && root.onBin(Qt.point(card.grab.x + card.moved.x, card.grab.y + card.moved.y))
         // While its corner is dragged: the size it's taking.
-        property real sizing: 0
+        property var sizing: null
 
         function take(area: Item, mx: real, my: real): void {
             card.grab = area.mapToItem(desk, mx, my);
@@ -203,17 +219,17 @@ Scope {
         }
 
         function sized(): void {
-            if (card.sizing <= 0)
+            if (card.sizing === null)
                 return;
             Machine.sizeWidget(card.widget, card.sizing);
-            card.sizing = 0;
+            card.sizing = null;
             root.drop(card, card.x, card.y);
         }
 
         visible: root.enabled(card.widget)
         onVisibleChanged: settling.restart()
-        width: card.base * card.size
-        implicitHeight: card.tall * card.size
+        width: card.shaped ? card.shape[0] : card.base * card.times
+        implicitHeight: card.shaped ? card.shape[1] : card.tall * card.times
         height: implicitHeight
         // Within the desk; while dragged, where the pointer takes it, the cross included.
         readonly property real leftAt: (card.place !== null ? card.place[0] : 0) + card.moved.x
@@ -258,8 +274,8 @@ Scope {
         }
 
         Item {
-            width: card.base
-            height: card.tall
+            width: card.free ? card.width : card.base
+            height: card.free ? card.height : card.tall
             scale: card.size
             transformOrigin: Item.TopLeft
 
@@ -268,6 +284,7 @@ Scope {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
+                anchors.bottom: card.free ? parent.bottom : undefined
                 anchors.margins: 20
                 anchors.leftMargin: 22
                 anchors.rightMargin: 22
@@ -294,7 +311,7 @@ Scope {
             id: corner
 
             property point from: Qt.point(0, 0)
-            property real start: 1
+            property var start: null
 
             z: 11
             anchors.right: parent.right
@@ -306,14 +323,14 @@ Scope {
             cursorShape: Qt.SizeFDiagCursor
             onPressed: mouse => {
                 corner.from = corner.mapToItem(desk, mouse.x, mouse.y);
-                corner.start = card.size;
-                card.sizing = card.size;
+                corner.start = card.free ? { w: card.width, h: card.height } : card.size;
+                card.sizing = card.free ? [card.width, card.height] : card.size;
             }
             onPositionChanged: mouse => {
-                if (card.sizing <= 0)
+                if (card.sizing === null)
                     return;
-                const now = corner.mapToItem(desk, mouse.x, mouse.y);
-                card.sizing = root.resized(card, corner.start, now.x - corner.from.x, now.y - corner.from.y);
+                const now = corner.mapToItem(desk, mouse.x, mouse.y), dx = now.x - corner.from.x, dy = now.y - corner.from.y;
+                card.sizing = card.free ? root.stretched(card, corner.start, dx, dy) : root.resized(card, corner.start, dx, dy);
             }
             onReleased: card.sized()
             onCanceled: card.sized()
@@ -461,11 +478,14 @@ Scope {
             Card {
                 id: networkCard
                 widget: "network"
+                free: true
+                least: Qt.size(240, 112)
 
                 NetRates {}
 
                 DotScope {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     Layout.preferredHeight: 40
                     series: SysStats.rxHistory
                     secondary: SysStats.txHistory
@@ -476,6 +496,8 @@ Scope {
             Card {
                 id: calendarCard
                 widget: "calendar"
+                free: true
+                least: Qt.size(280, calendarCard.listTop + 36)
 
                 readonly property date now: clock.date
                 readonly property int year: calendarCard.now.getFullYear()
@@ -484,8 +506,11 @@ Scope {
                 readonly property int first: Qt.locale(Lang.locale).firstDayOfWeek
                 readonly property var days: Calendar.month(calendarCard.year, calendarCard.month, calendarCard.first)
                 readonly property var busy: Calendar.busy(calendarCard.year, calendarCard.month)
-                readonly property var next: Calendar.upcoming(calendarCard.now.getTime() / 1000, 3)
-                readonly property real cell: (calendarCard.base - 44) / 7
+                // As it comes, three of what comes next; made taller, as many as fit.
+                readonly property real listTop: 20 + monthGrid.y + monthGrid.height + 12
+                readonly property int rows: calendarCard.shaped ? Math.max(1, Math.floor((calendarCard.height - 20 - calendarCard.listTop + 6) / 22)) : 3
+                readonly property var next: Calendar.upcoming(calendarCard.now.getTime() / 1000, calendarCard.rows)
+                readonly property real cell: ((calendarCard.free ? calendarCard.width : calendarCard.base) - 44) / 7
 
                 Label {
                     text: Case.sentence(Qt.locale(Lang.locale).standaloneMonthName(calendarCard.month, Locale.LongFormat))
@@ -493,6 +518,7 @@ Scope {
                 }
 
                 Grid {
+                    id: monthGrid
                     Layout.topMargin: 4
                     columns: 7
 
@@ -563,9 +589,10 @@ Scope {
                     }
                 }
 
-                // What comes next, or where the calendars go.
+                // What comes next, or where the calendars go; below, what room is left.
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     Layout.topMargin: 6
                     spacing: 6
 
@@ -600,6 +627,10 @@ Scope {
                         text: Calendar.any ? Lang.calNothing : Lang.widgetCalendarNone
                         color: Tokens.muted
                         font.pixelSize: 12
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
                     }
                 }
             }
@@ -812,10 +843,13 @@ Scope {
                     required property string modelData
 
                     widget: photoCard.modelData
+                    free: true
+                    least: Qt.size(160, 120)
 
                     DotScreen {
                         id: photo
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
                         Layout.preferredHeight: 208
                         source: Machine.photoUrl(photoCard.modelData)
                         pitch: 4
