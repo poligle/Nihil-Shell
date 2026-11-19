@@ -29,7 +29,6 @@ Flickable {
 
         Setting {
             title: Lang.deckUse
-            sub: page.wanted && !Deck.enabled ? Lang.deckApply : page.wanted ? Lang.deckNetworks : ""
 
             Toggle {
                 on: page.wanted

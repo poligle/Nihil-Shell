@@ -139,8 +139,7 @@ Flickable {
             title: Lang.cfgWeatherPlace
             sub: Weather.searching !== "" ? Lang.cfgWeatherSearching
                 : Weather.notFound !== "" ? Lang.cfgWeatherNotFound.arg(Weather.notFound)
-                : Weather.searchFailed ? Lang.cfgWeatherSearchFailed
-                : Weather.placed ? Lang.cfgWeatherAt.arg(Weather.where.label ?? "") : ""
+                : Weather.searchFailed ? Lang.cfgWeatherSearchFailed : ""
 
             Field {
                 id: weatherPlace
