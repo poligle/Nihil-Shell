@@ -68,9 +68,9 @@ Singleton {
         return age < 0 || age >= 30 * root.minute;
     }
 
-    // 14°, -3°: whole degrees, and no minus for what rounds to nothing.
+    // 14°, -3°: whole degrees, and no minus for what rounds to nothing; dashes for none.
     function degrees(value: real): string {
-        return (Math.round(value) || 0) + "°";
+        return Number.isFinite(value) ? (Math.round(value) || 0) + "°" : "--°";
     }
 
     function read(): void {

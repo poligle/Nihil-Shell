@@ -6,7 +6,6 @@
 		locale = "es_ES";
 		dateLong = "dddd, d 'de' MMMM";
 		dateShort = "d 'de' MMMM";
-		dayName = "dddd";
 		lockDate = "%a %d %b";
 		lockLocale = "es_ES.UTF-8";
 
@@ -654,6 +653,7 @@
 		noteWrite = "Escribir";
 		noteAnother = "Otra nota";
 		noteDone = "Listo";
+		notePlaceholder = "Escribe algo";
 		cfgWidgetGithub = "Contribuciones de GitHub";
 		cfgGithubUser = "Usuario de GitHub";
 		cfgWeatherPlace = "Lugar del tiempo";
@@ -858,7 +858,6 @@
 		locale = "en_GB";
 		dateLong = "dddd d MMMM";
 		dateShort = "d MMMM";
-		dayName = "dddd";
 		lockDate = "%a %d %b";
 		lockLocale = "C.UTF-8";
 
@@ -1506,6 +1505,7 @@
 		noteWrite = "Write";
 		noteAnother = "Another note";
 		noteDone = "Done";
+		notePlaceholder = "Write something";
 		cfgWidgetGithub = "GitHub contributions";
 		cfgGithubUser = "GitHub username";
 		cfgWeatherPlace = "Weather location";

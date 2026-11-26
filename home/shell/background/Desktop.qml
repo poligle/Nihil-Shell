@@ -40,7 +40,7 @@ Scope {
     // The note being written, by name, in its sheet over the windows; "" while none is.
     property string writing: ""
     readonly property var noteVoices: ({ ink: String(Tokens.ink), dim: String(Tokens.dim), code: "#E6E6E6", surface: String(Tokens.surface),
-                                         mono: Tokens.fontMono, icons: Tokens.fontIcons, breaks: true, tasks: true })
+                                         mono: Tokens.fontMono, icons: Tokens.fontIcons, breaks: true, tasks: true, size: 13, line: 1.25 })
 
     function write(name: string): void {
         if (Machine.arranging || root.target === null)
@@ -191,13 +191,17 @@ Scope {
         property real value: 0
         property string reading: ""
         property bool alert: false
+        // Its name's size, bigger in a card made small; its figure's, and their columns, with it.
+        property real fine: 11
+        readonly property real figure: Math.max(12, gauge.fine)
 
         Layout.fillWidth: true
         spacing: 10
 
         Label {
-            Layout.preferredWidth: 36
+            Layout.preferredWidth: Math.ceil(36 * gauge.fine / 11)
             text: gauge.name
+            font.pixelSize: gauge.fine
         }
 
         DotMeter {
@@ -211,11 +215,11 @@ Scope {
         }
 
         Txt {
-            Layout.preferredWidth: 40
+            Layout.preferredWidth: Math.ceil(40 * gauge.figure / 12)
             horizontalAlignment: Text.AlignRight
             text: gauge.reading
             color: Tokens.dim
-            font.pixelSize: 12
+            font.pixelSize: gauge.figure
         }
     }
 
@@ -239,6 +243,9 @@ Scope {
         readonly property real times: typeof card.shape === "number" ? card.shape : 1
         readonly property bool shaped: card.free && Array.isArray(card.shape)
         readonly property real size: card.free ? 1 : card.times
+        // Its smallest text, as it's drawn before the card's own scale: 11 pixels on the screen at
+        // the least, however small the card is made.
+        readonly property real fine: 11 / Math.min(1, card.size)
         // While it's dragged: where the pointer took it, in the desk and on the card, and how far it
         // has gone since. Over the cross it shrinks towards the pointer.
         property point grab: Qt.point(0, 0)
@@ -524,18 +531,12 @@ Scope {
                     font.pixelSize: 84
                 }
 
-                Label {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Case.sentence(clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dayName))
-                    color: Tokens.dim
-                    font.pixelSize: 12
-                }
-
                 Txt {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dateShort)
-                    color: Tokens.muted
-                    font.pixelSize: 13
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    text: Case.sentence(clock.date.toLocaleString(Qt.locale(Lang.locale), Lang.dateLong))
+                    color: Tokens.dim
+                    font.pixelSize: 15
                 }
             }
 
@@ -572,7 +573,8 @@ Scope {
                 readonly property var busy: Calendar.busy(calendarCard.year, calendarCard.month)
                 // As it comes, three of what comes next; made taller, as many as fit.
                 readonly property real listTop: 20 + monthGrid.y + monthGrid.height + 12
-                readonly property int rows: calendarCard.shaped ? Math.max(1, Math.floor((calendarCard.height - 20 - calendarCard.listTop + 6) / 22)) : 3
+                readonly property int rows: calendarCard.shaped
+                    ? Math.max(1, Math.floor((calendarCard.height - 20 - calendarCard.listTop + 6) / 22) - (Calendar.failed ? 1 : 0)) : 3
                 readonly property var next: Calendar.upcoming(calendarCard.now.getTime() / 1000, calendarCard.rows)
                 readonly property real cell: ((calendarCard.free ? calendarCard.width : calendarCard.base) - 44) / 7
 
@@ -695,6 +697,12 @@ Scope {
                         wrapMode: Text.WordWrap
                     }
 
+                    Alert {
+                        Layout.fillWidth: true
+                        visible: Calendar.failed
+                        text: Lang.cfgCalendarUnread
+                    }
+
                     Item {
                         Layout.fillHeight: true
                     }
@@ -708,18 +716,21 @@ Scope {
 
                 Gauge {
                     name: "CPU"
+                    fine: systemCard.fine
                     value: SysStats.cpu
                     reading: Lang.percent.arg(Math.round(SysStats.cpu * 100))
                 }
 
                 Gauge {
                     name: "RAM"
+                    fine: systemCard.fine
                     value: SysStats.mem
                     reading: Lang.percent.arg(Math.round(SysStats.mem * 100))
                 }
 
                 Gauge {
                     name: Lang.widgetSystemTemp
+                    fine: systemCard.fine
                     value: SysStats.tempKnown ? Math.min(1, SysStats.temp / 100) : 0
                     reading: SysStats.tempKnown ? Math.round(SysStats.temp) + "°" : "--"
                     alert: SysStats.tempKnown && SysStats.temp >= 90
@@ -727,6 +738,7 @@ Scope {
 
                 Gauge {
                     name: Lang.widgetSystemDisk
+                    fine: systemCard.fine
                     value: SysStats.disk
                     reading: Lang.percent.arg(Math.round(SysStats.disk * 100))
                 }
@@ -752,19 +764,24 @@ Scope {
                         Layout.fillWidth: true
                         spacing: 2
 
-                        Label { text: Case.sentence(Media.player) || Lang.media }
+                        Label {
+                            Layout.fillWidth: true
+                            text: Case.sentence(Media.player) || Lang.media
+                            font.pixelSize: mediaCard.fine
+                        }
 
                         Txt {
                             Layout.fillWidth: true
                             text: Media.title
                             font.weight: Font.Medium
+                            font.pixelSize: Math.max(14, mediaCard.fine)
                         }
 
                         Txt {
                             Layout.fillWidth: true
                             text: Media.artist
                             color: Tokens.dim
-                            font.pixelSize: 12
+                            font.pixelSize: Math.max(12, mediaCard.fine)
                             visible: text !== ""
                         }
                     }
@@ -782,23 +799,35 @@ Scope {
                 RowLayout {
                     Layout.fillWidth: true
 
-                    Label { text: Media.shown(Media.position) + " / " + Media.shown(Media.length) }
+                    Label {
+                        text: Media.shown(Media.position) + " / " + Media.shown(Media.length)
+                        font.pixelSize: mediaCard.fine
+                    }
                     Item { Layout.fillWidth: true }
 
                     MediaKeys { size: 28 }
                 }
             }
 
-            // The weather where it was told: now, today's highest and lowest, and the days after.
+            // The weather where it was told: now, today's highest and lowest, and the days after;
+            // dashes for what hasn't been read, as the music has them.
             Card {
                 id: weatherCard
                 widget: "weather"
 
                 readonly property var forecast: Weather.current ? Weather.forecast : null
                 // Today at the place and the three days after it, by their dates: one read before
-                // midnight starts with yesterday. A day it hasn't has no sky.
+                // midnight starts with yesterday. A day it hasn't has no sky and no figures.
                 readonly property var days: Weather.days(clock.date.getTime())
-                readonly property var today: weatherCard.days[0].code >= 0 ? weatherCard.days[0] : null
+                readonly property var today: weatherCard.days[0]
+                // The last read failed: with nothing read before it says so, and over what was, it
+                // says when that was read.
+                readonly property bool failed: Weather.placed && Weather.failed
+                readonly property string readAt: {
+                    const at = new Date(Weather.readAt);
+                    return at.toDateString() === clock.date.toDateString() ? Qt.formatTime(at, "HH:mm")
+                        : Case.sentence(at.toLocaleString(Qt.locale(Lang.locale), "ddd HH:mm"));
+                }
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -809,50 +838,69 @@ Scope {
                         Layout.fillWidth: true
                         Layout.maximumWidth: Math.ceil(weatherPlace.implicitWidth)
                         text: Weather.placed && Weather.where.name ? Weather.where.name : Lang.cfgWidgetWeather
+                        font.pixelSize: weatherCard.fine
                     }
 
                     Txt {
                         Layout.fillWidth: true
                         Layout.preferredWidth: 0
+                        visible: !weatherCard.failed
                         horizontalAlignment: Text.AlignRight
-                        text: weatherCard.forecast !== null ? Weather.skyName(weatherCard.forecast.now.code)
-                            : !Weather.placed ? Lang.widgetWeatherNoPlace : Weather.failed ? Lang.widgetWeatherFailed : ""
+                        text: !Weather.placed ? Lang.widgetWeatherNoPlace
+                            : weatherCard.forecast !== null ? Weather.skyName(weatherCard.forecast.now.code) : ""
                         color: Tokens.dim
-                        font.pixelSize: 12
+                        font.pixelSize: Math.max(12, weatherCard.fine)
+                    }
+
+                    // At the right, by the edge; the hour of what's shown is never cut short.
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
+                        Layout.minimumWidth: weatherCard.forecast !== null ? Math.ceil(weatherFailed.implicitWidth) : 0
+                        implicitHeight: weatherFailed.implicitHeight
+                        visible: weatherCard.failed
+
+                        Alert {
+                            id: weatherFailed
+                            anchors.right: parent.right
+                            width: Math.min(weatherFailed.implicitWidth, parent.width)
+                            text: weatherCard.forecast !== null ? weatherCard.readAt : Lang.widgetWeatherFailed
+                            font.pixelSize: weatherCard.fine
+                        }
                     }
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
-                    visible: weatherCard.forecast !== null
                     spacing: 14
 
                     Ico {
                         glyph: Weather.icon(weatherCard.forecast?.now.code ?? -1, weatherCard.forecast?.now.day ?? true)
-                        color: Tokens.ink
+                        color: weatherCard.forecast !== null ? Tokens.ink : Tokens.off
                         font.pixelSize: 40
                     }
 
                     DotText {
-                        text: Weather.degrees(weatherCard.forecast?.now.temp ?? 0)
+                        text: Weather.degrees(weatherCard.forecast?.now.temp ?? NaN)
                         font.pixelSize: 64
                     }
 
                     Item { Layout.fillWidth: true }
 
                     ColumnLayout {
-                        visible: weatherCard.today !== null
                         spacing: 2
 
                         Txt {
                             Layout.alignment: Qt.AlignRight
-                            text: Weather.degrees(weatherCard.today?.max ?? 0)
+                            text: Weather.degrees(weatherCard.today.max)
+                            font.pixelSize: Math.max(14, weatherCard.fine)
                         }
 
                         Txt {
                             Layout.alignment: Qt.AlignRight
-                            text: Weather.degrees(weatherCard.today?.min ?? 0)
+                            text: Weather.degrees(weatherCard.today.min)
                             color: Tokens.dim
+                            font.pixelSize: Math.max(14, weatherCard.fine)
                         }
                     }
                 }
@@ -860,11 +908,10 @@ Scope {
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.topMargin: 6
-                    visible: weatherCard.forecast !== null
                     spacing: 0
 
                     Repeater {
-                        model: weatherCard.days.slice(1).filter(day => day.code >= 0)
+                        model: weatherCard.days.slice(1)
 
                         ColumnLayout {
                             id: ahead
@@ -879,11 +926,13 @@ Scope {
                             Label {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: Case.sentence(new Date(ahead.modelData.date + "T12:00:00").toLocaleString(Qt.locale(Lang.locale), "ddd"))
+                                font.pixelSize: weatherCard.fine
                             }
 
                             Ico {
                                 Layout.alignment: Qt.AlignHCenter
                                 glyph: Weather.icon(ahead.modelData.code, true)
+                                color: ahead.modelData.code >= 0 ? Tokens.dim : Tokens.off
                                 font.pixelSize: 18
                             }
 
@@ -893,13 +942,13 @@ Scope {
 
                                 Txt {
                                     text: Weather.degrees(ahead.modelData.max)
-                                    font.pixelSize: 12
+                                    font.pixelSize: Math.max(12, weatherCard.fine)
                                 }
 
                                 Txt {
                                     text: Weather.degrees(ahead.modelData.min)
                                     color: Tokens.dim
-                                    font.pixelSize: 12
+                                    font.pixelSize: Math.max(12, weatherCard.fine)
                                 }
                             }
                         }
@@ -1004,22 +1053,133 @@ Scope {
                         }
                     }
 
-                    Text {
-                        id: noteText
+                    // What doesn't fit stays below the last line that shows whole, under a fade; the
+                    // wheel brings it up a line at a time.
+                    Item {
+                        id: notePage
+
+                        readonly property string html: Markdown.html(noteCard.text, root.noteVoices)
+                        // How far down it's been brought, at the top of a line.
+                        property real scrolled: 0
+                        property real wheeled: 0
+                        // From there, down to the last line that shows whole.
+                        readonly property real shown: {
+                            const page = notePage.height, from = notePage.scrolled, limit = from + page;
+                            if (lines.width <= 0 || noteCard.text === "" || lines.contentHeight <= limit)
+                                return page;
+                            const line = lines.positionToRectangle(lines.positionAt(0, limit));
+                            return line.y > from && line.y < limit && line.y + line.height > limit ? line.y - from : page;
+                        }
+                        readonly property bool more: lines.contentHeight > notePage.scrolled + notePage.shown
+
+                        // The top of the line at y, of the one after it, and of the one before it.
+                        function lineAt(y: real): real {
+                            return lines.positionToRectangle(lines.positionAt(0, y)).y;
+                        }
+                        function below(y: real): real {
+                            const at = notePage.lineAt(y);
+                            for (let probe = at + 2; probe < lines.contentHeight; probe += 2) {
+                                if (notePage.lineAt(probe) > at)
+                                    return notePage.lineAt(probe);
+                            }
+                            return at;
+                        }
+                        function above(y: real): real {
+                            const at = notePage.lineAt(y);
+                            for (let probe = at - 2; probe > 0; probe -= 2) {
+                                if (notePage.lineAt(probe) < at)
+                                    return notePage.lineAt(probe);
+                            }
+                            return 0;
+                        }
+
+                        function scroll(down: bool): void {
+                            if (down && notePage.more)
+                                notePage.scrolled = notePage.below(notePage.scrolled);
+                            else if (!down && notePage.scrolled > 0)
+                                notePage.scrolled = notePage.above(notePage.scrolled);
+                        }
+
+                        // Shorter than it was, it comes back down as far as all of the rest fits.
+                        function fit(): void {
+                            while (notePage.scrolled > 0 && lines.contentHeight - notePage.above(notePage.scrolled) <= notePage.height)
+                                notePage.scrolled = notePage.above(notePage.scrolled);
+                        }
+
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.preferredHeight: 96
-                        text: Markdown.html(noteCard.text, root.noteVoices)
-                        textFormat: Text.RichText
-                        wrapMode: Text.Wrap
-                        color: Tokens.ink
-                        font.family: Tokens.fontSans
-                        font.pixelSize: 13
-                        clip: true
-                        onLinkActivated: link => root.followNote(noteCard.modelData, link)
+                        onHeightChanged: notePage.fit()
 
-                        HoverHandler {
-                            cursorShape: noteText.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        Flickable {
+                            width: notePage.width
+                            height: notePage.shown
+                            contentWidth: notePage.width
+                            contentHeight: noteText.contentHeight
+                            contentY: notePage.scrolled
+                            interactive: false
+                            clip: true
+
+                            Text {
+                                id: noteText
+                                width: notePage.width
+                                text: notePage.html
+                                textFormat: Text.RichText
+                                wrapMode: Text.Wrap
+                                color: Tokens.ink
+                                font.family: Tokens.fontSans
+                                font.pixelSize: root.noteVoices.size
+                                onLinkActivated: link => root.followNote(noteCard.modelData, link)
+
+                                HoverHandler {
+                                    cursorShape: noteText.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                }
+                            }
+                        }
+
+                        // The same, laid out alike and never shown: only a TextEdit tells where its
+                        // lines are, and one shown would keep the press that starts arranging.
+                        TextEdit {
+                            id: lines
+                            visible: false
+                            width: notePage.width
+                            text: notePage.html
+                            textFormat: TextEdit.RichText
+                            wrapMode: TextEdit.Wrap
+                            readOnly: true
+                            font: noteText.font
+                            onContentHeightChanged: notePage.fit()
+                        }
+
+                        Txt {
+                            width: notePage.width
+                            visible: noteCard.text.trim() === ""
+                            text: Lang.notePlaceholder
+                            color: Tokens.muted
+                            font.pixelSize: root.noteVoices.size
+                        }
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            y: notePage.shown - height
+                            height: Math.min(40, notePage.shown)
+                            visible: notePage.more
+                            gradient: Gradient {
+                                GradientStop { position: 0; color: "transparent" }
+                                GradientStop { position: 1; color: Tokens.black }
+                            }
+                        }
+
+                        // A notch at a time, a touchpad's small steps adding up to one.
+                        WheelHandler {
+                            onWheel: event => {
+                                notePage.wheeled += event.angleDelta.y;
+                                const notches = Math.trunc(notePage.wheeled / 120);
+                                notePage.wheeled -= notches * 120;
+                                for (let i = 0; i < Math.abs(notches); i++)
+                                    notePage.scroll(notches < 0);
+                            }
                         }
                     }
                 }
@@ -1037,6 +1197,9 @@ Scope {
                 readonly property var cells: Contributions.cells(githubCard.weeks, Qt.locale(Lang.locale).firstDayOfWeek, githubCard.today)
                 // Off, then lit a step at a time to full.
                 readonly property var shades: [0, 0.3, 0.52, 0.75, 1].map(f => Qt.tint(Tokens.off, Qt.rgba(Tokens.ink.r, Tokens.ink.g, Tokens.ink.b, f)))
+                // The last read failed, with nothing read before to show.
+                readonly property bool failed: Contributions.valid(Contributions.user) && Contributions.failed
+                    && !(Contributions.current && Contributions.total >= 0)
 
                 // A year of weeks side by side, as GitHub has it.
                 base: 44 + githubCard.weeks * githubCard.pitch - (githubCard.pitch - githubCard.dot)
@@ -1050,19 +1213,35 @@ Scope {
                         Layout.fillWidth: true
                         Layout.maximumWidth: Math.ceil(githubUser.implicitWidth)
                         text: Contributions.user !== "" ? Contributions.user : Lang.cfgWidgetGithub
+                        font.pixelSize: githubCard.fine
                     }
 
                     Txt {
                         Layout.fillWidth: true
                         Layout.preferredWidth: 0
+                        visible: !githubCard.failed
                         horizontalAlignment: Text.AlignRight
                         text: !Contributions.valid(Contributions.user) ? Lang.widgetGithubNoUser
                             : Contributions.current && Contributions.total === 1 ? Lang.widgetGithubTotalOne
                             : Contributions.current && Contributions.total >= 0
-                                ? Lang.widgetGithubTotal.arg(Contributions.total.toLocaleString(Qt.locale(Lang.locale), "f", 0))
-                            : Contributions.failed ? Lang.widgetGithubFailed : ""
+                                ? Lang.widgetGithubTotal.arg(Contributions.total.toLocaleString(Qt.locale(Lang.locale), "f", 0)) : ""
                         color: Tokens.dim
-                        font.pixelSize: 12
+                        font.pixelSize: Math.max(12, githubCard.fine)
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
+                        implicitHeight: githubFailed.implicitHeight
+                        visible: githubCard.failed
+
+                        Alert {
+                            id: githubFailed
+                            anchors.right: parent.right
+                            width: Math.min(githubFailed.implicitWidth, parent.width)
+                            text: Lang.widgetGithubFailed
+                            font.pixelSize: githubCard.fine
+                        }
                     }
                 }
 
@@ -1216,6 +1395,15 @@ Scope {
                             page.contentY = r.y;
                         else if (r.y + r.height > page.contentY + page.height)
                             page.contentY = r.y + r.height - page.height;
+                    }
+
+                    Txt {
+                        width: page.width
+                        visible: words.length === 0
+                        text: Lang.notePlaceholder
+                        color: Tokens.muted
+                        font.family: Tokens.fontMono
+                        font.pixelSize: 13
                     }
 
                     TextEdit {
