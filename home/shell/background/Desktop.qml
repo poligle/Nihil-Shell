@@ -620,7 +620,7 @@ Scope {
                                 anchors.centerIn: parent
                                 anchors.verticalCenterOffset: -2
                                 text: date.day.d
-                                color: date.isToday ? Tokens.black : date.day.inMonth ? Tokens.ink : Tokens.off
+                                color: date.isToday ? Tokens.black : date.day.inMonth ? Tokens.ink : Tokens.muted
                                 font.pixelSize: 12
                             }
 
@@ -672,10 +672,12 @@ Scope {
                     }
 
                     Txt {
+                        Layout.fillWidth: true
                         visible: calendarCard.next.length === 0
                         text: Calendar.any ? Lang.calNothing : Lang.widgetCalendarNone
                         color: Tokens.muted
                         font.pixelSize: 12
+                        wrapMode: Text.WordWrap
                     }
 
                     Item {
@@ -702,10 +704,10 @@ Scope {
                 }
 
                 Gauge {
-                    name: "°C"
-                    value: Math.min(1, SysStats.temp / 100)
-                    reading: Math.round(SysStats.temp) + "°"
-                    alert: SysStats.temp >= 90
+                    name: Lang.widgetSystemTemp
+                    value: SysStats.tempKnown ? Math.min(1, SysStats.temp / 100) : 0
+                    reading: SysStats.tempKnown ? Math.round(SysStats.temp) + "°" : "--"
+                    alert: SysStats.tempKnown && SysStats.temp >= 90
                 }
 
                 Gauge {
@@ -785,12 +787,16 @@ Scope {
                     spacing: 12
 
                     Label {
+                        id: weatherPlace
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: Math.ceil(weatherPlace.implicitWidth)
                         text: Weather.placed && Weather.where.name ? Weather.where.name : Lang.cfgWidgetWeather
                     }
 
-                    Item { Layout.fillWidth: true }
-
                     Txt {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
+                        horizontalAlignment: Text.AlignRight
                         text: weatherCard.forecast !== null ? Weather.skyName(weatherCard.forecast.now.code)
                             : !Weather.placed ? Lang.widgetWeatherNoPlace : Weather.failed ? Lang.widgetWeatherFailed : ""
                         color: Tokens.dim
@@ -848,6 +854,8 @@ Scope {
                             required property var modelData
 
                             Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.maximumWidth: Number.POSITIVE_INFINITY
                             spacing: 4
 
                             Label {
@@ -1020,12 +1028,16 @@ Scope {
                     spacing: 12
 
                     Label {
+                        id: githubUser
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: Math.ceil(githubUser.implicitWidth)
                         text: Contributions.user !== "" ? Contributions.user : Lang.cfgWidgetGithub
                     }
 
-                    Item { Layout.fillWidth: true }
-
                     Txt {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
+                        horizontalAlignment: Text.AlignRight
                         text: !Contributions.valid(Contributions.user) ? Lang.widgetGithubNoUser
                             : Contributions.current && Contributions.total === 1 ? Lang.widgetGithubTotalOne
                             : Contributions.current && Contributions.total >= 0

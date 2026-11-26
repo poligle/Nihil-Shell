@@ -504,6 +504,11 @@ Singleton {
         liveWallpaper(name);
     }
 
+    // A wallpaper's name in the language in use; one of one's own, as its file is called.
+    function wallpaperName(name: string): string {
+        return Lang["wall" + name.charAt(0).toUpperCase() + name.slice(1)] ?? Case.sentence(name.replace(/[-_]/g, " "));
+    }
+
     function setGlass(on: bool): void {
         root.glass = on;
         Quickshell.execDetached([Config.cmd.wallpaper, "glass", on ? "on" : "off"]);

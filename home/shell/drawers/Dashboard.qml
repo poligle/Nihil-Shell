@@ -175,10 +175,10 @@ Item {
                     Dial {
                         Layout.preferredWidth: 82
                         Layout.preferredHeight: 82
-                        value: Math.min(1, SysStats.temp / 100)
-                        text: String(Math.round(SysStats.temp))
+                        value: SysStats.tempKnown ? Math.min(1, SysStats.temp / 100) : 0
+                        text: SysStats.tempKnown ? String(Math.round(SysStats.temp)) : "--"
                         label: "°C"
-                        alert: SysStats.temp >= 90
+                        alert: SysStats.tempKnown && SysStats.temp >= 90
                     }
                 }
 

@@ -411,6 +411,11 @@
 		cfgLook = "Aspecto";
 		cfgApps = "Aplicaciones";
 		cfgWallpaper = "Fondo";
+		wallAntenna = "Antena";
+		wallBlackhole = "Agujero negro";
+		wallGalaxy = "Galaxia";
+		wallNight = "Noche";
+		wallSisyphus = "Sísifo";
 		cfgKeys = "Atajos";
 		cfgKeyNone = "Sin tecla";
 		cfgKeyName = "Tecla: D, F5, Return, Space, comma…";
@@ -619,6 +624,7 @@
 		weatherShowers = "Chubascos";
 		weatherSnow = "Nieve";
 		weatherStorm = "Tormenta";
+		widgetSystemTemp = "Temp.";
 		widgetSystemDisk = "Disco";
 		widgetCalendarNone = "Tus calendarios van en Preferencias, Aspecto";
 		calNow = "Ahora";
@@ -1256,6 +1262,11 @@
 		cfgLook = "Appearance";
 		cfgApps = "Apps";
 		cfgWallpaper = "Wallpaper";
+		wallAntenna = "Antenna";
+		wallBlackhole = "Black hole";
+		wallGalaxy = "Galaxy";
+		wallNight = "Night";
+		wallSisyphus = "Sisyphus";
 		cfgKeys = "Shortcuts";
 		cfgKeyNone = "No key";
 		cfgKeyName = "Key: D, F5, Return, Space, comma…";
@@ -1464,6 +1475,7 @@
 		weatherShowers = "Showers";
 		weatherSnow = "Snow";
 		weatherStorm = "Thunderstorm";
+		widgetSystemTemp = "Temp";
 		widgetSystemDisk = "Disk";
 		widgetCalendarNone = "Your calendars go in Preferences, Appearance";
 		calNow = "Now";

@@ -16,6 +16,8 @@ Singleton {
     property real cpu: 0            // 0..1
     property real mem: 0            // 0..1
     property real temp: 0           // degrees C
+    // Whether temp is a reading: with no sensor found, or while another is looked for, it isn't.
+    readonly property bool tempKnown: root.tempPath !== "" && root.temp > 0
     property real disk: 0           // 0..1, of the system's filesystem, for the system card
     property string iface: ""
     property real rx: 0             // bytes/s
@@ -156,6 +158,7 @@ Singleton {
                 root.tempSkip = root.tempPath;
                 root.tempMisses = 0;
                 root.tempPath = "";
+                root.temp = 0;
                 findTemp.running = true;
             }
         }
