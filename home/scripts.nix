@@ -74,6 +74,7 @@ let
 		run="''${XDG_RUNTIME_DIR:?}/nihil-record"
 		mkdir -p "$run"
 		# One at a time: two starts at once would leave two recorders on one file.
+		# What outlives this script (the recorder, wl-copy) closes 9, or the lock would outlive it too.
 		exec 9> "$run/lock"
 		${pkgs.util-linux}/bin/flock 9
 
@@ -109,7 +110,7 @@ let
 			printf '%s\n' "$name" > "$run/file"
 			printf '%s\n' "$dir/.nihil-record.mp4" > "$run/raw"
 			${pkgs.wf-recorder}/bin/wf-recorder "''${where[@]}" -x yuv420p -c libx264 \
-				-p crf=20 -p preset=veryfast -f "$(cat "$run/raw")" > "$run/log" 2>&1 &
+				-p crf=20 -p preset=veryfast -f "$(cat "$run/raw")" > "$run/log" 2>&1 9>&- &
 			echo $! > "$run/pid"
 			sleep 0.5
 			if recording; then
@@ -151,7 +152,7 @@ let
 				[ "$died" = 0 ] || { failed; return 0; }
 			fi
 			uri=$(set -- "$file"; ${fileUri})
-			${pkgs.wl-clipboard}/bin/wl-copy --type text/uri-list "$uri" || true
+			${pkgs.wl-clipboard}/bin/wl-copy --type text/uri-list "$uri" 9>&- || true
 			picture=()
 			if ${pkgs.ffmpeg-headless}/bin/ffmpeg -v error -y -i "$file" -frames:v 1 -vf scale=480:-2 "$run/frame.png" \
 				&& [ -s "$run/frame.png" ]; then
