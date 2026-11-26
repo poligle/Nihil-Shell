@@ -21,18 +21,39 @@ Singleton {
 
     property bool turningOn: false
     property int waited: 0
+    // On or off as the user left it: systemd-rfkill keeps its block per device and can lose it.
+    property string wish: ""
+    readonly property string wishFile: Machine.stateDir + "/bluetooth"
 
-    // Off is an rfkill block, not just the adapter powered down: systemd-rfkill keeps it
-    // through restarts and sleep, and BlueZ powers the adapter on whenever it's unblocked.
+    // Off is an rfkill block, not just the adapter powered down: BlueZ powers the adapter on
+    // whenever it's unblocked.
     function setEnabled(on: bool): void {
         power.stop();
         root.turningOn = on;
+        root.wish = on ? "on" : "off";
+        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && echo \"$2\" > \"$1\"",
+                                 "sh", root.wishFile, root.wish]);
         if (on) {
             root.waited = 0;
             unblock.running = true;
         } else {
             block.running = true;
         }
+    }
+
+    // When the shell starts and whenever an adapter shows up (boot, resume, bluetoothd restarting),
+    // off stays off.
+    function keep(): void {
+        if (root.wish === "off" && root.adapter && root.adapter.state !== BluetoothAdapterState.Blocked && !block.running)
+            block.running = true;
+    }
+    onAdapterChanged: keep()
+    onWishChanged: keep()
+
+    FileView {
+        path: root.wishFile
+        printErrors: false
+        onLoaded: root.wish = text().trim()
     }
 
     function write(adapter: var, on: bool): void {

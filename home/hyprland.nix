@@ -476,6 +476,7 @@ in
 				(floatingPanel "wifi-float" "nm-connection-editor")
 				(floatingPanel "bluetooth-float" ".*blueman-manager.*")
 				(floatingPanel "vol-float" "org.pulseaudio.pavucontrol")
+				{ name = "polkit-float"; match.title = "^(Authentication Required|Autenticación requerida)$"; float = true; center = true; }
 			];
 
 			layer_rule =

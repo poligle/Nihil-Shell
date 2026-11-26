@@ -453,10 +453,10 @@ Item {
                     }
                 }
 
-                Alert {
+                Label {
                     Layout.fillWidth: true
                     text: root.armed !== "" ? Lang.confirmTo.arg(root.armedName.toLowerCase()) : Updates.summary
-                    wrong: root.armed !== ""
+                    color: root.armed !== "" ? Tokens.ink : Tokens.muted
                     opacity: root.armed !== "" || updateButton.hovered ? 1 : 0
                 }
 
