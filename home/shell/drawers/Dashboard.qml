@@ -164,14 +164,17 @@ Item {
                 Layout.fillHeight: true
                 spacing: 10
 
-                Row {
-                    spacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
 
-                    Dial { width: 82; height: 82; value: SysStats.cpu; text: String(Math.round(SysStats.cpu * 100)); label: "CPU" }
-                    Dial { width: 82; height: 82; value: SysStats.mem; text: String(Math.round(SysStats.mem * 100)); label: "RAM" }
+                    Dial { Layout.preferredWidth: 82; Layout.preferredHeight: 82; value: SysStats.cpu; text: String(Math.round(SysStats.cpu * 100)); label: "CPU" }
+                    Item { Layout.fillWidth: true; Layout.minimumWidth: 6 }
+                    Dial { Layout.preferredWidth: 82; Layout.preferredHeight: 82; value: SysStats.mem; text: String(Math.round(SysStats.mem * 100)); label: "RAM" }
+                    Item { Layout.fillWidth: true; Layout.minimumWidth: 6 }
                     Dial {
-                        width: 82
-                        height: 82
+                        Layout.preferredWidth: 82
+                        Layout.preferredHeight: 82
                         value: Math.min(1, SysStats.temp / 100)
                         text: String(Math.round(SysStats.temp))
                         label: "°C"

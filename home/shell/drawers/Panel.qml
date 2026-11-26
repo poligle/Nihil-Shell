@@ -49,8 +49,9 @@ Item {
         expanded = expanded === name ? "" : name;
         if (expanded === "wifi") Network.scan();
         if (expanded === "update") {
+            flick.following = true;
             Updates.maybeCheck();
-            Qt.callLater(() => updatePassword.grab());
+            Qt.callLater(() => { flick.toEnd(); updatePassword.grab(); });
         }
         Bt.scan(expanded === "bt");
     }
@@ -99,7 +100,7 @@ Item {
         Ico {
             Layout.preferredWidth: 22
             glyph: row.glyph
-            color: row.muted ? Tokens.interrupt : Tokens.dim
+            color: row.muted ? Tokens.muted : Tokens.dim
 
             MouseArea {
                 anchors.fill: parent
@@ -129,15 +130,27 @@ Item {
         }
     }
 
+    // The session row stays out of it, at the foot, where notifications can't push it out of sight.
     Flickable {
-        anchors.fill: parent
+        id: flick
+        anchors.top: parent.top
+        anchors.bottom: footer.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.topMargin: 22
-        anchors.bottomMargin: 22
         anchors.leftMargin: 26
         anchors.rightMargin: 22
         contentHeight: column.implicitHeight
+        bottomMargin: 18
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+
+        // The update section is the last thing in it, over the button that opens it: it comes into
+        // view as it opens and as its list comes in, until it's scrolled by hand.
+        property bool following: false
+        function toEnd(): void { contentY = Math.max(0, contentHeight + bottomMargin - height); }
+        onMovementStarted: following = false
+        onContentHeightChanged: if (following && root.expanded === "update") toEnd()
 
         ColumnLayout {
             id: column
@@ -159,7 +172,7 @@ Item {
                 columnSpacing: 0
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Network.wifiEnabled ? Icons.wifiOn : Icons.wifiOff
                     label: Lang.tileWifi
                     active: Network.wifiEnabled
@@ -170,7 +183,7 @@ Item {
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Bt.enabled ? Icons.btOn : Icons.btOff
                     label: Lang.tileBluetooth
                     active: Bt.enabled
@@ -181,7 +194,7 @@ Item {
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Icons.speaker
                     label: Lang.tileOutput
                     active: !Audio.muted
@@ -192,7 +205,7 @@ Item {
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Audio.micMuted ? Icons.micOff : Icons.mic
                     label: Lang.tileMic
                     active: !Audio.micMuted
@@ -200,7 +213,7 @@ Item {
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Notifs.dnd ? Icons.bellOff : Icons.bell
                     label: Lang.tileDnd
                     active: Notifs.dnd
@@ -208,7 +221,7 @@ Item {
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Icons.night
                     label: Lang.tileNight
                     active: Toggles.night
@@ -219,7 +232,7 @@ Item {
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Icons.coffee
                     label: Lang.caffeine
                     active: Caffeine.on
@@ -227,14 +240,14 @@ Item {
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Icons.shot
                     label: Lang.tileShot
                     onToggled: { Drawers.close(); Recorder.shot(); }
                 }
 
                 Tile {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
                     glyph: Recorder.recording ? Icons.stop : Icons.record
                     label: Lang.tileRecord
                     active: Recorder.recording
@@ -403,144 +416,150 @@ Item {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                visible: root.expanded === "update" || Machine.updating
+                spacing: 6
 
-                Rectangle {
+                Txt {
                     Layout.fillWidth: true
-                    implicitHeight: 1
-                    color: Tokens.line
+                    visible: Updates.dev !== ""
+                    text: Lang.updDev
+                    color: Tokens.muted
+                    wrapMode: Text.Wrap
+                    elide: Text.ElideNone
+                    font.pixelSize: 12
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
+                Repeater {
+                    model: Updates.state === "behind" ? Updates.commits.slice(0, 6) : []
 
-                    CircleButton { glyph: Icons.lock; label: Lang.actLock; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.lock]); } }
-                    CircleButton { glyph: Icons.sleep; label: Lang.actSuspend; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.systemctl, "suspend"]); } }
-                    CircleButton { glyph: Icons.logout; label: Lang.actLogout; filled: root.armed === "logout"; onClicked: root.session("logout", [Config.cmd.uwsm, "stop"]) }
-                    CircleButton { glyph: Icons.restart; label: Lang.actReboot; filled: root.armed === "reboot"; onClicked: root.session("reboot", [Config.cmd.systemctl, "reboot"]) }
-                    CircleButton { glyph: Icons.power; label: Lang.actPowerOff; danger: true; filled: root.armed === "power"; onClicked: root.session("power", [Config.cmd.powerOff]) }
+                    RowLayout {
+                        id: commit
 
-                    Item { Layout.fillWidth: true }
+                        required property var modelData
 
-                    CircleButton {
-                        id: updateButton
-                        glyph: Icons.download
-                        label: Lang.updUpdate
-                        filled: root.expanded === "update"
-                        onClicked: root.toggleSection("update")
+                        Layout.fillWidth: true
+                        spacing: 10
 
-                        Rectangle {
-                            visible: Updates.state === "behind" && !updateButton.filled
-                            anchors.top: parent.top
-                            anchors.right: parent.right
-                            width: 9
-                            height: 9
-                            radius: 4.5
-                            color: Tokens.ink
-                            border.width: 2
-                            border.color: Tokens.black
-                        }
-                    }
+                        Label { text: commit.modelData.sha }
 
-                    CircleButton {
-                        glyph: Icons.cog
-                        label: Lang.bindSettings
-                        onClicked: {
-                            Drawers.close();
-                            Machine.show("", false);
+                        Txt {
+                            Layout.fillWidth: true
+                            text: commit.modelData.subject
+                            color: Tokens.dim
+                            font.pixelSize: 12
                         }
                     }
                 }
 
                 Label {
-                    Layout.fillWidth: true
-                    text: root.armed !== "" ? Lang.confirmTo.arg(root.armedName.toLowerCase()) : Updates.summary
-                    color: root.armed !== "" ? Tokens.ink : Tokens.muted
-                    opacity: root.armed !== "" || updateButton.hovered ? 1 : 0
+                    visible: Updates.state === "behind" && Updates.behind > 6
+                    text: Lang.updMore.arg(Updates.behind - 6)
                 }
 
-                ColumnLayout {
+                Alert {
                     Layout.fillWidth: true
-                    visible: root.expanded === "update" || Machine.updating
-                    spacing: 6
+                    visible: Machine.kind === "update" && Machine.phase !== ""
+                    text: Machine.statusTitle
+                    wrong: Machine.phase === "failed"
+                    color: Tokens.ink
+                    font.family: Tokens.fontSans
+                    font.pixelSize: 13
+                }
 
-                    Txt {
+                Label {
+                    Layout.fillWidth: true
+                    visible: Machine.kind === "update" && Machine.phase !== "" && text !== ""
+                    text: Machine.statusSub
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: !Machine.busy || (Machine.kind === "update" && Machine.phase === "auth" && Machine.auth === "finger")
+                    spacing: 8
+
+                    Field {
+                        id: updatePassword
                         Layout.fillWidth: true
-                        visible: Updates.dev !== ""
-                        text: Lang.updDev
-                        color: Tokens.muted
-                        wrapMode: Text.Wrap
-                        elide: Text.ElideNone
-                        font.pixelSize: 12
+                        password: true
+                        catchEscape: true
+                        placeholder: Lang.cfgApplyPassword
+                        onAccepted: root.update()
+                        onEscaped: root.expanded = ""
                     }
 
-                    Repeater {
-                        model: Updates.state === "behind" ? Updates.commits.slice(0, 6) : []
-
-                        RowLayout {
-                            id: commit
-
-                            required property var modelData
-
-                            Layout.fillWidth: true
-                            spacing: 10
-
-                            Label { text: commit.modelData.sha }
-
-                            Txt {
-                                Layout.fillWidth: true
-                                text: commit.modelData.subject
-                                color: Tokens.dim
-                                font.pixelSize: 12
-                            }
-                        }
-                    }
-
-                    Label {
-                        visible: Updates.state === "behind" && Updates.behind > 6
-                        text: Lang.updMore.arg(Updates.behind - 6)
-                    }
-
-                    Alert {
-                        Layout.fillWidth: true
-                        visible: Machine.kind === "update" && Machine.phase !== ""
-                        text: Machine.statusTitle
-                        wrong: Machine.phase === "failed"
-                        color: Tokens.ink
-                        font.family: Tokens.fontSans
-                        font.pixelSize: 13
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        visible: Machine.kind === "update" && Machine.phase !== "" && text !== ""
-                        text: Machine.statusSub
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: !Machine.busy || (Machine.kind === "update" && Machine.phase === "auth" && Machine.auth === "finger")
-                        spacing: 8
-
-                        Field {
-                            id: updatePassword
-                            Layout.fillWidth: true
-                            password: true
-                            catchEscape: true
-                            placeholder: Lang.cfgApplyPassword
-                            onAccepted: root.update()
-                            onEscaped: root.expanded = ""
-                        }
-
-                        KeyButton {
-                            accent: true
-                            text: Lang.updUpdate
-                            onClicked: root.update()
-                        }
+                    KeyButton {
+                        accent: true
+                        text: Lang.updUpdate
+                        onClicked: root.update()
                     }
                 }
             }
+        }
+    }
+
+    ColumnLayout {
+        id: footer
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 26
+        anchors.rightMargin: 22
+        anchors.bottomMargin: 22
+        spacing: 8
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Tokens.line
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            CircleButton { glyph: Icons.lock; label: Lang.actLock; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.lock]); } }
+            CircleButton { glyph: Icons.sleep; label: Lang.actSuspend; onClicked: { Drawers.close(); Quickshell.execDetached([Config.cmd.systemctl, "suspend"]); } }
+            CircleButton { glyph: Icons.logout; label: Lang.actLogout; filled: root.armed === "logout"; onClicked: root.session("logout", [Config.cmd.uwsm, "stop"]) }
+            CircleButton { glyph: Icons.restart; label: Lang.actReboot; filled: root.armed === "reboot"; onClicked: root.session("reboot", [Config.cmd.systemctl, "reboot"]) }
+            CircleButton { glyph: Icons.power; label: Lang.actPowerOff; danger: true; filled: root.armed === "power"; onClicked: root.session("power", [Config.cmd.powerOff]) }
+
+            Item { Layout.fillWidth: true }
+
+            CircleButton {
+                id: updateButton
+                glyph: Icons.download
+                label: Lang.updUpdate
+                filled: root.expanded === "update"
+                onClicked: root.toggleSection("update")
+
+                Rectangle {
+                    visible: Updates.state === "behind" && !updateButton.filled
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    width: 9
+                    height: 9
+                    radius: 4.5
+                    color: Tokens.ink
+                    border.width: 2
+                    border.color: Tokens.black
+                }
+            }
+
+            CircleButton {
+                glyph: Icons.cog
+                label: Lang.bindSettings
+                onClicked: {
+                    Drawers.close();
+                    Machine.show("", false);
+                }
+            }
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: root.armed !== "" ? Lang.confirmTo.arg(root.armedName.toLowerCase()) : Updates.summary
+            color: root.armed !== "" ? Tokens.ink : Tokens.muted
+            opacity: root.armed !== "" || updateButton.hovered ? 1 : 0
         }
     }
 }
