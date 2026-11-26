@@ -62,10 +62,15 @@ Scope {
         root.writing = "";
     }
 
-    // Another note, as big as this one and beside it if there's room, written at once.
+    // Another note, as big as this one and beside it if there's room, written at once; none where
+    // the desk has no room for it.
     function noteBeside(card: var): void {
         const at = Desk.beside({ x: card.x, y: card.y, w: card.width, h: card.height }, card.width, card.height, root.boxes(card),
                                { w: desk.width, h: desk.height }, root.spacing, root.cell);
+        if (at === null) {
+            Machine.notify(Lang.widgetNoRoom, "");
+            return;
+        }
         root.write(Machine.addWidget("note", [at.x, at.y], [Math.round(card.width), Math.round(card.height)]));
     }
 
@@ -120,10 +125,10 @@ Scope {
         return root.cards().filter(other => other !== card && other.visible).map(other => ({ x: other.x, y: other.y, w: other.width, h: other.height }));
     }
 
-    // The place on the grid nearest (x, y) where the card fits, a gap clear of the others.
-    function room(card: var, x: real, y: real): point {
-        const at = Desk.room(card.width, card.height, x, y, root.boxes(card), { w: desk.width, h: desk.height }, root.spacing, root.cell);
-        return Qt.point(at.x, at.y);
+    // The place on the grid nearest (x, y) where the card fits, a gap clear of the others: { x, y },
+    // or null if the desk has none.
+    function room(card: var, x: real, y: real): var {
+        return Desk.room(card.width, card.height, x, y, root.boxes(card), { w: desk.width, h: desk.height }, root.spacing, root.cell);
     }
 
     // The first one moved keeps the rest where they show: from then on each one has its place.
@@ -135,7 +140,8 @@ Scope {
         }
         Machine.placeWidgets(places);
         const at = root.room(card, x, y);
-        Machine.placeWidgets({ [card.widget]: [at.x, at.y] });
+        if (at !== null)
+            Machine.placeWidgets({ [card.widget]: [at.x, at.y] });
     }
 
     // The size a card takes as its corner goes (dx, dy) from where it was at size `from`: its width
@@ -154,15 +160,17 @@ Scope {
 
     // Whether a point in the desk is on the cross, where a card dropped is taken away.
     function onBin(point: point): bool {
-        return Machine.arranging && Math.hypot(point.x - (bin.x + bin.width / 2), point.y - (bin.y + bin.height / 2)) <= bin.width / 2 + 16;
+        return Machine.arranging && Math.hypot(point.x - (bin.x + bin.width / 2), point.y - (bin.y + bin.height / 2)) <= bin.width / 2;
     }
 
-    // Turned on once the others have places: it goes where there's room, near the top left.
+    // Turned on once the others have places: it goes where there's room, near the top left, and
+    // stays without a place while there's none.
     function settle(card: var): void {
         if (!card.visible || card.place !== null || !root.cards().some(other => other.place !== null))
             return;
         const at = root.room(card, 0, 0);
-        Machine.placeWidgets({ [card.widget]: [at.x, at.y] });
+        if (at !== null)
+            Machine.placeWidgets({ [card.widget]: [at.x, at.y] });
     }
 
     // Once what's shown has settled: a few turned on at once, or read from the file, one by one.
@@ -238,6 +246,8 @@ Scope {
         property point moved: Qt.point(0, 0)
         property bool dragging: false
         readonly property bool binned: card.dragging && root.onBin(Qt.point(card.grab.x + card.moved.x, card.grab.y + card.moved.y))
+        // Over the cross, a photo or a note goes for good, with its picture or its text.
+        readonly property bool doomed: card.binned && Machine.several(card.widget)
         // While its corner is dragged: the size it's taking.
         property var sizing: null
 
@@ -283,8 +293,11 @@ Scope {
         // Within the desk; while dragged, where the pointer takes it, the cross included.
         readonly property real leftAt: (card.place !== null ? card.place[0] : 0) + card.moved.x
         readonly property real topAt: (card.place !== null ? card.place[1] : root.flow(card)) + card.moved.y
-        x: card.dragging ? card.leftAt : Math.max(0, Math.min(desk.width - card.width, card.leftAt))
-        y: card.dragging ? card.topAt : Math.max(0, Math.min(desk.height - card.height, card.topAt))
+        // Where it rests, while it's dragged too.
+        readonly property real restX: Math.max(0, Math.min(desk.width - card.width, card.place !== null ? card.place[0] : 0))
+        readonly property real restY: Math.max(0, Math.min(desk.height - card.height, card.place !== null ? card.place[1] : root.flow(card)))
+        x: card.dragging ? card.leftAt : card.restX
+        y: card.dragging ? card.topAt : card.restY
         z: card.dragging ? 1 : 0
         transform: Scale {
             origin.x: card.hold.x
@@ -298,8 +311,9 @@ Scope {
         pane: true
         radius: Tokens.drawerRadius
         color: Tokens.black
-        border.width: 1
-        border.color: Machine.arranging ? Tokens.ink : Tokens.line
+        // Shrunk to a third over the cross, its red as thick as a line.
+        border.width: card.doomed ? 3 : 1
+        border.color: card.doomed ? Tokens.interrupt : Machine.arranging ? Tokens.ink : Tokens.line
 
         // A long press on a card starts arranging, and goes on moving it from there.
         MouseArea {
@@ -468,29 +482,30 @@ Scope {
                 }
             }
 
-            // A picture dropped from Files where there's no photo is a new one, where it fell.
+            // A picture dropped from Files where there's no photo is a new one, where it fell; with no
+            // room for one on the desk, it isn't taken.
             DropArea {
                 id: deskDrop
 
-                readonly property point at: {
-                    const spot = Desk.room(root.photoWidth, root.photoHeight, deskDrop.drag.x - root.photoWidth / 2, deskDrop.drag.y - root.photoHeight / 2,
-                                           root.boxes(null), { w: desk.width, h: desk.height }, root.spacing, root.cell);
-                    return Qt.point(spot.x, spot.y);
-                }
+                readonly property var spot: Desk.room(root.photoWidth, root.photoHeight, deskDrop.drag.x - root.photoWidth / 2,
+                                                      deskDrop.drag.y - root.photoHeight / 2, root.boxes(null),
+                                                      { w: desk.width, h: desk.height }, root.spacing, root.cell)
 
                 anchors.fill: parent
                 z: -1
-                onEntered: drag => drag.accepted = root.picture(drag)
+                onEntered: drag => drag.accepted = root.picture(drag) && deskDrop.spot !== null
                 onDropped: drop => {
-                    Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false, "", [deskDrop.at.x, deskDrop.at.y]);
+                    if (deskDrop.spot === null)
+                        return;
+                    Machine.setPhoto(decodeURIComponent(drop.urls[0].toString().slice(7)), false, "", [deskDrop.spot.x, deskDrop.spot.y]);
                     drop.accept();
                 }
             }
 
             Rectangle {
-                visible: deskDrop.containsDrag
-                x: deskDrop.at.x
-                y: deskDrop.at.y
+                visible: deskDrop.containsDrag && deskDrop.spot !== null
+                x: deskDrop.spot?.x ?? 0
+                y: deskDrop.spot?.y ?? 0
                 width: root.photoWidth
                 height: root.photoHeight
                 radius: Tokens.drawerRadius
@@ -780,7 +795,10 @@ Scope {
                 widget: "weather"
 
                 readonly property var forecast: Weather.current ? Weather.forecast : null
-                readonly property var today: weatherCard.forecast?.days[0] ?? null
+                // Today at the place and the three days after it, by their dates: one read before
+                // midnight starts with yesterday. A day it hasn't has no sky.
+                readonly property var days: Weather.days(clock.date.getTime())
+                readonly property var today: weatherCard.days[0].code >= 0 ? weatherCard.days[0] : null
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -846,7 +864,7 @@ Scope {
                     spacing: 0
 
                     Repeater {
-                        model: (weatherCard.forecast?.days ?? []).slice(1, 4)
+                        model: weatherCard.days.slice(1).filter(day => day.code >= 0)
 
                         ColumnLayout {
                             id: ahead
@@ -1072,15 +1090,23 @@ Scope {
                 }
             }
 
-            // Where a card dropped is taken away: turned off, or, a photo or a note, gone.
+            // Where a card dropped is taken away: turned off, or, a photo or a note, gone. At the foot
+            // of the desk in the middle, or, with a card there, in the free place nearest to it, over
+            // none while the desk has room; and still while one is dragged, as it keeps clear of
+            // where each one rests.
             Surface {
                 id: bin
 
                 readonly property bool hot: root.cards().some(card => card.binned)
+                readonly property bool doom: root.cards().some(card => card.doomed)
+                readonly property point foot: Qt.point((desk.width - bin.width) / 2, desk.height - bin.height - 20)
+                readonly property var spot: !Machine.arranging ? null
+                    : Desk.room(bin.width, bin.height, bin.foot.x, bin.foot.y,
+                                root.cards().filter(card => card.visible).map(card => ({ x: card.restX, y: card.restY, w: card.width, h: card.height })),
+                                { w: desk.width, h: desk.height }, root.spacing, root.cell)
 
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 20
+                x: bin.spot !== null ? bin.spot.x : bin.foot.x
+                y: bin.spot !== null ? bin.spot.y : bin.foot.y
                 z: 0.5
                 visible: Machine.arranging
                 width: 56
@@ -1089,16 +1115,16 @@ Scope {
                 scale: bin.hot ? 1.2 : 1
                 color: Tokens.black
                 border.width: 1
-                border.color: bin.hot ? Tokens.ink : Tokens.line
+                border.color: bin.doom ? Tokens.interrupt : bin.hot ? Tokens.ink : Tokens.line
                 Accessible.name: Lang.widgetsRemove
 
                 Behavior on scale { NumberAnimation { duration: Tokens.animFast; easing.type: Easing.OutCubic } }
 
                 Ico {
                     anchors.centerIn: parent
-                    glyph: Icons.close
+                    glyph: bin.doom ? Icons.trash : Icons.close
                     font.pixelSize: 24
-                    color: bin.hot ? Tokens.ink : Tokens.dim
+                    color: bin.doom ? Tokens.interrupt : bin.hot ? Tokens.ink : Tokens.dim
                 }
             }
         }

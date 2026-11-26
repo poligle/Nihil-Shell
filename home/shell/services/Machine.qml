@@ -193,6 +193,11 @@ Singleton {
     }
 
     function show(name: string, welcome: bool): void {
+        // Opened while widgets are arranged, when nothing is kept until that ends: they're kept as
+        // they are, as a click away from them does, so what changes here is kept as it's made and
+        // Esc on the desktop can't take it back.
+        if (root.arranging)
+            root.stopArranging(true);
         root.screen = Hyprland.focusedMonitor?.name ?? "";
         root.welcoming = welcome;
         // What the last password change came to isn't news on the next visit; one under way is.

@@ -604,6 +604,7 @@
 		cfgWidgetsArrange = "Colocar en el escritorio";
 		cfgArrange = "Colocar";
 		widgetsRemove = "Quitar";
+		widgetNoRoom = "No queda sitio en el escritorio";
 		widgetPhotoHow = "Suelta aquí una foto, o ábrela con Widget de foto desde Archivos";
 		widgetPhotoApp = "Widget de foto";
 		widgetPhotoSet = "Foto puesta en el escritorio";
@@ -1455,6 +1456,7 @@
 		cfgWidgetsArrange = "Arrange on the desktop";
 		cfgArrange = "Arrange";
 		widgetsRemove = "Remove";
+		widgetNoRoom = "There's no room left on the desktop";
 		widgetPhotoHow = "Drop a photo here, or open one with Photo widget from Files";
 		widgetPhotoApp = "Photo widget";
 		widgetPhotoSet = "Photo set on the desktop";

@@ -8,7 +8,8 @@ import qs.theme
 import "OpenMeteo.js" as OpenMeteo
 
 // The weather where the desktop widget was told, from Open-Meteo (no key): while the widget is
-// on, every half hour, and again when the network comes back after a try that didn't read.
+// on, every half hour by the wall clock, so within a minute of the computer waking too; and when
+// the network comes back after a try that didn't read, or with what was read that old.
 Singleton {
     id: root
 
@@ -20,6 +21,8 @@ Singleton {
     // What was last read and where: { now: { temp, feels, code, day }, days: [{ date, code, max, min }] }.
     property var forecast: null
     property string of: ""
+    // When it was read, in ms since 1970.
+    property real readAt: 0
     property bool failed: false
     readonly property bool current: root.forecast !== null && root.of === root.spot
     // A search for a place: the name it's for, and how the last one went.
@@ -51,6 +54,18 @@ Singleton {
             snow: Icons.weatherSnow,
             storm: Icons.weatherStorm,
         })[sky] ?? Icons.weatherCloudy;
+    }
+
+    // Today at the place and the three days after it, at `now` (ms), of what was read for where
+    // it's told.
+    function days(now: real): var {
+        return OpenMeteo.days(root.current ? root.forecast : null, now);
+    }
+
+    // Read half an hour ago or more, or, by a clock put back, later than now.
+    function stale(): bool {
+        const age = Date.now() - root.readAt;
+        return age < 0 || age >= 30 * root.minute;
     }
 
     // 14°, -3°: whole degrees, and no minus for what rounds to nothing.
@@ -89,11 +104,15 @@ Singleton {
     onSpotChanged: root.read()
     onWantedChanged: root.read()
 
+    // A timer stands still while the computer sleeps; the wall clock doesn't.
     Timer {
-        interval: 30 * root.minute
+        interval: root.minute
         running: root.wanted
         repeat: true
-        onTriggered: root.read()
+        onTriggered: {
+            if (!root.failed && root.stale())
+                root.read();
+        }
     }
 
     Timer {
@@ -128,7 +147,7 @@ Singleton {
     Connections {
         target: Network
         function onConnectedChanged(): void {
-            if (Network.connected && root.failed)
+            if (Network.connected && (root.failed || root.stale()))
                 root.read();
         }
     }
@@ -148,6 +167,7 @@ Singleton {
                 } else {
                     root.forecast = read;
                     root.of = page.asked;
+                    root.readAt = Date.now();
                     root.failed = false;
                 }
                 if (page.asked !== root.spot)

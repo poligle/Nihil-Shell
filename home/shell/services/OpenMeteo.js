@@ -46,7 +46,8 @@ function place(text) {
     return { name: found.name, label: parts.join(", "), lat: round(found.latitude), lon: round(found.longitude) };
 }
 
-// { now: { temp, feels, code, day }, days: [{ date, code, max, min }] from today }, or null.
+// { now: { temp, feels, code, day }, days: [{ date, code, max, min }] from today, offset: the
+// place's from UTC in seconds, or null }, or null.
 function forecast(text) {
     const data = json(text);
     const now = data?.current;
@@ -63,7 +64,30 @@ function forecast(text) {
         now: { temp: now.temperature_2m, feels: Number.isFinite(now.apparent_temperature) ? now.apparent_temperature : now.temperature_2m,
                code: now.weather_code, day: now.is_day !== 0 },
         days: days,
+        offset: Number.isFinite(data.utc_offset_seconds) ? data.utc_offset_seconds : null,
     };
+}
+
+// The date `after` days from `now` (ms) at the place, as the forecast writes its days: by the
+// offset it came with, or by the computer's own clock without one.
+function dateAt(offset, now, after) {
+    const shift = Number.isFinite(offset) ? offset * 1000 : -new Date(now).getTimezoneOffset() * 60000;
+    const at = new Date(now + shift + after * 86400000);
+    const two = n => (n < 10 ? "0" : "") + n;
+    return at.getUTCFullYear() + "-" + two(at.getUTCMonth() + 1) + "-" + two(at.getUTCDate());
+}
+
+// Today at the place and the three days after it, by their dates, not by where they come in the
+// forecast: one read before midnight starts with yesterday. A day it hasn't, or with no forecast,
+// has no sky (-1) and no figures (NaN).
+function days(forecast, now) {
+    const out = [];
+    for (let i = 0; i < 4; i++) {
+        const date = dateAt(forecast?.offset, now, i);
+        const day = forecast ? forecast.days.find(d => d.date === date) : undefined;
+        out.push(day ?? { date: date, code: -1, max: NaN, min: NaN });
+    }
+    return out;
 }
 
 // A WMO weather code as the sky it says: clear, fewClouds, partly, cloudy, fog, drizzle, rain,

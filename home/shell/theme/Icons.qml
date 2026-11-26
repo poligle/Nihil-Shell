@@ -50,6 +50,7 @@ Singleton {
     readonly property string bellOff: g(0xF009B)
     readonly property string night: g(0xF0594)
     readonly property string close: g(0xF0156)
+    readonly property string trash: g(0xF01B4)
     readonly property string search: g(0xF0349)
     readonly property string calculator: g(0xF00EC)
     readonly property string image: g(0xF02E9)
