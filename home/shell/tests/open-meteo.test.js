@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
 const source = fs.readFileSync(path.join(__dirname, "../services/OpenMeteo.js"), "utf8").replace(".pragma library", "");
-const O = new Function(source + "\nreturn { searchUrl, forecastUrl, answer, place, forecast, sky };")();
+const O = new Function(source + "\nreturn { searchUrl, forecastUrl, answer, place, forecast, sky, days };")();
 
 let passed = 0;
 function test(name, body) { body(); passed++; console.log("ok", name); }
@@ -49,6 +49,7 @@ test("now and the days, the ill-formed ones left out", () => {
     assert.deepStrictEqual(O.forecast(text), {
         now: { temp: 14.2, feels: 12.9, code: 3, day: false },
         days: [{ date: "2026-11-18", code: 3, max: 18.1, min: 9.4 }, { date: "2026-11-19", code: 61, max: 15, min: 8 }],
+        offset: null,
     });
 });
 
@@ -56,7 +57,44 @@ test("a forecast with nothing for now is none", () => {
     assert.strictEqual(O.forecast(JSON.stringify({ error: true, reason: "Latitude must be in range" })), null);
     assert.strictEqual(O.forecast(""), null);
     const bare = O.forecast(JSON.stringify({ current: { temperature_2m: -0.4, weather_code: 71 } }));
-    assert.deepStrictEqual(bare, { now: { temp: -0.4, feels: -0.4, code: 71, day: true }, days: [] });
+    assert.deepStrictEqual(bare, { now: { temp: -0.4, feels: -0.4, code: 71, day: true }, days: [], offset: null });
+});
+
+// Read in Barcelona at 23:30 on the 25th, an hour ahead of UTC.
+const late = O.forecast(JSON.stringify({
+    utc_offset_seconds: 3600,
+    current: { temperature_2m: 6.2, weather_code: 0, is_day: 0 },
+    daily: { time: ["2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28"], weather_code: [0, 3, 61, 2],
+             temperature_2m_max: [9.1, 12, 11, 13], temperature_2m_min: [5, 6, 7, 4] },
+}));
+
+test("today by its date at the place, not by where it comes", () => {
+    assert.strictEqual(late.offset, 3600);
+    // Seen at 08:00 the morning after: today is the 26th, and the 29th wasn't read.
+    const seen = O.days(late, Date.UTC(2026, 10, 26, 7, 0));
+    assert.deepStrictEqual(seen.slice(0, 3).map(day => [day.date, day.code, day.max]),
+                           [["2026-11-26", 3, 12], ["2026-11-27", 61, 11], ["2026-11-28", 2, 13]]);
+    assert.strictEqual(seen[3].date, "2026-11-29");
+    assert.ok(seen[3].code === -1 && Number.isNaN(seen[3].max) && Number.isNaN(seen[3].min));
+    // Still the 25th there at 23:59, in UTC the 25th at 22:59.
+    assert.strictEqual(O.days(late, Date.UTC(2026, 10, 25, 22, 59))[0].date, "2026-11-25");
+});
+
+test("a place in another time zone has a today of its own", () => {
+    const tokyo = Object.assign({}, late, { offset: 9 * 3600 });
+    // 20:00 UTC on the 26th is 05:00 on the 27th in Tokyo.
+    assert.strictEqual(O.days(tokyo, Date.UTC(2026, 10, 26, 20, 0))[0].date, "2026-11-27");
+});
+
+test("nothing read: four days on the computer's clock, with no sky or figures", () => {
+    // The last day of a year, which goes on into the next.
+    const now = Date.UTC(2026, 11, 31, 12, 0);
+    const local = new Date(now);
+    const written = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const none = O.days(null, now);
+    assert.deepStrictEqual(none.map(day => day.date),
+                           [0, 1, 2, 3].map(i => written(new Date(local.getFullYear(), local.getMonth(), local.getDate() + i))));
+    assert.ok(none.every(day => day.code === -1 && Number.isNaN(day.max) && Number.isNaN(day.min)));
 });
 
 test("each WMO code is a sky, and one unknown is none", () => {

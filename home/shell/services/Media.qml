@@ -42,9 +42,12 @@ Singleton {
         return active ? clock(seconds) : "--:--";
     }
 
+    // 4:05, and past an hour 1:04:05.
     function clock(seconds: real): string {
         const s = Math.max(0, Math.floor(seconds));
-        return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+        const two = n => String(n).padStart(2, "0");
+        return s >= 3600 ? Math.floor(s / 3600) + ":" + two(Math.floor(s / 60) % 60) + ":" + two(s % 60)
+            : Math.floor(s / 60) + ":" + two(s % 60);
     }
 
     Timer {

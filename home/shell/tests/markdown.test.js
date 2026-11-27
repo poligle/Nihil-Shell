@@ -81,4 +81,19 @@ test("in a note, no tag gets through either", () => {
     assert.ok(out.includes("&lt;img"), out);
 });
 
+test("titles and code go with the text's size, Nilo's as they were", () => {
+    const text = "# Title\n#### Small\nSome `code`\n\n```\nblock\n```";
+    const sizes = out => (out.match(/font-size:\d+px/g) || []).join(" ");
+    assert.strictEqual(sizes(M.html(text, voices)), "font-size:20px font-size:15px font-size:13px font-size:12px");
+    // A note's, at 13: smaller titles, and code no smaller than 11.
+    assert.strictEqual(sizes(M.html(text, Object.assign({ size: 13 }, voices))), "font-size:17px font-size:13px font-size:11px font-size:11px");
+});
+
+test("a line's height goes in each block of text, and only when asked for", () => {
+    const text = "Para\n\n- one\n- [ ] task\n# Title";
+    assert.ok(!M.html(text, voices).includes("line-height"));
+    const out = M.html(text, Object.assign({ line: 1.25 }, voices));
+    assert.strictEqual((out.match(/line-height:125%/g) || []).length, 4, out);
+});
+
 console.log(`${passed} passed`);

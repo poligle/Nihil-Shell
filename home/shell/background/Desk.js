@@ -8,35 +8,38 @@ function clear(box, others, gap) {
         || box.y + box.h + gap <= o.y || box.y >= o.y + o.h + gap);
 }
 
-// The place nearest (x, y) where a w × h box fits.
+// The place nearest (x, y) where a w × h box fits, or null if the desk has none. Where (x, y) is
+// taken, the nearest place free is up against another box or an edge of the desk, or level with
+// (x, y), on each axis: those are all it tries, so all of the desk is looked at.
 function room(w, h, x, y, others, desk, gap, cell) {
-    const fit = (v, size, limit) => Math.max(0, Math.min(Math.floor((limit - size) / cell) * cell, Math.round(v / cell) * cell));
+    const up = v => Math.ceil(v / cell) * cell, down = v => Math.floor(v / cell) * cell;
+    const fit = (v, size, limit) => Math.max(0, Math.min(down(limit - size), Math.round(v / cell) * cell));
     const sx = fit(x, w, desk.w), sy = fit(y, h, desk.h);
     const free = (px, py) => clear({ x: px, y: py, w: w, h: h }, others, gap);
     if (free(sx, sy))
         return { x: sx, y: sy };
-    for (let ring = 1; ring < 120; ring++) {
-        let best = null, far = Infinity;
-        for (let i = -ring; i <= ring; i++) {
-            for (const [dx, dy] of [[i, -ring], [i, ring], [-ring, i], [ring, i]]) {
-                const px = sx + dx * cell, py = sy + dy * cell;
-                if (px < 0 || py < 0 || px + w > desk.w || py + h > desk.h)
-                    continue;
-                const d = dx * dx + dy * dy;
-                if (d < far && free(px, py)) {
-                    best = { x: px, y: py };
-                    far = d;
-                }
+    const xs = [sx, 0, down(desk.w - w)], ys = [sy, 0, down(desk.h - h)];
+    for (const o of others) {
+        xs.push(up(o.x + o.w + gap), down(o.x - gap - w));
+        ys.push(up(o.y + o.h + gap), down(o.y - gap - h));
+    }
+    let best = null, far = Infinity;
+    for (const px of xs) {
+        if (px < 0 || px + w > desk.w)
+            continue;
+        for (const py of ys) {
+            const d = (px - sx) * (px - sx) + (py - sy) * (py - sy);
+            if (py >= 0 && py + h <= desk.h && d < far && free(px, py)) {
+                best = { x: px, y: py };
+                far = d;
             }
         }
-        if (best !== null)
-            return best;
     }
-    return { x: sx, y: sy };
+    return best;
 }
 
 // Beside a box, right of it or left, if there's room; else under it or over it; else wherever is
-// nearest, or right of it if nowhere is free.
+// nearest; null if nowhere is free.
 function beside(box, w, h, others, desk, gap, cell) {
     const up = v => Math.ceil(v / cell) * cell, down = v => Math.floor(v / cell) * cell;
     const all = others.concat([box]);

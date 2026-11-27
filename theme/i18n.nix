@@ -6,7 +6,6 @@
 		locale = "es_ES";
 		dateLong = "dddd, d 'de' MMMM";
 		dateShort = "d 'de' MMMM";
-		dayName = "dddd";
 		lockDate = "%a %d %b";
 		lockLocale = "es_ES.UTF-8";
 
@@ -411,6 +410,11 @@
 		cfgLook = "Aspecto";
 		cfgApps = "Aplicaciones";
 		cfgWallpaper = "Fondo";
+		wallAntenna = "Antena";
+		wallBlackhole = "Agujero negro";
+		wallGalaxy = "Galaxia";
+		wallNight = "Noche";
+		wallSisyphus = "Sísifo";
 		cfgKeys = "Atajos";
 		cfgKeyNone = "Sin tecla";
 		cfgKeyName = "Tecla: D, F5, Return, Space, comma…";
@@ -599,6 +603,7 @@
 		cfgWidgetsArrange = "Colocar en el escritorio";
 		cfgArrange = "Colocar";
 		widgetsRemove = "Quitar";
+		widgetNoRoom = "No queda sitio en el escritorio";
 		widgetPhotoHow = "Suelta aquí una foto, o ábrela con Widget de foto desde Archivos";
 		widgetPhotoApp = "Widget de foto";
 		widgetPhotoSet = "Foto puesta en el escritorio";
@@ -619,6 +624,7 @@
 		weatherShowers = "Chubascos";
 		weatherSnow = "Nieve";
 		weatherStorm = "Tormenta";
+		widgetSystemTemp = "Temp.";
 		widgetSystemDisk = "Disco";
 		widgetCalendarNone = "Tus calendarios van en Preferencias, Aspecto";
 		calNow = "Ahora";
@@ -647,6 +653,7 @@
 		noteWrite = "Escribir";
 		noteAnother = "Otra nota";
 		noteDone = "Listo";
+		notePlaceholder = "Escribe algo";
 		cfgWidgetGithub = "Contribuciones de GitHub";
 		cfgGithubUser = "Usuario de GitHub";
 		cfgWeatherPlace = "Lugar del tiempo";
@@ -851,7 +858,6 @@
 		locale = "en_GB";
 		dateLong = "dddd d MMMM";
 		dateShort = "d MMMM";
-		dayName = "dddd";
 		lockDate = "%a %d %b";
 		lockLocale = "C.UTF-8";
 
@@ -1256,6 +1262,11 @@
 		cfgLook = "Appearance";
 		cfgApps = "Apps";
 		cfgWallpaper = "Wallpaper";
+		wallAntenna = "Antenna";
+		wallBlackhole = "Black hole";
+		wallGalaxy = "Galaxy";
+		wallNight = "Night";
+		wallSisyphus = "Sisyphus";
 		cfgKeys = "Shortcuts";
 		cfgKeyNone = "No key";
 		cfgKeyName = "Key: D, F5, Return, Space, comma…";
@@ -1444,6 +1455,7 @@
 		cfgWidgetsArrange = "Arrange on the desktop";
 		cfgArrange = "Arrange";
 		widgetsRemove = "Remove";
+		widgetNoRoom = "There's no room left on the desktop";
 		widgetPhotoHow = "Drop a photo here, or open one with Photo widget from Files";
 		widgetPhotoApp = "Photo widget";
 		widgetPhotoSet = "Photo set on the desktop";
@@ -1464,6 +1476,7 @@
 		weatherShowers = "Showers";
 		weatherSnow = "Snow";
 		weatherStorm = "Thunderstorm";
+		widgetSystemTemp = "Temp";
 		widgetSystemDisk = "Disk";
 		widgetCalendarNone = "Your calendars go in Preferences, Appearance";
 		calNow = "Now";
@@ -1492,6 +1505,7 @@
 		noteWrite = "Write";
 		noteAnother = "Another note";
 		noteDone = "Done";
+		notePlaceholder = "Write something";
 		cfgWidgetGithub = "GitHub contributions";
 		cfgGithubUser = "GitHub username";
 		cfgWeatherPlace = "Weather location";

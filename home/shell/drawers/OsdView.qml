@@ -18,7 +18,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             glyph: root.glyph
             font.pixelSize: 18
-            color: Osd.muted ? Tokens.interrupt : Tokens.ink
+            color: Osd.muted ? Tokens.muted : Tokens.ink
         }
 
         DotMeter {

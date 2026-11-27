@@ -81,6 +81,34 @@ test("a place on the grid, clear of the others", () => {
     assert.ok(at.x % 8 === 0 && at.y % 8 === 0);
     // Within the desk, however far it's asked.
     assert.deepStrictEqual(D.room(100, 100, 5000, 5000, [], desk, 14, 8), { x: 896, y: 496 });
+    // The nearest place free, up against the one in the way.
+    assert.deepStrictEqual(D.room(100, 100, 150, 0, taken, desk, 14, 8), { x: 216, y: 0 });
+});
+
+// Notes as they come, 280 × 168, a gap apart in rows and columns from the top left.
+const notes = (columns, rows) => {
+    const out = [];
+    for (let i = 0; i < columns; i++)
+        for (let j = 0; j < rows; j++)
+            out.push(box(i * 294, j * 182, 280, 168));
+    return out;
+};
+const qhd = { w: 2460, h: 1376 };
+
+test("all of the desk is looked at, however far the room is", () => {
+    const left = notes(5, 7);
+    const at = D.room(280, 168, 0, 0, left, qhd, 14, 8);
+    assert.ok(at !== null && at.x >= 1470 && D.clear(box(at.x, at.y, 280, 168), left, 14), JSON.stringify(at));
+    const next = D.beside(left[0], 280, 168, left.slice(1), qhd, 14, 8);
+    assert.ok(next !== null && D.clear(box(next.x, next.y, 280, 168), left, 14), JSON.stringify(next));
+});
+
+test("a desk with no room left has no place, beside one or anywhere", () => {
+    const full = notes(8, 7);
+    assert.strictEqual(D.room(280, 168, 0, 0, full, qhd, 14, 8), null);
+    assert.strictEqual(D.beside(full[0], 280, 168, full.slice(1), qhd, 14, 8), null);
+    // A smaller one still fits in what's left at the foot.
+    assert.ok(D.room(200, 80, 0, 1376, full, qhd, 14, 8) !== null);
 });
 
 test("beside one: right or left, then under or over, then the nearest", () => {
@@ -94,8 +122,8 @@ test("beside one: right or left, then under or over, then the nearest", () => {
     const around = [box(0, 0, 386, 600), box(614, 0, 386, 600), box(400, 174, 200, 100)];
     const at = D.beside(hemmed, 100, 100, around, desk, 14, 8);
     assert.ok(D.clear(box(at.x, at.y, 100, 100), around.concat([hemmed]), 14), JSON.stringify(at));
-    // Nowhere free: right of it all the same.
-    assert.deepStrictEqual(D.beside(note, 240, 160, [box(256, 0, 744, 600), box(0, 176, 256, 424)], desk, 14, 8), { x: 256, y: 0 });
+    // Nowhere free: nowhere.
+    assert.strictEqual(D.beside(note, 240, 160, [box(256, 0, 744, 600), box(0, 176, 256, 424)], desk, 14, 8), null);
 });
 
 test("growing as a whole stops short of the one in its way", () => {

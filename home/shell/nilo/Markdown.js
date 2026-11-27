@@ -39,6 +39,12 @@ function emphasis(text) {
         .replace(/(^|[^\w])_([^_\s][^_\n]*?)_(?!\w)/g, "$1<i>$2</i>");
 }
 
+// A size against the text's, s.size (15, Nilo's, without it), in whole pixels and `least` at
+// the least.
+function sized(s, times, least) {
+    return Math.max(least, Math.round((s.size || 15) * times));
+}
+
 // Code and links are set aside before the emphasis, so an address's _ or * stay as they are.
 function inline(text, s) {
     const codes = [];
@@ -55,7 +61,7 @@ function inline(text, s) {
     });
     out = emphasis(out).replace(/\u0002(\d+)\u0002/g, (m, i) => links[+i]);
     return out.replace(/\u0001(\d+)\u0001/g,
-        (m, i) => `<span style="font-family:'${s.mono}'; font-size:13px; color:${s.code};">${codes[+i]}</span>`);
+        (m, i) => `<span style="font-family:'${s.mono}'; font-size:${sized(s, 13 / 15, 11)}px; color:${s.code};">${codes[+i]}</span>`);
 }
 
 // A task's mark, open or done: with s.tasks, a link to tick it, task:<its line>.
@@ -65,7 +71,9 @@ function task(done, line, s) {
 }
 
 // s: the colours and fonts (ink, dim, code, surface, mono, icons); with s.breaks, a line's end
-// is one in what shows too, as in a note, rather than a space.
+// is one in what shows too, as in a note, rather than a space. Titles and code go with s.size, as
+// in Nilo; s.line, how tall a line is against its letters, goes in each block, for a TextEdit,
+// which has no lineHeight of its own.
 function html(text, s) {
     const lines = escape(String(text ?? "")).split("\n");
     const out = [];
@@ -74,7 +82,8 @@ function html(text, s) {
     let list = null;
     let code = null;
     let indent = 0;
-    const p = "margin-top:0px; margin-bottom:10px;";
+    const spaced = s.line ? ` line-height:${Math.round(s.line * 100)}%;` : "";
+    const p = "margin-top:0px; margin-bottom:10px;" + spaced;
     const joined = parts => parts.join(s.breaks ? "<br>" : " ");
 
     function flushPara() {
@@ -86,14 +95,14 @@ function html(text, s) {
     function flushList() {
         if (list) {
             out.push(`<${list.tag} style="margin-top:0px; margin-bottom:10px; margin-left:-18px;">`
-                + list.items.map(item => `<li style="margin-bottom:4px;">${inline(item, s)}</li>`).join("")
+                + list.items.map(item => `<li style="margin-bottom:4px;${spaced}">${inline(item, s)}</li>`).join("")
                 + `</${list.tag}>`);
         }
         list = null;
     }
     function flushCode() {
         out.push(`<table width="100%" cellpadding="12" cellspacing="0" style="margin-bottom:10px;" bgcolor="${s.surface}">`
-            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:12px; color:${s.code};">${code.join("\n")}</pre></td></tr></table>`);
+            + `<tr><td><pre style="font-family:'${s.mono}'; font-size:${sized(s, 12 / 15, 11)}px; color:${s.code};">${code.join("\n")}</pre></td></tr></table>`);
         code = null;
     }
 
@@ -115,7 +124,7 @@ function html(text, s) {
         if (heading) {
             flushPara();
             flushList();
-            const size = [20, 18, 16, 15][heading[1].length - 1];
+            const size = sized(s, [4 / 3, 6 / 5, 16 / 15, 1][heading[1].length - 1], 0);
             out.push(`<p style="${p} font-size:${size}px;"><b>${inline(heading[2], s)}</b></p>`);
             continue;
         }
@@ -123,7 +132,7 @@ function html(text, s) {
         if (todo) {
             flushPara();
             flushList();
-            out.push(`<p style="margin-top:0px; margin-bottom:4px;">${task(todo[1] !== " ", at, s)}&nbsp; ${inline(todo[2], s)}</p>`);
+            out.push(`<p style="margin-top:0px; margin-bottom:4px;${spaced}">${task(todo[1] !== " ", at, s)}&nbsp; ${inline(todo[2], s)}</p>`);
             continue;
         }
         const said = line.match(/^\s*&gt;\s?(.*)$/);

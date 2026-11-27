@@ -15,7 +15,18 @@ let
         text = builtins.readFile ./nihil-install.sh;
     };
 
-    qml = import ../theme/qml.nix { inherit pkgs lib; nihil = { tokens = import ../theme/nihil.nix; }; };
+    # Lang.qml is for the shell's components with words of their own, like a text field's menu:
+    # those stay in English, the language the window starts in, whichever is picked in it.
+    qml = import ../theme/qml.nix
+    {
+        inherit pkgs lib;
+        nihil =
+        {
+            tokens = import ../theme/nihil.nix;
+            language = "en";
+            strings = (import ../theme/i18n.nix).en;
+        };
+    };
 
     configQml = pkgs.runCommand "Config.qml" { nativeBuildInputs = [ pkgs.jq ]; } ''
         rules=$(find -L ${pkgs.xkeyboard_config} -name base.lst -print -quit)
@@ -52,11 +63,13 @@ let
         cp ${../home/shell/components/Surface.qml} $out/components/Surface.qml
         cp ${../home/shell/components/KeyButton.qml} $out/components/KeyButton.qml
         cp ${../home/shell/components/Field.qml} $out/components/Field.qml
+        cp ${../home/shell/components/TextMenu.qml} $out/components/TextMenu.qml
         cp ${../home/shell/components/Choice.qml} $out/components/Choice.qml
         cp ${../home/shell/components/FocusRing.qml} $out/components/FocusRing.qml
         cp ${../home/shell/components/Logo.qml} $out/components/Logo.qml
         cp ${import ../theme/shaders.nix { inherit pkgs; }}/surface.*.qsb $out/shaders/
         cp ${qml.tokens} $out/theme/Tokens.qml
+        cp ${qml.lang} $out/config/Lang.qml
         cp ${configQml} $out/config/Config.qml
     '';
 
