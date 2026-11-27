@@ -98,7 +98,7 @@ let
 		in ''
 			state="${state}"
 			data="${data}"
-			mkdir -p "$state"
+			install -d -m 700 "$state"
 			plain() {
 				ln -sfn "$state/wallpaper-current" "$state/lock-current"
 				ln -sfn "$data/hyprlock-plain.conf" "$state/hyprlock-look.conf"

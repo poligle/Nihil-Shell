@@ -126,7 +126,7 @@ Singleton {
         return String(text).replace(/<(?!\/?(?:b|i|u)>|br\s*\/?>)/gi, "&lt;");
     }
 
-    onDndChanged: Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s\\n' \"$2\" > \"$1\"",
+    onDndChanged: Quickshell.execDetached([Config.cmd.sh, "-c", "install -d -m 700 \"$(dirname \"$1\")\" && printf '%s\\n' \"$2\" > \"$1\"",
                                            "sh", root.dndFile, root.dnd ? "on" : "off"])
 
     FileView {

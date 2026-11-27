@@ -34,7 +34,7 @@ Singleton {
         id: remember
         interval: 1500
         onTriggered: Quickshell.execDetached([Config.cmd.sh, "-c",
-            root.silent ? "mkdir -p \"$(dirname \"$1\")\" && touch \"$1\"" : "rm -f \"$1\"", "sh", root.silentFile])
+            root.silent ? "install -d -m 700 \"$(dirname \"$1\")\" && touch \"$1\"" : "rm -f \"$1\"", "sh", root.silentFile])
     }
 
     function setVolume(v: real): void {

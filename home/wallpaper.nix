@@ -27,7 +27,7 @@ let
 		apply() {
 			local name="$1" output file
 			[ -d "$dir/$name" ] || { echo "nihil-wallpaper: unknown wallpaper '$name'" >&2; exit 1; }
-			mkdir -p "$(dirname "$state")"
+			install -d -m 700 "$(dirname "$state")"
 			echo "$name" > "$state"
 			ln -sfn "$dir/$name" "$state-current"
 			# A copy for the login screen, which can't read the home.
@@ -82,7 +82,7 @@ let
 				case "''${2:-}" in
 					"") look ;;
 					on | off)
-						mkdir -p "$(dirname "$glass")"
+						install -d -m 700 "$(dirname "$glass")"
 						echo "$2" > "$glass"
 						apply "$(current)"
 						pkill -USR1 -x 'kitty|\.kitty-wrapped' || true

@@ -1737,12 +1737,14 @@ class Tools:
     @staticmethod
     def keep_copy(full):
         """The file as it was, before a change nobody confirmed: one copy each time, the last few of each file."""
-        folder = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"),
-                              "nihil", "nilo", "before")
+        state = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "nihil")
+        folder = os.path.join(state, "nilo", "before")
         # Which file it was, in the name: two files called the same, or two changes in a second, never meet.
         which = hashlib.sha1(full.encode("utf-8", "surrogateescape")).hexdigest()[:8]
         stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         try:
+            # NIHIL's folder is the user's alone: makedirs gives its mode to the last one only.
+            os.makedirs(state, mode=0o700, exist_ok=True)
             os.makedirs(folder, exist_ok=True)
             fd = os.open(os.path.join(folder, f"{stamp}-{which}-{os.path.basename(full)}"),
                          os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -2859,7 +2861,7 @@ class Agent:
 
     def save_settings(self):
         try:
-            os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
+            os.makedirs(os.path.dirname(self.state_path), mode=0o700, exist_ok=True)
             tmp = self.state_path + ".tmp"
             with open(tmp, "w") as f:
                 json.dump(self.settings, f, indent=2)
