@@ -16,7 +16,6 @@ in
     xdg.desktopEntries.nihil-settings =
     {
         name = osConfig.nihil.strings.cfgTitle;
-        comment = osConfig.nihil.strings.cfgComment;
         exec = "nihil-ipc settings open";
         icon = "preferences-system";
         terminal = false;

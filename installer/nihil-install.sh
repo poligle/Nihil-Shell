@@ -727,7 +727,7 @@ EOF
         nix flake lock "$etc"
     fi
 
-    say "$(t insInstallingLong)"
+    say "$(t insInstallingStep)"
     if ! logged nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy; then
         say "$(t insRetrying)"
         logged nixos-install --flake "$etc#$hostname" --no-root-passwd --no-channel-copy

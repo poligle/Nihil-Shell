@@ -121,7 +121,7 @@ Flickable {
             Field {
                 id: zoneField
                 width: 280
-                placeholder: Lang.cfgTimeZoneSub
+                placeholder: Lang.cfgTimeZonePlaceholder
                 onEdited: text => page.search = text
                 onAccepted: {
                     if (page.matches.length > 0) {

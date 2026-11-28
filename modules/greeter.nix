@@ -39,6 +39,7 @@ let
 	greeter = pkgs.runCommand "nihil-greeter" { } ''
 		mkdir -p $out/theme $out/config $out/components $out/shaders
 		cp ${../greeter/shell.qml} $out/shell.qml
+		cp ${../greeter/Auth.js} $out/Auth.js
 		cp ${../home/shell/components/Txt.qml} $out/components/Txt.qml
 		cp ${../home/shell/components/Label.qml} $out/components/Label.qml
 		cp ${../home/shell/components/Surface.qml} $out/components/Surface.qml

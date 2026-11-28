@@ -11,6 +11,7 @@ import Quickshell.Services.Greetd
 import qs.theme
 import qs.config
 import qs.components
+import "Auth.js" as Auth
 
 ShellRoot {
     id: root
@@ -25,6 +26,8 @@ ShellRoot {
     property string note: ""
     property bool wrong: false
     property int attempts: 0
+    // What PAM said went wrong in this try, for when greetd says only that it failed.
+    property string told: ""
     property bool going: false
 
     readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") ?? "") + "/nihil-greeter-password"
@@ -64,6 +67,7 @@ ShellRoot {
         asking = false;
         echo = false;
         sent = false;
+        told = "";
         if (Greetd.available && person.name !== "")
             Greetd.createSession(person.name);
     }
@@ -101,12 +105,14 @@ ShellRoot {
         start();
     }
 
-    // What PAM and greetd say, as NIHIL writes: a failure in its own words, the rest with a capital.
-    function said(text: string): string {
-        const words = text.trim();
-        if (/^authentication failure$/i.test(words))
-            return Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
-        return words.length > 0 ? words.charAt(0).toLocaleUpperCase() + words.slice(1) : words;
+    // What PAM, fprintd and greetd say, in NIHIL's words and the greeter's language: what's known
+    // by what it is, any other failure as a failure, and nothing else (Auth.js).
+    function said(text: string, failed: bool): string {
+        return root.words(Auth.kind(text) || (failed ? "authFailed" : ""));
+    }
+
+    function words(kind: string): string {
+        return kind === "" ? "" : String(Lang[kind]).replace("$ATTEMPTS", String(root.attempts));
     }
 
     function reader(message: string): bool {
@@ -128,7 +134,7 @@ ShellRoot {
             if (responseRequired) {
                 root.echo = echoResponse;
                 // A password asked for again keeps what the last try said, a failure most of all.
-                root.note = echoResponse ? root.said(message) : root.wrong ? root.note : "";
+                root.note = echoResponse ? root.said(message, false) : root.wrong ? root.note : "";
                 if (!echoResponse && root.waiting !== "") {
                     const text = root.waiting;
                     root.waiting = "";
@@ -140,7 +146,8 @@ ShellRoot {
                 root.asking = true;
                 return;
             }
-            root.note = root.reader(message) ? Lang.fingerprintReady : root.said(message);
+            root.told = Auth.told(message, error, root.told);
+            root.note = root.reader(message) ? Lang.fingerprintReady : root.said(message, error);
             root.wrong = error;
         }
 
@@ -148,7 +155,8 @@ ShellRoot {
             root.back();
             root.attempts += 1;
             root.wrong = true;
-            root.note = Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
+            root.note = root.words(Auth.failure(message, root.told));
+            root.told = "";
             root.waiting = "";
             root.asking = false;
             root.sent = false;
@@ -164,7 +172,7 @@ ShellRoot {
         function onError(error: string): void {
             root.back();
             root.wrong = true;
-            root.note = root.said(error);
+            root.note = root.said(error, true);
             retry.restart();
         }
     }

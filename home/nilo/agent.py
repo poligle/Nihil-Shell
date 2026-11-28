@@ -2543,7 +2543,7 @@ PROMPT = {
                    "para los atajos (ctrl+s guarda, ctrl+b pone negrita); use_window enfoca, mueve, agranda o cierra "
                    "una ventana. media controla lo que suena y pone una canción por su nombre; control cambia el "
                    "volumen, el micro, el brillo, no molestar, la cafeína, la luz nocturna y su intensidad, el wifi, "
-                   "el bluetooth, el modo avión, el fondo, el cristal y el escritorio que se ve, hace capturas y graba "
+                   "el bluetooth, el fondo, el cristal y el escritorio que se ve, hace capturas y graba "
                    "la pantalla; send_to_phone manda algo a sus dispositivos. Para buscar un vídeo, abre su búsqueda "
                    "(https://www.youtube.com/results?search_query=…) con open_app. Hazlo directamente cuando te lo "
                    "pidan, sin preguntar antes: lo que tiene riesgo ya lo confirma el usuario.",
