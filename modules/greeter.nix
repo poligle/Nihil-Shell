@@ -28,6 +28,7 @@ let
 		    readonly property var session: (${builtins.toJSON [ "${config.programs.uwsm.package}/bin/uwsm" "start" "-e" "-D" "Hyprland" "hyprland.desktop" ]})
 		    readonly property var environment: (${builtins.toJSON [ "XDG_SESSION_TYPE=wayland" ]})
 		    readonly property string wallpaper: "/var/lib/nihil/greeter/wallpaper.png"
+		    readonly property string wallpapers: "/var/lib/nihil/greeter/wallpapers"
 		    readonly property string glass: "/var/lib/nihil/greeter/glass"
 		    readonly property string primaryOutput: "${nihil.primaryOutput}"
 		    readonly property string touch: "${pkgs.coreutils}/bin/touch"
@@ -43,6 +44,7 @@ let
 		cp ${../home/shell/components/Txt.qml} $out/components/Txt.qml
 		cp ${../home/shell/components/Label.qml} $out/components/Label.qml
 		cp ${../home/shell/components/Surface.qml} $out/components/Surface.qml
+		cp ${../home/shell/components/Alert.qml} $out/components/Alert.qml
 		cp ${import ../theme/shaders.nix { inherit pkgs; }}/surface.*.qsb $out/shaders/
 		cp ${qml.tokens} $out/theme/Tokens.qml
 		cp ${qml.lang} $out/config/Lang.qml

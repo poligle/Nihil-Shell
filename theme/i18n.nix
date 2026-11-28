@@ -18,6 +18,7 @@
 		authSession = "No se ha podido iniciar la sesión";
 		fingerprintReady = "Toca el sensor";
 		fingerprintPresent = "Leyendo huella";
+		fingerprintFailed = "La huella no coincide";
 		lockPaused = "En pausa";
 
 		search = "Buscar";
@@ -873,6 +874,7 @@
 		authSession = "Couldn't start the session";
 		fingerprintReady = "Touch the sensor";
 		fingerprintPresent = "Reading fingerprint";
+		fingerprintFailed = "Fingerprint not recognised";
 		lockPaused = "Paused";
 
 		search = "Search";

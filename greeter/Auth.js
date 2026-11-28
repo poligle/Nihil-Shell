@@ -37,3 +37,11 @@ function failure(text, before) {
     const own = kind(text);
     return own !== "" && own !== "authFailed" ? own : before !== "" ? before : "authFailed";
 }
+
+// What the fingerprint reader says, by what it is: ready for a finger, or one it didn't recognise
+// (pam_fprintd says that as an error, «Failed to match fingerprint»); "" for anything not its.
+function fingerprint(text, error) {
+    if (!/finger|swipe|huella|dedo|sensor|lector/i.test(String(text)))
+        return "";
+    return error ? "fingerprintFailed" : "fingerprintReady";
+}
