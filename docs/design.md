@@ -47,9 +47,10 @@ something (focus, the one chosen, an error) stays. The shell draws it with two s
 frost (`components/Backdrop.qml`); hyprlock draws flat colours, so the lock screen's
 glass is made into its background, once per wallpaper (`home/lock/glass.py`), twice in fact:
 with the player's panel and without, and the lock shows one or the other as something plays
-or stops. The terminal
-goes with it: kitty's background lets a fifth through, which Hyprland blurs and darkens, and
-the switch reaches the kitties already open (they read their configuration again).
+or stops. The windows
+go with it: kitty's background lets a fifth through and a window out of focus a little of
+what is behind it, which Hyprland blurs and darkens; without the glass, both are opaque. The
+switch reaches the kitties already open and Hyprland (they read their configuration again).
 
 | | |
 |:---:|:---:|

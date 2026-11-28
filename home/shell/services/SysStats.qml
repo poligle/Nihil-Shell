@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "ProcStat.js" as ProcStat
 
 Singleton {
     id: root
@@ -132,12 +133,11 @@ Singleton {
         if (!root.measuring) return;
 
         stat.reload();
-        const cpuLine = stat.text().split("\n")[0].trim().split(/\s+/).slice(1).map(Number);
-        const idle = cpuLine[3] + (cpuLine[4] || 0);
-        const total = cpuLine.reduce((a, b) => a + b, 0);
-        if (root.lastCpu && total > root.lastCpu.total)
-            root.cpu = 1 - (idle - root.lastCpu.idle) / (total - root.lastCpu.total);
-        root.lastCpu = { idle: idle, total: total };
+        const times = ProcStat.cpu(stat.text());
+        const busy = root.lastCpu ? ProcStat.busy(root.lastCpu, times) : null;
+        if (busy !== null)
+            root.cpu = busy;
+        root.lastCpu = times;
 
         meminfo.reload();
         const mem = {};

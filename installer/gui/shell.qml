@@ -1101,7 +1101,7 @@ ShellRoot {
                         Field {
                             id: zoneField
                             width: parent.width
-                            placeholder: root.s("cfgTimeZoneSub")
+                            placeholder: root.s("cfgTimeZonePlaceholder")
                             onEdited: text => root.zoneFilter = text
                             onAccepted: {
                                 if (root.zoneMatches.length > 0 && root.zone !== root.zoneMatches[0])

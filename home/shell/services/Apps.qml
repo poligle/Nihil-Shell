@@ -22,7 +22,7 @@ Singleton {
         if (hide)
             next.push(id);
         root.hidden = next;
-        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.keptFile,
+        Quickshell.execDetached([Config.cmd.sh, "-c", "install -d -m 700 \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"", "sh", root.keptFile,
                                  JSON.stringify({ hidden: root.hidden })]);
     }
 

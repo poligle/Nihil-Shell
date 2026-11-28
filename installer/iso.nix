@@ -2,6 +2,8 @@
 
 { config, lib, pkgs, modulesPath, nihil, ... }:
 let
+    i18n = import ../theme/i18n.nix;
+
     install = pkgs.writeShellApplication
     {
         name = "nihil-install";
@@ -24,7 +26,7 @@ let
         {
             tokens = import ../theme/nihil.nix;
             language = "en";
-            strings = (import ../theme/i18n.nix).en;
+            strings = i18n.en;
         };
     };
 
@@ -170,7 +172,7 @@ in
         # A tree with changes has no revision: the image would install GitHub's default branch.
         "nihil/rev".text = nihil.rev or (lib.warn "An image from a tree with changes installs GitHub's default branch, not this tree." "");
         # The installer's words, both modes', in theme/i18n.nix with the shell's.
-        "nihil/strings.json".text = builtins.toJSON (import ../theme/i18n.nix);
+        "nihil/strings.json".text = builtins.toJSON i18n;
     };
 
     hardware.graphics.enable = true;
@@ -193,7 +195,8 @@ in
 
     services.getty.helpLine = lib.mkForce ''
 
-        NIHIL installer. nihil-installer opens it, sudo nihil-install in text; nmtui connects to a network.
+        ${i18n.en.isoHelp}
+        ${i18n.es.isoHelp}
     '';
 
     system.stateVersion = "26.05";

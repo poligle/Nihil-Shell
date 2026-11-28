@@ -10,9 +10,15 @@
 		lockLocale = "es_ES.UTF-8";
 
 		password = "Contraseña";
-		authFailed = "Error ($ATTEMPTS)";
+		authFailed = "Fallo ($ATTEMPTS)";
+		authLocked = "Cuenta bloqueada";
+		authAccountExpired = "Cuenta caducada";
+		authExpired = "Contraseña caducada";
+		authTooMany = "Demasiados intentos";
+		authSession = "No se ha podido iniciar la sesión";
 		fingerprintReady = "Toca el sensor";
 		fingerprintPresent = "Leyendo huella";
+		fingerprintFailed = "La huella no coincide";
 		lockPaused = "En pausa";
 
 		search = "Buscar";
@@ -56,7 +62,7 @@
 		vectorWaiting = "Esperando a tus dispositivos";
 		vectorFrom = "Recibido de %1";
 		vectorDevice = "un dispositivo";
-		vectorBig = "Demasiado grande: hasta 100 MB";
+		vectorBig = "Demasiado grande: hasta 100 MB";
 		vectorMany = "De una en una: Vector guarda una sola cosa";
 		vectorFolder = "Las carpetas no se envían";
 		vectorEmpty = "Nada que enviar";
@@ -101,8 +107,8 @@
 		enterpriseHint = "%1 usa WPA-Enterprise (p. ej. eduroam): créala en la configuración avanzada";
 
 		batteryApp = "Batería";
-		batteryLow = "Batería al %1 %";
-		percent = "%1 %";
+		batteryLow = "Batería al %1 %";
+		percent = "%1 %";
 		batteryLowPlug = "Conecta el cargador.";
 		batteryLowLast = "Conecta el cargador ya: queda muy poco.";
 		media = "Multimedia";
@@ -118,7 +124,6 @@
 		tasksTodo = "Por hacer";
 		tasksDoing = "Haciendo";
 		tasksDone = "Hecho";
-		tasksAdd = "Nueva tarea";
 		tasksAddHint = "+ Nueva tarea";
 		tasksClear = "Limpiar";
 		tasksLeft = "Mover a la izquierda";
@@ -149,7 +154,7 @@
 		niloOffHow = "Actívalo en Preferencias, Sistema.";
 		niloAsleep = "Dormido";
 		niloWaking = "Despertando";
-		niloAwake = "Despierto, %1 GB";
+		niloAwake = "Despierto, %1 GB";
 		niloThinking = "Pensando";
 		niloWriting = "Escribiendo";
 		niloWorking = "Trabajando";
@@ -160,8 +165,8 @@
 		niloOllamaStarting = "Arrancando Ollama…";
 		niloStartOllama = "Arrancar Ollama";
 		niloOllamaHelp = "Más en: journalctl -u ollama -b";
-		niloDownloading = "Descargando %1 %";
-		niloDownloadingModel = "Descargando %1 (%2 %)";
+		niloDownloading = "Descargando %1 %";
+		niloDownloadingModel = "Descargando %1 (%2 %)";
 		niloGreetNight = "¿Trasnochando, %1?|Buenas noches, %1|La noche es tuya, %1";
 		niloGreetMorning = "Buenos días, %1|¿Café y a por ello, %1?|Arriba, %1";
 		niloGreetAfternoon = "Buenas tardes, %1|¿Qué tal la tarde, %1?|Hola de nuevo, %1";
@@ -306,7 +311,7 @@
 		confirmLaunch = "Abrir un archivo que se ejecuta";
 		whySensitive = "Parece una contraseña, una clave o un dato bancario";
 		whyPrivate = "En esta charla he leído tus archivos, la pantalla o un comando";
-		whyEnter = "Lleva Intro, y aquí puede enviar o ejecutar algo";
+		whyEnter = "Lleva Enter, y aquí puede enviar o ejecutar algo";
 		whyWeb = "En esta respuesta he leído internet o la pantalla";
 		confirmOk = "Confirmar";
 		confirmCancel = "Cancelar";
@@ -344,8 +349,8 @@
 		modelInstalled = "Descargado";
 		modelSelected = "En uso";
 		modelFast = "Para lo sencillo";
-		modelSize = "%1 GB";
-		modelRam = "≈ %1 GB de RAM";
+		modelSize = "%1 GB";
+		modelRam = "≈ %1 GB de RAM";
 		modelTight = "Justo para tu RAM";
 		modelAuto = "%1 (automático)";
 		modelFailed = "No se ha podido descargar: %1";
@@ -373,10 +378,10 @@
 		setContextEdit = "Editar";
 		setMemory = "Memoria";
 		setSleepAfter = "Dormir tras";
-		setMinutes = "%1 min";
+		setMinutes = "%1 min";
 		setSleepNow = "Dormir ahora";
-		setAwakeUntil = "Despierto hasta las %2, %1 GB";
-		setOnGpu = "(%1 % en la GPU)";
+		setAwakeUntil = "Despierto hasta las %2, %1 GB";
+		setOnGpu = "(%1 % en la GPU)";
 		setAsleep = "Dormido, sin ocupar memoria";
 		setThink = "Pensar antes de responder";
 		setAuto = "Elegir el modelo en cada pregunta";
@@ -385,7 +390,6 @@
 		setOpenPreferences = "Abrir Preferencias";
 
 		cfgTitle = "Preferencias";
-		cfgComment = "Tu nombre, idioma, teclado, fondo, atajos y más";
 		cfgYou = "Tú";
 		cfgName = "Nombre";
 		cfgAccount = "Cuenta";
@@ -406,7 +410,7 @@
 		cfgOther = "Otra";
 		cfgVariant = "Variante";
 		cfgTimeZone = "Zona horaria";
-		cfgTimeZoneSub = "Busca tu ciudad";
+		cfgTimeZonePlaceholder = "Busca tu ciudad";
 		cfgLook = "Aspecto";
 		cfgApps = "Aplicaciones";
 		cfgWallpaper = "Fondo";
@@ -467,9 +471,9 @@
 		bindSpecial = "Escritorio especial";
 		bindToSpecial = "Ventana al especial";
 		bindNextWorkspace = "Siguiente escritorio";
-		bindOverview = "Todos los escritorios; mantenida, elegir uno";
-		bindScreenshot = "Captura de la pantalla; con Shift, grabarla";
-		bindSnip = "Captura de una zona (la tecla de recortes); con Shift, grabarla";
+		bindOverview = "Todos los escritorios";
+		bindScreenshot = "Captura de pantalla";
+		bindSnip = "Captura de una zona";
 		screenshotsDir = "Capturas";
 		screenshotSaved = "Captura guardada y copiada";
 		recordSaved = "Grabación guardada y copiada";
@@ -504,7 +508,7 @@
 		welClose = "Cerrar";
 		cfgShowLog = "Registro";
 		cfgHideLog = "Ocultar";
-		bindWallpapers = "Los fondos; mantenida, elegir uno";
+		bindWallpapers = "Fondos";
 		welNetTitle = "Una red";
 		welNetBody = "NIHIL se actualiza y aplica cambios por internet: conéctate a una red.";
 		welNetDone = "Conectado a %1.";
@@ -512,7 +516,7 @@
 		ovHint = "[%1] Siguiente|[Shift + %1] Anterior|[← →] Elegir|[Enter] Ir|[Esc] Volver";
 
 		bindCopy = "Copiar";
-		bindClipboard = "Pegar o elegir del historial";
+		bindClipboard = "Pegar";
 		clipTitle = "Portapapeles";
 		clipEmpty = "Nada copiado todavía.";
 		clipPictureSize = "%1 × %2";
@@ -526,7 +530,6 @@
 		updOffline = "Sin conexión con GitHub";
 		updUnknown = "Este NIHIL no viene de GitHub";
 		updChecking = "Mirando si hay algo nuevo…";
-		updDev = "Ahora corre tu copia (nihil dev): actualizar vuelve a la de GitHub.";
 		updMore = "Y %1 más";
 		updUpdate = "Actualizar";
 		updApplying = "Actualizando NIHIL (%1)";
@@ -584,7 +587,7 @@
 		cfgScreenNone = "Hyprland no dice que haya pantallas.";
 		cfgScreenMode = "Resolución";
 		cfgScreenRate = "Frecuencia";
-		cfgScreenScalePct = "%1 %";
+		cfgScreenScalePct = "%1 %";
 		cfgScreenScale = "Escala";
 		cfgScreenRotation = "Giro";
 		cfgScreenBar = "Barra";
@@ -726,7 +729,7 @@
 		insInstallOn = "Instalar en";
 		insInstalled = "Instalado";
 		insInstalling = "Instalando";
-		insInstallingLong = "Instalando. Tarda un rato: casi todo se descarga.";
+		insInstallingStep = "Instalando…";
 		insKeyboard = "Teclado";
 		insLanguage = "Idioma";
 		insLater = "Luego";
@@ -739,21 +742,21 @@
 		insLookingParts = "Mirando lo que guardan sus particiones…";
 		insMismatch = "No coinciden (o está vacía). Otra vez.";
 		insNeedsAtLeast = "NIHIL necesita al menos %1.";
-		insNeedsBoot = "NIHIL necesita también una partición de 1 GB para arrancar: haz sitio para NIHIL.";
-		insNeedsBootShort = "NIHIL necesita también una partición de 1 GB para arrancar.";
+		insNeedsBoot = "NIHIL necesita también una partición de 1 GB para arrancar: haz sitio para NIHIL.";
+		insNeedsBootShort = "NIHIL necesita también una partición de 1 GB para arrancar.";
 		insNeedsUefi = "NIHIL necesita UEFI, y este ordenador ha arrancado en modo BIOS antiguo.";
 		insNetwork = "Red";
 		insNewPartitions = "No se pueden leer las particiones nuevas de %1: algo lo sigue usando. Reinicia y vuelve a probar.";
 		insNextTo = "Junto a lo que hay";
 		insNo = "No";
 		insNoAnswers = "No han llegado respuestas.";
-		insNoDisk = "No hay ningún disco de 20 GB o más donde instalar.";
+		insNoDisk = "No hay ningún disco de 20 GB o más donde instalar.";
 		insNoEncrypt = "No cifrar";
 		insNoGpt = "%1 no tiene tabla de particiones GPT.";
 		insNoGptMake = "%1 no tiene tabla de particiones GPT: créala en cfdisk o borra el disco entero.";
 		insNoGptNextTo = "%1 no tiene tabla de particiones GPT (un Windows antiguo en MBR, o nada aún): NIHIL solo puede ir junto a otro sistema en GPT. Borra el disco entero, o conviértelo desde Windows (mbr2gpt).";
 		insNoKeymap = "La consola no tiene un mapa de teclado llamado %1, así que aquí las teclas escriben como en un teclado estadounidense: una contraseña elegida ahora puede no ser lo que esas teclas escriben al iniciar sesión. Lo más seguro son letras y cifras.";
-		insNoPartition = "No hay ninguna partición de 20 GB o más: haz sitio para NIHIL.";
+		insNoPartition = "No hay ninguna partición de 20 GB o más: haz sitio para NIHIL.";
 		insNoRoom = "No hay sitio para NIHIL junto a lo que hay en %1: necesita %2.";
 		insNoRoot = "%1 no tiene ninguna partición donde pueda ir NIHIL.";
 		insNoShrink = "%1: %2 no se puede encoger.";
@@ -791,7 +794,7 @@
 		insStoppedTitle = "Parado";
 		insTakeUsb = "Quita el USB mientras se reinicia.";
 		insTextInstaller = "Instalador de texto";
-		insTooFull = "%1: está demasiado llena para dar %2 y quedarse con 10 GB libres.";
+		insTooFull = "%1: está demasiado llena para dar %2 y quedarse con 10 GB libres.";
 		insTryAgain = "Probar otra vez";
 		insUnknownZone = "Zona horaria desconocida: %1.";
 		insUpTo = "hasta %1";
@@ -805,7 +808,7 @@
 		insWhereOn = "Dónde en %1";
 		insWhole = "Borrar el disco entero";
 		insWindowsCheck = "Windows revisará su disco al arrancar: déjalo terminar.";
-		insWindowsElsewhere = "Windows, en %1, se arranca desde el menú de arranque del ordenador.";
+		insWindowsElsewhere = "Windows, en %1";
 		insWriting = "Escribiendo la configuración de este ordenador…";
 		insXkbLayout = "Distribución del teclado (nombre xkb)";
 		insYes = "Sí";
@@ -813,6 +816,7 @@
 		insYourName = "Tu nombre";
 		insZone = "Zona horaria";
 		insZoneAsk = "¿Zona horaria: %1?";
+		isoHelp = "Instalador de NIHIL: nihil-installer, o sudo nihil-install en texto; nmtui para la red";
 
 		# nihil-watch (home/deck/watch.sh), in the machine's language.
 		watchMany = "Hay más de un reloj en adb (%1): desconecta uno (adb disconnect HOST:PUERTO).";
@@ -821,7 +825,7 @@
 		watchAskPairing = "No aparece. La dirección IP y el puerto bajo el código (HOST:PUERTO): ";
 		watchFound = "Encontrado en %1.";
 		watchAskCode = "El código de vinculación Wi-Fi del reloj: ";
-		watchPairFailed = "adb no ha podido vincularlo: prueba otra vez con un código nuevo.";
+		watchPairFailed = "adb no ha podido emparejarlo: prueba otra vez con un código nuevo.";
 		watchAskConnect = "La dirección IP y el puerto de la pantalla de Depuración inalámbrica (HOST:PUERTO): ";
 		watchConnectFailed = "adb no ha podido conectarse a %1.";
 		watchNotWatch = "adb tiene %1, pero no dice que sea un reloj.";
@@ -836,18 +840,18 @@
 		watchInstalling = "Instalando %1…";
 		watchRefused = "El reloj no ha aceptado %1: %2";
 		watchOtherKey = "El reloj tiene %1 firmado con otra clave: una compilación de una copia local.";
-		watchAskReplace = "¿Sustituirlo por la versión publicada? Lo que guarda, la vinculación también, se va con él [s/N] ";
+		watchAskReplace = "¿Sustituirlo por la versión publicada? Lo que guarda, el emparejamiento también, se va con él [s/N] ";
 		watchNothingReplaced = "No se ha sustituido nada.";
 		watchKept = "El reloj no ha soltado %1.";
 		watchRefusedShort = "El reloj no ha aceptado %1.";
 		watchSaid = "El reloj ha dicho: %1";
 		watchNoInvite = "El deck no ha dado ninguna invitación: ¿está encendido? (%1)";
-		watchInvited = "Invitado por %1: el reloj se vincula con él ahora.";
+		watchInvited = "Invitado por %1: el reloj se empareja con él ahora.";
 		watchHalo = "La luz del borde necesita leer las notificaciones del reloj y un servicio de accesibilidad: adb se los da ahora.";
 		watchNoHalo = "No se ha podido encender la luz del borde: los ajustes de NIHIL en el reloj pueden.";
 		watchDone = "Hecho. En el reloj, mantén pulsada la esfera y elige la de NIHIL.";
 		watchAskDebugOff = "¿Apagar la depuración inalámbrica del reloj? Para actualizar tendrás que encenderla otra vez [s/N] ";
-		watchNoWatch = "No hay ningún reloj en adb: ejecuta nihil-watch para vincularlo.";
+		watchNoWatch = "No hay ningún reloj en adb: ejecuta nihil-watch para emparejarlo.";
 		watchUpdated = "Actualizado.";
 		watchForgotBoth = "El reloj y este ordenador se han olvidado el uno del otro.";
 		watchForgot = "El reloj ha olvidado su ordenador.";
@@ -863,8 +867,14 @@
 
 		password = "Password";
 		authFailed = "Failed ($ATTEMPTS)";
+		authLocked = "Account locked";
+		authAccountExpired = "Account expired";
+		authExpired = "Password expired";
+		authTooMany = "Too many attempts";
+		authSession = "Couldn't start the session";
 		fingerprintReady = "Touch the sensor";
 		fingerprintPresent = "Reading fingerprint";
+		fingerprintFailed = "Fingerprint not recognised";
 		lockPaused = "Paused";
 
 		search = "Search";
@@ -908,7 +918,7 @@
 		vectorWaiting = "Waiting for your devices";
 		vectorFrom = "Received from %1";
 		vectorDevice = "a device";
-		vectorBig = "Too big: up to 100 MB";
+		vectorBig = "Too big: up to 100 MB";
 		vectorMany = "One at a time: Vector holds a single thing";
 		vectorFolder = "Folders can't be sent";
 		vectorEmpty = "Nothing to send";
@@ -970,7 +980,6 @@
 		tasksTodo = "To do";
 		tasksDoing = "Doing";
 		tasksDone = "Done";
-		tasksAdd = "New task";
 		tasksAddHint = "+ New task";
 		tasksClear = "Clear";
 		tasksLeft = "Move left";
@@ -1001,7 +1010,7 @@
 		niloOffHow = "Turn it on in Preferences, System.";
 		niloAsleep = "Asleep";
 		niloWaking = "Waking up";
-		niloAwake = "Awake, %1 GB";
+		niloAwake = "Awake, %1 GB";
 		niloThinking = "Thinking";
 		niloWriting = "Writing";
 		niloWorking = "Working";
@@ -1196,8 +1205,8 @@
 		modelInstalled = "Downloaded";
 		modelSelected = "In use";
 		modelFast = "For simple ones";
-		modelSize = "%1 GB";
-		modelRam = "≈ %1 GB of RAM";
+		modelSize = "%1 GB";
+		modelRam = "≈ %1 GB of RAM";
 		modelTight = "Tight for your RAM";
 		modelAuto = "%1 (auto)";
 		modelFailed = "Download failed: %1";
@@ -1225,9 +1234,9 @@
 		setContextEdit = "Edit";
 		setMemory = "Memory";
 		setSleepAfter = "Sleep after";
-		setMinutes = "%1 min";
+		setMinutes = "%1 min";
 		setSleepNow = "Sleep now";
-		setAwakeUntil = "Awake until %2, %1 GB";
+		setAwakeUntil = "Awake until %2, %1 GB";
 		setOnGpu = "(%1% on the GPU)";
 		setAsleep = "Asleep, taking no memory";
 		setThink = "Think before answering";
@@ -1237,7 +1246,6 @@
 		setOpenPreferences = "Open Preferences";
 
 		cfgTitle = "Preferences";
-		cfgComment = "Your name, language, keyboard, wallpaper, shortcuts and more";
 		cfgYou = "You";
 		cfgName = "Name";
 		cfgAccount = "Account";
@@ -1258,7 +1266,7 @@
 		cfgOther = "Other";
 		cfgVariant = "Variant";
 		cfgTimeZone = "Time zone";
-		cfgTimeZoneSub = "Look for your city";
+		cfgTimeZonePlaceholder = "Look for your city";
 		cfgLook = "Appearance";
 		cfgApps = "Apps";
 		cfgWallpaper = "Wallpaper";
@@ -1319,9 +1327,9 @@
 		bindSpecial = "Special workspace";
 		bindToSpecial = "Window to the special one";
 		bindNextWorkspace = "Next workspace";
-		bindOverview = "All workspaces; held, choose one";
-		bindScreenshot = "Screenshot of the screen; with Shift, record it";
-		bindSnip = "Screenshot of an area (the snipping key); with Shift, record it";
+		bindOverview = "All workspaces";
+		bindScreenshot = "Screenshot";
+		bindSnip = "Area screenshot";
 		screenshotsDir = "Screenshots";
 		screenshotSaved = "Screenshot saved and copied";
 		recordSaved = "Recording saved and copied";
@@ -1356,7 +1364,7 @@
 		welClose = "Close";
 		cfgShowLog = "Log";
 		cfgHideLog = "Hide";
-		bindWallpapers = "Wallpapers; held, choose one";
+		bindWallpapers = "Wallpapers";
 		welNetTitle = "A network";
 		welNetBody = "NIHIL updates and applies changes over the internet: connect to a network.";
 		welNetDone = "Connected to %1.";
@@ -1364,7 +1372,7 @@
 		ovHint = "[%1] Next|[Shift + %1] Previous|[← →] Choose|[Enter] Go|[Esc] Back";
 
 		bindCopy = "Copy";
-		bindClipboard = "Paste, or pick from the history";
+		bindClipboard = "Paste";
 		clipTitle = "Clipboard";
 		clipEmpty = "Nothing copied yet.";
 		clipPictureSize = "%1 × %2";
@@ -1378,7 +1386,6 @@
 		updOffline = "GitHub can't be reached";
 		updUnknown = "This NIHIL doesn't come from GitHub";
 		updChecking = "Looking for something new…";
-		updDev = "Your checkout runs now (nihil dev): updating goes back to GitHub's.";
 		updMore = "And %1 more";
 		updUpdate = "Update";
 		updApplying = "Updating NIHIL (%1)";
@@ -1578,7 +1585,7 @@
 		insInstallOn = "Install on";
 		insInstalled = "Installed";
 		insInstalling = "Installing";
-		insInstallingLong = "Installing. This takes a while: most of it is downloaded.";
+		insInstallingStep = "Installing…";
 		insKeyboard = "Keyboard";
 		insLanguage = "Language";
 		insLater = "Later";
@@ -1591,21 +1598,21 @@
 		insLookingParts = "Looking at what its partitions hold…";
 		insMismatch = "They don't match (or it's empty). Again.";
 		insNeedsAtLeast = "NIHIL needs at least %1.";
-		insNeedsBoot = "NIHIL also needs a partition of 1 GB for booting: make room for NIHIL instead.";
-		insNeedsBootShort = "NIHIL also needs a partition of 1 GB for booting.";
+		insNeedsBoot = "NIHIL also needs a partition of 1 GB for booting: make room for NIHIL instead.";
+		insNeedsBootShort = "NIHIL also needs a partition of 1 GB for booting.";
 		insNeedsUefi = "NIHIL needs UEFI, and this computer started in legacy BIOS mode.";
 		insNetwork = "Network";
 		insNewPartitions = "The new partitions of %1 can't be read: something still uses it. Restart and try again.";
 		insNextTo = "Next to what is on it";
 		insNo = "No";
 		insNoAnswers = "No answers came.";
-		insNoDisk = "There is no disk of 20 GB or more to install on.";
+		insNoDisk = "There is no disk of 20 GB or more to install on.";
 		insNoEncrypt = "Don't encrypt";
 		insNoGpt = "%1 has no GPT partition table.";
 		insNoGptMake = "%1 has no GPT partition table: make one in cfdisk, or erase the whole disk.";
 		insNoGptNextTo = "%1 has no GPT partition table (an old Windows on MBR, or nothing yet): NIHIL can only go next to another system on GPT. Erase the whole disk, or convert it from Windows (mbr2gpt).";
 		insNoKeymap = "The console has no keymap called %1, so here the keys type as on a US keyboard: a password chosen now may not be what the same keys type at the login. Letters and digits are the safest.";
-		insNoPartition = "No partition of 20 GB or more: make room for NIHIL instead.";
+		insNoPartition = "No partition of 20 GB or more: make room for NIHIL instead.";
 		insNoRoom = "There is no room for NIHIL next to what is on %1: it needs %2.";
 		insNoRoot = "%1 has no partition NIHIL can go on.";
 		insNoShrink = "%1: %2 cannot be shrunk.";
@@ -1643,7 +1650,7 @@
 		insStoppedTitle = "Stopped";
 		insTakeUsb = "Take the USB stick out as it restarts.";
 		insTextInstaller = "Text installer";
-		insTooFull = "%1: too full to give %2 and keep 10 GB free.";
+		insTooFull = "%1: too full to give %2 and keep 10 GB free.";
 		insTryAgain = "Try again";
 		insUnknownZone = "Unknown time zone: %1.";
 		insUpTo = "up to %1";
@@ -1657,7 +1664,7 @@
 		insWhereOn = "Where on %1";
 		insWhole = "Erase the whole disk";
 		insWindowsCheck = "Windows will check its disk as it starts: let it finish.";
-		insWindowsElsewhere = "Windows, on %1, starts from the computer's own boot menu.";
+		insWindowsElsewhere = "Windows, on %1";
 		insWriting = "Writing this computer's configuration…";
 		insXkbLayout = "Keyboard layout (xkb name)";
 		insYes = "Yes";
@@ -1665,6 +1672,7 @@
 		insYourName = "Your name";
 		insZone = "Time zone";
 		insZoneAsk = "Time zone: %1?";
+		isoHelp = "NIHIL installer: nihil-installer, or sudo nihil-install in text; nmtui for the network";
 
 		# nihil-watch (home/deck/watch.sh), in the machine's language.
 		watchMany = "More than one watch on adb (%1): disconnect one (adb disconnect HOST:PORT).";

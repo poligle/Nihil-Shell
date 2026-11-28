@@ -2220,6 +2220,8 @@ def make_server(config, folder, host="::"):
 
 
 def serve(config):
+    # The deck's folder is inside NIHIL's, which is the user's alone: the deck may be first to make it.
+    os.makedirs(os.path.dirname(state_dir()), mode=0o700, exist_ok=True)
     server = make_server(config, state_dir())
     deck = server.deck
     listener = start_bluetooth(server, int(config.get("blePsm", BLE_PSM))) if config.get("bluetooth", True) else None

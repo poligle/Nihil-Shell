@@ -27,15 +27,19 @@ let
 		apply() {
 			local name="$1" output file
 			[ -d "$dir/$name" ] || { echo "nihil-wallpaper: unknown wallpaper '$name'" >&2; exit 1; }
-			mkdir -p "$(dirname "$state")"
+			install -d -m 700 "$(dirname "$state")"
 			echo "$name" > "$state"
 			ln -sfn "$dir/$name" "$state-current"
-			# A copy for the login screen, which can't read the home.
+			# Copies for the login screen, which can't read the home: the primary's, and each
+			# screen's own for the screen it's on.
 			if [ -w /var/lib/nihil/greeter ]; then
-				shown=/var/lib/nihil/greeter/wallpaper.png
-				if [ -L "$shown" ] || ! cmp -s "$dir/$name/${nihil.primaryOutput}.png" "$shown"; then
-					cp -f "$dir/$name/${nihil.primaryOutput}.png" "$shown.tmp" && mv -f "$shown.tmp" "$shown"
-				fi
+				share "$dir/$name/${nihil.primaryOutput}.png" /var/lib/nihil/greeter/wallpaper.png
+				mkdir -p /var/lib/nihil/greeter/wallpapers 2> /dev/null || true
+				for output in ${lib.escapeShellArgs (lib.attrNames nihil.outputs)}; do
+					if [ -r "$dir/$name/$output.png" ]; then
+						share "$dir/$name/$output.png" "/var/lib/nihil/greeter/wallpapers/$output.png"
+					fi
+				done
 				look > /var/lib/nihil/greeter/glass
 			fi
 			# Started with the daemon, the socket may not be there yet; and one screen awww doesn't
@@ -52,6 +56,12 @@ let
 			done
 			if command -v nihil-lock-glass > /dev/null; then
 				nihil-lock-glass > /dev/null 2>&1 &
+			fi
+		}
+
+		share() {
+			if [ -L "$2" ] || ! cmp -s "$1" "$2"; then
+				cp -f "$1" "$2.tmp" && mv -f "$2.tmp" "$2"
 			fi
 		}
 
@@ -82,8 +92,10 @@ let
 				case "''${2:-}" in
 					"") look ;;
 					on | off)
-						mkdir -p "$(dirname "$glass")"
+						install -d -m 700 "$(dirname "$glass")"
 						echo "$2" > "$glass"
+						# Hyprland reads it with the rest of its configuration (home/hyprland.nix).
+						${hyprctl} reload config-only > /dev/null 2>&1 || true
 						apply "$(current)"
 						pkill -USR1 -x 'kitty|\.kitty-wrapped' || true
 						;;

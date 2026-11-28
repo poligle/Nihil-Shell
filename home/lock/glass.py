@@ -141,6 +141,13 @@ def flat(out, cx, cy, hx, hy, r, scale, fill, line):
     out[y0:y1, x0:x1] = out[y0:y1, x0:x1] * (1 - cover) + col * cover
 
 
+def column(width, scale, wide, ramp, darkness):
+    # How dark the login screen's column makes each x: black at most `darkness` across `wide` px
+    # in the middle, fading out over a `ramp` of that width at either side, as its gradient does.
+    x = (np.arange(width, dtype=np.float32) + 0.5 - width / 2) / scale
+    return np.clip((wide / 2 - np.abs(x)) / (wide * ramp), 0, 1) * darkness
+
+
 def colour(hex):
     return np.array([int(hex[i:i + 2], 16) for i in (0, 2, 4)], dtype=np.float32) / 255
 
@@ -153,14 +160,20 @@ def main():
     parser.add_argument("--field", nargs=3, type=float)
     parser.add_argument("--panel", nargs=5, type=float, metavar=("X", "Y", "W", "H", "R"))
     parser.add_argument("--flat", nargs=2, metavar=("FILL", "LINE"))
+    parser.add_argument("--dim", type=float, default=1.0)
+    parser.add_argument("--column", nargs=3, type=float, metavar=("WIDTH", "RAMP", "DARKNESS"))
     args = parser.parse_args()
 
-    img = np.asarray(Image.open(args.wallpaper).convert("RGB"), dtype=np.float32) / 255
+    # hyprlock darkens nothing, so the picture is the login screen's: the wallpaper dimmed, the
+    # glass made over that, and the column of text darker only around the glass, as there.
+    img = np.asarray(Image.open(args.wallpaper).convert("RGB"), dtype=np.float32) / 255 * args.dim
     height, width = img.shape[:2]
     sx = width / args.logical[0]
     sy = height / args.logical[1]
     scale = (sx + sy) / 2
     out = img.copy()
+    if args.column:
+        out *= 1 - column(width, sx, *args.column)[None, :, None]
 
     if args.field:
         fw, fh, up = args.field

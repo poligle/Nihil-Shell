@@ -1299,6 +1299,8 @@ class AgentTest(unittest.TestCase):
             # Two files called the same, in the same second: a copy of each.
             self.assertTrue(agent.Tools.keep_copy(os.path.join(home, "a", "list.txt")))
             self.assertTrue(agent.Tools.keep_copy(os.path.join(home, "b", "list.txt")))
+            # NIHIL's folder, made on the way, is the user's alone.
+            self.assertEqual(os.stat(os.path.join(state, "nihil")).st_mode & 0o777, 0o700)
             kept = sorted(os.listdir(before))
             self.assertEqual(len(kept), 2)
             texts = []

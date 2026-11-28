@@ -216,7 +216,7 @@ Singleton {
     }
 
     function markWelcomed(): void {
-        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$1\" && touch \"$1/welcomed\"", "sh", root.stateDir]);
+        Quickshell.execDetached([Config.cmd.sh, "-c", "install -d -m 700 \"$1\" && touch \"$1/welcomed\"", "sh", root.stateDir]);
     }
 
     function endWelcome(): void {
@@ -412,11 +412,14 @@ Singleton {
         return taken > 0 ? "file://" + file.split("/").map(encodeURIComponent).join("/") + "?" + taken : "";
     }
 
-    // Qt reads PNG, JPEG, GIF and BMP by itself; a WebP one goes in as PNG.
-    readonly property string photoScript: 'mkdir -p "$(dirname "$2")" && '
+    // Qt reads PNG, JPEG, GIF and BMP by itself; a WebP one goes in as PNG. Only a file, of 50 MB
+    // at most, by what a link points at: a link to /dev/zero or a pipe would never end, filling the
+    // disk meanwhile. The copy stops there too, even if the file grew since it was looked at.
+    readonly property string photoScript: 'max=52428800; install -d -m 700 "$(dirname "$2")" && '
+        + '[ -f "$1" ] && [ "$(stat -Lc %s -- "$1")" -le $max ] && '
         + 'if [ "$(head -c 12 -- "$1" | tail -c 4)" = WEBP ]; then '
         + '"$3" -v error -y -f webp_pipe -i "file:$1" -frames:v 1 -c:v png -f image2pipe "file:$2.new"; '
-        + 'else cp -f -- "$1" "$2.new"; fi && mv -f -- "$2.new" "$2"'
+        + 'else head -c $max -- "$1" > "$2.new"; fi && mv -f -- "$2.new" "$2"'
 
     // From a widget, where it shows at once; dropped on the desktop, a new one where it fell, at
     // `at`; or from Files' Open with, which says it's done: the first one on with none, else a new one.
@@ -481,9 +484,10 @@ Singleton {
         }
     }
 
-    // The pictures there are, by the names of their widgets.
+    // The pictures there are, by the names of their widgets. The folder is the user's alone, as
+    // notes and pictures are in it: made so, or made so again if it was anyone's to read.
     Process {
-        command: [Config.cmd.sh, "-c", 'mkdir -p "$0" && cd "$0" || exit 0; for name in photo photo-*; do '
+        command: [Config.cmd.sh, "-c", 'install -d -m 700 "$0" && cd "$0" || exit 0; for name in photo photo-*; do '
                   + 'case "$name" in *[!a-z0-9-]*) continue ;; esac; [ -s "$name" ] && echo "$name"; done; true', root.stateDir]
         running: true
         stdout: StdioCollector {

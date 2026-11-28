@@ -88,9 +88,12 @@ in
     # point at nothing once a collection took it, until the next login copies the user's.
     environment.etc."nihil/wallpapers".source = config.nihil.wallpapers;
 
+    # The primary's render, for either login screen, and each screen's own, for NIHIL's.
     systemd.tmpfiles.rules =
     [
         "d /var/lib/nihil/greeter 0755 ${config.nihil.user.name} users -"
         "L /var/lib/nihil/greeter/wallpaper.png - - - - /etc/nihil/wallpapers/${config.nihil.wallpaper}/${config.nihil.primaryOutput}.png"
-    ];
+        "d /var/lib/nihil/greeter/wallpapers 0755 ${config.nihil.user.name} users -"
+    ] ++ map (output: "L /var/lib/nihil/greeter/wallpapers/${output}.png - - - - /etc/nihil/wallpapers/${config.nihil.wallpaper}/${output}.png")
+        (lib.attrNames config.nihil.outputs);
 }

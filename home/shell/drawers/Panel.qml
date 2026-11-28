@@ -419,16 +419,6 @@ Item {
                 visible: root.expanded === "update" || Machine.updating
                 spacing: 6
 
-                Txt {
-                    Layout.fillWidth: true
-                    visible: Updates.dev !== ""
-                    text: Lang.updDev
-                    color: Tokens.muted
-                    wrapMode: Text.Wrap
-                    elide: Text.ElideNone
-                    font.pixelSize: 12
-                }
-
                 Repeater {
                     model: Updates.state === "behind" ? Updates.commits.slice(0, 6) : []
 

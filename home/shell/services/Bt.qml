@@ -31,7 +31,7 @@ Singleton {
         power.stop();
         root.turningOn = on;
         root.wish = on ? "on" : "off";
-        Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && echo \"$2\" > \"$1\"",
+        Quickshell.execDetached([Config.cmd.sh, "-c", "install -d -m 700 \"$(dirname \"$1\")\" && echo \"$2\" > \"$1\"",
                                  "sh", root.wishFile, root.wish]);
         if (on) {
             root.waited = 0;

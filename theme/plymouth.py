@@ -36,11 +36,32 @@ def render(grid, pitch, levels, supersample=4):
     return img.resize((size, size), Image.LANCZOS)
 
 
+def colour(hex):
+    return tuple(int(hex[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def pill(width, height, fill, line, supersample=4):
+    s = supersample
+    img = Image.new("RGBA", (width * s, height * s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.rounded_rectangle((0, 0, width * s - 1, height * s - 1), radius=height * s / 2, fill=line + (255,))
+    draw.rounded_rectangle((s, s, width * s - 1 - s, height * s - 1 - s), radius=height * s / 2 - s, fill=fill + (255,))
+    return img.resize((width, height), Image.LANCZOS)
+
+
+def dot(size, fill, supersample=4):
+    s = supersample
+    img = Image.new("RGBA", (size * s, size * s), (0, 0, 0, 0))
+    ImageDraw.Draw(img).ellipse((0, 0, size * s - 1, size * s - 1), fill=fill + (255,))
+    return img.resize((size, size), Image.LANCZOS)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("grid")
     ap.add_argument("outdir")
     ap.add_argument("--pitch", type=int, default=9)
+    ap.add_argument("--colours", nargs=4, metavar=("VOID", "LINE", "SIGNAL", "INK"), default=("000000", "2A2A2A", "D71921", "F2F2F2"))
     args = ap.parse_args()
 
     grid = load(args.grid)
@@ -81,6 +102,14 @@ def main():
 
     render(grid, args.pitch, lambda i, j: (lit[j][i] * 0.86, 0.75) if lit[j][i] else (0, 0)).save(
         os.path.join(args.outdir, "logo.png"))
+
+    # The disk's password, as the login screen and the lock screen ask: a pill 280 by 46, its
+    # edge red after a password that didn't open the disk, dots of 10 and the LED of 6.
+    void, line, signal, ink = (colour(c) for c in args.colours)
+    pill(280, 46, void, line).save(os.path.join(args.outdir, "field.png"))
+    pill(280, 46, void, signal).save(os.path.join(args.outdir, "field-wrong.png"))
+    dot(10, ink).save(os.path.join(args.outdir, "dot.png"))
+    dot(6, signal).save(os.path.join(args.outdir, "led.png"))
 
 
 if __name__ == "__main__":

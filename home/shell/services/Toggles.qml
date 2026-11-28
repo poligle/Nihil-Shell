@@ -59,7 +59,7 @@ Singleton {
     Timer {
         id: keep
         interval: 400
-        onTriggered: Quickshell.execDetached([Config.cmd.sh, "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s\\n%s\\n' \"$2\" \"$3\" > \"$1\"",
+        onTriggered: Quickshell.execDetached([Config.cmd.sh, "-c", "install -d -m 700 \"$(dirname \"$1\")\" && printf '%s\\n%s\\n' \"$2\" \"$3\" > \"$1\"",
                                               "sh", root.nightFile, root.nightLevel.toFixed(2), root.night ? "on" : "off"])
     }
 

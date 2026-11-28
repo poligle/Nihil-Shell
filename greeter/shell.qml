@@ -11,6 +11,7 @@ import Quickshell.Services.Greetd
 import qs.theme
 import qs.config
 import qs.components
+import "Auth.js" as Auth
 
 ShellRoot {
     id: root
@@ -25,17 +26,21 @@ ShellRoot {
     property string note: ""
     property bool wrong: false
     property int attempts: 0
+    // What PAM said went wrong in this try, for when greetd says only that it failed.
+    property string told: ""
     property bool going: false
 
     readonly property string skipFile: (Quickshell.env("XDG_RUNTIME_DIR") ?? "") + "/nihil-greeter-password"
 
     // Every screen is on (cage -m extend) and the window spans them all: the greeter shows on each,
     // so it's where one looks, whichever is off or shut (a laptop closed with a screen plugged in
-    // is still a screen to cage). One field takes the keys and every face shows it. With one
-    // screen, or a layout that doesn't add up, one face fills the window.
+    // is still a screen to cage). One field takes the keys and every face shows it, each over its
+    // screen's own wallpaper. With one screen, or a layout that doesn't add up, one face fills
+    // the window.
     readonly property var faces: {
-        const full = [Qt.rect(0, 0, window.width, window.height)];
         const screens = Quickshell.screens;
+        const only = screens.length === 1 ? screens[0].name : Config.primaryOutput;
+        const full = [{ rect: Qt.rect(0, 0, window.width, window.height), name: only }];
         if (screens.length < 2)
             return full;
         let left = Infinity;
@@ -50,7 +55,7 @@ ShellRoot {
             if (!(r.width > 0 && r.height > 0 && r.x >= 0 && r.y >= 0
                   && r.x + r.width <= window.width + 1 && r.y + r.height <= window.height + 1))
                 return full;
-            out.push(r);
+            out.push({ rect: r, name: screens[i].name });
         }
         return out;
     }
@@ -64,6 +69,7 @@ ShellRoot {
         asking = false;
         echo = false;
         sent = false;
+        told = "";
         if (Greetd.available && person.name !== "")
             Greetd.createSession(person.name);
     }
@@ -101,16 +107,14 @@ ShellRoot {
         start();
     }
 
-    // What PAM and greetd say, as NIHIL writes: a failure in its own words, the rest with a capital.
-    function said(text: string): string {
-        const words = text.trim();
-        if (/^authentication failure$/i.test(words))
-            return Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
-        return words.length > 0 ? words.charAt(0).toLocaleUpperCase() + words.slice(1) : words;
+    // What PAM, fprintd and greetd say, in NIHIL's words and the greeter's language: what's known
+    // by what it is, any other failure as a failure, and nothing else (Auth.js).
+    function said(text: string, failed: bool): string {
+        return root.words(Auth.kind(text) || (failed ? "authFailed" : ""));
     }
 
-    function reader(message: string): bool {
-        return /finger|swipe|huella|dedo|sensor|lector/i.test(message);
+    function words(kind: string): string {
+        return kind === "" ? "" : String(Lang[kind]).replace("$ATTEMPTS", String(root.attempts));
     }
 
     function dateText(date: var): string {
@@ -128,7 +132,7 @@ ShellRoot {
             if (responseRequired) {
                 root.echo = echoResponse;
                 // A password asked for again keeps what the last try said, a failure most of all.
-                root.note = echoResponse ? root.said(message) : root.wrong ? root.note : "";
+                root.note = echoResponse ? root.said(message, false) : root.wrong ? root.note : "";
                 if (!echoResponse && root.waiting !== "") {
                     const text = root.waiting;
                     root.waiting = "";
@@ -140,7 +144,8 @@ ShellRoot {
                 root.asking = true;
                 return;
             }
-            root.note = root.reader(message) ? Lang.fingerprintReady : root.said(message);
+            root.told = Auth.told(message, error, root.told);
+            root.note = root.words(Auth.fingerprint(message, error)) || root.said(message, error);
             root.wrong = error;
         }
 
@@ -148,7 +153,8 @@ ShellRoot {
             root.back();
             root.attempts += 1;
             root.wrong = true;
-            root.note = Lang.authFailed.replace("$ATTEMPTS", String(root.attempts));
+            root.note = root.words(Auth.failure(message, root.told));
+            root.told = "";
             root.waiting = "";
             root.asking = false;
             root.sent = false;
@@ -164,7 +170,7 @@ ShellRoot {
         function onError(error: string): void {
             root.back();
             root.wrong = true;
-            root.note = root.said(error);
+            root.note = root.said(error, true);
             retry.restart();
         }
     }
@@ -241,24 +247,46 @@ ShellRoot {
             Item {
                 id: face
 
-                required property rect modelData
+                required property var modelData
 
-                x: face.modelData.x
-                y: face.modelData.y
-                width: face.modelData.width
-                height: face.modelData.height
+                x: face.modelData.rect.x
+                y: face.modelData.rect.y
+                width: face.modelData.rect.width
+                height: face.modelData.rect.height
                 opacity: root.shown
 
                 property Item glassBackdrop: glassFlag.text().trim() === "on" && wall.status === Image.Ready ? glassSource : null
 
+                // The screen's own render, dot for dot as the desktop shows it; for a screen
+                // nihil.outputs doesn't have, the primary's.
                 Image {
                     id: wall
+                    property bool own: true
                     anchors.fill: parent
-                    source: "file://" + Config.wallpaper
+                    source: "file://" + (own ? Config.wallpapers + "/" + face.modelData.name + ".png" : Config.wallpaper)
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     mipmap: true
                     opacity: 0.55
+                    onStatusChanged: {
+                        if (status === Image.Error)
+                            own = false;
+                    }
+                }
+
+                // Under the column of text, the wallpaper darker: a dot behind a small letter
+                // would take it. The lock screen has it in its pictures (home/lock/glass.py).
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 560
+                    height: parent.height
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0; color: "transparent" }
+                        GradientStop { position: 0.2; color: Qt.rgba(0, 0, 0, 0.7) }
+                        GradientStop { position: 0.8; color: Qt.rgba(0, 0, 0, 0.7) }
+                        GradientStop { position: 1; color: "transparent" }
+                    }
                 }
 
                 Item {
@@ -302,7 +330,7 @@ ShellRoot {
                     y: parent.height / 2 + 56 - height / 2
                     width: 280
                     height: 46
-                    radius: 8
+                    radius: height / 2
                     color: Tokens.black
                     border.width: 1
                     property color borderTint: root.wrong ? Tokens.interrupt : root.sent || root.waiting !== "" ? Tokens.muted : Tokens.line
@@ -356,11 +384,11 @@ ShellRoot {
                     }
                 }
 
-                Label {
+                Alert {
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: parent.height / 2 + 110 - height / 2
                     text: root.note
-                    color: root.wrong ? Tokens.ink : Tokens.muted
+                    wrong: root.wrong && root.note !== ""
                     font.pixelSize: 12
                 }
 
@@ -382,11 +410,13 @@ ShellRoot {
                     }
                 }
 
+                // The words 36 px from the corner, as ever, with room around them for the ring.
                 Row {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    anchors.margins: 36
-                    spacing: 28
+                    anchors.rightMargin: 24
+                    anchors.bottomMargin: 30
+                    spacing: 16
 
                     Repeater {
                         model: [
@@ -394,18 +424,47 @@ ShellRoot {
                             { label: Lang.actPowerOff, command: Config.powerOff }
                         ]
 
-                        // A second click within 3 s does it: one by chance doesn't turn the computer off.
-                        Label {
+                        // A second click within 3 s does it: one by chance doesn't turn the computer
+                        // off. Armed, it's ringed in red; as wide at rest as armed, so arming one
+                        // doesn't move the other.
+                        Item {
                             id: action
 
                             required property var modelData
                             property bool armed: false
+                            readonly property string label: armed ? confirm.text : modelData.label
 
-                            text: armed ? Lang.confirmTo.arg(modelData.label.toLowerCase()) : modelData.label
-                            color: armed || area.containsMouse ? Tokens.ink : Tokens.muted
-                            font.pixelSize: 12
+                            width: Math.ceil(confirm.advanceWidth) + 24
+                            height: words.implicitHeight + 12
 
-                            Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+                            TextMetrics {
+                                id: confirm
+                                font: words.font
+                                text: Lang.confirmTo.arg(action.modelData.label.toLowerCase())
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: height / 2
+                                color: "transparent"
+                                border.width: 1
+                                border.color: Tokens.interrupt
+                                opacity: action.armed ? 1 : 0
+
+                                Behavior on opacity { NumberAnimation { duration: Tokens.animFast } }
+                            }
+
+                            Label {
+                                id: words
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: action.label
+                                color: action.armed || area.containsMouse ? Tokens.ink : Tokens.muted
+                                font.pixelSize: 12
+
+                                Behavior on color { ColorAnimation { duration: Tokens.animFast } }
+                            }
 
                             Timer {
                                 id: disarm
@@ -413,10 +472,13 @@ ShellRoot {
                                 onTriggered: action.armed = false
                             }
 
+                            // Over the words at rest, and the whole ring armed.
                             MouseArea {
                                 id: area
-                                anchors.fill: parent
-                                anchors.margins: -8
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                anchors.right: parent.right
+                                width: action.armed ? parent.width : words.implicitWidth + 24
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
