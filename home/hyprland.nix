@@ -238,15 +238,21 @@ let
 	onEvent = event: handler: { _args = [ event (lua handler) ]; };
 	soundOn = event: file: onEvent event ''function() hl.exec_cmd("${playSound file}") end'';
 
+	# How far tiled windows are from a screen's top, right and bottom edges: the frame and the gap.
+	inside = t.frame.thickness + t.windows.gapsOut;
+
 	floatingPanel = name: class:
 	{
 		inherit name;
 		match.class = class;
 		float = true;
 		size = "640 400";
-		# Against the right edge of any screen, inside the frame.
-		move = "monitor_w-window_w-${toString (t.frame.thickness + t.windows.gapsOut)} ${toString (t.frame.bar + t.windows.gapsOut)}";
+		# In the top right corner of any screen, inside the frame.
+		move = "monitor_w-window_w-${toString inside} ${toString inside}";
 	};
+
+	# Hyprland's speed is in tenths of a second.
+	tenths = ms: ms / 100.0;
 
 	lidClose = ''
 		function()
@@ -342,6 +348,22 @@ in
 
 		settings =
 		{
+			# Smoked glass, switched in Preferences: nihil-wallpaper reloads this when it changes.
+			glassIsOn =
+			{
+				_var = lua ''
+					function()
+						local file = io.open("${config.xdg.stateHome}/nihil/glass")
+						if not file then
+							return false
+						end
+						local state = file:read("*l")
+						file:close()
+						return state == "on"
+					end
+				'';
+			};
+
 			lidIsClosed =
 			{
 				_var = lua ''
@@ -393,14 +415,14 @@ in
 				{
 					rounding = t.windows.rounding;
 					active_opacity = 1.0;
-					inactive_opacity = 0.85;
+					inactive_opacity = lua "glassIsOn() and 0.85 or 1.0";
 					fullscreen_opacity = 1.0;
 
 					shadow.enabled = false;
 
 					blur =
 					{
-						enabled = true;
+						enabled = lua "glassIsOn()";
 						size = 4;
 						passes = 2;
 						brightness = 0.5;
@@ -444,17 +466,17 @@ in
 			curve =
 			[
 				(bezier "linear" [ [ 0 0 ] [ 1 1 ] ])
-				(bezier "nihilOut" [ [ 0.05 0.7 ] [ 0.1 1.0 ] ])
-				(bezier "nihilInOut" [ [ 0.4 0.0 ] [ 0.2 1.0 ] ])
+				# The shell's Easing.OutCubic, exactly.
+				(bezier "nihilOut" [ [ (1.0 / 3) 1 ] [ (2.0 / 3) 1 ] ])
 			];
 
 			animation =
 			[
-				{ leaf = "windows"; enabled = true; speed = 2.6; bezier = "nihilOut"; style = "popin 94%"; }
-				{ leaf = "windowsMove"; enabled = true; speed = 2.4; bezier = "nihilOut"; style = "slide"; }
-				{ leaf = "border"; enabled = true; speed = 4; bezier = "linear"; }
-				{ leaf = "fade"; enabled = true; speed = 2; bezier = "nihilOut"; }
-				{ leaf = "workspaces"; enabled = true; speed = 3; bezier = "nihilInOut"; style = "slide"; }
+				{ leaf = "windows"; enabled = true; speed = tenths t.motion.normal; bezier = "nihilOut"; style = "popin 94%"; }
+				{ leaf = "windowsMove"; enabled = true; speed = tenths t.motion.normal; bezier = "nihilOut"; style = "slide"; }
+				{ leaf = "border"; enabled = true; speed = tenths t.motion.fast; bezier = "linear"; }
+				{ leaf = "fade"; enabled = true; speed = tenths t.motion.normal; bezier = "nihilOut"; }
+				{ leaf = "workspaces"; enabled = true; speed = tenths t.motion.drawer; bezier = "nihilOut"; style = "slide"; }
 			];
 
 			gesture = lib.filter (gesture: gesture.fingers != null)

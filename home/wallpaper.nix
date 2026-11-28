@@ -84,6 +84,8 @@ let
 					on | off)
 						install -d -m 700 "$(dirname "$glass")"
 						echo "$2" > "$glass"
+						# Hyprland reads it with the rest of its configuration (home/hyprland.nix).
+						${hyprctl} reload config-only > /dev/null 2>&1 || true
 						apply "$(current)"
 						pkill -USR1 -x 'kitty|\.kitty-wrapped' || true
 						;;

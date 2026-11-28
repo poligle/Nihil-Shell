@@ -48,7 +48,7 @@ in
 
         opacity = 
         {
-            terminal = lib.mkDefault 0.9;
+            terminal = lib.mkDefault 1.0;
             popups = lib.mkDefault 0.8;
         };
     };
