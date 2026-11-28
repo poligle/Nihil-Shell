@@ -174,13 +174,15 @@ let
 		step="5%"
 		case "$1" in
 			up)
-				${brightnessctl} set +"$step" >/dev/null
+				${brightnessctl} -c backlight set +"$step" >/dev/null
 				;;
 			down)
-				${brightnessctl} set "$step"- >/dev/null
+				${brightnessctl} -c backlight set "$step"- >/dev/null
 				;;
 		esac
-		br="$(${brightnessctl} -m | ${awk} -F, '{gsub("%","",$4); print $4}')"
+		# Without a backlight, nothing changed and there's nothing to show.
+		br="$(${brightnessctl} -m -c backlight 2>/dev/null | ${awk} -F, 'NR == 1 {gsub("%","",$4); print $4}')"
+		[ -n "$br" ] || exit 0
 		exec ${ipc} osd brightness "$br" >/dev/null 2>&1
 	'';
 

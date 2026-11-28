@@ -25,8 +25,8 @@ in
 			[
 				{
 					timeout = 150;
-					on-timeout = "${brightnessctl} -s set 10";
-					on-resume = "${brightnessctl} -r";
+					on-timeout = "${brightnessctl} -c backlight -s set 10";
+					on-resume = "${brightnessctl} -c backlight -r";
 				}
 				{
 					timeout = 240;
