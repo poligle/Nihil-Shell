@@ -39,7 +39,17 @@ in
       enable = lib.mkDefault true;
 
       theme = lib.mkDefault "nihil";
-      themePackages = [ (import ../theme/plymouth.nix { inherit pkgs waitForSound; passphrase = config.nihil.strings.diskPassphrase; }) ];
+      themePackages =
+      [
+        (import ../theme/plymouth.nix
+        {
+          inherit pkgs waitForSound;
+          passphrase = config.nihil.strings.diskPassphrase;
+          failed = config.nihil.strings.authFailed;
+        })
+      ];
+      # The one font the initrd has, for the disk's password: the labels' (theme/plymouth.nix).
+      font = lib.mkDefault "${config.nihil.fonts}/share/fonts/truetype/SpaceMono-Regular.ttf";
     };
 
     consoleLogLevel = lib.mkDefault 3;

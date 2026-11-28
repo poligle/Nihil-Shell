@@ -2,17 +2,34 @@
 
 # passphrase: what the disk's password is called, in the system's language (theme/i18n.nix). It's
 # shown instead of what asks for it: systemd-cryptsetup's words are English, whatever the language.
-{ pkgs, waitForSound ? false, passphrase ? "Disk passphrase" }:
+# failed: what a password that didn't open the disk is said as, with $ATTEMPTS for how many times.
+{ pkgs, waitForSound ? false, passphrase ? "Disk passphrase", failed ? "Failed ($ATTEMPTS)" }:
 let
   python = pkgs.python3.withPackages (ps: [ ps.pillow ]);
+  t = import ./nihil.nix;
 
-  ink = "0.949, 0.949, 0.949";
+  # A colour as the script takes it: red, green and blue, from 0 to 1.
+  rgb = hex: builtins.concatStringsSep ", "
+    (map (i: toString (pkgs.lib.fromHexString (builtins.substring i 2 hex) / 255.0)) [ 0 2 4 ]);
+  ink = rgb t.palette.ink;
+  muted = rgb t.palette.muted;
+
+  # Space Mono, the one font the initrd has (modules/plymouth.nix), at the login screen's sizes:
+  # 13 px for what the field asks, 12 for what went wrong.
+  asks = "Space Mono 9.75";
+  says = "Space Mono 9";
+
+  # The words around the count, for the script to put it in between.
+  around = builtins.filter builtins.isString (builtins.split "\\$ATTEMPTS" failed);
+  failure = if builtins.length around > 1
+    then "${builtins.toJSON (builtins.head around)} + failures + ${builtins.toJSON (builtins.elemAt around 1)}"
+    else builtins.toJSON failed;
+
   intro = 36;
   loop = 60;
 
   script = pkgs.writeText "nihil.script" ''
     baseline_y = 0;
-    message_y = 0;
 
     fun layout () {
       screen = 0;
@@ -29,7 +46,6 @@ let
         screen++;
       }
       baseline_y = shortest * 0.4;
-      message_y = shortest * 0.25;
     }
 
     layout();
@@ -118,29 +134,98 @@ let
 
     prompt = null;
     bullets = null;
-    bullet.image = Image.Text("•", ${ink});
+    field = null;
+    note = null;
+    field_image = Image("field.png");
+    field_wrong = Image("field-wrong.png");
+    dot_image = Image("dot.png");
+    led_image = Image("led.png");
+
+    # The field as far below the logo's middle as the login screen's is below its clock's, and
+    # what went wrong 54 under it, as there.
+    field_y = 226;
+    note_y = field_y + 54;
+    message_y = note_y + 40;
+
+    # Asked again for the same disk once answered: the password didn't open it.
+    asking = 0;
+    asked = "";
+    failures = 0;
 
     fun password_callback (prompt_text, bullet_count) {
       stop_animation();
 
-      prompt.image = Image.Text(${builtins.toJSON passphrase}, ${ink});
-      prompt.sprite = Sprite(prompt.image);
-      prompt.sprite.SetPosition(
-        center_x - (prompt.image.GetWidth() / 2),
-        baseline_y - prompt.image.GetHeight(),
+      if (asking == 0) {
+        if (prompt_text == asked) {
+          failures++;
+        } else {
+          failures = 0;
+        }
+        asked = prompt_text;
+        asking = 1;
+      }
+      # Wrong until something is typed again, as on the login screen.
+      wrong = 0;
+      if (failures > 0 && bullet_count == 0) {
+        wrong = 1;
+      }
+
+      if (wrong) {
+        field.sprite = Sprite(field_wrong);
+      } else {
+        field.sprite = Sprite(field_image);
+      }
+      field.sprite.SetPosition(
+        Math.Int(center_x - field_image.GetWidth() / 2),
+        Math.Int(field_y - field_image.GetHeight() / 2),
         1
       );
 
-      total_width = bullet_count * bullet.image.GetWidth();
-      start_x = center_x - (total_width / 2);
-
+      prompt = null;
       bullets = null;
-      for (i = 0; i < bullet_count; i++) {
-        bullets[i].sprite = Sprite(bullet.image);
-        bullets[i].sprite.SetPosition(
-          start_x + (i * bullet.image.GetWidth()),
-          baseline_y + bullet.image.GetHeight(),
-          1
+      if (bullet_count == 0) {
+        prompt.image = Image.Text(${builtins.toJSON passphrase}, ${muted}, 1, ${builtins.toJSON asks});
+        prompt.sprite = Sprite(prompt.image);
+        prompt.sprite.SetPosition(
+          Math.Int(center_x - prompt.image.GetWidth() / 2),
+          Math.Int(field_y - prompt.image.GetHeight() / 2),
+          2
+        );
+      } else {
+        shown = bullet_count;
+        if (shown > 15) {
+          shown = 15;
+        }
+        start_x = Math.Int(center_x - (shown * 17 - 7) / 2);
+        for (i = 0; i < shown; i++) {
+          bullets[i].sprite = Sprite(dot_image);
+          bullets[i].sprite.SetPosition(start_x + i * 17, Math.Int(field_y - dot_image.GetHeight() / 2), 2);
+        }
+      }
+
+      note = null;
+      if (failures > 0) {
+        if (wrong) {
+          note.image = Image.Text(${failure}, ${ink}, 1, ${builtins.toJSON says});
+        } else {
+          note.image = Image.Text(${failure}, ${muted}, 1, ${builtins.toJSON says});
+        }
+        # With the LED, 6 px and 8 from the words, while it's wrong.
+        width = note.image.GetWidth();
+        if (wrong) {
+          width = width + 14;
+          note.led = Sprite(led_image);
+          note.led.SetPosition(
+            Math.Int(center_x - width / 2),
+            Math.Int(note_y - led_image.GetHeight() / 2),
+            2
+          );
+        }
+        note.sprite = Sprite(note.image);
+        note.sprite.SetPosition(
+          Math.Int(center_x + width / 2 - note.image.GetWidth()),
+          Math.Int(note_y - note.image.GetHeight() / 2),
+          2
         );
       }
     }
@@ -192,6 +277,9 @@ let
     fun normal_callback () {
       prompt = null;
       bullets = null;
+      field = null;
+      note = null;
+      asking = 0;
 
       question = null;
       answer = null;
@@ -206,6 +294,8 @@ let
     fun quit_callback () {
       prompt = null;
       bullets = null;
+      field = null;
+      note = null;
       stop_animation();
     }
 
@@ -215,7 +305,7 @@ in
 pkgs.runCommand "nihil-plymouth" { nativeBuildInputs = [ python ]; } ''
   dir="$out/share/plymouth/themes/nihil"
   mkdir -p "$dir"
-  python3 ${./plymouth.py} ${./art/snowflake-29.txt} "$dir"
+  python3 ${./plymouth.py} ${./art/snowflake-29.txt} "$dir" --colours ${t.palette.void} ${t.palette.line} ${t.palette.signal} ${t.palette.ink}
   cp ${script} "$dir/nihil.script"
   {
     printf '[Plymouth Theme]\n'
